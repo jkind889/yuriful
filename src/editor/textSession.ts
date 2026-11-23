@@ -8,7 +8,7 @@ import { ReplaceStep } from 'prosemirror-transform'
 import { EditorView } from 'prosemirror-view'
 import { resolveEditingShortcut, typedCharacter } from '../input/shortcuts.ts'
 import type { KeyEventLike } from '../input/shortcuts.ts'
-import { DEFAULT_FONT, canonicalTextFormatting, headingsAfterEdit, splitGraphemes } from '../model/richText.ts'
+import { DEFAULT_FONT, canonicalTextFormatting, splitGraphemes } from '../model/richText.ts'
 import type { Mark, TextFormatting } from '../model/richText.ts'
 import { legacyToBlocks } from '../model/textDoc.ts'
 import type { TextContent } from '../model/textDoc.ts'
@@ -21,6 +21,7 @@ import {
   canonicalGuard,
   canonicalizeDoc,
   completesShortcut,
+  deleteSelected,
   editKeys,
   imposeRuns,
   lineLevels,
@@ -31,7 +32,6 @@ import {
   pendingOf,
   plainPasteContent,
   selectionFormat,
-  setLevels,
   setLinesLevel,
   setRangeFont,
   shortcutTransaction,
@@ -57,17 +57,37 @@ import type { CompactContent, FormatReadout, Pending } from './textRules.ts'
  * formatting, never `blocks`. Until something has changed, `content()` is the record's own
  * stored content, so entering and leaving an edit changes nothing.
  *
- * IME composition: while a composition is open the browser and ProseMirror own the text. The
- * session dispatches nothing, reads nothing from the DOM and leaves the selection alone; its
- * own rules (line levels, canonical marks, selection on whole characters) and every command
- * issued meanwhile wait. Once a composition, or a run of them back to back, has ended, one
- * follow-up brings the document to canonical form (`followUp`), then the waiting commands
- * run in order. `content()` always gives the record that follow-up leaves, computed without
- * touching the document, so a save taken at any moment stores a canonical record.
+ * IME composition: a composition never starts over a selection. At `compositionstart` a
+ * selection is deleted, as an ordinary edit, before the browser puts its first candidate in,
+ * so every composition runs at a plain caret (the selection is the one the browser shows then,
+ * which the session's own can lag behind). While it is open the browser and ProseMirror own
+ * the text: the session dispatches nothing, reads nothing from the DOM, and its own rules (line
+ * levels, canonical marks, selection on whole characters) change nothing. Input that arrives
+ * after it ends is handled at once, as any input is. A session command issued while a
+ * composition is open, or before ProseMirror has finished ending it, is refused and never runs
+ * later. The text each
+ * composition put in is tracked as a range with the marks it takes (rule R5); once
+ * ProseMirror has finished ending the last composition, one follow-up gives those ranges their
+ * marks and makes the document canonical, never changing a character or moving the selection.
+ * `content()` is that follow-up applied to the current document, computed without touching it,
+ * so a save taken at any moment stores a canonical record of exactly the text shown.
  */
 
 /** After a composition ends, how long to wait for ProseMirror to finish ending it (it does so 20 ms later) and for another composition to start straight after, before the follow-up. */
 const FOLLOW_UP_MS = 30
+/** Transaction metadata of the follow-up (it carries ProseMirror's `composition` metadata too, to join the composition's history step). */
+const FOLLOW_UP = 'yuriful-composition-follow-up'
+
+/** Text a composition put in, with the marks it takes (rule R5). */
+interface ComposedRange {
+  from: number
+  to: number
+  marks: readonly PMMark[]
+  /** Its composition is open: the range grows with what it composes. */
+  open: boolean
+  /** ProseMirror's `composition` metadata on its transactions: its last reading of the DOM, after `compositionend`, still belongs to it. */
+  meta: unknown
+}
 
 export interface EditSessionHooks {
   /** The text or a box setting changed (typing, a paste, a format command, undo...): its canonical content now. */
@@ -186,28 +206,16 @@ export class EditSession {
   /** Between `compositionstart` and `compositionend` (ProseMirror's own `composing` starts a little later). */
   private imeOpen = false
   /**
-   * The run of compositions whose follow-up is owed: the text, line levels and selection
-   * before the first of them, and the marks composed text takes (rule R5: at a caret what
-   * typed text would get, pending choices included; over a selection those of its first
-   * character).
+   * The text the compositions since the last follow-up put in, each range with the marks it
+   * takes (rule R5: at a caret what typed text would get, pending choices included; over a
+   * selection those of its first character), mapped through every transaction since.
    */
-  private imeRun: {
-    text: string
-    levels: number[]
-    from: number
-    to: number
-    marks: readonly PMMark[]
-    /** What the compositions of the run committed, in order (`compositionend` data). */
-    commits: string
-    /** Only compositions, each starting where the previous one's commit ended: the committed text is known exactly. */
-    plain: boolean
-  } | null = null
+  private composed: ComposedRange[] = []
+  /** Set from `compositionend` until the follow-up: ProseMirror is still ending the composition. */
   private followUpTimer: ReturnType<typeof setTimeout> | null = null
-  /** Commands issued while a composition is open, run in order by the follow-up. */
-  private queued: Array<() => void> = []
   /** ProseMirror's `composition` metadata on its last composition transaction (the follow-up joins that history step). */
   private lastComposition: unknown = undefined
-  /** A plain-text paste in progress: what it pastes, where, and with which pending choices. */  /** A plain-text paste in progress: what it pastes, where, and with which pending choices. */
+  /** A plain-text paste in progress: what it pastes, where, and with which pending choices. */
   private plainPaste: { text: string; from: number; to: number; pending: Pending | null } | null = null
   /** Where a drop in progress lands (from the drop event), for the destination font. */
   private dropPos: number | null = null
@@ -264,9 +272,13 @@ export class EditSession {
   get composing(): boolean {
     return this.imeOpen || (this.mounted?.view.composing ?? false) || this.composingHeadless
   }
-  /** A composition is open, or the follow-up of the last run of them is still owed: the session's own rules wait. */
+  /** A composition is open: the session's own rules leave the text alone. */
   private get busy(): boolean {
-    return this.composing || this.imeRun !== null
+    return this.composing
+  }
+  /** A composition is open, or ProseMirror has not finished ending the last one (its follow-up is still owed): session commands are refused. */
+  get settling(): boolean {
+    return this.composing || this.followUpTimer !== null
   }
   get canUndo(): boolean {
     return undoDepth(this.current) > 0
@@ -288,12 +300,12 @@ export class EditSession {
 
   /**
    * The text's canonical record content now (compact form plus the box formatting); the
-   * record's own until something changed. During a composition, or while its follow-up is
-   * owed, it is the record the follow-up will leave (`followUpTransaction`), computed
-   * without touching the document.
+   * record's own until something changed. While composed text awaits its follow-up, it is the
+   * record the follow-up leaves (`followUpTransaction`: the same characters, the composed
+   * ranges' marks, canonical form), computed without touching the document.
    */
   content(): TextContent {
-    const doc = this.imeRun ? this.followUpTransaction(this.current).doc : this.current.doc
+    const doc = this.composed.length > 0 ? this.followUpTransaction(this.current).doc : this.current.doc
     if (doc === this.initial.doc && JSON.stringify(this.box) === JSON.stringify(this.initial.box)) return this.initial.content
     const c = this.cached
     if (c && c.state === this.current && c.box === this.box) return c.content
@@ -324,6 +336,7 @@ export class EditSession {
     this.plainPaste = null
     if (transactions.length === 0) return
     this.current = state
+    this.mapComposed(transactions)
     this.trackHistory(before, state, transactions)
     for (const t of transactions) if (t.getMeta('composition') !== undefined) this.lastComposition = t.getMeta('composition')
     this.mounted?.view.updateState(state)
@@ -333,9 +346,27 @@ export class EditSession {
     if ((tr.docChanged || tr.selectionSet) && tr.getMeta(META.shortcutApplied) !== true) this.revert = null
     if (transactions.some((t) => t.docChanged)) this.reportChange()
     this.hooks.onSelectionChange?.(this)
-    // A change during a run that is not part of a composition (a key typed straight after a
-    // commit): the committed text alone no longer says what the text should be.
-    if (this.imeRun && !this.composing && transactions.some((t) => t.docChanged && t.getMeta('composition') === undefined)) this.imeRun.plain = false
+  }
+
+  /**
+   * Maps the composed ranges through applied transactions. A range grows with its own
+   * composition's transactions (while it is open, and ProseMirror's last reading after
+   * `compositionend`, which carries the same metadata); through anything else (a key typed
+   * straight after, a paste, undo) it keeps to the characters it holds.
+   */
+  private mapComposed(transactions: readonly Transaction[]) {
+    if (this.composed.length === 0) return
+    for (const t of transactions) {
+      if (!t.docChanged) continue
+      const meta = t.getMeta(FOLLOW_UP) === true ? undefined : t.getMeta('composition')
+      for (const r of this.composed) {
+        if (r.open && meta !== undefined) r.meta = meta
+        const grows = meta !== undefined && meta === r.meta
+        const from = t.mapping.map(r.from, grows ? -1 : 1)
+        r.to = Math.max(from, t.mapping.map(r.to, grows ? 1 : -1))
+        r.from = from
+      }
+    }
   }
 
   /** Tells `onChange` about the content, only when it differs from what it was last told (or the stored record). */
@@ -371,28 +402,24 @@ export class EditSession {
   }
 
   /**
-   * Runs a session command now, or, while a composition is open or its follow-up is still
-   * owed, queues it to run (in order) right after the follow-up; a queued command returns
-   * false. Nothing of the session touches the document until ProseMirror has finished ending
-   * the composition (it reads the selection back from the DOM 20 ms after it ends).
+   * Runs a session command now, or refuses it (false) while a composition is open or
+   * ProseMirror has not finished ending the last one (`settling`): it never runs later.
+   * ProseMirror reads the selection back from the DOM 20 ms after a composition ends, so a
+   * change made before then could be lost or land in the wrong place.
    */
-  private whenSettled(command: () => boolean): boolean {
-    if (this.done) return false
-    if (this.busy) {
-      this.queued.push(() => void command())
-      return false
-    }
+  private unlessComposing(command: () => boolean): boolean {
+    if (this.done || this.settling) return false
     return command()
   }
 
-  /** Runs a ProseMirror command on the session (waits for a composition, see `whenSettled`). */
+  /** Runs a ProseMirror command on the session (refused during a composition, see `unlessComposing`). */
   run(cmd: Command): boolean {
-    return this.whenSettled(() => this.editable && cmd(this.current, (tr) => this.dispatch(tr), this.view ?? undefined))
+    return this.unlessComposing(() => this.editable && cmd(this.current, (tr) => this.dispatch(tr), this.view ?? undefined))
   }
 
-  /** Puts the caret (or a range, `anchor` to `head`) at UTF-16 offsets into the text, never inside a character (see `onCharacter`). Waits for a composition. */
-  select(anchor: number, head = anchor) {
-    this.whenSettled(() => {
+  /** Puts the caret (or a range, `anchor` to `head`) at UTF-16 offsets into the text, never inside a character (see `onCharacter`). Refused during a composition. */
+  select(anchor: number, head = anchor): boolean {
+    return this.unlessComposing(() => {
       const doc = this.current.doc
       const text = plainTextOfDoc(doc)
       const at = (o: number) => posAtTextOffset(doc, onCharacter(text, o))
@@ -512,109 +539,112 @@ export class EditSession {
     this.composingHeadless = true
   }
 
-  /**
-   * A composition ends without a view: the follow-up runs at once. `committed` is what it
-   * committed (a mounted view takes it from `compositionend`); without it the committed text is
-   * not known and the follow-up never repairs the text.
-   */
-  compositionEnd(committed?: string) {
+  /** A composition ends without a view: there is no ProseMirror to finish ending it, so the follow-up runs at once. */
+  compositionEnd() {
     this.composingHeadless = false
-    if (this.imeRun) {
-      if (committed === undefined) this.imeRun.plain = false
-      else this.imeRun.commits += committed
-    }
+    this.closeComposed()
     this.followUp()
   }
 
   /**
-   * A composition starts. Only plain state is remembered, and only for the first of a run of
-   * compositions back to back: the text, line levels and selection before it, and the marks
-   * its text will take. Nothing in the document or the DOM is touched.
+   * A composition starts, before ProseMirror counts the view as composing and before the
+   * browser puts in its first candidate. A selection is deleted first, in one ordinary edit
+   * styled as deleting it with a key is (`deleteSelected`), so the composition runs at a plain
+   * caret; the composed text will take the marks of the selection's first character (rule R5).
+   * At a caret it takes what typed text would get. A composition starting where the composed
+   * text of the one before ends (Korean syllables back to back) carries that range on. A start
+   * while a composition is still open (no `compositionend` between) is the browser starting it
+   * again: the same composition goes on.
+   *
+   * `shown`, on a mounted view, is the selection the browser shows (`domSelection`): the one
+   * the composition is about to replace. The session's own can lag behind it, by the
+   * selection change ProseMirror reads only on the next `selectionchange` (after a commit the
+   * browser has collapsed its selection to a caret after the committed text while the session
+   * still has that text selected).
    */
-  private beginComposition() {
+  private beginComposition(shown: { from: number; to: number } | null = null) {
     if (this.done) return
-    if (this.followUpTimer !== null) {
-      clearTimeout(this.followUpTimer)
-      this.followUpTimer = null
-    }
-    // A start while a composition is still open (no compositionend between) is the browser
-    // starting it again (Chromium does so when the first candidate replaces a selection that
-    // crosses formatting): the same composition goes on.
-    if (this.imeRun && this.imeOpen) return
-    if (this.imeRun) {
-      // Back to back: the run goes on, its follow-up after the last. It stays plain only when
-      // this composition starts with nothing selected where the previous commit ended.
-      const run = this.imeRun
-      const sel = this.current.selection
-      if (!sel.empty || textOffsetAt(this.current.doc, sel.head, 1) !== run.from + run.commits.length) run.plain = false
-      return
-    }
-    const state = this.current
-    const doc = state.doc
-    const levels: number[] = []
-    doc.forEach((block) => {
-      levels.push(block.type === nodes.heading ? (block.attrs.level as number) : 0)
-    })
-    const sel = state.selection
+    this.clearFollowUpTimer()
+    if (this.imeOpen) return
+    let state = this.current
+    const inText = (pos: number) => pos <= state.doc.content.size && state.doc.resolve(pos).parent.inlineContent
+    const { from, to } = shown && inText(shown.from) && inText(shown.to) ? shown : state.selection
     let composedMarks: readonly PMMark[]
-    if (sel instanceof TextSelection && sel.$cursor) composedMarks = applyPending(sel.$cursor.marks(), pendingOf(state), this.baseFont)
+    if (from === to) composedMarks = applyPending(state.doc.resolve(from).marks(), pendingOf(state), this.baseFont)
     else {
-      const $from = sel.$from
+      const $from = state.doc.resolve(from)
       const first = $from.parent.isTextblock && $from.parentOffset < $from.parent.content.size ? $from.parent.childAfter($from.parentOffset).node : null
       composedMarks = first?.isText ? first.marks : [] // a selection starting at a line break: no marks, like the break
+      if (this.editable) {
+        if (state.selection.from !== from || state.selection.to !== to) {
+          this.dispatch(state.tr.setSelection(TextSelection.create(state.doc, from, to)))
+          state = this.current
+        }
+        // Without the marks a deletion stores for what is typed next (`TextSelection.replace`):
+        // stored marks at `compositionstart` would send ProseMirror down its mark-cursor path,
+        // which a fast IME can break. ProseMirror's own deletion of a selection across blocks at
+        // `compositionstart` comes after that check, so stores none either.
+        deleteSelected(state, (tr) => this.dispatch(tr.setStoredMarks(null)))
+      }
     }
-    this.imeRun = { text: plainTextOfDoc(doc), levels, from: textOffsetAt(doc, sel.from, -1), to: textOffsetAt(doc, sel.to, 1), marks: composedMarks, commits: '', plain: true }
+    const at = from === to ? from : this.current.selection.from
+    const carried = from === to ? this.composed.find((r) => r.to === at && r.to > r.from) : undefined
+    if (carried) carried.open = true
+    else this.composed.push({ from: at, to: at, marks: composedMarks, open: true, meta: undefined })
+  }
+
+  /** The selection the browser shows in the view, as document positions (`EditorView.posAtDOM`); null when it is not in the view. */
+  private domSelection(view: EditorView): { from: number; to: number } | null {
+    const root = view.root as Document & { getSelection?: () => Selection | null }
+    const sel = root.getSelection?.() ?? view.dom.ownerDocument.getSelection()
+    if (!sel || !sel.anchorNode || !sel.focusNode || !view.dom.contains(sel.anchorNode) || !view.dom.contains(sel.focusNode)) return null
+    try {
+      const anchor = view.posAtDOM(sel.anchorNode, sel.anchorOffset)
+      const head = view.posAtDOM(sel.focusNode, sel.focusOffset)
+      return { from: Math.min(anchor, head), to: Math.max(anchor, head) }
+    } catch {
+      return null
+    }
+  }
+
+  /** The compositions have ended: their ranges grow only with ProseMirror's last reading of them. */
+  private closeComposed() {
+    for (const r of this.composed) r.open = false
   }
 
   /**
-   * The follow-up of the run of compositions in progress, as a transaction on `state`, not
-   * dispatched: every line gets today's level for the change from the text and levels before
-   * the run to the text and caret now (`headingsAfterEdit`); the composed text, when the
-   * change is a clean replacement of the selection the run started on, takes the run's marks
-   * (rule R5); the touched blocks are made canonical. It joins ProseMirror's history step for
-   * the composition. A run that left the text as it was restores the levels and nothing else.
+   * The follow-up of the composed text, as a transaction on `state`, not dispatched: each
+   * composed range gets its marks (rule R5), and the document is made canonical. It never
+   * changes a character or moves the selection (the session's selection rule may then move a
+   * selection end off the middle of a character). It joins ProseMirror's history step for the
+   * composition.
    */
   private followUpTransaction(state: EditorState): Transaction {
-    const run = this.imeRun
-    const tr = state.tr.setMeta(META.levelsSet, true)
+    const tr = state.tr.setMeta(META.levelsSet, true).setMeta(FOLLOW_UP, true)
     if (this.lastComposition !== undefined) tr.setMeta('composition', this.lastComposition)
-    if (!run) return tr
-    let text = plainTextOfDoc(state.doc)
-    // Repair: ProseMirror can keep a stale candidate when a composition replaces a selection
-    // that crosses formatting (`AbCD`, `Ab` selected, `ㄱ` → `가` → `각`, commit `가`
-    // leaves `ㄱ가CD`). When the run was compositions only and the browser reported what they
-    // committed, the text must be the text before the run with the selection replaced by that;
-    // the composed region is set to it, the caret after it, as the canvas has them.
-    const prefix = run.text.slice(0, run.from)
-    const suffix = run.text.slice(run.to)
-    const wanted = prefix + run.commits + suffix
-    if (run.plain && !this.composing && text !== wanted && text.startsWith(prefix) && text.endsWith(suffix) && text.length >= prefix.length + suffix.length) {
-      const from = posAtTextOffset(tr.doc, prefix.length)
-      const to = posAtTextOffset(tr.doc, text.length - suffix.length)
-      tr.insertText(run.commits, from, to)
-      tr.setSelection(TextSelection.create(tr.doc, posAtTextOffset(tr.doc, prefix.length + run.commits.length)))
-      text = wanted
-    }
-    setLevels(tr, headingsAfterEdit(run.text, run.levels, text, textOffsetAt(tr.doc, tr.selection.to, 1)))
-    const length = text.length - (run.text.length - (run.to - run.from))
-    const clean = text !== run.text && length >= 0 && text.slice(0, run.from) === run.text.slice(0, run.from) && text.slice(run.from + length) === run.text.slice(run.to)
-    if (!clean) {
-      canonicalizeDoc(tr, this.baseFont, [])
-      return tr
-    }
-    const from = posAtTextOffset(tr.doc, run.from)
-    const to = posAtTextOffset(tr.doc, run.from + length)
-    if (to > from) {
+    const size = state.doc.content.size
+    const inserted: Array<{ from: number; to: number }> = []
+    for (const r of this.composed) {
+      const from = Math.min(r.from, size)
+      const to = Math.min(r.to, size)
+      if (to <= from) continue
       tr.removeMark(from, to)
-      for (const m of run.marks) tr.addMark(from, to, m)
+      for (const m of r.marks) tr.addMark(from, to, m)
+      inserted.push({ from, to })
     }
-    canonicalizeDoc(tr, this.baseFont, to > from ? [{ from, to }] : [], { from, to })
+    canonicalizeDoc(tr, this.baseFont, inserted)
     return tr
+  }
+
+  private clearFollowUpTimer() {
+    if (this.followUpTimer === null) return
+    clearTimeout(this.followUpTimer)
+    this.followUpTimer = null
   }
 
   /** After a composition ends: the follow-up once ProseMirror has finished ending it, unless another composition starts first. */
   private scheduleFollowUp() {
-    if (this.followUpTimer !== null) clearTimeout(this.followUpTimer)
+    this.clearFollowUpTimer()
     this.followUpTimer = setTimeout(() => {
       this.followUpTimer = null
       this.followUp()
@@ -622,27 +652,20 @@ export class EditSession {
   }
 
   /**
-   * Once no composition is open: the follow-up of the last run (one transaction; the session's
-   * own plugins then snap the selection and sync the pending marks), then the commands queued
-   * meanwhile, in order. On a read-only board the follow-up only brings the session's own
-   * document to the canonical form `content()` already gave; nothing is reported.
+   * Once no composition is open: the follow-up (one transaction), and the composed ranges are
+   * forgotten. On a read-only board it only brings the session's own document to the canonical
+   * form `content()` already gave; nothing is reported.
    */
   private followUp() {
-    if (this.followUpTimer !== null) {
-      clearTimeout(this.followUpTimer)
-      this.followUpTimer = null
-    }
-    if (this.composing || !this.imeRun) return
+    this.clearFollowUpTimer()
+    if (this.composing || this.composed.length === 0) return
     const tr = this.followUpTransaction(this.current)
-    this.imeRun = null
+    this.composed = []
     if (this.editable) this.dispatch(tr)
     else {
       this.current = this.current.apply(tr)
       this.mounted?.view.updateState(this.current)
     }
-    const queued = this.queued
-    this.queued = []
-    for (const command of queued) command()
   }
 
   // ---- formatting -------------------------------------------------------------------------------
@@ -653,7 +676,7 @@ export class EditSession {
    * for what is typed next. True when anything changed.
    */
   toggleMark(mark: Mark): boolean {
-    return this.whenSettled(() => this.toggleMarkNow(mark))
+    return this.unlessComposing(() => this.toggleMarkNow(mark))
   }
 
   private toggleMarkNow(mark: Mark): boolean {
@@ -669,7 +692,7 @@ export class EditSession {
 
   /** Heading level 1 to 3, or 0 for body text, on every line the selection touches (the caret's line). */
   setHeading(level: 0 | 1 | 2 | 3): boolean {
-    return this.whenSettled(() => this.setHeadingNow(level))
+    return this.unlessComposing(() => this.setHeadingNow(level))
   }
 
   private setHeadingNow(level: 0 | 1 | 2 | 3): boolean {
@@ -685,7 +708,7 @@ export class EditSession {
 
   /** The font of the selected range, or with only a caret the font of what is typed next. */
   setFont(font: FontId): boolean {
-    return this.whenSettled(() => this.setFontNow(font))
+    return this.unlessComposing(() => this.setFontNow(font))
   }
 
   private setFontNow(font: FontId): boolean {
@@ -713,7 +736,10 @@ export class EditSession {
    * recording a history step. True when anything changed.
    */
   setBox(box: TextFormatting): boolean {
-    return this.whenSettled(() => this.setBoxNow(box))
+    if (this.done) return false
+    // Alignment and colour change no character: they may apply during a composition. A new box font is refused then (it can drop font overrides).
+    if (this.settling && (boxOf({ ...this.box, ...box }).font ?? DEFAULT_FONT) !== this.baseFont) return false
+    return this.setBoxNow(box)
   }
 
   private setBoxNow(box: TextFormatting): boolean {
@@ -738,11 +764,11 @@ export class EditSession {
 
   /** Steps back through this edit (typing, marks, headings, shortcuts, pastes). Whole-box settings are not part of it. */
   undo(): boolean {
-    return this.whenSettled(() => this.editable && undo(this.current, (tr) => this.dispatch(tr)))
+    return this.unlessComposing(() => this.editable && undo(this.current, (tr) => this.dispatch(tr)))
   }
 
   redo(): boolean {
-    return this.whenSettled(() => this.editable && redo(this.current, (tr) => this.dispatch(tr)))
+    return this.unlessComposing(() => this.editable && redo(this.current, (tr) => this.dispatch(tr)))
   }
 
   // ---- clipboard and drops ------------------------------------------------------------------------
@@ -791,7 +817,7 @@ export class EditSession {
    * (`plainPasteContent`). Never fires a typing shortcut.
    */
   paste(data: PasteData): boolean {
-    return this.whenSettled(() => this.pasteNow(data))
+    return this.unlessComposing(() => this.pasteNow(data))
   }
 
   private pasteNow(data: PasteData): boolean {
@@ -815,7 +841,7 @@ export class EditSession {
    * is removed for a move inside the card.
    */
   drop(slice: Slice, at: number, moveFrom?: { from: number; to: number }): boolean {
-    return this.whenSettled(() => this.dropNow(slice, at, moveFrom))
+    return this.unlessComposing(() => this.dropNow(slice, at, moveFrom))
   }
 
   private dropNow(slice: Slice, at: number, moveFrom?: { from: number; to: number }): boolean {
@@ -971,14 +997,14 @@ export class EditSession {
             queueMicrotask(() => (this.dropPos = null))
             return false
           },
-          compositionstart: () => {
-            this.beginComposition()
+          compositionstart: (view) => {
+            this.beginComposition(this.domSelection(view))
             this.imeOpen = true
             return false
           },
-          compositionend: (_view, e) => {
+          compositionend: () => {
             this.imeOpen = false
-            if (this.imeRun) this.imeRun.commits += (e as CompositionEvent).data ?? ''
+            this.closeComposed()
             this.scheduleFollowUp()
             return false
           },
@@ -1032,10 +1058,10 @@ export class EditSession {
     this.mounted = null
     // A composition still open ends with the view (`EditorView.destroy`): what the candidate
     // shows stays, as on the canvas (ProseMirror has read every update into the document).
-    // Then the follow-up and any queued commands, so the record and the static HTML are final.
-    if (this.composing && this.imeRun) this.imeRun.plain = false // nothing committed: the candidate stays as shown
+    // Then the follow-up, so the record and the static HTML are final.
     this.imeOpen = false
     this.composingHeadless = false
+    this.closeComposed()
     if (m) {
       m.view.destroy()
       for (const a of Array.from(m.el.attributes)) if (!m.attrs.some(([name]) => name === a.name)) m.el.removeAttribute(a.name)

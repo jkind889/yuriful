@@ -266,8 +266,9 @@ function applyLevels(tr: Transaction, levelAt: (index: number) => number | undef
  * Delete, a paste, a drop, a cut, typing over a selection, an IME composition), every line
  * gets the level `levelsAfterEdit` gives, whatever block types ProseMirror's own commands
  * chose. A change that leaves the text as it was keeps every level. Undo and redo restore
- * exact earlier states and are left alone. While `busy` (an IME composition is open, or its
- * follow-up is still owed) nothing is done: the session's follow-up sets the levels.
+ * exact earlier states and are left alone. While `busy` (an IME composition is open) nothing
+ * is done: a composition runs at a caret (a selection is deleted, as an ordinary edit, before
+ * it starts) and stays within its line, so it changes no line's level.
  */
 export function lineLevels(opts: { busy?: () => boolean } = {}): Plugin {
   return new Plugin({
@@ -374,9 +375,9 @@ export function canonicalizeDoc(tr: Transaction, baseFont: FontId, inserted: Rea
  * Keeps what is shown in canonical form after every change (plan Section 7's heading-bold
  * guard, plus the rest of the canonical run form of Section 5): the blocks a change touched
  * are made canonical (`canonicalizeBlock`), and stored marks never carry bold while the caret
- * is on a heading line. While `busy` (an IME composition is open, or its follow-up is still
- * owed) nothing is rewritten: the browser and ProseMirror own the text, and the session's
- * follow-up makes it canonical once the composition is over.
+ * is on a heading line. While `busy` (an IME composition is open) nothing is
+ * rewritten: the browser and ProseMirror own the text, and the session's follow-up makes it
+ * canonical once the composition is over.
  */
 export function canonicalGuard(opts: { baseFont: () => FontId; busy?: () => boolean }): Plugin {
   return new Plugin({
@@ -419,8 +420,8 @@ function characterEdge(doc: PMNode, pos: number, dir: -1 | 1): number {
  * all the text, as the canvas's select-all is; a caret inside a character (as a redo can
  * restore it, inside a skin-toned emoji or an accented letter) moves to the end of the
  * character, where the edit that made it left the caret; a range grows to whole characters.
- * Nothing while `busy` (an IME composition is open, or its follow-up is still owed): the
- * follow-up's own transaction is snapped. The pending choices are kept.
+ * Nothing while `busy` (an IME composition is open): the next transaction after it is
+ * snapped, the composition's follow-up at the latest. The pending choices are kept.
  */
 export function selectionOnCharacters(opts: { busy?: () => boolean } = {}): Plugin {
   return new Plugin({
@@ -742,13 +743,6 @@ export function setRangeFont(tr: Transaction, from: number, to: number, font: Fo
     if (font !== baseFont) tr.addMark(s.from, s.to, marks.font.create({ font }))
     changed = true
   }
-  return changed
-}
-
-/** Sets the level of every line to `levels` (0 or absent: body text), where it differs, as one change that sets levels itself. True when anything changed. */
-export function setLevels(tr: Transaction, levels: readonly number[] | undefined): boolean {
-  const changed = applyLevels(tr, (i) => levels?.[i] ?? 0)
-  if (changed) tr.setMeta(META.levelsSet, true)
   return changed
 }
 
