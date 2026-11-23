@@ -85,8 +85,8 @@ function parseContent(raw: unknown, inHeading: boolean, budget: Budget): InlineR
   const out: InlineRun[] = []
   for (let i = 0; i < raw.length; i++) {
     const r: unknown = raw[i]
-    if (!isObj(r) || typeof r.text !== 'string' || r.text.includes('\n')) return null
-    if (!spend(budget, 1, r.text.length)) return null
+    // The budget first, so that an oversized run is rejected without being scanned.
+    if (!isObj(r) || typeof r.text !== 'string' || !spend(budget, 1, r.text.length) || r.text.includes('\n')) return null
     pushRun(out, canonicalRun(r.text, r, inHeading, budget.baseFont))
   }
   return out
@@ -257,20 +257,19 @@ export interface CompactText {
 export function legacyToBlocks(text: string, fmt: { spans?: unknown; headings?: unknown } = {}, baseFont: FontId = DEFAULT_FONT): BlockNode[] {
   const headings = canonicalHeadings(text, fmt.headings)
   const spans = canonicalSpans(text, fmt.spans, headings, baseFont) ?? []
+  // Canonical spans are sorted and never overlap, so one cursor walks them once for the whole text.
+  let next = 0
   return paragraphsOf(text).map((p, i): BlockNode => {
     const level = headings?.[i] ?? 0
     const content: InlineRun[] = []
-    const cuts = new Set([p.start, p.end])
-    for (const s of spans) {
-      if (s.start > p.start && s.start < p.end) cuts.add(s.start)
-      if (s.end > p.start && s.end < p.end) cuts.add(s.end)
-    }
-    const sorted = [...cuts].sort((a, b) => a - b)
-    for (let k = 0; k + 1 < sorted.length; k++) {
-      const a = sorted[k] as number
-      const b = sorted[k + 1] as number
-      const span = spans.find((s) => s.start < b && s.end > a)
-      pushRun(content, canonicalRun(text.slice(a, b), span ?? {}, level > 0, baseFont))
+    let at = p.start
+    while (at < p.end) {
+      while (next < spans.length && (spans[next] as TextSpan).end <= at) next++
+      const span = spans[next]
+      const covering = span !== undefined && span.start <= at
+      const end = Math.min(p.end, covering ? span.end : (span?.start ?? p.end))
+      pushRun(content, canonicalRun(text.slice(at, end), covering ? span : {}, level > 0, baseFont))
+      at = end
     }
     return isHeadingLevel(level) ? { type: 'heading', level, ...withContent(content) } : { type: 'paragraph', ...withContent(content) }
   })

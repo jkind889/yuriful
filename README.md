@@ -189,7 +189,7 @@ A locked image cannot be cropped, fitted, filled or replaced until it is unlocke
 
 Everything is stored in this browser's IndexedDB, for this origin (`http://localhost:5173` and `http://127.0.0.1:5173` are different origins and have separate boards).
 
-- **Boards saved by the previous build (milestone 1) open as they are.** Opening writes nothing. A board without frames keeps being saved in the old format.
+- **Boards saved by the previous build (milestone 1) open as they are.** Opening writes nothing. A board without frames or rich text cards keeps being saved in the old format.
 - **The first save of a board that contains a frame upgrades the database** in the same step that writes the board. From then on the previous build can no longer open it. This is deliberate: an old tab would otherwise silently drop the frames. There is no backup and no way back to the old build for that board.
 - **Two tabs on one board:** a tab never overwrites a board that another tab has changed since it loaded or last saved. It becomes read-only with a Reload button, and whatever it had not yet saved is not saved.
 - **Text formatting is stored inside each text**, in optional fields that are left out when they have their default, so a plain text is stored exactly as before and formatting needs no database change. A malformed formatting field is dropped when the board loads instead of making the board unreadable. The previous build shows formatted text plain and drops its formatting the next time it saves that board.
@@ -200,7 +200,7 @@ Everything is stored in this browser's IndexedDB, for this origin (`http://local
 ### Known limits
 
 - One board per browser profile and origin.
-- Until a board has its first frame, an open tab of the previous build can still overwrite it or prune its unused images, as it always could. This build reports the conflict instead of overwriting back, and re-stores any image bytes that are missing the next time it saves.
+- Until a board has its first frame or rich text card, an open tab of the previous build can still overwrite it or prune its unused images, as it always could. This build reports the conflict instead of overwriting back, and re-stores any image bytes that are missing the next time it saves.
 - Image bytes are stored as uploaded (no downscaling) and are also kept in memory for the session, so that undo can always bring an image back; very large images are limited by browser storage quota, and a failed write is reported in the header.
 - Something sitting inside a frame without belonging to it looks the same as something that does. The item count and "Select with contents" tell you which is which.
 - A new text belongs to a frame based on the centre of its box. A click creates a box ten font sizes wide, so a short note near the right edge can be loose even when its words are inside. Drawing a box lets you place its centre. Its frame is decided again when you first stop typing, so overflow can move the centre below the frame. You can move or resize the box afterwards. Whether a new text should keep the frame it started in is an open design question.

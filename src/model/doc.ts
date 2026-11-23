@@ -186,51 +186,41 @@ function storable<T extends ObjectRecord | FrameRecord>(rec: T): T {
 }
 
 /**
+ * A record as it is written. A text with a rich field (`blocks`, `height` or `surface`) goes
+ * through the very canonicalization `parseDoc` applies, so what is written is what a load
+ * gives back: blocks that only hold paragraphs and headings are written in the compact form,
+ * `text` is their projection, and an invalid `height` or `surface` is left out. A text whose
+ * rich content cannot be read back (malformed or over the bounds) is left as it is, so that the
+ * store's read-back check refuses to write it.
+ */
+function writable(rec: ObjectRecord): ObjectRecord {
+  const out = storable(rec)
+  if (out.type !== 'text' || (out.blocks === undefined && out.height === undefined && out.surface === undefined)) return out
+  const canonical = parseObject(out)
+  if (!canonical) return out
+  if (out.frameId !== undefined) canonical.frameId = out.frameId
+  return canonical
+}
+
+/**
  * The document as it is written to storage. A board with a text that uses `blocks`,
- * `height` or `surface` is written as wire version 3, which builds that do not know those
- * fields cannot open; `frames` is then always present, even when empty. Otherwise a board
- * without frames is written in exactly the milestone 1 shape (wire version 1), so only a
- * board that really has a frame needs version 2. Optional fields (such as `locked`) are
- * written by every version, and only when set: a key whose value is undefined is never stored.
+ * `height` or `surface` (after canonicalization: see `writable`) is written as wire
+ * version 3, which builds that do not know those fields cannot open; `frames` is then always
+ * present, even when empty. Otherwise a board without frames is written in exactly the
+ * milestone 1 shape (wire version 1), so only a board that really has a frame needs version 2.
+ * Optional fields (such as `locked`) are written by every version, and only when set: a key
+ * whose value is undefined is never stored.
  */
 export function serializeDoc(doc: BoardDoc): StoredDoc {
   const appearance = boardAppearance(doc.appearance)
-  if (needsRichFence(doc)) {
-    const framed = doc.frames.length > 0
-    return {
-      version: 3,
-      title: doc.title,
-      frames: doc.frames.map((f) => storable(f)),
-      objects: doc.objects.map((o) => {
-        const rest = storable(o)
-        if (!framed) delete rest.frameId // no frame exists, so there is nothing to own it
-        return rest
-      }),
-      viewport: { ...doc.viewport },
-      ...(appearance && { appearance }),
-    }
-  }
-  if (doc.frames.length === 0) {
-    return {
-      version: 1,
-      title: doc.title,
-      objects: doc.objects.map((o) => {
-        const rest = storable(o)
-        delete rest.frameId // no frame exists, so there is nothing to own it
-        return rest
-      }),
-      viewport: { ...doc.viewport },
-      ...(appearance && { appearance }),
-    }
-  }
-  return {
-    version: 2,
-    title: doc.title,
-    frames: doc.frames.map((f) => storable(f)),
-    objects: doc.objects.map((o) => storable(o)), // never stores an explicit undefined owner
-    viewport: { ...doc.viewport },
-    ...(appearance && { appearance }),
-  }
+  const objects = doc.objects.map(writable) // never stores an explicit undefined owner
+  const framed = doc.frames.length > 0
+  if (!framed) for (const o of objects) delete o.frameId // no frame exists, so there is nothing to own it
+  const meta = { title: doc.title }
+  const tail = { viewport: { ...doc.viewport }, ...(appearance && { appearance }) }
+  if (needsRichFence({ objects })) return { version: 3, ...meta, frames: doc.frames.map((f) => storable(f)), objects, ...tail }
+  if (!framed) return { version: 1, ...meta, objects, ...tail }
+  return { version: 2, ...meta, frames: doc.frames.map((f) => storable(f)), objects, ...tail }
 }
 
 export function referencedAssetIds(objects: readonly ObjectRecord[]): Set<string> {

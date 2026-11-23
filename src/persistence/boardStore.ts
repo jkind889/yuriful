@@ -72,13 +72,25 @@ export class StorageBusyError extends Error {
   }
 }
 
+/**
+ * The document would not read back (for example a text over the size limits), so it was not
+ * written and the database was not upgraded. Retrying the same board fails the same way.
+ */
+export class UnstorableBoardError extends Error {
+  constructor(message = 'Something on this board cannot be stored, such as a text that is too long, so the board was not saved.') {
+    super(message)
+    this.name = 'UnstorableBoardError'
+  }
+}
+
 export interface BoardStore {
   /** Resolves null when nothing has been saved yet (the token is then `ABSENT`). */
   load(): Promise<LoadedBoard | null>
   /**
    * Atomically writes the document, provided the stored board still matches `expected`,
    * together with the bytes of any referenced asset that is not stored. Resolves with
-   * the token of the new revision only once the write is durable.
+   * the token of the new revision only once the write is durable. Never writes a document
+   * that would not load again: such a save rejects with `UnstorableBoardError`.
    */
   save(doc: BoardDoc, expected: RevisionToken, bytes: AssetBytes): Promise<RevisionToken>
   /** Best-effort cleanup of asset bytes the document no longer references. Does nothing when `expected` is stale. */
@@ -199,7 +211,7 @@ async function writeBoard(tx: IDBTransaction, doc: BoardDoc, wire: StoredDoc, ex
   return next.rev
 }
 
-const isDomainError = (e: unknown) => e instanceof BoardConflictError || e instanceof MissingAssetError || e instanceof StorageBusyError
+const isDomainError = (e: unknown) => e instanceof BoardConflictError || e instanceof MissingAssetError || e instanceof StorageBusyError || e instanceof UnstorableBoardError
 
 export interface IndexedDbBoardStoreOptions {
   /** How long a save that upgrades the database (a first frame, a first rich text) may wait for other tabs to let go before failing with a retryable error. */
@@ -313,6 +325,8 @@ export class IndexedDbBoardStore implements BoardStore {
 
   async save(doc: BoardDoc, expected: RevisionToken, bytes: AssetBytes): Promise<RevisionToken> {
     const wire = serializeDoc(doc)
+    // What is written must load again: checked before anything is opened, upgraded or written.
+    if (!parseDoc(wire)) throw new UnstorableBoardError()
     let db = await this.open()
     const needed = DB_VERSION_FOR_WIRE[wire.version]
     if (db.version < needed) {
@@ -322,6 +336,9 @@ export class IndexedDbBoardStore implements BoardStore {
       const fenced = await this.fence(doc, wire, expected, bytes, needed)
       if ('token' in fenced) return fenced.token
       db = fenced.db // another tab promoted first: an ordinary write on that connection
+      // The reopened database may still be too old (it was deleted and recreated meanwhile):
+      // never write a wire version into a database below the one it needs.
+      if (db.version < needed) throw new StorageBusyError()
     }
     const rev = await this.transact(db, (tx) => writeBoard(tx, doc, wire, expected, bytes))
     return { kind: 'rev', rev }

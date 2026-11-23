@@ -11,6 +11,7 @@ import {
   NewerBoardError,
   StorageBusyError,
   UnreadableBoardError,
+  UnstorableBoardError,
   tokensMatch,
 } from './boardStore.ts'
 import type { AssetBytes, RevisionToken } from './boardStore.ts'
@@ -690,6 +691,75 @@ describe('the version 3 fence: first save of a board with a rich text', () => {
     const before = await readRaw(factory)
     await expect(newStore(factory).store.load()).rejects.toBeInstanceOf(UnreadableBoardError)
     expect(await readRaw(factory)).toEqual(before)
+  })
+})
+
+describe('the store never writes a board it could not load again', () => {
+  const withText = (doc: BoardDoc, fields: Record<string, unknown>): BoardDoc => ({ ...doc, objects: [...doc.objects, { ...textOnly().objects[0]!, id: 'rich', ...fields } as BoardDoc['objects'][number]] })
+  const huge = 'x'.repeat(500_001)
+
+  it('a text over the limits fails with its own error before anything is upgraded or written, and the board still loads', async () => {
+    for (const start of [textOnly('Plain'), withFrame(textOnly('Framed'))]) {
+      const { factory, store } = newStore()
+      const t1 = await store.save(start, ABSENT, none)
+      const before = await readRaw(factory)
+      const invalid = [
+        { text: huge, blocks: [{ type: 'codeBlock', text: huge }] },
+        { text: 'x', blocks: [{ type: 'table', rows: [] }] },
+        { text: 'x', blocks: [] },
+      ]
+      for (const fields of invalid) {
+        await expect(store.save(withText(start, fields), t1, none)).rejects.toBeInstanceOf(UnstorableBoardError)
+        expect(await readRaw(factory)).toEqual(before) // same row, same database version
+      }
+      expect((await newStore(factory).store.load())?.doc.title).toBe(start.title)
+      await store.save({ ...start, title: 'Still saving' }, t1, none) // the token is still good
+    }
+  })
+
+  it('a card that only needs the compact form is written compact, with its projection, and upgrades nothing', async () => {
+    const { factory, store } = newStore()
+    const t1 = await store.save(textOnly(), ABSENT, none)
+    await store.save(withText(textOnly(), { text: 'stale', blocks: [{ type: 'paragraph', content: [{ text: 'Title' }] }], height: -5, surface: 'paper' }), t1, none)
+    const raw = await readRaw(factory)
+    expect(raw.version).toBe(1)
+    expect(raw.row!.doc.version).toBe(1)
+    expect((raw.row!.doc.objects as Array<Record<string, unknown>>)[1]).toStrictEqual({ ...textOnly().objects[0]!, id: 'rich', text: 'Title' })
+  })
+
+  it('a first framed save whose reopened database is too old (deleted meanwhile) writes nothing and is retryable', async () => {
+    const factory = new IDBFactory()
+    // Tab A's factory queues a deletion of the database just ahead of the open with no
+    // version that recovers from the version 2 request being refused.
+    let armed = false
+    const tapped = {
+      open: (name: string, version?: number) => {
+        if (armed && version === undefined) {
+          armed = false
+          factory.deleteDatabase(name)
+        }
+        return version === undefined ? factory.open(name) : factory.open(name, version)
+      },
+      deleteDatabase: (name: string) => factory.deleteDatabase(name),
+      cmp: (a: unknown, b: unknown) => factory.cmp(a, b),
+      databases: () => factory.databases(),
+    } as unknown as IDBFactory
+    const a = new IndexedDbBoardStore(tapped)
+    const b = new IndexedDbBoardStore(factory)
+    await a.load()
+    await b.load()
+    armed = true
+    // Issued in the same tick: B asks for version 3 first, so A's request for version 2 is refused.
+    const [rich, framed] = await Promise.allSettled([b.save(richCard(), ABSENT, none), a.save(withFrame(textOnly('A framed')), ABSENT, none)])
+    expect(armed).toBe(false) // the deletion really was queued ahead of A's recovery open
+    expect(rich.status).toBe('fulfilled')
+    expect(framed.status).toBe('rejected')
+    expect((framed as PromiseRejectedResult).reason).toBeInstanceOf(StorageBusyError)
+    const raw = await readRaw(factory)
+    expect(raw.row).toBeUndefined() // the deletion took the rich board, and A wrote nothing
+    expect(raw.version).toBe(1)
+    await a.save(withFrame(textOnly('A framed')), ABSENT, none) // a retry goes through the promotion
+    expect(await readRaw(factory)).toMatchObject({ version: 2, row: { doc: { version: 2, title: 'A framed' } } })
   })
 })
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEmptyDoc, parseDoc, sceneEqual, serializeDoc } from './doc.ts'
+import { canonicalSpans } from './richText.ts'
 import {
   EDITABLE_RICH_FIELDS,
   MAX_BLOCK_DEPTH,
@@ -252,6 +253,32 @@ describe('legacy conversion', () => {
       { type: 'heading', level: 1, content: [{ text: 'cd', font: 'mono' }] },
     ])
     expect(blocksToLegacy(blocks, 'serif')).toStrictEqual({ text: 'ab\ncd', spans: [{ start: 1, end: 2, bold: true, font: 'mono' }, { start: 2, end: 5, font: 'mono' }], headings: [0, 1] })
+  })
+
+  it('converts a long text with thousands of spans over several lines run by run', () => {
+    // Every other character bold, over five lines of 8,000 characters (one of them a heading).
+    const lines = 5
+    const width = 8_000
+    const text = Array.from({ length: lines }, () => 'ab'.repeat(width / 2)).join('\n')
+    const spans: Array<{ start: number; end: number; bold: true }> = []
+    for (let l = 0; l < lines; l++) for (let k = 0; k < width; k += 2) spans.push({ start: l * (width + 1) + k, end: l * (width + 1) + k + 1, bold: true })
+    const blocks = legacyToBlocks(text, { spans, headings: [0, 2] })
+    expect(blocks).toHaveLength(lines)
+    blocks.forEach((b, l) => {
+      expect(b.type).toBe(l === 1 ? 'heading' : 'paragraph')
+      const runs = (b as { content: Array<{ text: string; bold?: true }> }).content
+      if (l === 1) {
+        expect(runs).toStrictEqual([{ text: 'ab'.repeat(width / 2) }]) // bold is never stored inside a heading
+        return
+      }
+      expect(runs).toHaveLength(width)
+      runs.forEach((r, k) => expect(r).toStrictEqual(k % 2 === 0 ? { text: 'a', bold: true } : { text: 'b' }))
+    })
+    const back = blocksToLegacy(blocks)!
+    expect(back.text).toBe(text)
+    expect(back.headings).toStrictEqual([0, 2])
+    expect(back.spans).toStrictEqual(canonicalSpans(text, spans, [0, 2]))
+    expect(legacyToBlocks(back.text, back)).toStrictEqual(blocks)
   })
 
   it('an empty text is one empty paragraph', () => {

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { createEmptyDoc } from '../model/doc.ts'
 import type { BoardDoc, SaveState, StoredAsset } from '../model/types.ts'
 import { Autosaver, CONFLICT_MESSAGE, NEWER_BUILD_MESSAGE } from './autosave.ts'
-import { ABSENT, BoardConflictError, MissingAssetError, NewerBoardError, StorageBusyError } from './boardStore.ts'
+import { ABSENT, BoardConflictError, MissingAssetError, NewerBoardError, StorageBusyError, UnstorableBoardError } from './boardStore.ts'
 import type { AssetBytes, BoardStore, RevisionToken } from './boardStore.ts'
 
 const asset = (id: string): StoredAsset => ({ id, name: `${id}.png`, type: 'image/png', bytes: new ArrayBuffer(4) })
@@ -339,6 +339,30 @@ describe('Autosaver: revision token and asset bytes', () => {
       expect(a.saver.state.kind).toBe('saved')
       expect(a.saves[0]?.expected).toEqual(STORED) // nothing was written by the failed attempt
     }
+  })
+
+  it('a board that cannot be stored is an ordinary error: never "saved", never retried by itself, tried again after the next edit', async () => {
+    const a = setup()
+    a.saver.markLoaded(STORED)
+    const failure = new UnstorableBoardError()
+    a.gate.fail = failure
+    a.saver.markDirty()
+    for (const t of a.timers.filter((t) => t.live)) {
+      t.live = false
+      t.fn() // the debounce fires; nothing else is driven from here
+    }
+    await new Promise((r) => setTimeout(r, 0))
+    expect(a.saver.state).toEqual({ kind: 'error', message: failure.message })
+    expect(a.saver.hasUnsavedChanges).toBe(true)
+    expect(a.conflicts).toEqual([])
+    expect(a.timers.filter((t) => t.live)).toEqual([]) // no loop: nothing scheduled
+    expect(a.gate.attempts).toBe(1)
+    a.gate.fail = null // the next edit removed what could not be stored
+    a.saver.markDirty()
+    await a.fire()
+    expect(a.saver.state.kind).toBe('saved')
+    expect(a.gate.attempts).toBe(2)
+    expect(a.saves[0]?.expected).toEqual(STORED)
   })
 
   it('a save that fails after saving was switched off keeps the switch-off reason', async () => {

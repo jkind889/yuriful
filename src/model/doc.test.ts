@@ -555,6 +555,36 @@ describe('wire version 3 (rich text)', () => {
     expect(JSON.parse(JSON.stringify(serializeDoc(doc!))).objects).toStrictEqual([rev])
   })
 
+  it('canonicalizes a rich text before choosing the version: what is written is exactly what a load gives back', () => {
+    const stale = { ...text, text: 'stale', blocks: [{ type: 'paragraph', content: [{ text: 'Title' }] }] as BlockNode[] }
+    // Only a paragraph: the compact form, version 1, with the projection as its text.
+    const compact = serializeDoc({ ...good(), objects: [image, stale] })
+    expect(compact.version).toBe(1)
+    expect(compact.objects[1]).toStrictEqual({ ...text, text: 'Title' })
+    // An invalid height or paper is not written, and on its own does not need version 3 either.
+    const junk = serializeDoc({ ...good(), objects: [{ ...text, height: -5, surface: 'paper' } as unknown as TextRecord] })
+    expect(junk.version).toBe(1)
+    expect(junk.objects[0]).toStrictEqual(text)
+    // Rich blocks keep version 3, with the projection as text and canonical runs.
+    const rich = { ...text, text: 'stale', spans: [{ start: 0, end: 1, bold: true as const }], blocks: [{ type: 'blockquote', blocks: [{ type: 'heading', level: 1, content: [{ text: 'A', bold: true }, { text: 'B' }] }] }] as BlockNode[] }
+    const written = serializeDoc({ ...framed(), objects: [image, { ...rich, frameId: 'f1' }] })
+    expect(written.version).toBe(3)
+    expect(written.objects[1]).toStrictEqual({ ...text, text: 'AB', blocks: [{ type: 'blockquote', blocks: [{ type: 'heading', level: 1, content: [{ text: 'AB' }] }] }], frameId: 'f1' })
+    // Byte for byte: serializing what a load gives back writes the very same document.
+    for (const doc of [{ ...good(), objects: [image, stale] }, { ...framed(), objects: [image, { ...rich, frameId: 'f1' }] }, { ...good(), objects: [{ ...rich, height: 90, surface: 'card' as const }] }]) {
+      const once = JSON.stringify(serializeDoc(doc))
+      expect(JSON.stringify(serializeDoc(parseDoc(JSON.parse(once))!))).toBe(once)
+      expect(JSON.stringify(parseDoc(JSON.parse(once))!.objects)).toBe(JSON.stringify(serializeDoc(doc).objects))
+    }
+  })
+
+  it('leaves rich content that would not load as it is, for the store to refuse', () => {
+    const table = { ...text, blocks: [{ type: 'table' }] as unknown as BlockNode[] }
+    const written = serializeDoc({ ...good(), objects: [table] })
+    expect(written.version).toBe(3)
+    expect(parseDoc(written)).toBeNull()
+  })
+
   it('never shares blocks with the document it was given', () => {
     const stored = serializeDoc({ ...good(), objects: [card] })
     const out = stored.objects[0] as TextRecord
