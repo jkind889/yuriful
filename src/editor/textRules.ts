@@ -939,6 +939,20 @@ export interface CompactContent {
  * the choices made with only a caret. `baseFont` is the box font.
  */
 export function plainPasteContent(old: CompactContent, baseFont: FontId, from: number, to: number, pasted: string, pending: Pending | null): CompactContent {
+  return textareaInputContent(old, baseFont, from, to, old.text.slice(0, from) + pasted + old.text.slice(to), from + pasted.length, pending)
+}
+
+/**
+ * One input of today's canvas: its textarea, whose text was `old` with the selection
+ * [selFrom, selTo) (UTF-16), now holds `nextText` with the caret at `caret`. The content it
+ * leaves, styled exactly as Fabric's `onInput` and the editor's reading of it style it. An
+ * IME composition is a sequence of these, one per update of the composed text, with the
+ * selection collapsed at the end of the previous one (Fabric's `updateFromTextArea` in
+ * composition mode).
+ */
+export function textareaInputContent(old: CompactContent, baseFont: FontId, selFrom: number, selTo: number, nextText: string, caret: number, pending: Pending | null): CompactContent {
+  const from = selFrom
+  const to = selTo
   const rawLines = old.text.split('\n')
   const lines = rawLines.map((l) => splitGraphemes(l)) // Fabric's `_unwrappedTextLines`, before the change
   const styles: FabricStyles = {}
@@ -1110,19 +1124,27 @@ export function plainPasteContent(old: CompactContent, baseFont: FontId, from: n
     if (addedLines[i]! > 0) insertCharStyleObject(cursorLoc.lineIndex + i, 0, addedLines[i]!, copiedStyle)
   }
 
-  // `onInput`: the textarea now holds the new text, its caret after what was pasted.
-  const nextText = old.text.slice(0, from) + pasted + old.text.slice(to)
+  // `onInput`: the textarea now holds the new text, its caret at `caret`.
+  if (nextText === '') {
+    // Fabric clears every style of an emptied text; the editor still carries the line's level.
+    const headings = textAfterEdit(old.text, old.headings, '', caret).headings
+    return { text: '', ...(headings && { headings }) }
+  }
   const globalOf = (ls: string[][]) => ls.flatMap((gs, i) => (i === 0 ? gs : ['\n', ...gs]))
   const oldGlobal = globalOf(lines)
   const nextGlobal = globalOf(nextText.split('\n').map((l) => splitGraphemes(l)))
   const selStart = graphemeAt(from)
   const selEnd = graphemeAt(to)
-  const caretG = splitGraphemes(nextText.slice(0, from + pasted.length)).length
+  const caretG = splitGraphemes(nextText.slice(0, caret)).length
   let charDiff = nextGlobal.length - oldGlobal.length
+  const selection = selStart !== selEnd
+  const backDelete = selStart > caretG
   let removed: string[] | undefined
-  if (selStart !== selEnd) {
+  if (selection) {
     removed = oldGlobal.slice(selStart, selEnd)
     charDiff += selEnd - selStart
+  } else if (nextGlobal.length < oldGlobal.length) {
+    removed = backDelete ? oldGlobal.slice(selEnd + charDiff, selEnd) : oldGlobal.slice(selStart, selStart - charDiff)
   }
   const inserted = nextGlobal.slice(caretG - charDiff, caretG)
   let copied: FabricStyle[] | undefined
@@ -1132,12 +1154,14 @@ export function plainPasteContent(old: CompactContent, baseFont: FontId, from: n
       const first = styles[lineIndex]?.[charIndex] ?? {}
       copied = inserted.map(() => first)
     }
-    removeStyleFromTo(selStart, selEnd)
+    if (selection) removeStyleFromTo(selStart, selEnd)
+    else if (backDelete) removeStyleFromTo(selEnd - removed.length, selEnd)
+    else removeStyleFromTo(selEnd, selEnd + removed.length)
   }
   if (inserted.length > 0) insertNewStyleBlock(inserted, selStart, copied)
 
   // `readTextFormatting`: levels carried over, marks read from the styles.
-  const edit = textAfterEdit(old.text, old.headings, nextText, from + pasted.length)
+  const edit = textAfterEdit(old.text, old.headings, nextText, caret)
   const headings = edit.headings
   const withChoices = pending && Object.keys(pending).length > 0 ? pending : null
   const chars = new Map<number, CharStyle>()

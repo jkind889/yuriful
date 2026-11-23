@@ -1,5 +1,5 @@
 import { history, isHistoryTransaction, redo, redoDepth, undo, undoDepth } from 'prosemirror-history'
-import { keymap } from 'prosemirror-keymap'
+import { keydownHandler } from 'prosemirror-keymap'
 import { DOMParser as PMDOMParser, Fragment, Slice } from 'prosemirror-model'
 import type { Mark as PMMark, Node as PMNode, ParseOptions } from 'prosemirror-model'
 import { EditorState, Plugin, PluginKey, TextSelection } from 'prosemirror-state'
@@ -42,6 +42,7 @@ import {
   settledDoc,
 } from './textRules.ts'
 import type { CompactContent, FormatReadout, Pending } from './textRules.ts'
+import { textareaInputContent } from './textRules.ts'
 
 /**
  * One edit of one text (plan Section 7): the ProseMirror state of the text being edited, the
@@ -173,6 +174,16 @@ export class EditSession {
   private replacing: { old: CompactContent; from: number; to: number; pending: Pending | null } | null = null
   /** Between a composition's start and ProseMirror counting it as composing. */
   private compositionStarting = false
+  /**
+   * The IME composition in progress: the text and selection when it started, the pending
+   * choices, and the text and caret after each update of the composed text. Today's canvas
+   * handles every update as an input of its own (Fabric's `onInput`), so the composition is
+   * replayed through the same steps (`compositionResult`) once it ends; until then
+   * `content()` gives the replay so far.
+   */
+  private composition: { start: CompactContent; from: number; to: number; pending: Pending | null; steps: Array<{ text: string; caret: number }> } | null = null
+  /** From a composition's end until its last change has been read and it is replayed. */
+  private compositionEnding = false
   /** A plain-text paste in progress: what it pastes, where, and with which pending choices. */
   private plainPaste: { text: string; from: number; to: number; pending: Pending | null } | null = null
   /** Where a drop in progress lands (from the drop event), for the destination font. */
@@ -198,7 +209,7 @@ export class EditSession {
       selection: TextSelection.create(doc, caret),
       plugins: [
         this.inputPlugin(),
-        keymap(editKeys),
+        this.keysPlugin(),
         // Before the pending choices, which read the new undo depth (`pendingMarks`).
         history(),
         lineLevels(),
@@ -254,7 +265,7 @@ export class EditSession {
    * else.
    */
   content(): TextContent {
-    const replaced = this.replacementResult(this.current)
+    const replaced = this.compositionResult(this.current) ?? this.replacementResult(this.current)
     if (replaced) return { text: replaced.text, ...canonicalTextFormatting(replaced.text, { ...this.box, spans: replaced.spans, headings: replaced.headings }) }
     const doc = settledDoc(this.current, this.baseFont)
     if (doc === this.initial.doc && JSON.stringify(this.box) === JSON.stringify(this.initial.box)) return this.initial.content
@@ -281,12 +292,17 @@ export class EditSession {
       this.plainPaste = null
       return
     }
+    // A composition that has ended is replayed before anything else changes the text.
+    if (this.composition && !this.composing && !this.compositionEnding && !this.compositionStarting && tr.getMeta(SETTLE) === undefined) this.settleComposition()
     const before = this.current
     const { state, transactions } = this.current.applyTransaction(tr)
     this.plainPaste = null
     if (transactions.length === 0) return
     this.current = state
     this.trackHistory(before, state, transactions)
+    if (this.composition && (this.composing || this.compositionEnding) && transactions.some((t) => t.docChanged) && !transactions.some(isHistoryTransaction)) {
+      this.composition.steps.push({ text: plainTextOfDoc(state.doc), caret: textOffsetAt(state.doc, state.selection.to, 1) })
+    }
     this.mounted?.view.updateState(state)
     if (transactions.some((t) => t.steps.some((st) => st instanceof ReplaceStep))) this.storedBreaks = null // the text was typed into
     // Any change of the text or move of the caret ends "straight after a shortcut" (in-edit
@@ -442,17 +458,18 @@ export class EditSession {
   }
 
   /**
-   * A composition starting over a non-empty selection replaces it: the replacement is
-   * remembered now, before anything changes (ProseMirror itself deletes a selection that
-   * spans lines at this point, before it counts as composing), and styled as today once the
-   * composed text is known (`otherReplacement`).
+   * A composition starts: the text and selection are remembered now, before anything changes
+   * (ProseMirror itself deletes a selection that spans lines at this point, before it counts
+   * as composing; the canvas sees that as part of the first update, so it is not a step).
    */
   private beginComposition() {
     const state = this.current
-    const sel = state.selection
-    if (this.composing || this.done || sel.empty || !(sel instanceof TextSelection)) return
+    if (this.composing || this.done) return
+    if (this.composition) this.settleComposition()
     const old = contentFromDoc(state.doc, this.box)
-    this.replacing = { old: { text: old.text, spans: old.spans, headings: old.headings }, from: textOffsetAt(state.doc, sel.from, -1), to: textOffsetAt(state.doc, sel.to, 1), pending: pendingOf(state) }
+    const { from, to } = state.selection
+    this.composition = { start: { text: old.text, spans: old.spans, headings: old.headings }, from: textOffsetAt(state.doc, from, -1), to: textOffsetAt(state.doc, to, 1), pending: pendingOf(state), steps: [] }
+    this.replacing = null
     this.compositionStarting = true
     queueMicrotask(() => (this.compositionStarting = false)) // after ProseMirror's own compositionstart handling
   }
@@ -463,9 +480,10 @@ export class EditSession {
     this.settleComposition()
   }
 
-  /** Once no composition is in progress, makes what the last one inserted canonical (`canonicalGuard`). */
+  /** Once no composition is in progress, replays the last one and makes what it inserted canonical (`canonicalGuard`). */
   private settleComposition() {
-    if (this.done || this.composing || (!owesCanonical(this.current) && !this.replacing)) return
+    if (this.done || this.composing || this.compositionEnding) return
+    if (!owesCanonical(this.current) && !this.replacing && !this.composition) return
     this.dispatch(this.current.tr.setMeta(SETTLE, true))
   }
 
@@ -665,6 +683,29 @@ export class EditSession {
     return plainPasteContent(rec.old, this.baseFont, rec.from, rec.to, text.slice(rec.from, rec.from + length), rec.pending)
   }
 
+  /**
+   * The content the composition in progress leaves with the text `state` now holds: its
+   * updates replayed from the text it started on, each as today's canvas handles it
+   * (`textareaInputContent`, the selection collapsed at the end of the previous update).
+   * Null when there is none, or the text is back to what it was (a cancelled composition).
+   */
+  private compositionResult(state: EditorState): CompactContent | null {
+    const c = this.composition
+    if (!c) return null
+    const text = plainTextOfDoc(state.doc)
+    if (text === c.start.text) return null
+    const last = c.steps[c.steps.length - 1]
+    const steps = last && last.text === text ? c.steps : [...c.steps, { text, caret: textOffsetAt(state.doc, state.selection.to, 1) }]
+    let current = c.start
+    let from = c.from
+    let to = c.to
+    for (const step of steps) {
+      if (step.text !== current.text) current = textareaInputContent(current, this.baseFont, from, to, step.text, step.caret, c.pending)
+      from = to = step.caret
+    }
+    return current
+  }
+
   /** Gives every block of `doc` the runs of `want` (same text). True when anything changed. */
   private imposeContent(tr: Transaction, doc: PMNode, want: CompactContent): boolean {
     const expected = docFromBlocks(legacyToBlocks(want.text, want, this.baseFont))
@@ -712,6 +753,14 @@ export class EditSession {
       appendTransaction: (trs, oldState, newState) => {
         const root = trs[0]
         if (!root || root.getMeta('appendedTransaction')) return null
+        if (this.composition) {
+          const force = trs.some((t) => t.getMeta(SETTLE) === 'force')
+          if (!force && (this.composing || this.compositionEnding || this.compositionStarting || trs.some(isHistoryTransaction))) return null
+          const want = this.compositionResult(newState)
+          this.composition = null
+          const tr = newState.tr
+          return want && want.text === plainTextOfDoc(newState.doc) && this.imposeContent(tr, newState.doc, want) ? tr : null
+        }
         const replaced = root.getMeta(META.replaced) as { text: string; from: number; to: number } | undefined
         const drop = !replaced && root.getMeta('uiEvent') === 'drop'
         const rec = replaced ? { ...replaced, pending: pendingOf(oldState) } : this.plainPaste && (root.getMeta('paste') === true || drop) ? this.plainPaste : null
@@ -730,6 +779,26 @@ export class EditSession {
         if (want.text !== plainTextOfDoc(newState.doc)) return null
         const tr = newState.tr
         return this.imposeContent(tr, newState.doc, want) ? tr : null
+      },
+    })
+  }
+
+  /**
+   * The editing keys (`editKeys`), for real key presses only. ProseMirror reads some DOM
+   * changes, such as an IME removing a character of its candidate, as a Backspace and offers
+   * it to the key handlers as a made-up event; the custom Backspace and Delete would then
+   * delete a character of their own. Such events, and every key while a composition is open,
+   * are left to the browser and the IME: what they put in the text is what is stored.
+   */
+  private keysPlugin(): Plugin {
+    const keys = keydownHandler(editKeys)
+    return new Plugin({
+      key: new PluginKey('yuriful-edit-keys'),
+      props: {
+        handleKeyDown: (view, e) => {
+          if (view.composing || this.composing || !(e instanceof KeyboardEvent)) return false
+          return keys(view, e)
+        },
       },
     })
   }
@@ -756,8 +825,12 @@ export class EditSession {
             return false
           },
           compositionend: () => {
-            // After ProseMirror has read the composition's last change (a microtask).
-            setTimeout(() => this.settleComposition(), 0)
+            // ProseMirror reads the composition's last change in a microtask: it is still a step.
+            this.compositionEnding = true
+            setTimeout(() => {
+              this.compositionEnding = false
+              this.settleComposition()
+            }, 0)
             return false
           },
         },
@@ -808,7 +881,8 @@ export class EditSession {
     if (this.done) return
     // A composition still in progress ends here: its text is made canonical first, exactly as
     // when it ends by itself, so the record and the static HTML are the final ones.
-    if ((owesCanonical(this.current) || this.replacing) && this.editable) this.dispatch(this.current.tr.setMeta(SETTLE, 'force'))
+    this.compositionEnding = false
+    if ((owesCanonical(this.current) || this.replacing || this.composition) && this.editable) this.dispatch(this.current.tr.setMeta(SETTLE, 'force'))
     this.done = true
     this.revert = null
     this.typed = null
@@ -913,8 +987,8 @@ export function sanitizePastedHTML(html: string): string {
           return
         }
         // Whitespace between blocks, or layout whitespace running across a source line break, is not text.
-        if (line === null && raw.trim() === '' && (!para || blocksInside || /[\r\n]/.test(raw))) return
-        ensureLine().push({ text: raw.replace(/[ \t\f]*[\r\n][\s]*/g, ' '), marks: inherited })
+        if (line === null && /^[ \t\n\r\f]*$/.test(raw) && (!para || blocksInside || /[\r\n]/.test(raw))) return
+        ensureLine().push({ text: raw.replace(/[ \t\f]*[\r\n][ \t\n\r\f]*/g, ' '), marks: inherited })
         return
       }
       if (child.nodeType !== 1) return
