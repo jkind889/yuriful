@@ -2,7 +2,7 @@ import { clampCrop } from '../model/crop.ts'
 import type { FrameRecord, ImageRecord, Scene, TextRecord } from '../model/types.ts'
 import type { Size } from '../model/viewport.ts'
 import { FRAME_FILL } from './objects.ts'
-import { DomCardMeasurer, renderCardBody } from './sceneLayer.ts'
+import { DomCardMeasurer, effectiveCardWidth, renderCardBody } from './sceneLayer.ts'
 import type { CardMeasurer } from './sceneLayer.ts'
 
 /**
@@ -92,17 +92,31 @@ export const PROSE_CSS = `
 .yuriful-prose em {
   font-style: italic;
 }
+/* Both decorations as Fabric draws them: underlines placed from the baseline (the same for every
+   font), --yp-deco thick; a strikethrough is an underline 0.28167 font sizes above the baseline */
+.yuriful-prose u,
+.yuriful-prose s {
+  text-decoration-line: underline;
+  text-decoration-thickness: var(--yp-deco, 0.0667em);
+  text-decoration-skip-ink: none;
+}
 .yuriful-prose u {
-  text-decoration: underline;
+  text-underline-offset: 0.1em;
 }
 .yuriful-prose s {
-  text-decoration: line-through;
+  text-underline-offset: calc(-0.28167em - var(--yp-deco, 0.0667em) / 2);
 }
 .yuriful-prose span[data-font] {
   line-height: 0;
 }
 .yuriful-prose .yp-nowrap {
   white-space: nowrap;
+}
+/* A tab is as wide as a space, as on the canvas */
+.yuriful-prose .yp-tab {
+  display: inline-block;
+  width: var(--yp-tab, 0.25em);
+  tab-size: 0;
 }
 .yuriful-prose[data-font="sans"],
 .yuriful-prose [data-font="sans"] {
@@ -139,11 +153,38 @@ export function frameBitmapSize(frame: Pick<FrameRecord, 'width' | 'height'>, ma
 export const cardBleed = (rec: Pick<TextRecord, 'fontSize'>): number => Math.ceil(rec.fontSize * 2)
 
 /**
+ * Characters XML 1.0 cannot hold (controls other than tab, line feed and carriage return; U+FFFE,
+ * U+FFFF) and lone surrogates, which would make a card's SVG fail to decode (or its data URL
+ * fail to encode). The bitmap shows U+FFFD in their place; the record is never changed.
+ */
+export function xmlSafe(text: string): string {
+  let out = ''
+  let from = 0
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i)
+    const control = c < 0x20 && c !== 0x09 && c !== 0x0a && c !== 0x0d
+    const high = c >= 0xd800 && c <= 0xdbff
+    const low = c >= 0xdc00 && c <= 0xdfff
+    const next = text.charCodeAt(i + 1)
+    if (high && next >= 0xdc00 && next <= 0xdfff) {
+      i++ // a whole surrogate pair
+      continue
+    }
+    if (control || high || low || c === 0xfffe || c === 0xffff) {
+      out += `${text.slice(from, i)}\uFFFD`
+      from = i + 1
+    }
+  }
+  return from === 0 ? text : out + text.slice(from)
+}
+
+/**
  * A text card's body (laid out by `renderCardBody`) as a self-contained SVG document: the
  * body's XHTML serialized with `XMLSerializer` (an `innerHTML` string is not well-formed XML:
  * a lone `<br>` fails to decode, Spike 0 S5) under the inlined prose rules, with `bleed` scene
  * units of room on every side. `size` is the card's box in scene units; the SVG is `scale`
- * times larger in pixels, so its text is rasterized at the bitmap's resolution.
+ * times larger in pixels, so its text is rasterized at the bitmap's resolution. Characters XML
+ * cannot hold are shown as U+FFFD (`xmlSafe`).
  */
 export function cardSvg(body: HTMLElement, size: Size, bleed: number, scale = 1): string {
   const doc = body.ownerDocument
@@ -155,6 +196,12 @@ export function cardSvg(body: HTMLElement, size: Size, bleed: number, scale = 1)
   style.textContent = PROSE_CSS
   const card = body.cloneNode(true) as HTMLElement
   card.style.width = `${size.width}px`
+  const walker = doc.createTreeWalker(card, NodeFilter.SHOW_TEXT)
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const t = n as Text
+    const safe = xmlSafe(t.data)
+    if (safe !== t.data) t.data = safe
+  }
   root.append(style, card)
   const xhtml = new XMLSerializer().serializeToString(root)
   const svg = doc.createElementNS(SVG_NS, 'svg')
@@ -197,8 +244,9 @@ interface DecodedCard {
 /**
  * Draws the frame's visible composition: frame paper over the whole bitmap, then every object
  * in `scene.objects` order, clipped at the bitmap's edges. Text cards are laid out in the
- * document (off screen) with the scene layer's own rules, so a card wraps and sits exactly as
- * it does on the board.
+ * document (off screen) with the scene layer's own rules, at its effective width (a word wider
+ * than its box widens it, as on the canvas), so a card wraps and sits exactly as it does on the
+ * board. A card that still cannot be rasterized is left out; the rest of the frame is drawn.
  */
 export async function renderFrameToCanvas(scene: Scene, frameId: string, opts: FrameBitmapOptions): Promise<HTMLCanvasElement> {
   const frame = scene.frames.find(({ id }) => id === frameId)
@@ -215,25 +263,29 @@ export async function renderFrameToCanvas(scene: Scene, frameId: string, opts: F
   host.setAttribute('aria-hidden', 'true')
   host.style.cssText = 'position:absolute;left:-100000px;top:0;visibility:hidden;contain:layout style'
   doc.body.append(host)
-  const pending: Array<Promise<[string, DecodedCard]>> = []
+  const pending: Array<Promise<[string, DecodedCard] | null>> = []
   try {
     for (const rec of scene.objects) {
       if (rec.type !== 'text' || isBlank(rec)) continue
-      const body = doc.createElement('div')
-      body.className = 'scene-text-body'
-      body.style.width = `${rec.width}px`
-      host.append(body)
-      renderCardBody(body, rec)
-      const size = { width: rec.width, height: measurer.measureHeight(body, rec) }
-      // A word wider than the box (a board saved before its box was widened) overflows it, as on the canvas.
-      const bleed = Math.max(cardBleed(rec), Math.ceil(body.scrollWidth - rec.width) + 2)
-      const svg = cardSvg(body, size, bleed, Math.max(scaleX, scaleY))
-      pending.push(decodeSvg(svg, doc).then((img): [string, DecodedCard] => [rec.id, { img, bleed, size }]))
+      try {
+        const body = doc.createElement('div')
+        body.className = 'scene-text-body'
+        const cardWidth = effectiveCardWidth(rec, doc)
+        body.style.width = `${cardWidth}px`
+        host.append(body)
+        renderCardBody(body, rec)
+        const size = { width: cardWidth, height: measurer.measureHeight(body, rec) }
+        const bleed = Math.max(cardBleed(rec), Math.ceil(body.scrollWidth - cardWidth) + 2)
+        const svg = cardSvg(body, size, bleed, Math.max(scaleX, scaleY))
+        pending.push(decodeSvg(svg, doc).then((img): [string, DecodedCard] => [rec.id, { img, bleed, size }], () => null))
+      } catch {
+        // This card alone is left out.
+      }
     }
   } finally {
     host.remove()
   }
-  const cards = new Map(await Promise.all(pending))
+  const cards = new Map((await Promise.all(pending)).filter((c): c is [string, DecodedCard] => c !== null))
 
   const canvas = doc.createElement('canvas')
   canvas.width = width

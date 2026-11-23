@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_TEXT_COLOR, HEADING_SCALE } from '../model/richText.ts'
 import type { TextRecord } from '../model/types.ts'
 import { FONT_STACKS } from './fonts.ts'
-import { cardBleed, cardSvg, frameBitmapSize, PROSE_CSS } from './renderFrameBitmap.ts'
+import { cardBleed, cardSvg, frameBitmapSize, PROSE_CSS, xmlSafe } from './renderFrameBitmap.ts'
 import {
   BASELINE_DEPTH,
   LAST_LINE_TRIM,
@@ -11,14 +11,17 @@ import {
   SceneLayer,
   boundsOf,
   breakableTokenRanges,
+  FIT_SLACK,
+  drawnNoWrapRanges,
   isOffscreen,
   matrixCss,
   projectMatrix,
   recordMatrix,
+  noWrapRanges,
   renderCardBody,
   visibleScene,
 } from './sceneLayer.ts'
-import type { Matrix } from './sceneLayer.ts'
+import type { Matrix, MeasuredToken } from './sceneLayer.ts'
 
 // The real Fabric (no fake): the projection must agree with Fabric's own geometry.
 
@@ -144,6 +147,27 @@ describe('viewport-culling-and-foreignobject-xhtml-escaping', () => {
     expect(svg).not.toMatch(/<br>/)
   })
 
+  it('replaces what XML cannot hold (controls, U+FFFE/U+FFFF, lone surrogates) with U+FFFD, and nothing else', () => {
+    expect(xmlSafe('a\u0000b\u0001c\u000bd\u000ce\u001ff')).toBe('a\uFFFDb\uFFFDc\uFFFDd\uFFFDe\uFFFDf')
+    expect(xmlSafe('tab\tline\nreturn\r ok')).toBe('tab\tline\nreturn\r ok')
+    expect(xmlSafe('lone \ud800 high, lone \udc00 low, end high \ud83d')).toBe('lone \uFFFD high, lone \uFFFD low, end high \uFFFD')
+    expect(xmlSafe('pair 😀 👩‍💻 \uFFFE \uFFFF')).toBe('pair 😀 👩‍💻 \uFFFD \uFFFD')
+    const plain = 'nothing to replace'
+    expect(xmlSafe(plain)).toBe(plain)
+  })
+
+  it('builds a well-formed SVG from a card holding characters XML cannot hold, without changing the card', () => {
+    const body = document.createElement('div')
+    const text = 'Nul \u0000 vt \u000b lone \ud800 end'
+    renderCardBody(body, { text, fontSize: 16, width: 200 })
+    const svg = cardSvg(body, { width: 200, height: 40 }, 32)
+    expect(() => encodeURIComponent(svg)).not.toThrow()
+    const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml')
+    expect(parsed.querySelector('parsererror')).toBeNull()
+    expect(parsed.querySelector('.yuriful-prose')!.textContent).toBe('Nul \uFFFD vt \uFFFD lone \uFFFD end')
+    expect(body.textContent).toBe(text)
+  })
+
   it('gives the bitmap the frame preview’s size rule and every card room for ink outside its box', () => {
     expect(frameBitmapSize({ width: 400, height: 300 })).toEqual({ width: 800, height: 600 })
     expect(frameBitmapSize({ width: 3200, height: 800 })).toEqual({ width: 1600, height: 400 })
@@ -159,13 +183,16 @@ describe('click-created boxes keep words whole', () => {
     expect(tokens('see https://example.com/a-b?c=d now')).toEqual(['https://example.com/a-b?c=d'])
     expect(tokens('日本語のテキスト and 한국어 and ไทย')).toEqual(['日本語のテキスト', '한국어', 'ไทย'])
     expect(tokens("don't it’s café 123 Ünïcödé")).toEqual([])
-    expect(tokens('end. comma, 😀😀 x 😀 - —')).toEqual(['end.', 'comma,', '😀😀'])
+    expect(tokens('end. comma, 😀😀 x 😀 - —')).toEqual(['😀😀'])
+    // Opening punctuation before a word and closing punctuation after it never break; inside a word they may.
+    expect(tokens('(word) [x] "quoted" “curly” ‘single’ «mot» ¿qué? ¡sí! wow!! end… semi; colon:')).toEqual([])
+    expect(tokens('a.b c?d (e-f) x:y ok."')).toEqual(['a.b', 'c?d', '(e-f)', 'x:y'])
     expect(tokens('tab\tsep-arated  double  spaces\r-x-')).toEqual(['sep-arated', '-x-'])
     expect(breakableTokenRanges('a-b c-d')).toEqual([{ start: 0, end: 3 }, { start: 4, end: 7 }])
     expect(breakableTokenRanges('')).toEqual([])
   })
 
-  it('wraps each such token in one no-wrap span that holds its marks, on click-created boxes only', () => {
+  it('wraps each such token in one no-wrap span that holds its marks', () => {
     const body = document.createElement('div')
     const text = 'Ab state-of-the-art cd 日本語のテキスト'
     // A bold piece and an italic piece inside the first token; a bold mark that starts at its start.
@@ -179,10 +206,48 @@ describe('click-created boxes keep words whole', () => {
     // Nothing left behind: no empty mark element.
     expect(Array.from(body.querySelectorAll('strong, em')).every((el) => el.textContent !== '')).toBe(true)
 
+    // A drawn box keeps the words that fit it whole too; with no layout here every width is 0, so all fit.
     const drawn = document.createElement('div')
     renderCardBody(drawn, { text, fontSize: 16, width: 200, minHeight: 0 })
-    expect(drawn.querySelector('.yp-nowrap')).toBeNull()
     expect(drawn.classList.contains('is-drawn')).toBe(true)
+    expect(Array.from(drawn.querySelectorAll('.yp-nowrap'), (el) => el.textContent)).toEqual(['state-of-the-art', '日本語のテキスト'])
+    expect(noWrapRanges({ text: 'a\nk-pop lo-fi', fontSize: 16, width: 50, minHeight: 0 })).toEqual([[], [{ start: 0, end: 5 }, { start: 6, end: 11 }]])
+  })
+})
+
+describe('drawn boxes keep a breakable word whole when it fits the box, and cut it as Fabric does when it does not', () => {
+  /** A word whose graphemes are 10 px wide each, at `start` in its line. */
+  const word = (start: number, text: string, w = 10): MeasuredToken => ({
+    start,
+    end: start + text.length,
+    width: text.length * w,
+    graphemes: Array.from(text, (_, i) => ({ end: start + i + 1, width: (i + 1) * w })),
+  })
+
+  it('keeps a word whole up to the box width, within FIT_SLACK', () => {
+    const t = word(3, 'k-pop') // 50 px
+    expect(drawnNoWrapRanges([t], 80)).toEqual([{ start: 3, end: 8 }])
+    expect(drawnNoWrapRanges([t], 50)).toEqual([{ start: 3, end: 8 }])
+    expect(drawnNoWrapRanges([t], 50 - FIT_SLACK)).toEqual([{ start: 3, end: 8 }])
+    expect(drawnNoWrapRanges([t], 49.9)).toEqual([{ start: 3, end: 7 }])
+  })
+
+  it('cuts a wider word into pieces that each fill the box, the last one holding the rest', () => {
+    expect(drawnNoWrapRanges([word(0, 'state-of-the-art')], 49)).toEqual([
+      { start: 0, end: 4 }, { start: 4, end: 8 }, { start: 8, end: 12 }, { start: 12, end: 16 },
+    ])
+    expect(drawnNoWrapRanges([word(2, 'and/or')], 40)).toEqual([{ start: 2, end: 6 }, { start: 6, end: 8 }])
+  })
+
+  it('needs no span for a piece of one grapheme, and gives every piece at least one grapheme in a box narrower than a grapheme', () => {
+    expect(drawnNoWrapRanges([word(0, 'a-b')], 20)).toEqual([{ start: 0, end: 2 }])
+    expect(drawnNoWrapRanges([word(0, 'a-b')], 5)).toEqual([])
+  })
+
+  it('measures pieces from where the last one ended, with uneven graphemes', () => {
+    const t: MeasuredToken = { start: 0, end: 5, width: 50, graphemes: [{ end: 1, width: 5 }, { end: 2, width: 25 }, { end: 3, width: 30 }, { end: 4, width: 45 }, { end: 5, width: 50 }] }
+    // 5 | 20 | 5 | 15 | 5 in a 26 px box: [5+20] [5+15+5]
+    expect(drawnNoWrapRanges([t], 26)).toEqual([{ start: 0, end: 2 }, { start: 2, end: 5 }])
   })
 })
 
