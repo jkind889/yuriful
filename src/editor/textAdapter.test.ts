@@ -225,6 +225,23 @@ describe('the DOM renderer, static (Slice 2c-i)', () => {
     expect(obj('t').width).toBe(240)
   })
 
+  it('a text proxy added to the canvas (here by Make caption) is sized from its card before it is selected or committed', async () => {
+    const { editor, canvas, obj, history } = await open([], [img('i', 0, 0), txt('t', 300, 300, { fontSize: 20 })], dom())
+    canvas.setActiveObject(obj('i'))
+    editor.selectLayer('t', { toggle: true })
+    const heights: number[] = []
+    const add = canvas.insertAt.bind(canvas)
+    canvas.insertAt = (index: number, ...objs: FakeObject[]) => {
+      add(index, ...objs)
+      heights.push(...objs.map((o) => o.height)) // as soon as it is on the canvas, before selectByIds and commit
+    }
+    editor.makeCaption()
+    expect(heights).toEqual([25]) // one line of 20 × 1.25, not the stored minimum height 0
+    expect(obj('t')).toBeInstanceOf(ProxyRect)
+    expect(obj('t').height).toBe(25)
+    expect(history().current.objects.find((o) => o.id === 't')).toMatchObject({ captionOf: 'i' })
+  })
+
   it('what cannot work on the DOM path yet is inert: typing a new text, captions, crop mode and duplicate', async () => {
     const { editor, canvas, obj, scene, history } = await open([], [img('i', 0, 0), txt('t', 0, 200)], dom())
     const before = scene()

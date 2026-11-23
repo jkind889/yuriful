@@ -670,7 +670,7 @@ export class DomTextAdapter implements TextAdapter {
     })
     obj.set({ scaleX: 1, scaleY: 1 })
     // A larger size can make a word wider than the box: it widens, as a text box does, from its left edge.
-    this.scene.syncCard(obj, 'left')
+    this.scene.syncCard(obj, { widen: 'left' })
     return true
   }
 
@@ -753,7 +753,7 @@ export class DomTextAdapter implements TextAdapter {
     const fontSize = clamp(size, MIN_FONT_SIZE, MAX_FONT_SIZE)
     if (fontSize === td.fontSize) return
     setTextData(active, { ...td, fontSize }) // headings keep their ratio (CSS em)
-    this.scene.syncCard(active, 'left')
+    this.scene.syncCard(active, { widen: 'left' })
     this.host.canvas.requestRenderAll()
     if (td.text.trim() === '') return
     this.host.commit(`font-size:${idOf(active) ?? ''}`)
@@ -798,7 +798,7 @@ export class DomTextAdapter implements TextAdapter {
     }
     const anchor = alignAnchor(td.align)
     setTextData(obj, next)
-    this.scene.syncCard(obj, anchor)
+    this.scene.syncCard(obj, { widen: anchor })
     this.host.canvas.requestRenderAll()
     this.host.commit(`format-${kind}:${idOf(obj) ?? ''}`)
   }

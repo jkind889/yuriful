@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import type { BrowserContext, Page } from '@playwright/test'
+import type { Browser, BrowserContext, Page } from '@playwright/test'
 import type { Scene } from '../src/model/types.ts'
 import { AUTOSAVE_QUIET_MS, openApp, openBlank, sceneToPage, seedRaw, snapshotIdb, status, storedDoc, tamperIdb } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredFrame, StoredObject, View } from './helpers.ts'
@@ -627,5 +627,280 @@ test.describe('the DOM renderer, static (Slice 2c-i)', () => {
     const dom = await runAll('dom')
     const fabric = await runAll('fabric')
     expect(dom).toEqual(fabric)
+  })
+})
+
+// ---- paired with the Fabric renderer ------------------------------------------------------------
+//
+// The oracle the renderer switch depends on: the same board and the same actions give the same
+// saved records on 'dom' as on 'fabric'. Each script runs in its own browser context per renderer;
+// the scene after every step and the stored board at the end are compared field by field.
+//
+// Tolerance: every field is compared exactly except a text's `left`, `top` and `width`, which may
+// differ by at most GEOMETRY_TOLERANCE scene units. Those are the only values that depend on how
+// a text is measured: the DOM lays a card out with CSS where Fabric measures with Canvas 2D, and
+// the two agree within 0.08 px per box in height and 0.04 px in minimum width (Slice 2b,
+// plan Section 6). A side handle anchors the middle of the opposite edge, so half a height
+// difference reaches `top`; a word wider than the box sets `width` from its measured width; and
+// stored values are rounded to 0.01, which can turn a 0.004 difference into 0.01.
+
+const GEOMETRY_TOLERANCE = 0.1
+const MEASURED = new Set(['left', 'top', 'width'])
+
+type Step =
+  | { select: string; also?: string }
+  | { selectContents: string }
+  | { handle: string; dx: number; dy: number }
+  | { run: string; args?: unknown[] }
+
+async function runScript(browser: Browser, renderer: 'dom' | 'fabric', doc: StoredBoard, steps: readonly Step[]) {
+  const context = await browser.newContext()
+  const page = await context.newPage()
+  const errors = errorsOf(page)
+  await openBoard(page, doc, ASSETS, renderer)
+  const scenes: Array<{ step: string; scene: Scene }> = []
+  for (const step of steps) {
+    if ('select' in step) {
+      await page.evaluate(({ id, also }) => {
+        window.__dom.run('selectLayer', id)
+        if (also) window.__dom.run('selectLayer', also, { toggle: true })
+      }, { id: step.select, also: step.also })
+      await frames(page, 2)
+      continue
+    }
+    if ('selectContents' in step) {
+      await page.evaluate((id) => {
+        window.__dom.run('selectLayer', id)
+        window.__dom.run('selectFrameContents')
+      }, step.selectContents)
+      await frames(page, 2)
+      continue
+    }
+    if ('run' in step) {
+      await page.evaluate(({ method, args }) => window.__dom.run(method, ...args), { method: step.run, args: step.args ?? [] })
+    } else {
+      const h = (await page.evaluate(() => window.__dom.controls()))?.[step.handle]
+      if (!h) throw new Error(`no ${step.handle} handle`)
+      await page.mouse.move(h.x, h.y)
+      await page.mouse.down()
+      await page.mouse.move(h.x + step.dx, h.y + step.dy, { steps: 8 })
+      await page.mouse.up()
+    }
+    await frames(page, 2)
+    scenes.push({ step: JSON.stringify(step), scene: (await page.evaluate(() => window.__dom.scene())) as Scene })
+  }
+  await expect(status(page)).toContainText('Saved on this device')
+  await page.waitForTimeout(700)
+  const saved = await stored(page)
+  expect(errors, renderer).toEqual([])
+  await context.close()
+  return { scenes, saved }
+}
+
+/** Every record field equal, a text's measured geometry within the tolerance; the largest difference found, for the report. */
+function expectSameRecords(dom: readonly Record<string, unknown>[], fabric: readonly Record<string, unknown>[], where: string): number {
+  expect(dom.map((r) => r.id), where).toEqual(fabric.map((r) => r.id))
+  let worst = 0
+  dom.forEach((d, i) => {
+    const f = fabric[i]!
+    expect(Object.keys(d).sort(), `${where} ${String(d.id)} keys`).toEqual(Object.keys(f).sort())
+    for (const key of Object.keys(f)) {
+      if (d.type === 'text' && MEASURED.has(key)) {
+        const diff = Math.abs((d[key] as number) - (f[key] as number))
+        worst = Math.max(worst, diff)
+        expect(diff, `${where} ${String(d.id)}.${key}: dom ${String(d[key])}, fabric ${String(f[key])}`).toBeLessThanOrEqual(GEOMETRY_TOLERANCE)
+      } else {
+        expect(d[key], `${where} ${String(d.id)}.${key}`).toEqual(f[key])
+      }
+    }
+  })
+  return worst
+}
+
+async function expectPaired(browser: Browser, doc: StoredBoard, steps: readonly Step[]) {
+  const fabric = await runScript(browser, 'fabric', doc, steps)
+  const dom = await runScript(browser, 'dom', doc, steps)
+  let worst = 0
+  fabric.scenes.forEach((f, i) => {
+    const d = dom.scenes[i]!
+    worst = Math.max(worst, expectSameRecords(d.scene.objects as never, f.scene.objects as never, `after ${f.step}`))
+    expect(d.scene.frames, `frames after ${f.step}`).toEqual(f.scene.frames)
+  })
+  worst = Math.max(worst, expectSameRecords(dom.saved.objects as never, fabric.saved.objects as never, 'saved'))
+  expect(dom.saved.frames).toEqual(fabric.saved.frames)
+  expect(dom.saved.version).toBe(fabric.saved.version)
+  return { worst, fabric, dom }
+}
+
+/**
+ * Narrow from the right, narrow from the left, then widen from each side. Widths stay at 70 or
+ * more: a long card drifts by about 0.0125 px per line (plan Section 6, a known limit), which a
+ * box one letter wide would multiply past the tolerance.
+ */
+const sideHandles = (id: string, narrowRight: number, narrowLeft: number, widen = 120): Step[] => [
+  { select: id },
+  { handle: 'mr', dx: -narrowRight, dy: 0 },
+  { handle: 'ml', dx: narrowLeft, dy: 0 },
+  { handle: 'mr', dx: widen, dy: 0 },
+  { handle: 'ml', dx: -widen / 2, dy: 0 },
+]
+
+test.describe('the DOM renderer saves what the Fabric renderer saves (paired)', () => {
+  const WORDS = 'the blue chair by the red door'
+  const LONG = 'see supercalifragilistic here'
+
+  test('side handles on click-created and drawn texts, left, centred and right aligned, with and without a word wider than the new width', async ({ browser }) => {
+    const objects: StoredObject[] = [
+      text('cl', 40, 60, WORDS, { width: 300 }),
+      text('cc', 40, 190, WORDS, { width: 300, align: 'center' }),
+      text('cr', 40, 320, LONG, { width: 330, align: 'right' }),
+      text('dl', 470, 60, LONG, { width: 330, minHeight: 30 }),
+      text('dc', 470, 190, WORDS, { width: 300, minHeight: 30, align: 'center' }),
+      text('dr', 470, 320, LONG, { width: 330, minHeight: 0, align: 'right' }),
+    ]
+    const steps = [
+      ...sideHandles('cl', 190, 30),
+      ...sideHandles('cc', 150, 70),
+      ...sideHandles('cr', 250, 60), // narrower than "supercalifragilistic": stops at it
+      ...sideHandles('dl', 220, 40), // a drawn box cuts the word instead
+      ...sideHandles('dc', 210, 20),
+      ...sideHandles('dr', 230, 30),
+    ]
+    const { worst } = await expectPaired(browser, board([], objects), steps)
+    console.log(`side handles, upright: largest geometry difference ${worst.toFixed(3)}`)
+  })
+
+  test('side handles on rotated texts, at zoom and pan', async ({ browser }) => {
+    const objects: StoredObject[] = [
+      text('r1', 120, 120, WORDS, { width: 300, angle: 30 }),
+      text('r2', 560, 140, LONG, { width: 320, minHeight: 20, angle: -20, align: 'center' }),
+      text('r3', 200, 420, LONG, { width: 330, angle: 12, align: 'right' }),
+    ]
+    const steps = [...sideHandles('r1', 160, 50), ...sideHandles('r2', 200, 40), ...sideHandles('r3', 240, 60)]
+    const { worst } = await expectPaired(browser, board([], objects, { zoom: 1.2, panX: -40, panY: -30 }), steps)
+    console.log(`side handles, rotated: largest geometry difference ${worst.toFixed(3)}`)
+  })
+
+  test('a text inside a frame near its edge keeps its owner exactly as on Fabric when a side handle makes it taller', async ({ browser }) => {
+    // The frame ends at y = 255; the text starts at 225, one line high. Narrowed to wrap over
+    // several lines, it grows about its middle (the handle's anchor), so its centre stays inside.
+    const F: StoredFrame = { id: 'F', name: 'Edge', left: 300, top: 100, width: 420, height: 155 }
+    const objects: StoredObject[] = [
+      text('t', 330, 225, WORDS, { width: 350, minHeight: 0, frameId: 'F' }),
+      text('u', 330, 120, WORDS, { width: 350, frameId: 'F' }),
+    ]
+    const steps: Step[] = [
+      { select: 't' },
+      { handle: 'mr', dx: -254, dy: 0 },
+      { select: 'u' },
+      { handle: 'ml', dx: 230, dy: 0 },
+    ]
+    const { dom, fabric } = await expectPaired(browser, board([F], objects), steps)
+    for (const run of [dom, fabric]) expect(run.saved.objects.map((o) => [o.id, o.frameId])).toEqual([['t', 'F'], ['u', 'F']])
+    expect(dom.saved.objects[0]!.top).toBeLessThan(200) // it grew upwards, as a text box does
+  })
+
+  test('corner scale of a text and of a frame with its contents', async ({ browser }) => {
+    const F: StoredFrame = { id: 'F', name: 'Scaled', left: 420, top: 150, width: 360, height: 300 }
+    const objects: StoredObject[] = [
+      text('s', 80, 120, WORDS, { width: 220, minHeight: 90 }),
+      text('w', 80, 360, WORDS, { width: 240 }),
+      image('i', 450, 180, { frameId: 'F', scaleX: 0.75, scaleY: 0.75 }),
+      text('m', 450, 330, WORDS, { width: 200, minHeight: 80, frameId: 'F' }),
+    ]
+    const steps: Step[] = [
+      { select: 's' },
+      { handle: 'br', dx: 70, dy: 40 },
+      { select: 'w' },
+      { handle: 'br', dx: 60, dy: 20 },
+      { selectContents: 'F' },
+      { handle: 'br', dx: 90, dy: 60 },
+      { handle: 'tl', dx: 40, dy: 30 },
+    ]
+    const { worst } = await expectPaired(browser, board([F], objects), steps)
+    console.log(`corner scale: largest geometry difference ${worst.toFixed(3)}`)
+  })
+
+  test('a stored width narrower than the widest word is saved as Fabric saves it, after a title-only save', async ({ browser }) => {
+    const objects: StoredObject[] = [
+      text('narrow', 280, 260, 'supercalifragilisticexpialidocious', { width: 30, align: 'right' }),
+      text('drawn', 280, 420, 'supercalifragilisticexpialidocious', { width: 10, minHeight: 0, align: 'center' }),
+    ]
+    const { dom, worst } = await expectPaired(browser, board([], objects), [{ run: 'setTitle', args: ['Renamed'] }])
+    expect(dom.saved.title).toBe('Renamed')
+    expect(dom.saved.objects[0]!.width).toBeGreaterThan(300)
+    expect(dom.saved.objects[0]!.left).toBe(280) // widened from its left edge, as on load in Fabric
+    console.log(`narrow stored width: largest geometry difference ${worst.toFixed(3)}`)
+  })
+
+  test('Make caption gives the same caption as on Fabric', async ({ browser }) => {
+    const objects: StoredObject[] = [image('pic', 300, 200), text('note', 520, 420, 'A caption for the picture', { width: 260 })]
+    const { dom, worst } = await expectPaired(browser, board([], objects), [{ select: 'pic', also: 'note' }, { run: 'makeCaption' }])
+    expect(dom.saved.objects.find((o) => o.id === 'note')?.captionOf).toBe('pic')
+    console.log(`make caption: largest geometry difference ${worst.toFixed(3)}`)
+  })
+})
+
+test.describe('the DOM renderer keeps the layer and the proxies together', () => {
+  test('a text proxy that Make caption puts in place of a text is sized from its card before it is selected or committed', async ({ page }) => {
+    const errors = errorsOf(page)
+    await openBoard(page, board([], [image('pic', 300, 200), text('note', 520, 420, 'A caption for the picture', { width: 260 })]), ASSETS)
+    await page.evaluate(() => {
+      window.__dom.run('selectLayer', 'pic')
+      window.__dom.run('selectLayer', 'note', { toggle: true })
+      window.__dom.run('makeCaption')
+    })
+    await expect(status(page)).toContainText('Saved on this device')
+    const proxy = (await page.evaluate(() => window.__dom.proxy('note')))!
+    expect(proxy[3]!.y - proxy[0]!.y).toBeGreaterThan(10) // a hit box as tall as the caption, not zero
+    await expectTracked(page, ['note', 'pic'], 'after Make caption')
+    expect(errors).toEqual([])
+  })
+
+  test('a text that grows into view is drawn (culling follows any change of size)', async ({ page }) => {
+    const errors = errorsOf(page)
+    await openBoard(page, board([], [text('far', -900, 410, 'supercalifragilistic', { fontSize: 12, width: 140 }), image('img', 220, 330)]), ASSETS)
+    const culled = () => page.evaluate(() => document.querySelector('.scene-layer [data-id="far"]')!.classList.contains('is-culled'))
+    expect(await culled()).toBe(true)
+    await page.evaluate(() => {
+      window.__dom.run('selectLayer', 'far')
+      window.__dom.run('setFontSize', 260)
+    })
+    await frames(page, 3)
+    expect((await page.evaluate(() => window.__dom.bounds('far')))!.right).toBeGreaterThan(100)
+    expect(await culled()).toBe(false)
+    await expectTracked(page, ['far'], 'after growing into view')
+    expect(errors).toEqual([])
+  })
+
+  test('a font that finishes loading during a gesture changes no card until the gesture has settled, then card and proxy change together', async ({ page }) => {
+    const errors = errorsOf(page)
+    const at = await openBoard(page, board([], [text('t', 350, 220, 'iiiiiiiiiiiiiiiiiii', { width: 35 }), image('i', 270, 380)]), ASSETS)
+    const before = await snapshotIdb(page)
+    await page.addStyleTag({ content: '.yuriful-prose, .yuriful-prose * { font-family: probefont, system-ui !important }' })
+    await frames(page, 2)
+    const p = at(300, 410)
+    await page.mouse.move(p.x, p.y)
+    await page.mouse.down()
+    await page.mouse.move(p.x + 12, p.y + 12, { steps: 4 })
+    await expectTracked(page, ['t', 'i'], 'before the font loads')
+    const widthBefore = await page.evaluate(() => (document.querySelector('.scene-layer [data-id="t"]') as HTMLElement).style.width)
+    await page.evaluate(async () => {
+      const face = new FontFace('probefont', 'local("Courier New")')
+      document.fonts.add(face)
+      await face.load()
+      await document.fonts.ready
+    })
+    await frames(page, 4)
+    await expectTracked(page, ['t', 'i'], 'while the font loads during the drag')
+    expect(await page.evaluate(() => (document.querySelector('.scene-layer [data-id="t"]') as HTMLElement).style.width)).toBe(widthBefore)
+    await page.keyboard.press('Escape')
+    await page.mouse.up()
+    await frames(page, 4)
+    await expectTracked(page, ['t', 'i'], 'after the gesture')
+    expect(await page.evaluate(() => (document.querySelector('.scene-layer [data-id="t"]') as HTMLElement).style.width)).not.toBe(widthBefore)
+    await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+    expect(await snapshotIdb(page)).toEqual(before) // a font load writes nothing
+    expect(errors).toEqual([])
   })
 })

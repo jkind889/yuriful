@@ -966,6 +966,11 @@ export interface SceneLayerOptions {
   getStill?(assetId: string): string | undefined
   measurer?: CardMeasurer
   document?: Document
+  /**
+   * Lay every card out again by itself when a font finishes loading (default true). The editor
+   * turns it off to choose the moment (`refreshTypography`): never in the middle of a gesture.
+   */
+  followFonts?: boolean
 }
 
 interface ItemState {
@@ -1009,12 +1014,14 @@ export class SceneLayer {
   private view: Viewport = { zoom: 1, panX: 0, panY: 0 }
   private disposed = false
   private readonly onFontsLoaded = () => this.refreshTypography()
+  private readonly followFonts: boolean
 
   constructor(opts: SceneLayerOptions) {
     this.doc = opts.document ?? document
     this.getImage = opts.getImage
     this.getStill = opts.getStill
     this.measurer = opts.measurer ?? new DomCardMeasurer()
+    this.followFonts = opts.followFonts ?? true
     const div = (cls: string) => {
       const el = this.doc.createElement('div')
       el.className = cls
@@ -1029,11 +1036,11 @@ export class SceneLayer {
     this.root.append(this.world)
   }
 
-  /** Puts the layer first in `parent`. A font that finishes loading from then on lays every card out again (`refreshTypography`). */
+  /** Puts the layer first in `parent`. A font that finishes loading from then on lays every card out again (`refreshTypography`), unless `followFonts` is off. */
   mount(parent: HTMLElement) {
     if (this.disposed) throw new Error('a disposed scene layer cannot be mounted')
     parent.prepend(this.root)
-    this.doc.fonts?.addEventListener('loadingdone', this.onFontsLoaded)
+    if (this.followFonts) this.doc.fonts?.addEventListener('loadingdone', this.onFontsLoaded)
     // Cards rendered while detached were measured without layout.
     this.refreshTypography()
   }

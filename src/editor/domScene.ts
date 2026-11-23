@@ -1,5 +1,5 @@
 import { ActiveSelection } from 'fabric'
-import type { FabricImage, FabricObject } from 'fabric'
+import type { FabricImage, FabricObject, Transform } from 'fabric'
 import { roundPositive } from '../model/doc.ts'
 import type { FrameRecord, ImageRecord, ObjectRecord, Scene, TextRecord } from '../model/types.ts'
 import type { AssetSource } from './assets.ts'
@@ -12,6 +12,25 @@ import type { TextData } from './objects.ts'
 
 /** Which point of a text's box stays where it is when its width changes: its alignment edge. */
 export type WidthAnchor = 'left' | 'center' | 'right'
+
+/** How `syncCard` brings a text proxy to its card's size. */
+export interface CardSync {
+  /**
+   * The text or its formatting changed: a wrap width narrower than its widest word (grapheme, on
+   * a drawn box) widens to it, keeping this edge of the box where it is, as a text box does.
+   */
+  widen?: WidthAnchor
+  /**
+   * This point of the box (Fabric origins) stays where it is while the height changes: a side
+   * handle's anchor, which Fabric keeps fixed while a text box re-wraps inside `changeWidth`.
+   */
+  hold?: { x: Transform['originX']; y: Transform['originY'] }
+  /**
+   * Leave the stored wrap width alone even when the card is drawn wider than it (a late font
+   * load: Fabric never lays a text box out again then, so its record keeps the width it had).
+   */
+  keepWidth?: boolean
+}
 
 export interface DomSceneOptions {
   measurer?: CardMeasurer
@@ -30,9 +49,12 @@ export interface DomSceneOptions {
  *    viewport, then each item's matrix from its proxy's `calcTransformMatrix()` and untransformed
  *    size (standalone or inside a multi-selection), then culling.
  *  - A text proxy's width and height come from the layer: its effective width and measured
- *    height (`syncCard`), at the flush points the editor calls synchronously.
- *  - A late font load lays the cards out again (the layer does) and re-sizes the proxies, but
- *    only once no gesture is unsettled; it never touches ownership, history or the save state.
+ *    height (`syncCard`), at the flush points the editor calls synchronously and whenever a text
+ *    proxy is added to the canvas. Like a Fabric text box, its wrap width holds the effective
+ *    width once it has been laid out (a stored width narrower than the widest word widens, the
+ *    left edge kept), so a save writes what a Fabric save writes.
+ *  - A late font load lays the cards out again and re-sizes the proxies, both only once no
+ *    gesture is unsettled; it never touches ownership, history or the save state.
  *
  * Only built for `renderer: 'dom'`; the default Fabric renderer never constructs one.
  */
@@ -46,6 +68,8 @@ export class DomScene {
   private view = ''
   private readonly moving = new Set<string>()
   private fontsPending = false
+  /** Something was placed or re-sized since the last cull. */
+  private cullPending = false
   private mounted = false
   private disposed = false
   /** Stills of images that can animate, by asset id (null: none, or still being made). */
@@ -59,7 +83,8 @@ export class DomScene {
     private readonly assets: AssetSource,
     private readonly opts: DomSceneOptions,
   ) {
-    this.layer = new SceneLayer({ getImage: (id) => assets.get(id), getStill: (id) => this.still(id), measurer: opts.measurer })
+    // The layer does not follow font loads by itself: they wait for a gesture to settle (see `onFontsLoaded`).
+    this.layer = new SceneLayer({ getImage: (id) => assets.get(id), getStill: (id) => this.still(id), measurer: opts.measurer, followFonts: false })
     // The canvas, transparent, lies over the layer, so handles, frame outlines and labels are
     // drawn crisp over every item. The host keeps both stacked inside it, under the overlays.
     host.style.isolation = 'isolate'
@@ -67,13 +92,19 @@ export class DomScene {
     canvas.on('before:render', ({ ctx }) => {
       if (ctx === canvas.getContext()) this.render()
     })
-    // A side handle changes a text's wrap width: the card wraps again and the proxy takes its height (flush point 5).
+    // A side handle changes a text's wrap width: the card wraps again and the proxy takes its
+    // height, keeping the handle's anchor where Fabric keeps it (flush point 5).
     canvas.on('object:resizing', ({ transform }) => {
       const target = transform.target
       const td = textDataOf(target)
       if (!td) return
       setTextData(target, { ...td, width: target.width })
-      this.syncCard(target)
+      this.syncCard(target, { hold: { x: transform.originX, y: transform.originY } })
+    })
+    // Whatever adds a text proxy (a rebuild, Make caption, ...), it is sized from its card before
+    // anything selects it, decides its owner or commits.
+    canvas.on('object:added', ({ target }) => {
+      if (textDataOf(target)) this.syncCard(target)
     })
   }
 
@@ -90,7 +121,8 @@ export class DomScene {
       // After the layer's own listener, which lays every card out again first.
       document.fonts?.addEventListener('loadingdone', this.onFontsLoaded)
       this.cleanups.push(() => document.fonts?.removeEventListener('loadingdone', this.onFontsLoaded))
-      this.typographyChanged()
+      // The layer laid every card out again on mounting: the board's first real layout.
+      this.typographyChanged({})
     }
     this.layer.mount(this.host)
     const styled = getComputedStyle(this.layer.root).position === 'absolute'
@@ -130,17 +162,18 @@ export class DomScene {
 
   /**
    * Lays a text's card out from its data now and sizes the proxy from it: the effective width and
-   * the measured height. `widen`: the text or its formatting changed, so a wrap width narrower
-   * than its widest word (grapheme, on a drawn box) widens to it, keeping that edge of the box
-   * where it is, as a Fabric text box widens itself (the record then stores the wider width).
+   * the measured height (see `CardSync` for which point stays put and whether the wrap width
+   * holds the effective width).
    */
-  syncCard(obj: FabricObject, widen?: WidthAnchor) {
+  syncCard(obj: FabricObject, sync: CardSync = {}) {
     const id = idOf(obj)
     let td = textDataOf(obj)
     if (this.disposed || !id || !td) return
     if (!this.layer.elementOf(id)) this.syncContent(this.canvas.getObjects())
     if (!this.layer.elementOf(id)) return
-    const anchor = widen ? obj.translateToOriginPoint(obj.getCenterPoint(), widen, 'top') : undefined
+    const { widen } = sync
+    const origin = sync.hold ?? (widen ? { x: widen, y: 'top' as const } : undefined)
+    const anchor = origin ? obj.translateToOriginPoint(obj.getCenterPoint(), origin.x, origin.y) : undefined
     this.layer.updateItem(this.textRecord(id, td))
     this.shown.set(id, td)
     if (widen) {
@@ -152,17 +185,17 @@ export class DomScene {
         this.shown.set(id, td)
       }
     }
-    this.sizeFromLayer(obj)
-    if (anchor && widen) obj.setPositionByOrigin(anchor, widen, 'top')
+    this.sizeFromLayer(obj, !sync.keepWidth)
+    if (anchor && origin) obj.setPositionByOrigin(anchor, origin.x, origin.y)
     obj.setCoords()
     this.placed.delete(id)
     this.place(obj)
   }
 
   /** Every text proxy sized from its card (`fit`, and after fonts load). */
-  syncAllCards() {
+  syncAllCards(sync: CardSync = {}) {
     if (this.disposed) return
-    for (const o of this.canvas.getObjects()) if (textDataOf(o)) this.syncCard(o)
+    for (const o of this.canvas.getObjects()) if (textDataOf(o)) this.syncCard(o, sync)
     const active = this.canvas.getActiveObject()
     if (active instanceof ActiveSelection) active.triggerLayout?.()
     this.canvas.requestRenderAll()
@@ -184,7 +217,7 @@ export class DomScene {
     const objs = this.canvas.getObjects()
     if (this.fontsPending && !this.opts.gestureActive()) {
       this.fontsPending = false
-      this.syncAllCards()
+      this.applyFonts()
     }
     let changed = this.syncContent(objs)
     const vpt = this.canvas.viewportTransform
@@ -197,8 +230,12 @@ export class DomScene {
     }
     if (this.placeAll(objs)) changed = true
     if (this.syncMoving()) changed = true
-    // Idle items wholly outside the view skip layout and paint; moving ones stay drawn.
-    if (changed) this.layer.cull(size)
+    // Idle items wholly outside the view skip layout and paint; moving ones stay drawn. Whatever
+    // moved or re-sized an item since the last render (also outside a render) counts.
+    if (changed || this.cullPending) {
+      this.cullPending = false
+      this.layer.cull(size)
+    }
   }
 
   /** Gives the layer what changed since it was last given the scene. True when anything did. */
@@ -261,13 +298,24 @@ export class DomScene {
     return { id, type: 'text', left: 0, top: 0, angle: 0, ...td }
   }
 
-  /** A text proxy takes its card's effective width and measured height, and its narrowest width for side handles. */
-  private sizeFromLayer(o: FabricObject) {
+  /**
+   * A text proxy takes its card's effective width and measured height, and its narrowest width for
+   * side handles. `holdWidth`: a card drawn wider than its stored wrap width (its widest word is
+   * wider) makes that its wrap width, as a Fabric text box widens itself when it lays its text out.
+   */
+  private sizeFromLayer(o: FabricObject, holdWidth = true) {
     const id = idOf(o)
     if (!id) return
     const width = this.layer.widthOf(id)
     const height = this.layer.heightOf(id)
     if (width === undefined || height === undefined) return
+    const td = textDataOf(o)
+    if (holdWidth && td && width > td.width) {
+      const held = { ...td, width }
+      setTextData(o, held)
+      this.layer.updateItem(this.textRecord(id, held))
+      this.shown.set(id, held)
+    }
     if (o instanceof ProxyRect) o.minTextWidth = Math.min(this.minWidthOf(o), width)
     o.set({ width, height })
     o.setCoords()
@@ -288,6 +336,7 @@ export class DomScene {
     if (this.placed.get(id) === key) return false
     this.layer.setItemMatrix(id, m, { width: o.width, height: o.height })
     this.placed.set(id, key)
+    this.cullPending = true
     return true
   }
 
@@ -314,16 +363,32 @@ export class DomScene {
 
   // ---- fonts and stills ----------------------------------------------------------------------------
 
-  private readonly onFontsLoaded = () => this.typographyChanged()
+  /**
+   * A font finished loading. Cards and proxies change together, never in the middle of a gesture:
+   * until it settles, the layer keeps every card as it was laid out (the next render after it
+   * applies the font, see `render`).
+   */
+  private readonly onFontsLoaded = () => {
+    if (this.disposed) return
+    if (this.opts.gestureActive()) {
+      this.fontsPending = true
+      return
+    }
+    this.applyFonts()
+  }
 
-  /** The layer has laid every card out again (it was mounted, or a font loaded). */
-  private typographyChanged() {
+  private applyFonts() {
+    this.layer.refreshTypography()
+    this.typographyChanged({ keepWidth: true })
+  }
+
+  /** The layer has laid every card out again (it was mounted, or a font loaded): proxies follow at once. */
+  private typographyChanged(sync: CardSync) {
     if (this.disposed) return
     // Laying a card out again puts it back at the layer's origin: place everything again at once.
     this.placed.clear()
     this.placeAll(this.canvas.getObjects())
-    if (this.opts.gestureActive()) this.fontsPending = true
-    else this.syncAllCards()
+    this.syncAllCards(sync)
     this.canvas.requestRenderAll()
   }
 

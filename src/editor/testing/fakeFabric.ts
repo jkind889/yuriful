@@ -305,15 +305,18 @@ export class Canvas {
     if (had) this.fire('selection:cleared', {})
     return true
   }
+  /** Like Fabric: `object:added` for each object once all of them are on the canvas. */
   add(...objs: FakeObject[]) {
     this.calls.push('add')
     for (const o of objs) o.canvas = this
     this.objects.push(...objs)
+    for (const o of objs) this.fire('object:added', { target: o })
   }
   insertAt(index: number, ...objs: FakeObject[]) {
     this.calls.push('insertAt')
     for (const o of objs) o.canvas = this
     this.objects.splice(index, 0, ...objs)
+    for (const o of objs) this.fire('object:added', { target: o })
   }
   remove(...objs: FakeObject[]) {
     this.calls.push('remove')
