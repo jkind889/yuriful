@@ -1,5 +1,5 @@
 import { chainCommands, deleteSelection, joinBackward, joinForward, splitBlock } from 'prosemirror-commands'
-import { closeHistory, isHistoryTransaction, redo, undo } from 'prosemirror-history'
+import { closeHistory, isHistoryTransaction, redo, undo, undoDepth } from 'prosemirror-history'
 import { Mark as PMMark } from 'prosemirror-model'
 import type { Node as PMNode } from 'prosemirror-model'
 import { AllSelection, Plugin, PluginKey, TextSelection } from 'prosemirror-state'
@@ -27,7 +27,19 @@ export const META = {
   levelsSet: 'yuriful/levelsSet',
   /** The second transaction of a typing shortcut (it keeps the Backspace revert offer). */
   shortcutApplied: 'yuriful/shortcutApplied',
+  /**
+   * The transaction replaced a selection with typed text, Enter or nothing (a deletion):
+   * `{ text, from, to }` in UTF-16 offsets of the text before it. The session styles the
+   * result as today's canvas does (`plainPasteContent`).
+   */
+  replaced: 'yuriful/replaced',
 } as const
+
+/** A selection about to be replaced by `text`, for `META.replaced`. */
+export function replacedRange(state: EditorState, text: string): { text: string; from: number; to: number } {
+  const { from, to } = state.selection
+  return { text, from: textOffsetAt(state.doc, from, -1), to: textOffsetAt(state.doc, to, 1) }
+}
 
 // ---- typing shortcuts ------------------------------------------------------------------------
 
@@ -347,8 +359,35 @@ interface GuardState {
   owed: Array<{ from: number; to: number }>
 }
 const guardKey = new PluginKey<GuardState>('yuriful-canonical')
-/** Metadata on an otherwise empty transaction that makes text owed since a composition canonical. */
+/**
+ * Metadata on an otherwise empty transaction that makes text owed since a composition
+ * canonical. `'force'` does it even while a composition is still in progress (the session is
+ * ending under it).
+ */
 export const SETTLE = 'yuriful/settle'
+
+/** Makes the blocks a range touches canonical, with `inserted` the text just inserted. True when anything changed. */
+function canonicalizeRange(tr: Transaction, doc: PMNode, range: { from: number; to: number }, inserted: ReadonlyArray<{ from: number; to: number }>, baseFont: FontId): boolean {
+  let changed = false
+  doc.forEach((block, offset) => {
+    if (offset + block.nodeSize < range.from || offset > range.to) return
+    if (canonicalizeBlock(tr, block, offset + 1, baseFont, inserted)) changed = true
+  })
+  return changed
+}
+
+/**
+ * The document as it will be once text owed since an IME composition is made canonical (the
+ * document itself when nothing is owed). What a save reads in the middle of a composition is
+ * already this final form.
+ */
+export function settledDoc(state: EditorState, baseFont: FontId): PMNode {
+  const owed = guardKey.getState(state)?.owed ?? []
+  if (owed.length === 0) return state.doc
+  const tr = state.tr
+  for (const r of owed) canonicalizeRange(tr, tr.doc, r, owed, baseFont)
+  return tr.doc
+}
 
 /** True when a composition left text that is not canonical yet. */
 export function owesCanonical(state: EditorState): boolean {
@@ -378,21 +417,14 @@ export function canonicalGuard(opts: { baseFont: () => FontId; composing?: () =>
       },
     },
     appendTransaction(trs, _oldState, state) {
-      if (opts.composing?.()) return null
+      if (opts.composing?.() && !trs.some((t) => t.getMeta(SETTLE) === 'force')) return null
       const tr = state.tr
       let changed = false
       const owed = guardKey.getState(state)?.owed ?? []
       const inserted = [...insertedRanges(trs), ...owed]
       let range = trs.some((t) => t.docChanged) ? changedRange(trs, true) : null
       for (const r of owed) range = range ? { from: Math.min(range.from, r.from), to: Math.max(range.to, r.to) } : { ...r }
-      if (range) {
-        const baseFont = opts.baseFont()
-        const { from, to } = range
-        state.doc.forEach((block, offset) => {
-          if (offset + block.nodeSize < from || offset > to) return
-          if (canonicalizeBlock(tr, block, offset + 1, baseFont, inserted)) changed = true
-        })
-      }
+      if (range && canonicalizeRange(tr, state.doc, range, inserted, opts.baseFont())) changed = true
       if (owed.length > 0) {
         tr.setMeta(guardKey, 'clear')
         changed = true
@@ -408,13 +440,49 @@ export function canonicalGuard(opts: { baseFont: () => FontId; composing?: () =>
   })
 }
 
-/** Turns a whole-document selection (`AllSelection`) into the selection of all the text, as the canvas's select-all is. */
-export function wholeTextSelection(): Plugin {
+/** The position at the edge of the character (grapheme cluster) `pos` falls inside: its start for `dir` -1, its end for 1; `pos` itself on a boundary. */
+function characterEdge(doc: PMNode, pos: number, dir: -1 | 1): number {
+  const $p = doc.resolve(pos)
+  if (!$p.parent.isTextblock) return pos
+  const off = $p.parentOffset
+  let at = 0
+  for (const g of splitGraphemes($p.parent.textContent)) {
+    const end = at + g.length
+    if (off > at && off < end) return dir < 0 ? pos - (off - at) : pos + (end - off)
+    if (end > off) break
+    at = end
+  }
+  return pos
+}
+
+/**
+ * Keeps every selection on whole characters, whatever made it (a command, in-edit undo or
+ * redo, the browser): a whole-document selection (`AllSelection`) becomes the selection of
+ * all the text, as the canvas's select-all is; a caret inside a character (as a redo can
+ * restore it, inside a skin-toned emoji or an accented letter) moves to the end of the
+ * character, where the edit that made it left the caret; a range grows to whole characters.
+ * Never during an IME composition. The pending choices are kept.
+ */
+export function selectionOnCharacters(opts: { composing?: () => boolean } = {}): Plugin {
   return new Plugin({
-    key: new PluginKey('yuriful-whole-text-selection'),
+    key: new PluginKey('yuriful-selection-on-characters'),
     appendTransaction(_trs, _old, state) {
-      if (!(state.selection instanceof AllSelection)) return null
-      return state.tr.setSelection(TextSelection.create(state.doc, 1, state.doc.content.size - 1))
+      const sel = state.selection
+      const doc = state.doc
+      let next: TextSelection | null = null
+      if (sel instanceof AllSelection) next = TextSelection.create(doc, 1, doc.content.size - 1)
+      else if (sel instanceof TextSelection && !opts.composing?.()) {
+        if (sel.empty) {
+          const at = characterEdge(doc, sel.head, 1)
+          if (at !== sel.head) next = TextSelection.create(doc, at)
+        } else {
+          const back = sel.anchor > sel.head
+          const anchor = characterEdge(doc, sel.anchor, back ? 1 : -1)
+          const head = characterEdge(doc, sel.head, back ? -1 : 1)
+          if (anchor !== sel.anchor || head !== sel.head) next = TextSelection.create(doc, anchor, head)
+        }
+      }
+      return next ? state.tr.setSelection(next).setMeta(pendingKey, pendingOf(state)) : null
     },
   })
 }
@@ -467,8 +535,9 @@ const sameMarks = (a: readonly PMMark[] | null, b: readonly PMMark[] | null) => 
  * Marks and a font chosen with only a caret, as today: kept through typing, deleting, Enter,
  * a paste and every step of an IME composition (any change of the text), dropped when the
  * caret or selection moves for any other reason and when the session ends. In-edit undo
- * drops them, except that redoing a typing shortcut brings back the choices it left
- * (`afterHistory`: "plain after the shortcut"). A pending bold is dropped once the caret's
+ * drops them, except that redoing a typing shortcut's own history step brings back the
+ * choices it left (`afterHistory`, given whether it was a redo and the undo depth after it:
+ * "plain after the shortcut"). A pending bold is dropped once the caret's
  * line is or becomes a heading, judged on the final state of a change (after its lines have
  * their levels); every other choice stays. Set with `pendingKey` metadata.
  *
@@ -476,16 +545,20 @@ const sameMarks = (a: readonly PMMark[] | null, b: readonly PMMark[] | null) => 
  * neighbouring marks with the pending choices applied), so typing uses them; they are null
  * when that is just the neighbouring marks.
  */
-export function pendingMarks(opts: { baseFont: () => FontId; afterHistory?: (doc: PMNode) => Pending | null }): Plugin<Pending | null> {
+export function pendingMarks(opts: { baseFont: () => FontId; afterHistory?: (redo: boolean, depth: number) => Pending | null }): Plugin<Pending | null> {
   return new Plugin<Pending | null>({
     key: pendingKey,
     state: {
       init: () => null,
-      apply(tr, value, _old, newState) {
+      apply(tr, value, oldState, newState) {
         const meta = tr.getMeta(pendingKey) as Pending | null | undefined
         let next = value
         if (meta !== undefined) next = normalPending(meta)
-        else if (isHistoryTransaction(tr)) next = normalPending(opts.afterHistory?.(newState.doc))
+        else if (isHistoryTransaction(tr)) {
+          // Needs the history plugin before this one, so that `newState` already holds its new depth.
+          const depth = undoDepth(newState) as number
+          next = normalPending(opts.afterHistory?.(depth > (undoDepth(oldState) as number), depth))
+        }
         else if (tr.selectionSet && !tr.docChanged) next = null
         if (next && !caretOf(newState)) next = null // a choice belongs to a caret
         return next
@@ -803,14 +876,27 @@ export const selectAllText: Command = (state, dispatch) => {
  * deletion to the browser. Esc, Tab, Ctrl/Cmd+B/I/U and the Backspace revert are handled by
  * the session before these.
  */
+/** `cmd`, marking a transaction that replaces a non-empty selection with `text` (`META.replaced`). */
+function replacing(cmd: Command, text: string): Command {
+  return (state, dispatch, view) => {
+    const meta = state.selection.empty ? null : replacedRange(state, text)
+    return cmd(state, dispatch && ((tr) => dispatch(meta ? tr.setMeta(META.replaced, meta) : tr)), view)
+  }
+}
+
+/** Enter: a line break; over a selection, styled as today (`META.replaced`). */
+export const enterKey: Command = replacing(splitBlock, '\n')
+/** Deleting a selection, styled as today (`META.replaced`). */
+export const deleteSelected: Command = replacing(deleteSelection, '')
+
 export const editKeys: Readonly<Record<string, Command>> = {
-  Enter: splitBlock,
-  'Shift-Enter': splitBlock,
-  Backspace: chainCommands(deleteSelection, joinBackward, deleteCharBackward),
-  'Shift-Backspace': chainCommands(deleteSelection, joinBackward, deleteCharBackward),
-  Delete: chainCommands(deleteSelection, joinForward, deleteCharForward),
-  'Mod-Backspace': chainCommands(deleteSelection, joinBackward),
-  'Mod-Delete': chainCommands(deleteSelection, joinForward),
+  Enter: enterKey,
+  'Shift-Enter': enterKey,
+  Backspace: chainCommands(deleteSelected, joinBackward, deleteCharBackward),
+  'Shift-Backspace': chainCommands(deleteSelected, joinBackward, deleteCharBackward),
+  Delete: chainCommands(deleteSelected, joinForward, deleteCharForward),
+  'Mod-Backspace': chainCommands(deleteSelected, joinBackward),
+  'Mod-Delete': chainCommands(deleteSelected, joinForward),
   'Mod-a': selectAllText,
   'Mod-z': undo,
   'Shift-Mod-z': redo,

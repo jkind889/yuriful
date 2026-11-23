@@ -1,4 +1,4 @@
-import { history, redo, redoDepth, undo, undoDepth } from 'prosemirror-history'
+import { history, isHistoryTransaction, redo, redoDepth, undo, undoDepth } from 'prosemirror-history'
 import { keymap } from 'prosemirror-keymap'
 import { DOMParser as PMDOMParser, Fragment, Slice } from 'prosemirror-model'
 import type { Mark as PMMark, Node as PMNode, ParseOptions } from 'prosemirror-model'
@@ -37,7 +37,9 @@ import {
   shortcutTransaction,
   togglePendingMark,
   toggleRangeMark,
-  wholeTextSelection,
+  replacedRange,
+  selectionOnCharacters,
+  settledDoc,
 } from './textRules.ts'
 import type { FormatReadout, Pending } from './textRules.ts'
 
@@ -151,15 +153,21 @@ export class EditSession {
   private typed: string | null = null
   /** Straight after a typing shortcut: the pending choices from just before it, for the Backspace revert. */
   private revert: { pending: Pending | null } | null = null
-  /** Recent typing shortcut conversions: the document each left and its pending choices, for redo. */
-  private conversions: Array<{ doc: PMNode; pending: Pending | null }> = []
+  /**
+   * The history steps that are typing shortcut conversions, by their undo depth, with the
+   * pending choices each left ("plain after the shortcut"): redoing exactly that step brings
+   * them back. Kept in line with the history (see `trackHistory`), with no cap of its own.
+   */
+  private conversions = new Map<number, Pending | null>()
+  /** The content last reported to `onChange` (the stored record's before any). */
+  private reported: string
   /** What ProseMirror is pasting or dropping right now (set by its clipboard hooks, read by `transformPasted`). */
   private incoming: 'text' | 'html' | null = null
   /** A plain-text paste in progress: what it pastes, where, and with which pending choices. */
   private plainPaste: { text: string; from: number; to: number; pending: Pending | null } | null = null
   /** Where a drop in progress lands (from the drop event), for the destination font. */
   private dropPos: number | null = null
-  private cached: { doc: PMNode; box: TextFormatting; content: TextContent } | null = null
+  private cached: { state: EditorState; box: TextFormatting; content: TextContent } | null = null
   /**
    * A stored text with "\r\n" line breaks keeps them until its text is changed: today the
    * editing textarea turns them into "\n" only on the first keystroke, so formatting alone
@@ -172,6 +180,7 @@ export class EditSession {
     this.hooks = hooks
     this.initial = { doc, box: this.box, content: opts.content ?? contentFromDoc(doc, this.box) }
     this.storedBreaks = this.initial.content.text.includes('\r\n') ? this.initial.content.text : null
+    this.reported = JSON.stringify(this.initial.content)
     const caret = posAtTextOffset(doc, onCharacter(plainTextOfDoc(doc), opts.caret ?? Number.MAX_SAFE_INTEGER))
     this.current = EditorState.create({
       schema: textSchema,
@@ -180,12 +189,13 @@ export class EditSession {
       plugins: [
         this.inputPlugin(),
         keymap(editKeys),
-        wholeTextSelection(),
+        // Before the pending choices, which read the new undo depth (`pendingMarks`).
+        history(),
         lineLevels(),
         this.pastePlugin(),
         canonicalGuard({ baseFont: () => this.baseFont, composing: () => this.composing }),
-        pendingMarks({ baseFont: () => this.baseFont, afterHistory: (d) => this.conversions.find((c) => c.doc.eq(d))?.pending ?? null }),
-        history(),
+        pendingMarks({ baseFont: () => this.baseFont, afterHistory: (redone, depth) => (redone ? (this.conversions.get(depth) ?? null) : null) }),
+        selectionOnCharacters({ composing: () => this.composing }),
       ],
     })
   }
@@ -227,18 +237,24 @@ export class EditSession {
     return !this.done && (this.hooks.canEdit?.(this) ?? true)
   }
 
-  /** The text's canonical record content now (compact form plus the box formatting); the record's own until something changed. */
+  /**
+   * The text's canonical record content now (compact form plus the box formatting); the
+   * record's own until something changed. In the middle of an IME composition it is already
+   * the form the composition will leave (`settledDoc`), so a save never captures anything
+   * else.
+   */
   content(): TextContent {
-    if (this.current.doc === this.initial.doc && JSON.stringify(this.box) === JSON.stringify(this.initial.box)) return this.initial.content
+    const doc = settledDoc(this.current, this.baseFont)
+    if (doc === this.initial.doc && JSON.stringify(this.box) === JSON.stringify(this.initial.box)) return this.initial.content
     const c = this.cached
-    if (c && c.doc === this.current.doc && c.box === this.box) return c.content
-    let content = contentFromDoc(this.current.doc, this.box)
+    if (c && c.state === this.current && c.box === this.box) return c.content
+    let content = contentFromDoc(doc, this.box)
     const stored = this.storedBreaks
     if (stored !== null && stored.replace(/\r\n/g, '\n') === content.text) {
       const spans = content.spans?.map((sp) => ({ ...sp, start: storedOffset(stored, sp.start), end: storedOffset(stored, sp.end) }))
       content = { text: stored, ...canonicalTextFormatting(stored, { ...this.box, spans, headings: content.headings }) }
     }
-    this.cached = { doc: this.current.doc, box: this.box, content }
+    this.cached = { state: this.current, box: this.box, content }
     return content
   }
 
@@ -253,17 +269,48 @@ export class EditSession {
       this.plainPaste = null
       return
     }
+    const before = this.current
     const { state, transactions } = this.current.applyTransaction(tr)
     this.plainPaste = null
     if (transactions.length === 0) return
     this.current = state
+    this.trackHistory(before, state, transactions)
     this.mounted?.view.updateState(state)
     if (transactions.some((t) => t.steps.some((st) => st instanceof ReplaceStep))) this.storedBreaks = null // the text was typed into
     // Any change of the text or move of the caret ends "straight after a shortcut" (in-edit
     // undo included), except the shortcut's own conversion.
     if ((tr.docChanged || tr.selectionSet) && tr.getMeta(META.shortcutApplied) !== true) this.revert = null
-    if (transactions.some((t) => t.docChanged)) this.hooks.onChange?.(this.content(), this)
+    if (transactions.some((t) => t.docChanged)) this.reportChange()
     this.hooks.onSelectionChange?.(this)
+  }
+
+  /** Tells `onChange` about the content, only when it differs from what it was last told (or the stored record). */
+  private reportChange() {
+    const content = this.content()
+    const json = JSON.stringify(content)
+    if (json === this.reported) return
+    this.reported = json
+    this.hooks.onChange?.(content, this)
+  }
+
+  /**
+   * Keeps `conversions` keyed by the undo depth of their history steps: a recorded change
+   * clears the redo side (and an event it extends no longer ends with a conversion), and
+   * when the history drops its oldest events the depths shift down with them.
+   */
+  private trackHistory(before: EditorState, after: EditorState, transactions: readonly Transaction[]) {
+    if (this.conversions.size === 0 || transactions.some(isHistoryTransaction)) return
+    if (!transactions.some((t) => t.steps.length > 0 && t.getMeta('addToHistory') !== false)) return
+    const was = undoDepth(before) as number
+    const now = undoDepth(after) as number
+    const shifted = new Map<number, Pending | null>()
+    const shift = now < was ? was + 1 - now : 0 // the oldest events were dropped
+    for (const [depth, pending] of this.conversions) {
+      const d = depth - shift
+      if (d <= 0 || d > now || (d === now && now <= was)) continue // gone, redo side, or extended
+      shifted.set(d, pending)
+    }
+    this.conversions = shifted
   }
 
   /** Runs a ProseMirror command on the session. */
@@ -331,8 +378,13 @@ export class EditSession {
     const typed = this.typed
     this.typed = null
     if (!this.editable || composing) return false
-    if (typed === null || text !== typed || text.length !== 1 || from !== to) return false
     const sel = this.current.selection
+    if (!sel.empty && from === sel.from && to === sel.to && text.length > 0) {
+      // Typing over a selection: styled exactly as today's canvas styles it (`META.replaced`).
+      this.dispatch(this.current.tr.insertText(text, from, to).setMeta(META.replaced, replacedRange(this.current, normalBreaks(text))))
+      return true
+    }
+    if (typed === null || text !== typed || text.length !== 1 || from !== to) return false
     if (!sel.empty || sel.from !== from) return false
     if (!(this.hooks.canFireShortcut?.(this) ?? true)) return false
     if (!completesShortcut(this.current, from, text)) return false
@@ -342,7 +394,7 @@ export class EditSession {
     if (tr) {
       this.dispatch(tr)
       this.revert = { pending: pendingBefore }
-      this.conversions = [...this.conversions.slice(-19), { doc: this.current.doc, pending: pendingOf(this.current) }]
+      this.conversions.set(undoDepth(this.current) as number, pendingOf(this.current))
     }
     return true
   }
@@ -453,7 +505,7 @@ export class EditSession {
       })
     }
     if (tr.docChanged) this.dispatch(tr.setMeta('addToHistory', false))
-    else this.hooks.onChange?.(this.content(), this)
+    else this.reportChange()
     return true
   }
 
@@ -545,8 +597,10 @@ export class EditSession {
     const tr = this.current.tr
     if (moveFrom) tr.delete(posAtTextOffset(doc, moveFrom.from), posAtTextOffset(doc, moveFrom.to))
     const pos = tr.mapping.map(insertPos)
+    const steps = tr.mapping.maps.length
     tr.replaceRange(pos, pos, arriving)
-    tr.setSelection(TextSelection.create(tr.doc, pos, tr.mapping.map(pos, 1)))
+    const inserted = tr.mapping.slice(steps)
+    tr.setSelection(TextSelection.create(tr.doc, inserted.map(pos, -1), inserted.map(pos, 1)))
     this.dispatch(tr.setMeta('uiEvent', 'drop'))
     return true
   }
@@ -562,16 +616,21 @@ export class EditSession {
     this.plainPaste = { text: normalBreaks(text), from: textOffsetAt(state.doc, from, -1), to: textOffsetAt(state.doc, to, 1), pending: pendingOf(state) }
   }
 
-  /** Gives a plain-text paste (or plain text dropped from elsewhere) its marks exactly as today's canvas does. */
+  /**
+   * Gives a plain-text paste (or plain text dropped from elsewhere), and typing, Enter or a
+   * deletion over a selection (`META.replaced`), their marks exactly as today's canvas does.
+   */
   private pastePlugin(): Plugin {
     return new Plugin({
       key: new PluginKey('yuriful-plain-paste'),
       appendTransaction: (trs, oldState, newState) => {
-        const rec = this.plainPaste
         const root = trs[0]
-        if (!rec || !root) return null
-        const drop = root.getMeta('uiEvent') === 'drop'
-        if (root.getMeta('paste') !== true && !drop) return null
+        if (!root) return null
+        const replaced = root.getMeta(META.replaced) as { text: string; from: number; to: number } | undefined
+        const rec = replaced ? { ...replaced, pending: pendingOf(oldState) } : this.plainPaste
+        if (!rec) return null
+        const drop = !replaced && root.getMeta('uiEvent') === 'drop'
+        if (!replaced && root.getMeta('paste') !== true && !drop) return null
         this.plainPaste = null
         let { from, to } = rec
         if (drop) {
@@ -664,6 +723,9 @@ export class EditSession {
    */
   finish() {
     if (this.done) return
+    // A composition still in progress ends here: its text is made canonical first, exactly as
+    // when it ends by itself, so the record and the static HTML are the final ones.
+    if (owesCanonical(this.current) && this.editable) this.dispatch(this.current.tr.setMeta(SETTLE, 'force'))
     this.done = true
     this.revert = null
     this.typed = null
@@ -673,7 +735,7 @@ export class EditSession {
     m.view.destroy()
     for (const a of Array.from(m.el.attributes)) if (!m.attrs.some(([name]) => name === a.name)) m.el.removeAttribute(a.name)
     for (const [name, value] of m.attrs) m.el.setAttribute(name, value)
-    renderStaticInto(m.el, this.current.doc)
+    renderStaticInto(m.el, settledDoc(this.current, this.baseFont))
   }
 }
 
@@ -706,7 +768,7 @@ interface PasteMarks {
   strike?: boolean
 }
 
-function marksOfElement(el: Element, inherited: PasteMarks): PasteMarks {
+function marksOfElement(el: Element, inherited: PasteMarks, inHeading: boolean): PasteMarks {
   const m = { ...inherited }
   const tag = el.localName
   if (tag === 'b' || tag === 'strong') m.bold = true
@@ -724,7 +786,7 @@ function marksOfElement(el: Element, inherited: PasteMarks): PasteMarks {
     if (deco.includes('underline')) m.underline = true
     if (deco.includes('line-through')) m.strike = true
   }
-  if (HEADINGS.has(tag)) m.bold = true // a heading's text arrives bold, whatever its own weight
+  if (inHeading || HEADINGS.has(tag)) m.bold = true // all of a heading's text arrives bold, whatever weight anything in it declares
   return m
 }
 
@@ -752,7 +814,8 @@ export function sanitizePastedHTML(html: string): string {
     }
     return line
   }
-  const walk = (node: Node, inherited: PasteMarks, pre: boolean) => {
+  /** `para`: inside a block that holds text (not a list, table or the body), where spaces are content. */
+  const walk = (node: Node, inherited: PasteMarks, pre: boolean, para: boolean, heading: boolean) => {
     node.childNodes.forEach((child) => {
       if (child.nodeType === 3) {
         const raw = child.nodeValue ?? ''
@@ -764,7 +827,8 @@ export function sanitizePastedHTML(html: string): string {
           })
           return
         }
-        if (line === null && raw.trim() === '') return // whitespace between blocks
+        // Whitespace between blocks, or layout whitespace running across a source line break, is not text.
+        if (line === null && raw.trim() === '' && (!para || /[\r\n]/.test(raw))) return
         ensureLine().push({ text: raw.replace(/[ \t\f]*[\r\n][\s]*/g, ' '), marks: inherited })
         return
       }
@@ -780,12 +844,13 @@ export function sanitizePastedHTML(html: string): string {
       const block = BLOCKS.has(tag)
       const before = lines.length
       if (block) line = null
-      walk(el, marksOfElement(el, inherited), pre || tag === 'pre')
+      const inHeading = heading || HEADINGS.has(tag)
+      walk(el, marksOfElement(el, inherited, inHeading), pre || tag === 'pre', block ? !CONTAINERS.has(tag) : para, inHeading)
       if (block && !CONTAINERS.has(tag) && lines.length === before) lines.push([]) // an empty paragraph is an empty line
       if (block) line = null
     })
   }
-  walk(inert.body, {}, false)
+  walk(inert.body, {}, false, false, false)
   const out = inert.createElement('div')
   for (const runs of lines) {
     const p = inert.createElement('p')
