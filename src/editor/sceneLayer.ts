@@ -130,15 +130,17 @@ export function baselineShift(font: FontId, px: number, doc: Document = document
 // Fabric wraps a click-created box only between words, and moves a drawn box's word to the next
 // line whole. CSS may break inside a word: after a hyphen, dash or slash, between CJK or Hangul
 // characters, emoji, full-width forms... Rather than a list of scripts and punctuation (which
-// always misses a case), a word counts as breakable when Chromium's narrowest layout of it, with
-// a click-created card's own rules, is narrower than the word: measured once per distinct word.
+// always misses a case), a word counts as breakable when Chromium, laying it out alone with a
+// click-created card's own rules a little narrower than the word itself, wraps it: measured once
+// per distinct word. (Not its min-content width: for "MM" in a monospace mark followed by "-1",
+// Chromium's min-content is the whole word, yet it breaks the word after the hyphen in a line.)
 // Only a word that provably cannot break skips the measurement (`PROVABLY_WHOLE`).
 
 /** Fabric's word joiners (Textbox `_wordJoiners`): the only places a click-created box wraps. */
 const JOINERS = /[ \t\r\n]+/g
 /** A word Unicode line breaking never breaks inside: ASCII letters, digits and apostrophes only. */
 const PROVABLY_WHOLE = /^[A-Za-z0-9'’]+$/
-/** A narrowest layout this much narrower than the word means a break inside it (any piece is at least a grapheme narrower). */
+/** How much narrower than a word it is laid out to see whether it wraps (any piece before a break is at least a grapheme narrower). */
 const BREAK_MARGIN = 0.5
 
 /** True when a word must be measured to know whether CSS could break inside it. */
@@ -418,34 +420,59 @@ function measureLines(rec: CardSource, doc: Document): LineMeasure[] | null {
   const probed = fresh.filter((i) => out[i]!.words.some((t) => unmeasured.has(t) || undecided.has(t)))
   const measured = withProbe(probed.map((i) => lines.blocks[i]!), lines.font, rec.fontSize, doc, (els, range, probe) => {
     const alone: Array<{ t: MeasuredToken; el: HTMLElement }> = []
+    /** The words laid out alone in this batch, by cache key: a repeated word is laid out once. */
+    const queued = new Map<string, { t: MeasuredToken; el: HTMLElement }>()
+    const repeats: Array<{ t: MeasuredToken; of: MeasuredToken }> = []
     els.forEach((el, k) => {
       const index = textIndex(el)
       for (const t of out[probed[k]!]!.words) {
+        const key = wordKeys.get(t)
         if (unmeasured.has(t)) {
-          t.width = textWidth(index, range, t.start, t.end)
-          const key = wordKeys.get(t)
-          if (key !== undefined) remember(key, { width: t.width })
+          // Measured already in this batch (the same word earlier on): its width.
+          const known = key === undefined ? undefined : wordCache.get(key)
+          t.width = known ? known.width : textWidth(index, range, t.start, t.end)
+          if (key !== undefined && !known) remember(key, { width: t.width })
         }
         if (!undecided.has(t)) continue
-        // The word alone, with its marks, in a block of its line's kind (so a heading's size),
-        // laid out as narrow as a click-created card's own rules allow.
+        const first = key === undefined ? undefined : queued.get(key)
+        if (first) {
+          repeats.push({ t, of: first.t })
+          continue
+        }
+        // The word alone, with every mark around it (a font changes how it can break) and in a
+        // block of its line's kind (so a heading's size), laid out with a click-created card's
+        // own rules a little narrower than itself: it wraps exactly when it can break inside.
         const a = index.at(t.start, 1)
         const b = index.at(t.end, -1)
         if (!a || !b) continue
         range.setStart(a.node, a.offset)
         range.setEnd(b.node, b.offset)
+        let content: Node = range.cloneContents()
+        for (let up: Node | null = range.commonAncestorContainer; up && up !== el; up = up.parentNode) {
+          if (up.nodeType !== Node.ELEMENT_NODE) continue
+          const shell = up.cloneNode(false)
+          shell.appendChild(content)
+          content = shell
+        }
         const block = doc.createElement(el.localName)
-        block.style.cssText = 'width:min-content;white-space:pre-wrap;top:0'
-        block.append(range.cloneContents())
-        alone.push({ t, el: block })
+        block.className = 'yp-alone'
+        block.style.cssText = `width:${Math.max(0, t.width - BREAK_MARGIN)}px;white-space:pre-wrap;top:0`
+        block.append(content)
+        const entry = { t, el: block }
+        alone.push(entry)
+        if (key !== undefined) queued.set(key, entry)
       }
     })
     for (const { el } of alone) probe.append(el)
+    const view = doc.defaultView
     for (const { t, el } of alone) {
-      t.breakable = el.getBoundingClientRect().width < t.width - BREAK_MARGIN
+      // Wrapped: taller than one line of its kind.
+      const line = parseFloat(view?.getComputedStyle(el).lineHeight ?? '') || Infinity
+      t.breakable = el.getBoundingClientRect().height > line * 1.5
       const key = wordKeys.get(t)
       if (key !== undefined) remember(key, { width: t.width, breakable: t.breakable })
     }
+    for (const { t, of } of repeats) t.breakable = of.breakable
   })
   for (const i of fresh) {
     const m = out[i]!
@@ -507,10 +534,15 @@ export function minCardWidth(rec: CardSource, doc: Document = document): number 
 /**
  * The width a card is drawn at: its stored width, or more when a word (a grapheme, on a drawn
  * box) is wider. Fabric widens such a box the same way when it builds it (Textbox
- * `initDimensions`), keeping its left edge: so does the layer. The record is never changed.
+ * `initDimensions`), keeping its left edge: so does the layer. A click-created box is first laid
+ * out in plain sans at its base size, before its formatting (objects.ts `createObject`), and a
+ * text box never narrows: so its widest word in plain sans counts too (a word in a narrower font
+ * mark keeps the plain word's width). The record is never changed.
  */
 export function effectiveCardWidth(rec: CardSource, doc: Document = document): number {
-  return Math.max(rec.width, minCardWidth(rec, doc))
+  const width = Math.max(rec.width, minCardWidth(rec, doc))
+  if (isDrawn(rec)) return width
+  return Math.max(width, minCardWidth({ text: rec.text, fontSize: rec.fontSize, width: rec.width }, doc))
 }
 
 // ---- graphemes as Fabric measures them ----------------------------------------------------------

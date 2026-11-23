@@ -1488,3 +1488,67 @@ test('measuring which words can break costs little on 1,500-word English, Korean
     expect(r.edit).toBeLessThan(30)
   }
 })
+
+test('a word inside a font mark wraps as that font allows: wholly marked, partly marked, both box kinds', async ({ page }) => {
+  test.setTimeout(120_000)
+  await openHarness(page)
+  // A box just wider than the URL in the display font: it fits alone, not after "Go ".
+  const url = 'www.com/x-y'
+  const urlWidth = await page.evaluate(async (url) => {
+    const { minCardWidth } = (await import(/* @vite-ignore */ ['/src/editor', 'sceneLayer.ts'].join('/'))) as typeof import('../src/editor/sceneLayer.ts')
+    return minCardWidth({ text: url, fontSize: 20, width: 1, font: 'display' })
+  }, url)
+  const base = { type: 'text', left: 0, top: 0, angle: 0, fontSize: 20 }
+  const recs: Array<Record<string, unknown>> = []
+  for (const drawn of [false, true]) {
+    const kind = drawn ? { minHeight: 0 } : {}
+    const name = drawn ? ' drawn' : ''
+    recs.push(
+      { ...base, ...kind, id: `mono mark${name}`, width: 60, text: 'Hi MM-1 ok', spans: [{ start: 3, end: 7, font: 'mono' }] },
+      { ...base, ...kind, id: `display mark${name}`, width: Math.ceil(urlWidth) + 1, text: `Go ${url} ok`, spans: [{ start: 3, end: 3 + url.length, font: 'display' }] },
+      { ...base, ...kind, id: `partly marked${name}`, width: 60, text: 'Hi MM-1 ok', spans: [{ start: 3, end: 5, font: 'mono' }] },
+      { ...base, ...kind, id: `marked bold${name}`, width: 60, text: 'Hi MM-1 ok', spans: [{ start: 3, end: 7, font: 'mono', bold: true }] },
+      // A mark in a font wider than the box's: laid out in the box font the word would fit unwrapped.
+      { ...base, ...kind, id: `mono mark in a display box${name}`, width: 60, font: 'display', text: 'Hi MM-1 ok', spans: [{ start: 3, end: 7, font: 'mono' }] },
+    )
+  }
+  const cases = await compareTypography(page, recs)
+  const rs = residuals(cases)
+  report(rs, cases)
+  expectMatch(rs)
+})
+
+test('a word repeated on a cold card is laid out alone once, not once per occurrence', async ({ page }) => {
+  await openHarness(page)
+  const out = await page.evaluate(async () => {
+    const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
+    const { SceneLayer, resetTypography, noWrapRanges } = (await load('/src/editor/sceneLayer.ts')) as typeof import('../src/editor/sceneLayer.ts')
+    const host = document.createElement('div')
+    host.style.cssText = 'position:fixed;left:0;top:0;width:1000px;height:600px'
+    document.body.append(host)
+    const layer = new SceneLayer({ getImage: () => undefined })
+    layer.mount(host)
+    resetTypography()
+    // Count how often a word laid out alone (to see whether it wraps) is read.
+    const read = Element.prototype.getBoundingClientRect
+    let narrowReads = 0
+    Element.prototype.getBoundingClientRect = function (this: Element) {
+      if (this.classList?.contains('yp-alone')) narrowReads++
+      return read.call(this)
+    }
+    const text = Array.from({ length: 15 }, () => Array.from({ length: 100 }, () => 'K-pop').join(' ')).join('\n')
+    const rec = { type: 'text' as const, id: 't', left: 0, top: 0, angle: 0, width: 400, fontSize: 16, text }
+    try {
+      layer.setRecords({ frames: [], objects: [rec] })
+    } finally {
+      Element.prototype.getBoundingClientRect = read
+    }
+    const spans = noWrapRanges(rec).reduce((n, line) => n + line.length, 0)
+    return { narrowReads, spans, rendered: layer.bodyOf('t')!.querySelectorAll('.yp-nowrap').length }
+  })
+  console.log(JSON.stringify(out))
+  expect(out.narrowReads).toBe(1)
+  // Every occurrence still gets the answer.
+  expect(out.spans).toBe(1500)
+  expect(out.rendered).toBe(1500)
+})
