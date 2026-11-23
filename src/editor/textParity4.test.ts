@@ -6,6 +6,7 @@ import type { EditSession } from './textSession.ts'
 
 /**
  * Parity with today's canvas, fourth review round: IME composition as a first-class input
+ * (marks of composed text over a selection follow rule R5 since the sixth round)
  * (numbers as in the review). Real compositions on a mounted view are checked in Chromium
  * against Fabric fed the same updates (`e2e/text-engine-parity.spec.ts`).
  */
@@ -58,14 +59,14 @@ describe('the editing keys act only on real key presses, never during a composit
 
 // ---- 2: each update of a composition as its own input -------------------------------------------------------
 
-describe('a composition is styled as the canvas styles each of its updates', () => {
-  it('`bcD` (`b` bold, `D` underlined), `c` selected, compose `k` → `ka`: `kaD` underlined, as the canvas stores it', () => {
+describe('composed text over a selection takes the marks of the first selected character (rule R5)', () => {
+  it('`bcD` (`b` bold, `D` underlined), the plain `c` selected, compose `k` → `ka`: `ka` plain (the canvas underlines it; an approved difference)', () => {
     const s = open({ text: 'bcD', spans: [{ start: 0, end: 1, bold: true }, { start: 2, end: 3, underline: true }] })
     s.select(1, 2)
     s.compositionStart()
     insert(s, 'k', true)
     insert(s, 'a', true)
-    const expected = { text: 'bkaD', spans: [{ start: 0, end: 1, bold: true }, { start: 1, end: 4, underline: true }] }
+    const expected = { text: 'bkaD', spans: [{ start: 0, end: 1, bold: true }, { start: 3, end: 4, underline: true }] }
     expect(s.content()).toStrictEqual(expected) // already the final form mid-composition
     s.compositionEnd()
     expect(s.content()).toStrictEqual(expected)
@@ -79,7 +80,7 @@ describe('a composition is styled as the canvas styles each of its updates', () 
     insert(s, 'k', true)
     insert(s, 'a', true)
     s.finish()
-    expect(s.content()).toStrictEqual({ text: 'bkaD', spans: [{ start: 0, end: 1, bold: true }, { start: 1, end: 4, underline: true }] })
+    expect(s.content()).toStrictEqual({ text: 'bkaD', spans: [{ start: 0, end: 1, bold: true }, { start: 3, end: 4, underline: true }] })
     showsRecord(s)
   })
 

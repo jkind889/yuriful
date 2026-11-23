@@ -4,7 +4,7 @@ import { headingsAfterEdit, matchTypingShortcut } from '../model/richText.ts'
 import { isBlankTextDoc } from '../model/textDoc.ts'
 import type { EditSession } from './textSession.ts'
 import { docFromText, posAtTextOffset, textSchema } from './textSchema.ts'
-import { boxFormat, canonicalGuard, lastBoxLine, matchShortcut, pendingKey, pendingMarks, setBoxLevel, toggleBoxMark } from './textRules.ts'
+import { boxFormat, canonicalGuard, lastBoxLine, matchShortcut, pendingKey, pendingMarks, setBoxLevel, toggleBoxMark, typedMarks } from './textRules.ts'
 import { insert, keyEvent, open, press, type } from './testing/textHarness.ts'
 
 /** A selection at raw UTF-16 offsets, even inside a character (only ProseMirror itself could make one). */
@@ -321,20 +321,20 @@ describe('a heading line is always bold, so bold is never stored or pending on o
     s.setHeading(0)
     expect(s.content()).toStrictEqual({ text: 'ab cd', spans: [{ start: 3, end: 5, italic: true }] })
 
-    // Bold stored marks never stand on a heading line; italic ones do.
+    // What a typed character would get never carries bold on a heading line; italic it does.
     const p = open({ text: 'x' })
     p.toggleMark('italic')
     p.toggleMark('bold')
     expect(p.pending).toStrictEqual({ italic: true, bold: true })
-    expect(p.state.storedMarks?.map((m) => m.type.name).sort()).toEqual(['bold', 'italic'])
+    expect(typedMarks(p.state, 'sans')?.map((m) => m.type.name).sort()).toEqual(['bold', 'italic'])
     p.setHeading(2)
     expect(p.pending).toStrictEqual({ italic: true })
-    expect(p.state.storedMarks?.map((m) => m.type.name)).toEqual(['italic'])
+    expect(typedMarks(p.state, 'sans')?.map((m) => m.type.name)).toEqual(['italic'])
     type(p, 'y')
     expect(p.content()).toStrictEqual({ text: 'xy', spans: [{ start: 1, end: 2, italic: true }], headings: [2] })
 
-    // The guard itself, on any transaction: bold put into a heading by hand is stripped, and
-    // bold stored marks set by hand on a heading line are dropped.
+    // The guards themselves, on any transaction: bold put into a heading by hand is stripped,
+    // and a pending bold set by hand on a heading line is dropped.
     const read = docFromText({ text: 'Title\nbody', headings: [1] })!
     let state = EditorState.create({ doc: read.doc, plugins: [canonicalGuard({ baseFont: () => 'sans' }), pendingMarks({ baseFont: () => 'sans' })] })
     state = state.apply(state.tr.addMark(1, 6, textSchema.marks.bold!.create()))
@@ -343,7 +343,7 @@ describe('a heading line is always bold, so bold is never stored or pending on o
     expect(state.doc.child(1).firstChild!.marks.map((m) => m.type.name)).toEqual(['bold']) // a normal line keeps it
     state = state.apply(state.tr.setSelection(TextSelection.create(state.doc, 3)))
     state = state.apply(state.tr.setMeta(pendingKey, { bold: true, italic: true }))
-    expect(state.storedMarks?.map((m) => m.type.name)).toEqual(['italic'])
+    expect(typedMarks(state, 'sans')?.map((m) => m.type.name)).toEqual(['italic'])
     expect(pendingKey.getState(state)).toStrictEqual({ italic: true })
   })
 
@@ -707,9 +707,11 @@ describe('marks with only a caret (pending)', () => {
   it('last through typing, Enter, Backspace and an IME composition; dropped when the caret moves', () => {
     const s = open({ text: 'ab' })
     s.toggleMark('underline')
+    s.compositionStart()
     insert(s, 'k', true) // composition steps change the text without moving the caret otherwise
-    press(s, 'Backspace')
+    s.dispatch(s.state.tr.delete(s.state.selection.from - 1, s.state.selection.from))
     insert(s, 'カ', true)
+    s.compositionEnd()
     expect(s.content().spans).toEqual([{ start: 2, end: 3, underline: true }])
     press(s, 'Enter')
     type(s, 'z')

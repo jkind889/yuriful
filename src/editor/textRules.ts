@@ -266,13 +266,14 @@ function applyLevels(tr: Transaction, levelAt: (index: number) => number | undef
  * Delete, a paste, a drop, a cut, typing over a selection, an IME composition), every line
  * gets the level `levelsAfterEdit` gives, whatever block types ProseMirror's own commands
  * chose. A change that leaves the text as it was keeps every level. Undo and redo restore
- * exact earlier states and are left alone.
+ * exact earlier states and are left alone. While `busy` (an IME composition is open, or its
+ * follow-up is still owed) nothing is done: the session's follow-up sets the levels.
  */
-export function lineLevels(): Plugin {
+export function lineLevels(opts: { busy?: () => boolean } = {}): Plugin {
   return new Plugin({
     key: new PluginKey('yuriful-line-levels'),
     appendTransaction(trs, oldState, newState) {
-      if (!trs.some((t) => t.docChanged)) return null
+      if (opts.busy?.() || !trs.some((t) => t.docChanged)) return null
       if (trs.some((t) => t.getMeta(META.levelsSet) === true || isHistoryTransaction(t))) return null
       const levels = levelsAfterEdit(oldState.doc, newState.doc, textOffsetAt(newState.doc, newState.selection.to, 1))
       const tr = newState.tr
@@ -354,18 +355,6 @@ function canonicalizeBlock(tr: Transaction, block: PMNode, contentStart: number,
   return imposeRuns(tr, block, contentStart, runs)
 }
 
-interface GuardState {
-  /** Text inserted during an IME composition, made canonical once the composition has ended. */
-  owed: Array<{ from: number; to: number }>
-}
-const guardKey = new PluginKey<GuardState>('yuriful-canonical')
-/**
- * Metadata on an otherwise empty transaction that makes text owed since a composition
- * canonical. `'force'` does it even while a composition is still in progress (the session is
- * ending under it).
- */
-export const SETTLE = 'yuriful/settle'
-
 /** Makes the blocks a range touches canonical, with `inserted` the text just inserted. True when anything changed. */
 function canonicalizeRange(tr: Transaction, doc: PMNode, range: { from: number; to: number }, inserted: ReadonlyArray<{ from: number; to: number }>, baseFont: FontId): boolean {
   let changed = false
@@ -376,59 +365,28 @@ function canonicalizeRange(tr: Transaction, doc: PMNode, range: { from: number; 
   return changed
 }
 
-/**
- * The document as it will be once text owed since an IME composition is made canonical (the
- * document itself when nothing is owed). What a save reads in the middle of a composition is
- * already this final form.
- */
-export function settledDoc(state: EditorState, baseFont: FontId): PMNode {
-  const owed = guardKey.getState(state)?.owed ?? []
-  if (owed.length === 0) return state.doc
-  const tr = state.tr
-  for (const r of owed) canonicalizeRange(tr, tr.doc, r, owed, baseFont)
-  return tr.doc
-}
-
-/** True when a composition left text that is not canonical yet. */
-export function owesCanonical(state: EditorState): boolean {
-  return (guardKey.getState(state)?.owed.length ?? 0) > 0
+/** Makes the blocks of `tr.doc` that `range` touches (default: all) canonical (`canonicalizeBlock`), with `inserted` the text just inserted. True when anything changed. */
+export function canonicalizeDoc(tr: Transaction, baseFont: FontId, inserted: ReadonlyArray<{ from: number; to: number }>, range: { from: number; to: number } = { from: 0, to: tr.doc.content.size }): boolean {
+  return canonicalizeRange(tr, tr.doc, range, inserted, baseFont)
 }
 
 /**
  * Keeps what is shown in canonical form after every change (plan Section 7's heading-bold
  * guard, plus the rest of the canonical run form of Section 5): the blocks a change touched
  * are made canonical (`canonicalizeBlock`), and stored marks never carry bold while the caret
- * is on a heading line. While an IME composition is in progress nothing is rewritten under
- * it; what it inserted is remembered and made canonical by the first transaction after it
- * has ended (the session sends one, `SETTLE`), so the live document always equals the record
- * once the composition is over.
+ * is on a heading line. While `busy` (an IME composition is open, or its follow-up is still
+ * owed) nothing is rewritten: the browser and ProseMirror own the text, and the session's
+ * follow-up makes it canonical once the composition is over.
  */
-export function canonicalGuard(opts: { baseFont: () => FontId; composing?: () => boolean }): Plugin<GuardState> {
-  return new Plugin<GuardState>({
-    key: guardKey,
-    state: {
-      init: () => ({ owed: [] }),
-      apply(tr, value) {
-        if (tr.getMeta(guardKey) === 'clear') return { owed: [] }
-        let owed = value.owed
-        if (tr.docChanged) owed = owed.map((r) => ({ from: tr.mapping.map(r.from, 1), to: tr.mapping.map(r.to, -1) })).filter((r) => r.to > r.from)
-        if (tr.docChanged && opts.composing?.()) owed = [...owed, ...insertedRanges([tr])]
-        return owed === value.owed ? value : { owed }
-      },
-    },
+export function canonicalGuard(opts: { baseFont: () => FontId; busy?: () => boolean }): Plugin {
+  return new Plugin({
+    key: new PluginKey('yuriful-canonical'),
     appendTransaction(trs, _oldState, state) {
-      if (opts.composing?.() && !trs.some((t) => t.getMeta(SETTLE) === 'force')) return null
+      if (opts.busy?.()) return null
       const tr = state.tr
       let changed = false
-      const owed = guardKey.getState(state)?.owed ?? []
-      const inserted = [...insertedRanges(trs), ...owed]
-      let range = trs.some((t) => t.docChanged) ? changedRange(trs, true) : null
-      for (const r of owed) range = range ? { from: Math.min(range.from, r.from), to: Math.max(range.to, r.to) } : { ...r }
-      if (range && canonicalizeRange(tr, state.doc, range, inserted, opts.baseFont())) changed = true
-      if (owed.length > 0) {
-        tr.setMeta(guardKey, 'clear')
-        changed = true
-      }
+      const range = trs.some((t) => t.docChanged) ? changedRange(trs, true) : null
+      if (range && canonicalizeRange(tr, state.doc, range, insertedRanges(trs), opts.baseFont())) changed = true
       const sel = state.selection
       const $c = sel instanceof TextSelection ? sel.$cursor : null
       if (!tr.docChanged && $c && $c.parent.type === nodes.heading && state.storedMarks && marks.bold.isInSet(state.storedMarks)) {
@@ -461,17 +419,19 @@ function characterEdge(doc: PMNode, pos: number, dir: -1 | 1): number {
  * all the text, as the canvas's select-all is; a caret inside a character (as a redo can
  * restore it, inside a skin-toned emoji or an accented letter) moves to the end of the
  * character, where the edit that made it left the caret; a range grows to whole characters.
- * Never during an IME composition. The pending choices are kept.
+ * Nothing while `busy` (an IME composition is open, or its follow-up is still owed): the
+ * follow-up's own transaction is snapped. The pending choices are kept.
  */
-export function selectionOnCharacters(opts: { composing?: () => boolean } = {}): Plugin {
+export function selectionOnCharacters(opts: { busy?: () => boolean } = {}): Plugin {
   return new Plugin({
     key: new PluginKey('yuriful-selection-on-characters'),
     appendTransaction(_trs, _old, state) {
+      if (opts.busy?.()) return null
       const sel = state.selection
       const doc = state.doc
       let next: TextSelection | null = null
       if (sel instanceof AllSelection) next = TextSelection.create(doc, 1, doc.content.size - 1)
-      else if (sel instanceof TextSelection && !opts.composing?.()) {
+      else if (sel instanceof TextSelection) {
         if (sel.empty) {
           const at = characterEdge(doc, sel.head, 1)
           if (at !== sel.head) next = TextSelection.create(doc, at)
@@ -529,8 +489,6 @@ export function applyPending(natural: readonly PMMark[], p: Pending | null, base
   return set
 }
 
-const sameMarks = (a: readonly PMMark[] | null, b: readonly PMMark[] | null) => (a === null || b === null ? a === b : PMMark.sameSet(a, b))
-
 /**
  * Marks and a font chosen with only a caret, as today: kept through typing, deleting, Enter,
  * a paste and every step of an IME composition (any change of the text), dropped when the
@@ -541,11 +499,12 @@ const sameMarks = (a: readonly PMMark[] | null, b: readonly PMMark[] | null) => 
  * line is or becomes a heading, judged on the final state of a change (after its lines have
  * their levels); every other choice stays. Set with `pendingKey` metadata.
  *
- * ProseMirror's stored marks are kept equal to what a typed character would get (the
- * neighbouring marks with the pending choices applied), so typing uses them; they are null
- * when that is just the neighbouring marks.
+ * The choices are not mirrored into ProseMirror's stored marks: stored marks at the start of
+ * an IME composition make ProseMirror wrap the caret in mark elements, which a fast IME can
+ * break. A typed character gets them from the session (`typedMarks`), a paste from its own
+ * rules, a composition's text from its follow-up.
  */
-export function pendingMarks(opts: { baseFont: () => FontId; afterHistory?: (redo: boolean, depth: number) => Pending | null }): Plugin<Pending | null> {
+export function pendingMarks(opts: { baseFont: () => FontId; afterHistory?: (redo: boolean, depth: number) => Pending | null; busy?: () => boolean }): Plugin<Pending | null> {
   return new Plugin<Pending | null>({
     key: pendingKey,
     state: {
@@ -559,32 +518,35 @@ export function pendingMarks(opts: { baseFont: () => FontId; afterHistory?: (red
           const depth = undoDepth(newState) as number
           next = normalPending(opts.afterHistory?.(depth > (undoDepth(oldState) as number), depth))
         }
+        else if (opts.busy?.()) return next // kept through an IME composition, whatever it does to the selection
         else if (tr.selectionSet && !tr.docChanged) next = null
         if (next && !caretOf(newState)) next = null // a choice belongs to a caret
         return next
       },
     },
     appendTransaction(_trs, _old, state) {
-      let pending = pendingOf(state)
-      let tr: Transaction | null = null
-      if (pending && pending.bold !== undefined && caretOnHeading(state)) {
-        const { bold: _dropped, ...rest } = pending
-        void _dropped
-        pending = normalPending(rest)
-        tr = state.tr.setMeta(pendingKey, pending)
-      }
-      const $c = caretOf(state)
-      let want: readonly PMMark[] | null = null
-      if ($c) {
-        const natural = $c.marks()
-        let set = applyPending(natural, pending, opts.baseFont())
-        if ($c.parent.type === nodes.heading) set = marks.bold.removeFromSet(set)
-        want = PMMark.sameSet(set, natural) ? null : set
-      }
-      if (!sameMarks(state.storedMarks, want)) tr = (tr ?? state.tr).setStoredMarks(want)
-      return tr
+      if (opts.busy?.()) return null
+      const pending = pendingOf(state)
+      if (!pending || pending.bold === undefined || !caretOnHeading(state)) return null
+      const { bold: _dropped, ...rest } = pending
+      void _dropped
+      return state.tr.setMeta(pendingKey, normalPending(rest))
     },
   })
+}
+
+/**
+ * The marks a character typed at the caret gets when they are not just the neighbouring marks
+ * (pending choices made with only a caret; never bold on a heading line); null otherwise.
+ */
+export function typedMarks(state: EditorState, baseFont: FontId): readonly PMMark[] | null {
+  const $c = caretOf(state)
+  const pending = pendingOf(state)
+  if (!$c || !pending) return null
+  const natural = $c.marks()
+  let set = applyPending(natural, pending, baseFont)
+  if ($c.parent.type === nodes.heading) set = marks.bold.removeFromSet(set)
+  return PMMark.sameSet(set, natural) ? null : set
 }
 
 // ---- what the formatting controls show, and the formatting commands --------------------------------
@@ -780,6 +742,13 @@ export function setRangeFont(tr: Transaction, from: number, to: number, font: Fo
     if (font !== baseFont) tr.addMark(s.from, s.to, marks.font.create({ font }))
     changed = true
   }
+  return changed
+}
+
+/** Sets the level of every line to `levels` (0 or absent: body text), where it differs, as one change that sets levels itself. True when anything changed. */
+export function setLevels(tr: Transaction, levels: readonly number[] | undefined): boolean {
+  const changed = applyLevels(tr, (i) => levels?.[i] ?? 0)
+  if (changed) tr.setMeta(META.levelsSet, true)
   return changed
 }
 
