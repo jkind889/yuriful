@@ -60,6 +60,13 @@ export class FakeObject {
     const { left, top, right, bottom } = this.box()
     return { left, top, width: right - left, height: bottom - top }
   }
+  getObjectScaling() {
+    return new Point(this.scaleX, this.scaleY)
+  }
+  setXY(point: Point) {
+    this.left = point.x
+    this.top = point.y
+  }
   containsPoint(p: { x: number; y: number }) {
     const b = this.box()
     return p.x >= b.left && p.x <= b.right && p.y >= b.top && p.y <= b.bottom
@@ -103,6 +110,7 @@ export class FakeObject {
 
 export class Textbox extends FakeObject {
   text: string
+  dynamicMinWidth = 0
   fontSize = 24
   /** Like Fabric: a text that is not editable never enters editing. */
   editable = true

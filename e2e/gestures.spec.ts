@@ -238,8 +238,10 @@ test.describe('pointer buttons', () => {
       await waitSaved(page)
       await expect.poll(async () => byId((await storedDoc(page)).objects, 'img').left).toBe(480)
       const after = await storedDoc(page)
-      expect(byId(after.objects, 'img')).toMatchObject({ left: 480, top: 260 }) // followed the pointer to the very end
-      expect(after.viewport).toEqual(VIEW) // and the middle button did not pan
+      // Visiting the header may edge-pan vertically. The second button must never pan.
+      expect(after.viewport).toMatchObject({ zoom: 1, panX: 0 })
+      expect(after.viewport.panY).toBeGreaterThanOrEqual(0)
+      expect(byId(after.objects, 'img').top).toBeCloseTo(260 - after.viewport.panY, 2)
 
       // After the primary release the pointer moves nothing.
       const settled = await snapshotIdb(page)

@@ -51,6 +51,14 @@ describe('records round-trip through canvas objects', () => {
     expect(ownerOf(make(text()))).toBeUndefined()
   })
 
+  it('round-trips the caption attachment, position and background through the textbox', () => {
+    const caption = text({ captionOf: 'image', captionSide: 'right', captionPosition: 0, captionBackground: '#face80' })
+    const object = make(caption)
+    expect(object.backgroundColor).toBe('#face80')
+    expect(toRecord(object)).toEqual(caption)
+    expect(toRecord(make(text({ captionOf: 'image' })))).not.toHaveProperty('captionBackground')
+  })
+
   it('frames keep their id, name and rectangle, and are told apart from content', () => {
     const obj = createFrame(frame)
     expect(toFrameRecord(obj)).toEqual(frame)

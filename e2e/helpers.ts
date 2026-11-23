@@ -300,6 +300,8 @@ export interface StoredObject {
   top: number
   angle: number
   frameId?: string
+  locked?: true
+  assetId?: string
   scaleX?: number
   scaleY?: number
   fontSize?: number
@@ -312,6 +314,10 @@ export interface StoredObject {
   color?: string
   spans?: Array<{ start: number; end: number; bold?: true; italic?: true; underline?: true; strike?: true; font?: string }>
   headings?: number[]
+  captionOf?: string
+  captionSide?: 'top' | 'left' | 'right'
+  captionPosition?: number
+  captionBackground?: string
 }
 export interface StoredFrame {
   id: string
@@ -320,6 +326,7 @@ export interface StoredFrame {
   top: number
   width: number
   height: number
+  locked?: true
 }
 export interface StoredBoard {
   version: number
@@ -327,6 +334,43 @@ export interface StoredBoard {
   frames?: StoredFrame[]
   objects: StoredObject[]
   viewport: { zoom: number; panX: number; panY: number }
+}
+
+/** The same synthetic album spread for the interactive canvas milestones. */
+export function albumSpread(): { doc: StoredBoard; assets: SeedAsset[] } {
+  const frame = { id: 'sleeve', name: 'Sleeve, side A', left: 140, top: 90, width: 610, height: 465 }
+  const image = (id: string, left: number, top: number, patch: Partial<StoredObject> = {}): StoredObject =>
+    ({ type: 'image', id, assetId: id, left, top, angle: 0, scaleX: 1, scaleY: 1, frameId: frame.id, ...patch })
+  const text = (id: string, left: number, top: number, value: string, patch: Partial<StoredObject> = {}): StoredObject =>
+    ({ type: 'text', id, left, top, angle: 0, text: value, fontSize: 24, width: 150, minHeight: 0, frameId: frame.id, ...patch })
+  const loose = image('loose', 620, 450)
+  delete loose.frameId
+  return {
+    doc: {
+      version: 2, title: 'Album spread', frames: [frame], viewport: { zoom: 1, panX: 0, panY: 0 },
+      objects: [
+        image('front', 210, 150),
+        text('caption', 210, 280, 'Front sleeve', { captionOf: 'front' }),
+        image('back', 520, 154, { angle: 90 }),
+        image('detail', 575, 175, { crop: { x: 25, y: 10, width: 90, height: 70 } }),
+        image('stack-bottom', 335, 355),
+        image('stack-top', 385, 385),
+        text('notes', 535, 350, 'Design notes\nUse uncoated stock', { width: 200, headings: [2] }),
+        image('locked-image', 205, 405, { locked: true }),
+        text('locked-text', 350, 485, 'Master proof', { locked: true }),
+        loose,
+      ],
+    },
+    assets: [
+      { id: 'front', name: 'Front cover.png', width: 150, height: 120, pattern: 'quadrants' },
+      { id: 'back', name: 'Back cover.png', width: 120, height: 100, seed: 1 },
+      { id: 'detail', name: 'Printing detail.png', width: 160, height: 100, seed: 2 },
+      { id: 'stack-bottom', name: 'Printed insert.png', width: 110, height: 80, seed: 3 },
+      { id: 'stack-top', name: 'Paper sample.png', width: 100, height: 70, seed: 4 },
+      { id: 'locked-image', name: 'Archive scan.png', width: 98, height: 91, seed: 5 },
+      { id: 'loose', name: 'Loose reference.png', width: 80, height: 75, seed: 6 },
+    ],
+  }
 }
 
 /** The stored document, parsed. */

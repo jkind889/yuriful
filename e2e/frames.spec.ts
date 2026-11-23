@@ -616,9 +616,12 @@ test.describe('moving and resizing frames', () => {
       await page.mouse.move(start.x + 160, start.y + 60, { steps: 4 })
       await page.mouse.up()
       const doc = await storedWhen(page, (d) => frameOf(d, 'A').left === 460)
-      expect(frameOf(doc, 'A')).toMatchObject({ left: 460, top: 260 }) // followed the pointer to the end
-      expect(obj(doc, 'member')).toMatchObject({ left: 510, top: 310, frameId: 'A' })
-      expect(doc.viewport).toEqual(UNIT) // the middle button did not pan
+      // Only the run outside the canvas can edge-pan. The second button must never pan.
+      expect(doc.viewport).toMatchObject({ zoom: 1, panX: 0 })
+      expect(doc.viewport.panY).toBeGreaterThanOrEqual(0)
+      expect(frameOf(doc, 'A').top).toBeCloseTo(260 - doc.viewport.panY, 2)
+      expect(obj(doc, 'member')).toMatchObject({ left: 510, frameId: 'A' })
+      expect(obj(doc, 'member').top).toBeCloseTo(310 - doc.viewport.panY, 2)
 
       await waitSaved(page)
       const settled = await snapshotIdb(page)

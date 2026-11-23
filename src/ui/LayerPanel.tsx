@@ -79,8 +79,9 @@ export const LayerPanel = memo(function LayerPanel({
     if (!press.current) return
     suppressClick.current = cancelled || press.current.dragging
     press.current = null
+    editor.setLayerPressActive(false)
     setPreview(null)
-  }, [])
+  }, [editor])
 
   useEffect(() => {
     function dropAt(sourceId: string, { x, y }: Point): Drop | null {
@@ -162,6 +163,7 @@ export const LayerPanel = memo(function LayerPanel({
     return () => {
       unsubscribe()
       events.abort()
+      editor.setLayerPressActive(false)
     }
   }, [editor, endPress])
 
@@ -227,6 +229,7 @@ export const LayerPanel = memo(function LayerPanel({
                   suppressClick.current = false
                   const point = { x: e.clientX, y: e.clientY }
                   press.current = item.locked ? null : { sourceId: item.id, start: point, last: point, dragging: false, drop: null }
+                  editor.setLayerPressActive(press.current !== null)
                 }
                 // A mouse press must not move focus here: Space (hold to pan) and the letter
                 // shortcuts would then act on the list instead of the board.

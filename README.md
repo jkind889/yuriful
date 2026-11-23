@@ -37,6 +37,18 @@ npm run dev        # http://localhost:5173
 
 Out of scope for now: published projects, guest viewing, mobile and touch, auth, any backend, frames inside frames, clipping content to a frame, rotating a frame.
 
+## Image captions
+
+Select an image and choose **Add caption** or press Enter. To attach existing text, select it with the image and choose **Make caption**. A new caption starts below the image.
+
+Caption snapping is on by default. Drag upright text close to any of the four displayed image edges. The outline shows where it will land. Slide along that edge to choose the position, then release to attach. Hold Ctrl or Cmd on release to skip snapping. Choose **Detach caption** to keep the text in place as an independent item.
+
+To turn snapping off or back on, open **Canvas options** and change **Snap captions to images**. The setting is saved for this browser profile and site address. Earlier builds made snapping opt-in and could save it as off when you changed **Interaction feedback**. A saved off setting stays off until you turn it on.
+
+The caption follows the image, including when the image changes frame. After a snap, its center keeps the same relative position along the chosen edge when the image is resized. Select the image or caption and turn on **Caption background** to add a colored box. Attachment, position and background are saved with the board and can be undone.
+
+**Interaction feedback** in **Canvas options** shows which frames may gain or lose items on release. When it is enabled, drag toward the canvas edge to pan while holding the item.
+
 ## Frames
 
 A frame is a white sheet with an outline and a name label. It sits behind all content and clips nothing.
@@ -57,6 +69,12 @@ Belonging is decided by what *you moved*, and it is stored; it is never guessed 
 - Deleting a frame keeps its contents on the board.
 
 The panel shows how many items a frame owns. **Select with contents** selects a frame plus everything it owns that is not locked, so that you can move them, or scale them together from a corner handle.
+
+### Find and tour frames
+
+Open **Jump to…** or press `J` to search by frame name. Use the arrow keys and Enter or choose a result. **Board map** shows where the frames sit and which part of the board you are viewing. Choose a frame there to jump to it. **Return to start** restores the view you had before the first jump in the sequence. A manual pan or zoom ends the sequence.
+
+Open **Frame tour** for a detached view of the selected frames, or the frames on screen if you have no frame selected. Use **Previous frame**, **Next frame**, or the left and right arrows. Press Esc to return to the canvas. The tour leaves the board view and selection as they were.
 
 ### Transforming several things at once
 

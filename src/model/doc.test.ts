@@ -22,6 +22,20 @@ const framed = (): BoardDoc => ({ ...good(), frames: [frame, { ...frame, id: 'f2
 const wireV1 = () => ({ version: 1, title: 'Mine', objects: [image, text], viewport: { zoom: 2, panX: 10, panY: -4 } })
 const wire = (doc: BoardDoc) => JSON.parse(JSON.stringify(serializeDoc(doc))) as Record<string, unknown>
 
+it('keeps legacy captions at their saved coordinates and validates optional placement and background independently', () => {
+  const legacy = { ...text, captionOf: image.id, captionSide: 'left' as const }
+  const modern = { ...legacy, captionPosition: 0, captionBackground: '#d9b1c4' }
+  const parseCaption = (caption: unknown) => parseDoc({ ...wire(good()), objects: [image, caption] })?.objects[1]
+  expect(parseCaption(legacy)).toEqual(legacy)
+  expect(parseCaption({ ...modern, captionBackground: '#D9B1C4' })).toEqual(modern)
+  expect(parseDoc(wire({ ...good(), objects: [image, modern] }))?.objects[1]).toEqual(modern)
+  expect(parseCaption({ ...modern, captionPosition: 2, captionBackground: 'transparent' })).toEqual(legacy)
+  const detached = { ...text, captionBackground: modern.captionBackground }
+  expect(parseCaption({ ...modern, captionOf: 'missing' })).toEqual(detached)
+  expect(parseCaption(detached)).toEqual(detached)
+  expect(parseDoc(wire({ ...good(), objects: [image, detached] }))?.objects[1]).toEqual(detached)
+})
+
 describe('parseDoc: wire version 1 (milestone 1 boards)', () => {
   it('parses a milestone 1 document to the same objects with no frames', () => {
     expect(parseDoc(wireV1())).toEqual(good())

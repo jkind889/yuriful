@@ -1,7 +1,10 @@
-import { ActiveSelection, Textbox } from 'fabric'
+import { ActiveSelection, Point as FabricPoint, Textbox } from 'fabric'
 import type { FabricImage, FabricObject, Transform } from 'fabric'
 import { boardAppearance, boardStyle, DEFAULT_BOARD_STYLE, normalizePresetName, sameBoardStyle } from '../model/appearance.ts'
 import type { BoardAppearance, BoardStyle } from '../model/appearance.ts'
+import { captionImageBounds, captionPlacement, followsDrag } from '../model/captions.ts'
+import { captionWillDetach } from '../model/feedback.ts'
+import { storedSnapSide } from '../model/captionSnap.ts'
 import {
   DEFAULT_VIEWPORT,
   MAX_FONT_SIZE,
@@ -13,6 +16,8 @@ import {
   round,
   roundPositive,
   sceneEqual,
+  captionBackground,
+  valuesEqual,
 } from '../model/doc.ts'
 import {
   DEFAULT_FRAME_SCREEN,
@@ -25,6 +30,9 @@ import {
   rectFromDrag,
 } from '../model/frames.ts'
 import type { Box } from '../model/frames.ts'
+import { collectFrameDestinations } from '../model/frameDestinations.ts'
+import type { FrameDestination } from '../model/frameDestinations.ts'
+import { frameTourPath } from '../model/frameTour.ts'
 import {
   croppedPlacement,
   dragCropRect,
@@ -64,25 +72,36 @@ import { canReorderLayered, reorderLayered } from '../model/layers.ts'
 import type { LayerDropSide, LayerOp } from '../model/layers.ts'
 import { DEFAULT_TITLE, DOC_VERSION } from '../model/types.ts'
 import type { BoardDoc, FontId, FrameRecord, ImageRecord, SaveState, Scene, TextRecord, Viewport } from '../model/types.ts'
+import type { CanvasPrefs } from '../model/prefs.ts'
 import { fitImageScale, fitViewport, screenToScene, zoomAround } from '../model/viewport.ts'
 import type { Point, Rect, Size } from '../model/viewport.ts'
 import { Autosaver } from '../persistence/autosave.ts'
 import { ABSENT } from '../persistence/boardStore.ts'
 import type { BoardStore } from '../persistence/boardStore.ts'
 import { hydrateBoard } from '../persistence/hydrate.ts'
+import { canvasPrefs } from '../persistence/prefsStore.ts'
 import { isConfirmKey, isPanHoldKey, resolveEditingShortcut, resolveShortcut, typedCharacter } from '../input/shortcuts.ts'
 import type { ShortcutAction } from '../input/shortcuts.ts'
 import { AssetCache, isImageFile, readImageFile } from './assets.ts'
 import { CROP_HIT_TOLERANCE, cropCursor, cropOverlay, drawCropOverlay } from './cropLayer.ts'
+import { findCaptionSnap, makeSnapCaption } from './captionSnapLayer.ts'
+import type { CaptionSnapPreview } from './captionSnapLayer.ts'
+import { DrawnTextbox } from './DrawnTextbox.ts'
+import { EdgePan } from './edgePan.ts'
+import { renderFramePreview } from './framePreview.ts'
+import { FeedbackLayer } from './feedbackLayer.ts'
 import { FrameCanvas } from './FrameCanvas.ts'
 import type { AssetSource } from './assets.ts'
 import { EMPTY_LAYERS, computeLayers } from './layerList.ts'
 import type { LayerItem } from './layerList.ts'
 import {
   ACCENT,
+  captionOf,
+  captionSideOf,
   centerOf,
   createFrame,
   createObject,
+  editTextAtEnd,
   frameNameOf,
   hasResidualScale,
   idOf,
@@ -98,12 +117,14 @@ import {
   reconcileTextFormatting,
   replaceEditedText,
   selectedRange,
+  setCaption,
   setFrameName,
   setImageCrop,
   setImageElement,
   setLocked,
   setOwner,
   setTextFontSize,
+  setTextWrapWidth,
   toFrameRecord,
   toRecord,
 } from './objects.ts'
@@ -138,6 +159,7 @@ export interface SelectionInfo {
    * anything (both false while it is locked or being cropped).
    */
   image: { cropped: boolean; canFit: boolean; canFill: boolean } | null
+  caption: { edit: 'add' | 'edit' | null; canEdit: boolean; attached: boolean; canDetach: boolean; canMake: boolean; canStyle: boolean; background?: string }
   /** Only for a single text: what the formatting controls show. */
   text: TextFormatInfo | null
 }
@@ -166,6 +188,11 @@ export interface Notice {
   message: string
 }
 
+export interface FrameTourSession {
+  frames: readonly FrameDestination[]
+  renderFrame(id: string, signal: AbortSignal): Promise<string>
+}
+
 export interface EditorState {
   ready: boolean
   /**
@@ -183,6 +210,9 @@ export interface EditorState {
   cropping: boolean
   selection: SelectionInfo | null
   viewport: Viewport
+  canvasSize: Size
+  jumpReturns: boolean
+  frameDestinations: readonly FrameDestination[]
   objectCount: number
   /**
    * Everything on the board in stacking order, front-most first: content front to back,
@@ -209,7 +239,9 @@ interface Gesture {
   base: Scene
   /** A press on an object: Fabric's own transform record, which identifies the gesture in Fabric's events. */
   transform?: Transform
-  /** A drag: the unselected members of the frames being moved, which follow them. */
+  /** The preview visible when the actual primary release arrived. */
+  captionSnap?: CaptionSnapPreview
+  /** A drag: the unselected members and captions that follow it. */
   carry?: Carry
   /**
    * The Frame tool, or the Text tool (`tool: 'text'`): the rectangle being drawn, in scene
@@ -219,8 +251,8 @@ interface Gesture {
 }
 
 /**
- * Followers of a drag: content owned by a frame that is being moved, but which is not
- * itself in the moved selection. They follow moves only, exactly once, by the same delta.
+ * Followers of a drag: unselected members of moved frames and captions of moved images.
+ * They follow moves only, exactly once, by the same delta.
  */
 interface Carry {
   /** Where the dragged target started. */
@@ -282,6 +314,8 @@ const isPrimary = (e: Event): boolean => {
   return button === undefined || button === 0
 }
 
+const suppressesSnap = (e: Event) => e instanceof MouseEvent && (e.ctrlKey || e.metaKey)
+
 /**
  * Owns the Fabric canvas, history, assets and autosave. React never touches
  * Fabric objects: it renders `getState()` snapshots and calls the methods here.
@@ -296,10 +330,15 @@ export class Editor {
   private readonly canvas: FrameCanvas
   private readonly canvasEl: HTMLCanvasElement
   private readonly history = new History<Scene>(EMPTY_SCENE, { equals: sceneEqual })
+  private readonly feedback: FeedbackLayer
   private readonly autosaver: Autosaver
   private readonly listeners = new Set<() => void>()
   private readonly cleanups: Array<() => void> = []
   private state: EditorState
+  private jumpReturn: Viewport | null = null
+  private destinationScene: Scene | null = null
+  private layerPressActive = false
+  private pendingImageDecodes = 0
   private applying = false
   private spaceHeld = false
   private disposed = false
@@ -351,13 +390,14 @@ export class Editor {
     private readonly host: HTMLElement,
     private readonly store: BoardStore,
     private readonly assets: AssetSource = new AssetCache(),
+    readonly getPrefs: () => CanvasPrefs = canvasPrefs.get,
   ) {
     this.canvasEl = document.createElement('canvas')
     host.appendChild(this.canvasEl)
     const { width, height } = host.getBoundingClientRect()
+    const canvasSize = { width: Math.max(1, Math.floor(width)), height: Math.max(1, Math.floor(height)) }
     this.canvas = new FrameCanvas(this.canvasEl, {
-      width: Math.max(1, Math.floor(width)),
-      height: Math.max(1, Math.floor(height)),
+      ...canvasSize,
       preserveObjectStacking: true,
       stopContextMenu: true,
       // Only the primary button edits. Other buttons are also kept from Fabric at DOM level (bindDomEvents).
@@ -377,6 +417,10 @@ export class Editor {
       selectionLineWidth: 1,
     })
 
+    this.feedback = new FeedbackLayer(new EdgePan(this.canvas, host, (dx, dy) => {
+      const vp = this.getViewport()
+      this.setViewport({ ...vp, panX: vp.panX + dx, panY: vp.panY + dy })
+    }))
     this.state = {
       ready: false,
       readOnly: null,
@@ -387,6 +431,9 @@ export class Editor {
       cropping: false,
       selection: null,
       viewport: { ...DEFAULT_VIEWPORT },
+      canvasSize,
+      jumpReturns: false,
+      frameDestinations: [],
       objectCount: 0,
       layers: EMPTY_LAYERS,
       canUndo: false,
@@ -411,6 +458,12 @@ export class Editor {
 
     this.bindCanvasEvents()
     this.bindDomEvents()
+    this.cleanups.push(canvasPrefs.subscribe(() => {
+      const prefs = this.getPrefs()
+      const interactionCleared = !prefs.feedback && this.feedback.clearInteraction()
+      const snapCleared = !prefs.captionSnap && this.feedback.clearCaptionSnap()
+      if (interactionCleared || snapCleared) this.canvas.requestRenderAll()
+    }))
     this.applyToolState()
   }
 
@@ -484,6 +537,7 @@ export class Editor {
   private enterReadOnly(message: string, reloadSuggested = false) {
     if (this.disposed) return
     this.autosaver.disable(message)
+    this.clearFeedback()
     this.cancelGesture()
     this.cancelCrop() // before leaving the edit below, which would apply it
     this.setState({ readOnly: message, reloadSuggested, tool: 'hand' }) // not editable from here on, so leaving the edit below commits nothing
@@ -504,6 +558,7 @@ export class Editor {
   dispose() {
     if (this.disposed) return
     this.disposed = true
+    this.clearFeedback()
     if (this.noticeTimer) clearTimeout(this.noticeTimer)
     this.gesture = null // invalidates any queued settlement
     this.stagedImports = []
@@ -557,12 +612,73 @@ export class Editor {
 
   /**
    * Records the live board as a history step. A no-op when nothing changed: no history
-   * entry and no save. Never changes ownership or anything else on the canvas.
+   * entry and no save. Attachments settle before the snapshot, as part of the same step.
    */
   private commit(coalesceKey?: string) {
     if (this.applying || !this.editable || this.gesture || this.crop) return
+    this.syncCaptions()
     if (this.history.push(this.snapshot(), coalesceKey)) this.autosaver.markDirty()
     this.syncState()
+  }
+
+  /** The first caption in back-to-front order is the one that claims the image. */
+  private captionFor(image: FabricObject): Textbox | undefined {
+    const id = idOf(image)
+    return this.canvas.getObjects().find((o): o is Textbox => o instanceof Textbox && id !== undefined && captionOf(o) === id)
+  }
+
+  /** Repair relationships, then place changed pairs or the one caption being edited. */
+  private syncCaptions(editedCaption?: Textbox) {
+    const objects = this.canvas.getObjects()
+    const captions = objects.filter((o): o is Textbox => o instanceof Textbox && captionOf(o) !== undefined)
+    if (captions.length === 0) return
+    const images = new Map(objects.filter(isImage).map((image) => [idOf(image), image]))
+    const recorded = editedCaption ? undefined : new Map(this.history.current.objects.map((record) => [record.id, record]))
+    const groups = new Set<ActiveSelection>()
+    let changed = false
+    for (const caption of captions) {
+      const imageId = captionOf(caption)
+      const image = images.get(imageId)
+      if (!image) {
+        setCaption(caption, undefined)
+        continue
+      }
+      images.delete(imageId)
+      if (ownerOf(caption) !== ownerOf(image)) setOwner(caption, ownerOf(image))
+      if (editedCaption && editedCaption !== caption) continue
+      const rec = toRecord(caption)
+      const parent = toRecord(image)
+      if (rec?.type !== 'text' || parent?.type !== 'image') continue
+      // A newly attached caption differs by its attachment fields, or has no prior record.
+      if (recorded && valuesEqual(rec, recorded.get(rec.id)) && valuesEqual(parent, recorded.get(parent.id))) continue
+      if (this.positionCaption(caption, image, rec, parent)) {
+        changed = true
+        if (caption.group instanceof ActiveSelection) groups.add(caption.group)
+      }
+    }
+    for (const group of groups) group.triggerLayout()
+    if (changed) this.canvas.requestRenderAll()
+  }
+
+  private positionCaption(caption: Textbox, image: FabricImage, rec: TextRecord, parent: ImageRecord): boolean {
+    const bounds = captionImageBounds(parent, imageSizeOf(image))
+    const side = captionSideOf(caption)
+    const scale = caption.getObjectScaling()
+    const box = { width: rec.width, height: caption.height * scale.y, fontSize: rec.fontSize }
+    let placement = captionPlacement(bounds, side, box, rec.captionPosition)
+    // A single grapheme may require more room than the image. The text box has already
+    // measured it using the actual styles. Rewrap before placing a caption above an image.
+    const width = Math.max(placement.width / scale.x, caption.dynamicMinWidth)
+    const resized = roundPositive(width * scale.x) !== rec.width
+    if (resized) {
+      setTextWrapWidth(caption, width)
+      placement = captionPlacement(bounds, side, { ...box, width: caption.width * scale.x, height: caption.height * scale.y }, rec.captionPosition)
+    }
+    if (!resized && rec.angle === 0 && rec.left === placement.left && rec.top === placement.top) return false
+    if (rec.angle !== 0) caption.set({ angle: -(caption.group?.getTotalAngle() ?? 0) })
+    caption.setXY(new FabricPoint(placement.left, placement.top))
+    caption.setCoords()
+    return true
   }
 
   /** Rebuilds the canvas from records (frames behind content), preserving selection by id. */
@@ -644,7 +760,11 @@ export class Editor {
     const frame = single && isFrame(single) ? single : undefined
     const frameId = frame ? idOf(frame) : undefined
     const locked = single !== undefined && isLocked(single)
-    const bounds = objs.length >= 3 ? this.layoutBounds(objs) : []
+    const layoutItems = this.layoutItems(objs)
+    const bounds = layoutItems.length >= 3 ? this.layoutBounds(layoutItems) : []
+    const attached = isImage(single) ? this.captionFor(single) : single instanceof Textbox && captionOf(single) ? single : undefined
+    const canDetach = this.captionToDetach(objs) !== undefined
+    const styledText = this.detachedTextWithBackground(single)
     return {
       kind: objs.length > 1 ? 'multiple' : frame ? 'frame' : single instanceof Textbox ? 'text' : 'image',
       count: objs.length,
@@ -658,8 +778,17 @@ export class Editor {
         backward: !locked && canReorderLayered(order, ids, 'backward'),
         back: !locked && canReorderLayered(order, ids, 'back'),
       },
-      layout: objs.length < 2 ? null : { spaceX: layoutOffsets(bounds, 'space-x') !== null, spaceY: layoutOffsets(bounds, 'space-y') !== null },
+      layout: layoutItems.length < 2 ? null : { spaceX: layoutOffsets(bounds, 'space-x') !== null, spaceY: layoutOffsets(bounds, 'space-y') !== null },
       image: isImage(single) ? this.imageInfo(single, locked) : null,
+      caption: {
+        edit: isImage(single) ? (attached ? 'edit' : 'add') : null,
+        canEdit: isImage(single) && !locked && !(attached && isLocked(attached)),
+        attached: attached !== undefined,
+        canDetach,
+        canMake: this.captionPair(objs) !== undefined,
+        canStyle: canDetach || (styledText !== undefined && !locked),
+        background: (attached ?? styledText)?.backgroundColor || undefined,
+      },
       text: single instanceof Textbox ? this.textFormatInfo(single) : null,
     }
   }
@@ -747,6 +876,7 @@ export class Editor {
       selection: this.computeSelection(),
       objectCount: this.canvas.getObjects().length,
       layers: computeLayers(this.canvas.getObjects(), this.canvas.getActiveObjects(), (id) => this.assets.bytes(id)?.name, this.state.layers),
+      frameDestinations: this.frameDestinations(),
       // An open crop that differs from where it began can be undone too: Undo applies it, then undoes it.
       canUndo: this.history.canUndo || (this.crop !== null && !sameCrop(storedCrop(this.crop.rect, this.crop.size), storedCrop(this.crop.start, this.crop.size))),
       canRedo: this.history.canRedo,
@@ -756,6 +886,29 @@ export class Editor {
   }
 
   // ---- canvas events -----------------------------------------------------------
+
+  /** A read-only view of what the canvas currently draws. No Fabric objects escape. */
+  getFeedbackSnapshot() {
+    return this.feedback.snapshot()
+  }
+
+  canChangeCaptionSnap() {
+    return !this.busy
+  }
+
+  previewFileDrop(at?: { clientX: number; clientY: number }) {
+    if (!at || !this.editable || this.busy || !this.getPrefs().feedback) {
+      if (this.feedback.clearDrop()) this.canvas.requestRenderAll()
+      return
+    }
+    const rect = this.host.getBoundingClientRect()
+    this.feedback.showDrop(screenToScene(this.getViewport(), { x: at.clientX - rect.left, y: at.clientY - rect.top }), this.frameRecords())
+    this.canvas.requestRenderAll()
+  }
+
+  private clearFeedback() {
+    if (this.feedback.clear() && !this.disposed) this.canvas.requestRenderAll()
+  }
 
   private bindCanvasEvents() {
     const c = this.canvas
@@ -818,16 +971,49 @@ export class Editor {
       const target = transform.target
       // Caret and text-selection presses inside an editing textbox stay on the text path.
       if (target instanceof Textbox && target.isEditing) return
+      this.clearFeedback()
       const g: Gesture = { id: ++this.gestureSeq, kind: 'transform', base: this.snapshot(), transform }
       if (transform.action === 'drag') g.carry = this.collectFollowers(target)
       this.gesture = g
+      if (transform.action === 'drag') this.feedback.edgePan.start(transform)
     })
 
-    // Members of a moved frame that are not themselves selected follow it, by the same delta.
-    c.on('object:moving', ({ transform }) => {
+    let lastSnapMove: Event | undefined
+    const previewTransform = ({ e, transform }: { e: Event; transform: Transform }) => {
+      const g = this.gesture
+      if (g?.kind !== 'transform' || g.transform !== transform || !(e instanceof MouseEvent)) return
+      const prefs = this.getPrefs()
+      if (prefs.captionSnap && transform.action === 'drag') {
+        lastSnapMove = e
+        const { target } = transform
+        this.feedback.captionSnap = this.state.tool === 'select' && target instanceof Textbox && !suppressesSnap(e)
+          ? findCaptionSnap(target, c.getObjects(), c.getZoom(), this.feedback.captionSnap)
+          : null
+      }
+      if (prefs.feedback) this.feedback.updateTransform(g.base, transform, c.getObjects(), g.carry?.followers ?? [], () => sceneEqual(this.snapshot(), g.base))
+    }
+    // Unselected frame members and captions follow by the same delta.
+    c.on('object:moving', (event) => {
+      const { transform } = event
       const g = this.gesture
       if (g?.kind === 'transform' && g.carry && g.transform === transform) this.placeFollowers(g.carry, transform.target)
+      previewTransform(event)
     })
+    const previewResize = (event: { e: Event; transform: Transform }) => {
+      const image = event.transform.target
+      if (this.gesture?.transform === event.transform && isImage(image)) {
+        const caption = this.captionFor(image)
+        const record = caption && toRecord(caption)
+        const parent = toRecord(image)
+        if (caption && record?.type === 'text' && record.captionPosition !== undefined && parent?.type === 'image') {
+          this.positionCaption(caption, image, record, parent)
+        }
+      }
+      previewTransform(event)
+    }
+    c.on('object:scaling', previewResize)
+    c.on('object:rotating', previewResize)
+    c.on('object:resizing', previewTransform)
 
     // The Frame tool: a primary press starts drawing a frame. Only facts are recorded here.
     c.on('mouse:down', (opt) => {
@@ -848,6 +1034,14 @@ export class Editor {
     })
     c.on('mouse:move', (opt) => {
       const g = this.gesture
+      if (g?.kind === 'transform' && g.transform?.action === 'drag') {
+        this.feedback.edgePan.update(opt.e, this.getPrefs().feedback)
+        // A modifier can change without a Fabric object:moving event.
+        if (this.getPrefs().captionSnap && g.transform.actionPerformed && opt.e !== lastSnapMove) {
+          previewTransform({ e: opt.e, transform: g.transform })
+          c.requestRenderAll()
+        }
+      }
       if (g?.kind !== 'draft' || !g.draft) return
       const p = c.getScenePoint(opt.e)
       g.draft.end = { x: p.x, y: p.y }
@@ -855,12 +1049,14 @@ export class Editor {
       c.requestRenderAll()
     })
 
-    c.on('object:modified', ({ target, transform }) => {
+    c.on('object:modified', ({ e, target, transform }) => {
       if (this.applying || !this.editable) return
       const g = this.gesture
       if (g) {
         // Only the release of this gesture's own transform settles it, and only once.
         if (transform !== undefined && transform === g.transform && g.kind === 'transform') {
+          const snap = this.feedback.captionSnap
+          if (snap && this.getPrefs().captionSnap && e && !suppressesSnap(e)) g.captionSnap = snap
           g.kind = 'settling'
           const id = g.id
           queueMicrotask(() => this.settle(id))
@@ -902,7 +1098,10 @@ export class Editor {
         // may have left the caret on a heading line: no pending bold there.
         this.dropPendingBoldOnHeading(target)
       }
-      if (!this.applying && this.editable) this.autosaver.markDirty() // keep typing durable; history commits on exit
+      if (!this.applying && this.editable) {
+        if (!this.busy && !this.crop && target instanceof Textbox && captionOf(target)) this.syncCaptions(target)
+        this.autosaver.markDirty() // keep typing durable; history commits on exit
+      }
       this.syncState() // the layer list follows typing (a text that is blank right now is not listed); marks nothing dirty
       this.queueSelectionSync()
     })
@@ -944,7 +1143,7 @@ export class Editor {
           c.requestRenderAll()
           this.syncState()
         })
-      } else if (target instanceof Textbox && !this.history.current.objects.some((o) => o.id === idOf(target))) {
+      } else if (target instanceof Textbox && !captionOf(target) && !this.history.current.objects.some((o) => o.id === idOf(target))) {
         // A NEW text (history has never held it): its box grew while it was typed, so its
         // owner is decided once more from where it ended up. Re-editing an existing text
         // never changes its owner, whatever the typing does to its size.
@@ -975,14 +1174,20 @@ export class Editor {
 
     // Crop mode: the whole image dimmed outside the crop rectangle, the box and its handles.
     c.on('after:render', ({ ctx }) => {
+      if (ctx !== c.getContext()) return
+      this.feedback.draw(ctx, c.getObjects(), c.viewportTransform)
       const s = this.crop
-      if (!s || ctx !== c.getContext()) return
+      if (!s) return
       drawCropOverlay(ctx, cropOverlay(s.full, s.size, s.rect, c.viewportTransform), c.getRetinaScaling())
     })
 
+    c.on('mouse:up:before', ({ e }) => {
+      if (e instanceof MouseEvent && isPrimary(e)) this.feedback.edgePan.stop(e)
+    })
     c.on('mouse:up', (opt) => {
       if (!isPrimary(opt.e)) return // other buttons never start, finish or clear anything
       const g = this.gesture
+      if (g?.kind !== 'settling') this.clearFeedback()
       if (g?.kind === 'transform') {
         // A press that never moved: Fabric fired no `object:modified`. Nothing changed, so
         // nothing is normalized, reconciled, recorded or saved.
@@ -1009,6 +1214,7 @@ export class Editor {
   private settle(id: number) {
     const g = this.gesture
     if (!g || g.id !== id) return // cancelled or replaced since it was queued
+    this.clearFeedback()
     if (!this.editable) {
       this.gesture = null
       return
@@ -1089,20 +1295,62 @@ export class Editor {
     const members = target instanceof ActiveSelection ? target.getObjects().slice() : [target]
     if (g.carry) this.placeFollowers(g.carry, target)
     this.settleScale(g.base, transform, members)
+    if (g.captionSnap && this.getPrefs().captionSnap && target instanceof Textbox) {
+      members[0] = this.attachSnappedCaption(target, g.captionSnap)
+    } else this.detachTransformedCaptions(g.base, members)
     this.applyOwnership(g.base, members)
   }
 
-  /** Unselected members of the frames being dragged, with where they and the target started. */
+  private attachSnappedCaption(text: Textbox, snap: CaptionSnapPreview): Textbox {
+    let target = text
+    if (!(text instanceof DrawnTextbox)) {
+      const drawn = makeSnapCaption(text)
+      if (!drawn) return text
+      const index = this.canvas.getObjects().indexOf(text)
+      this.canvas.discardActiveObject()
+      this.canvas.remove(text)
+      this.canvas.insertAt(index, drawn)
+      this.canvas.setActiveObject(drawn)
+      target = drawn
+    }
+    setCaption(target, snap.imageId, storedSnapSide(snap.side), snap.position)
+    return target
+  }
+
+  /** Direct manipulation detaches before ordinary ownership is decided. */
+  private detachTransformedCaptions(base: Scene, members: readonly FabricObject[]) {
+    const transformed = new Set(members.map((o) => idOf(o) ?? ''))
+    for (const caption of members) {
+      const imageId = captionOf(caption)
+      if (!imageId) continue
+      const rec = toRecord(caption)
+      const before = base.objects.find((o) => o.id === rec?.id)
+      if (rec?.type !== 'text' || before?.type !== 'text') continue
+      if (captionWillDetach(before, rec, transformed)) setCaption(caption, undefined)
+    }
+  }
+
+  /** Unselected frame members and captions, with where they and the drag target started. */
   private collectFollowers(target: FabricObject): Carry {
-    const moved = new Set<FabricObject>(target instanceof ActiveSelection ? target.getObjects() : [target])
-    const movedFrames = new Set<string>()
-    for (const o of moved) if (isFrame(o)) movedFrames.add(idOf(o) ?? '')
+    const members = target instanceof ActiveSelection ? target.getObjects() : [target]
+    const moved = { direct: new Set<string>(), frames: new Set<string>(), images: new Set<string>() }
+    for (const obj of members) {
+      const id = idOf(obj)
+      if (!id) continue
+      moved.direct.add(id)
+      if (isFrame(obj)) moved.frames.add(id)
+    }
+    const objects = this.canvas.getObjects()
+    for (const obj of objects) {
+      const id = idOf(obj)
+      const owner = ownerOf(obj)
+      if (id && isImage(obj) && (moved.direct.has(id) || (owner && moved.frames.has(owner)))) moved.images.add(id)
+    }
     const followers: Carry['followers'] = []
-    if (movedFrames.size > 0) {
-      for (const o of this.canvas.getObjects()) {
-        const owner = ownerOf(o)
-        // A selected member moves through the selection; carrying it too would move it twice.
-        if (owner !== undefined && movedFrames.has(owner) && !moved.has(o)) followers.push({ obj: o, left: o.left, top: o.top })
+    for (const obj of objects) {
+      const id = idOf(obj)
+      if (id && followsDrag({ id, frameId: ownerOf(obj), captionOf: captionOf(obj) }, moved)) {
+        followers.push({ obj, left: obj.left, top: obj.top })
       }
     }
     return { left: target.left, top: target.top, followers }
@@ -1138,13 +1386,13 @@ export class Editor {
     for (const m of members) if (isFrame(m)) coTransformed.add(idOf(m) ?? '')
 
     for (const m of members) {
-      if (!isFrame(m)) setOwner(m, ownerAfterManipulation(ownerOf(m), centerOf(m), now.frames, coTransformed))
+      if (!isFrame(m) && !captionOf(m)) setOwner(m, ownerAfterManipulation(ownerOf(m), centerOf(m), now.frames, coTransformed))
     }
     for (const id of coTransformed) {
       const before = base.frames.find((f) => f.id === id)
       const after = now.frames.find((f) => f.id === id)
       if (!before || !after || (before.width === after.width && before.height === after.height)) continue
-      const rest = this.canvas.getObjects().filter((o) => ownerOf(o) === id && !transformed.has(o))
+      const rest = this.canvas.getObjects().filter((o) => ownerOf(o) === id && !transformed.has(o) && !captionOf(o))
       const released = new Set(membersToRelease(after, rest.map((o) => ({ id: idOf(o) ?? '', centre: centerOf(o) }))))
       for (const o of rest) if (released.has(idOf(o) ?? '')) setOwner(o, undefined)
     }
@@ -1239,6 +1487,7 @@ export class Editor {
    * was nothing to cancel.
    */
   private cancelGesture(): boolean {
+    this.clearFeedback()
     const g = this.gesture
     if (!g) return false
     if (g.draft) {
@@ -1312,7 +1561,6 @@ export class Editor {
           e.stopPropagation()
           return
         }
-        this.healPrimaryDown(e)
         if (e.button !== 0) {
           // Fabric must never observe a non-primary button: its handlers would drop the
           // document listeners of a primary drag that is still in progress.
@@ -1367,20 +1615,24 @@ export class Editor {
         return // Fabric finishes its drag with this event
       }
       if (this.pan?.button === e.button) this.pan.end()
-      this.healPrimaryDown(e)
+      this.healPrimaryDown(e.buttons)
       // A primary drag is in progress: this release is not Fabric's business, and letting
       // it through would end Fabric's tracking of the drag.
       if (this.primaryDown) e.stopPropagation()
     }
     // A native drag (e.g. dragging selected text) ends with `dragend` and no `mouseup` at all.
-    const onDragEnd = () => {
-      this.primaryDown = false
-    }
+    const onDragEnd = () => this.healPrimaryDown(0)
+    const onMouseDown = (e: MouseEvent) => this.healPrimaryDown(e.button === 0 ? 0 : e.buttons)
+    const onMouseMove = (e: MouseEvent) => this.healPrimaryDown(e.buttons)
+    window.addEventListener('mousedown', onMouseDown, { capture: true })
     window.addEventListener('mouseup', onMouseUp, { capture: true })
+    window.addEventListener('mousemove', onMouseMove, { capture: true })
     window.addEventListener('dragend', onDragEnd, { capture: true })
     this.cleanups.push(() => {
+      window.removeEventListener('mousedown', onMouseDown, { capture: true })
       window.removeEventListener('mouseup', onMouseUp, { capture: true })
       window.removeEventListener('dragend', onDragEnd, { capture: true })
+      window.removeEventListener('mousemove', onMouseMove, { capture: true })
     })
 
     listen(
@@ -1406,10 +1658,13 @@ export class Editor {
 
     const ro = new ResizeObserver(() => {
       const { width, height } = this.host.getBoundingClientRect()
-      if (width > 0 && height > 0) {
-        this.canvas.setDimensions({ width: Math.floor(width), height: Math.floor(height) })
-        this.canvas.requestRenderAll()
-      }
+      const size = { width: Math.floor(width), height: Math.floor(height) }
+      if (size.width <= 0 || size.height <= 0) return
+      if (size.width === this.canvas.getWidth() && size.height === this.canvas.getHeight()) return
+      this.canvas.setDimensions(size)
+      this.jumpReturn = null
+      this.setState({ canvasSize: size, jumpReturns: false })
+      this.canvas.requestRenderAll()
     })
     ro.observe(this.host)
     this.cleanups.push(() => ro.disconnect())
@@ -1429,12 +1684,15 @@ export class Editor {
       }
       // The release of whatever was held may never arrive: undo the unfinished gesture.
       this.pan?.end()
-      if (this.cancelGesture()) this.queueIdle()
+      if (this.primaryDown) this.healPrimaryDown(0)
+      else if (this.cancelGesture()) this.queueIdle()
       // A crop handle drag returns to where it began; crop mode stays open.
       if (this.crop?.drag) this.endCropDrag(false)
     }
     const onHide = () => {
-      if (document.visibilityState === 'hidden') void this.autosaver.flush()
+      if (document.visibilityState !== 'hidden') return
+      this.feedback.edgePan.pause()
+      void this.autosaver.flush()
     }
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       if (this.autosaver.hasUnsavedChanges) {
@@ -1460,11 +1718,22 @@ export class Editor {
 
   /**
    * The primary release can be lost (it went to another window, or a native drag ended
-   * without one). Every later mouse event says which buttons are really held, so the flag
-   * corrects itself instead of swallowing non-primary releases indefinitely.
+   * without one). The first mouse event that proves the release was lost cancels the old
+   * gesture before Fabric can move it again. A new primary press also proves it was lost.
    */
-  private healPrimaryDown(e: MouseEvent) {
-    if (this.primaryDown && (e.buttons & 1) === 0) this.primaryDown = false
+  private healPrimaryDown(buttons: number) {
+    if (!this.primaryDown || (buttons & 1) !== 0) return
+    this.primaryDown = false
+    // Fabric normally unregisters the range drag on text mouse-up. Keep the edit and
+    // range as they are when that release never comes.
+    const active = this.canvas.getActiveObject()
+    if (active instanceof Textbox && active.isEditing) {
+      const manager = this.canvas.textEditingManager
+      // Textbox extends ITextBehavior. Fabric's polymorphic toObject signature makes
+      // those types incompatible here even though the manager registers textboxes.
+      manager.unregister(active as unknown as Parameters<typeof manager.unregister>[0])
+    }
+    if (this.cancelGesture()) this.queueIdle()
   }
 
   /**
@@ -1498,7 +1767,12 @@ export class Editor {
     if (!this.live) return
     const active = this.canvas.getActiveObject()
     const edited = active instanceof Textbox && active.isEditing ? active : null
-    const ctx = { editingText: this.state.editingText, textSelected: active instanceof Textbox && !active.isEditing, hasSelection: !!active }
+    const ctx = {
+      editingText: this.state.editingText,
+      textSelected: active instanceof Textbox && !active.isEditing,
+      hasSelection: !!active,
+      canEditCaption: e.key === 'Enter' && !e.defaultPrevented && this.captionImage() !== undefined,
+    }
     const editing = { editedTextarea: edited?.hiddenTextarea ?? null, canRevertShortcut: edited !== null && this.shortcutRevert?.target === edited }
     this.typed = this.busy ? null : typedCharacter(e, editing) // observed only, never claimed
     if (this.busy) {
@@ -1574,6 +1848,11 @@ export class Editor {
         return this.selectAll()
       case 'duplicate':
         return this.duplicateSelection()
+      case 'edit-caption':
+        return this.editCaption()
+      case 'frame-navigator':
+        if (this.canNavigateFrames()) this.openFrameNavigator?.()
+        return
       case 'tool-select':
         return this.setTool('select')
       case 'tool-hand':
@@ -1628,6 +1907,16 @@ export class Editor {
   }
 
   private frameRenamer: (() => void) | null = null
+
+  private openFrameNavigator: (() => void) | null = null
+
+  setFrameNavigator(open: (() => void) | null) {
+    this.openFrameNavigator = open
+  }
+
+  setLayerPressActive(active: boolean) {
+    this.layerPressActive = active
+  }
 
   /** The UI registers how to put the cursor in the selected frame's name field (double-click on a label). */
   setFrameRenamer(focus: (() => void) | null) {
@@ -1894,8 +2183,7 @@ export class Editor {
     let job: ReplaceJob
     try {
       if (!isImageFile(file)) throw new Error('not an image')
-      const asset = await readImageFile(file)
-      const el = await this.assets.load(asset) // kept for the session; stored by the first save that references it
+      const { asset, el } = await this.decodeImageFile(file)
       job = { targetId, assetId: asset.id, size: { width: el.naturalWidth, height: el.naturalHeight }, seq }
     } catch {
       if (!this.disposed) this.notify('error', `${name} could not be used to replace the image: it is not an image, or it could not be read.`)
@@ -1951,6 +2239,115 @@ export class Editor {
     this.commit()
   }
 
+  // ---- captions -----------------------------------------------------------------------
+
+  private captionImage(): FabricImage | undefined {
+    if (!this.editable || this.busy || this.crop || this.pan) return
+    const image = this.canvas.getActiveObject()
+    if (!isImage(image) || isLocked(image)) return
+    const caption = this.captionFor(image)
+    if (!caption || !isLocked(caption)) return image
+  }
+
+  editCaption() {
+    const image = this.captionImage()
+    if (!image) return
+    const imageId = idOf(image)
+    const rec = toRecord(image)
+    if (!imageId || rec?.type !== 'image') return
+    if (this.state.tool !== 'select') this.switchTool('select')
+    let caption = this.captionFor(image)
+    if (!caption) {
+      const fontSize = this.newTextFontSize()
+      const placement = captionPlacement(captionImageBounds(rec, imageSizeOf(image)), undefined, { fontSize, width: 0, height: 0 })
+      const made = createObject({
+        id: newId(), type: 'text', text: '', angle: 0, fontSize, minHeight: 0, ...placement, captionOf: imageId,
+        ...(rec.frameId && { frameId: rec.frameId }),
+      }, () => undefined)
+      if (!(made instanceof Textbox)) return
+      this.canvas.insertAt(this.canvas.getObjects().indexOf(image) + 1, made)
+      caption = made
+    }
+    this.canvas.setActiveObject(caption)
+    editTextAtEnd(caption)
+    this.canvas.requestRenderAll()
+    this.syncState()
+  }
+
+  private captionToDetach(objects: readonly FabricObject[]): Textbox | undefined {
+    if (objects.length !== 1) return
+    const selected = objects[0]!
+    if (isLocked(selected)) return
+    const caption = isImage(selected) ? this.captionFor(selected) : selected instanceof Textbox ? selected : undefined
+    if (!caption || isLocked(caption)) return
+    const imageId = captionOf(caption)
+    if (!imageId) return
+    const image = this.canvas.getObjects().find((o) => idOf(o) === imageId)
+    if (isImage(image) && !isLocked(image)) return caption
+  }
+
+  detachCaption() {
+    if (!this.editable || this.busy) return
+    const caption = this.captionToDetach(this.canvas.getActiveObjects())
+    if (!caption) return
+    this.finishEditing()
+    if (caption.text.trim() === '') return // discarded by the ordinary edit exit
+    setCaption(caption, undefined)
+    this.commit()
+  }
+
+  private detachedTextWithBackground(object: FabricObject | undefined): Textbox | undefined {
+    if (object instanceof Textbox && !captionOf(object) && object.backgroundColor) return object
+  }
+
+  setCaptionBackground(value?: string) {
+    if (!this.editable || this.busy || this.crop || this.pan) return
+    const selected = this.canvas.getActiveObjects()
+    if (selected.length !== 1) return
+    const caption = this.captionToDetach(selected) ?? this.detachedTextWithBackground(selected[0])
+    if (!caption || isLocked(caption) || caption.text.trim() === '') return
+    const color = value === undefined ? '' : captionBackground(value)
+    if (color === undefined || color === caption.backgroundColor) return
+    const coalesce = color && caption.backgroundColor ? `caption-color:${idOf(caption)}` : undefined
+    this.finishEditing()
+    caption.set({ backgroundColor: color })
+    this.canvas.requestRenderAll()
+    this.commit(coalesce)
+  }
+
+  private captionPair(objects: readonly FabricObject[]): { image: FabricImage; text: Textbox } | undefined {
+    if (objects.length !== 2) return
+    const image = objects.find(isImage)
+    const text = objects.find((o): o is Textbox => o instanceof Textbox)
+    if (!image || !text || isLocked(image) || isLocked(text) || captionOf(text) || this.captionFor(image) || text.text.trim() === '') return
+    return { image, text }
+  }
+
+  makeCaption() {
+    if (!this.editable || this.busy || !this.captionPair(this.canvas.getActiveObjects())) return
+    this.finishEditing()
+    const pair = this.captionPair(this.canvas.getActiveObjects())
+    if (!pair) return
+    const { image, text } = pair
+    const imageId = idOf(image)
+    const rec = toRecord(text)
+    const parent = toRecord(image)
+    if (!imageId || rec?.type !== 'text' || parent?.type !== 'image') return
+    const width = captionPlacement(captionImageBounds(parent, imageSizeOf(image)), undefined, { ...rec, height: text.height }).width
+    // A text made with a click has legacy word wrapping. Rebuild it as a drawn box in its
+    // existing stack slot, retaining its id and all its formatting and drawn height.
+    const made = createObject({ ...rec, captionOf: imageId, width, minHeight: rec.minHeight ?? 0 }, () => undefined)
+    if (!(made instanceof Textbox)) return
+    const index = this.canvas.getObjects().indexOf(text)
+    const selected = this.canvas.getActiveObjects().map((o) => o === text ? made : o)
+    this.canvas.discardActiveObject()
+    this.canvas.remove(text)
+    this.canvas.insertAt(index, made)
+    this.selectByIds(selected)
+    this.canvas.requestRenderAll()
+    this.commit()
+  }
+
   // ---- adding content ----------------------------------------------------------------
 
   private viewCenterScene(): Point {
@@ -1960,6 +2357,10 @@ export class Editor {
   addText() {
     if (!this.editable || this.busy) return
     this.addTextAt(this.viewCenterScene(), 'center')
+  }
+
+  private newTextFontSize(): number {
+    return Math.round(clamp(24 / this.getViewport().zoom, 12, 160))
   }
 
   /**
@@ -1973,8 +2374,7 @@ export class Editor {
     // Placement is single-use. Switch tools first: switching ends any editing.
     if (this.state.tool !== 'select') this.switchTool('select')
     this.finishEditing()
-    const zoom = this.getViewport().zoom
-    const fontSize = Math.round(clamp(24 / zoom, 12, 160))
+    const fontSize = this.newTextFontSize()
     const box = dragTo ? rectFromDrag(at, dragTo) : undefined
     const drag = box && box.width >= fontSize * MIN_TEXT_DRAG_EMS ? box : undefined
     const width = drag?.width ?? fontSize * 10
@@ -2023,8 +2423,7 @@ export class Editor {
 
     for (const file of images) {
       try {
-        const asset = await readImageFile(file)
-        const el = await this.assets.load(asset) // the cache keeps the bytes; the save stores any that are not stored yet
+        const { asset, el } = await this.decodeImageFile(file)
         if (this.disposed) return
         const scale = fitImageScale(el.naturalWidth, el.naturalHeight, maxSide)
         const offset = prepared.length * (24 / zoom)
@@ -2061,6 +2460,17 @@ export class Editor {
     if (problems.length > 0) {
       const text = problems.join('; ')
       this.notify('error', `${text.charAt(0).toUpperCase()}${text.slice(1)}.`)
+    }
+  }
+
+  private async decodeImageFile(file: File) {
+    this.pendingImageDecodes++
+    try {
+      const asset = await readImageFile(file)
+      const el = await this.assets.load(asset)
+      return { asset, el }
+    } finally {
+      this.pendingImageDecodes--
     }
   }
 
@@ -2169,6 +2579,13 @@ export class Editor {
     if (objs.length === 0) return
     // Deleting a frame keeps its contents: they become loose (rule O6).
     const doomed = new Set<FabricObject>(objs)
+    const deletedImages = new Set(objs.filter(isImage).map(idOf))
+    for (const o of this.canvas.getObjects()) {
+      const parent = captionOf(o)
+      if (parent === undefined || !deletedImages.has(parent)) continue
+      if (isLocked(o)) setCaption(o, undefined)
+      else doomed.add(o)
+    }
     const deletedFrames = new Set<string>()
     for (const o of objs) if (isFrame(o)) deletedFrames.add(idOf(o) ?? '')
     if (deletedFrames.size > 0) {
@@ -2178,7 +2595,7 @@ export class Editor {
       }
     }
     this.canvas.discardActiveObject()
-    this.canvas.remove(...objs)
+    this.canvas.remove(...doomed)
     this.canvas.requestRenderAll()
     this.commit()
   }
@@ -2198,13 +2615,19 @@ export class Editor {
     if (!this.editable || this.busy) return
     const active = this.canvas.getActiveObject()
     if (!(active instanceof Textbox) || isLocked(active) || !Number.isFinite(size)) return
-    setTextFontSize(active, clamp(size, MIN_FONT_SIZE, MAX_FONT_SIZE)) // headings keep their ratio
+    const fontSize = clamp(size, MIN_FONT_SIZE, MAX_FONT_SIZE)
+    if (fontSize === active.fontSize) return
+    setTextFontSize(active, fontSize) // headings keep their ratio
     active.setCoords()
     this.canvas.requestRenderAll()
     // A text that is blank right now (emptied in the middle of an edit) is not in the scene:
     // committing would record "text removed" while it is still being typed into.
     if (active.text.trim() === '') return
-    this.commit(`font-size:${idOf(active) ?? ''}`)
+    if (active.isEditing && captionOf(active)) {
+      this.syncCaptions(active)
+      this.autosaver.markDirty()
+      this.syncSelection()
+    } else this.commit(`font-size:${idOf(active) ?? ''}`)
   }
 
   // ---- text formatting ----------------------------------------------------------------------
@@ -2232,6 +2655,7 @@ export class Editor {
     if (tb.isEditing) {
       // Saved as it happens, like typing. A blank text being typed into is not in the scene,
       // so there is nothing to save (and a commit would record its removal).
+      if (captionOf(tb) && !this.crop) this.syncCaptions(tb)
       if (tb.text.trim() !== '') this.autosaver.markDirty()
       this.syncSelection()
       return
@@ -2343,6 +2767,7 @@ export class Editor {
     if (!r || !this.editable || this.busy || !r.target.isEditing || this.canvas.getActiveObject() !== r.target) return
     replaceEditedText(r.target, r.text, r.fmt, r.caret)
     this.setPending(r.target, r.pending ?? {})
+    if (captionOf(r.target)) this.syncCaptions(r.target)
     this.canvas.requestRenderAll()
     this.autosaver.markDirty() // like typing (a blank text is out of the scene, so a save stores none)
     this.syncSelection()
@@ -2365,18 +2790,29 @@ export class Editor {
     })
     const content: FabricObject[] = []
     const selection: FabricObject[] = []
+    const chosen = (rec: Scene['objects'][number]) => selected.has(rec.id) || (rec.frameId !== undefined && copiedOwners.has(rec.frameId))
+    const images = new Set(scene.objects.filter((rec) => rec.type === 'image' && chosen(rec)).map((rec) => rec.id))
+    const sources = scene.objects.filter((rec) => chosen(rec) || (rec.type === 'text' && rec.captionOf !== undefined && images.has(rec.captionOf)))
+    const copies = new Map(sources.map((rec) => [rec.id, newId()]))
 
-    for (const rec of scene.objects) {
+    for (const rec of sources) {
       const copiedOwner = rec.frameId === undefined ? undefined : copiedOwners.get(rec.frameId)
-      const explicit = selected.has(rec.id)
-      if (!explicit && copiedOwner === undefined) continue
-      const copy = { ...rec, id: newId(), left: round(rec.left + offset), top: round(rec.top + offset) }
+      const copy = { ...rec, id: copies.get(rec.id)!, left: round(rec.left + offset), top: round(rec.top + offset) }
       delete copy.locked
+      if (copy.type === 'text' && copy.captionOf) {
+        const imageId = copies.get(copy.captionOf)
+        if (imageId) copy.captionOf = imageId
+        else {
+          delete copy.captionOf
+          delete copy.captionSide
+          delete copy.captionPosition
+        }
+      }
       const obj = createObject(copy, (id) => this.assets.get(id))
       if (!obj) return // nothing has been added yet
-      setOwner(obj, copiedOwner ?? ownerAfterManipulation(rec.frameId, centerOf(obj), scene.frames, NO_FRAMES))
+      if (!captionOf(obj)) setOwner(obj, copiedOwner ?? ownerAfterManipulation(rec.frameId, centerOf(obj), scene.frames, NO_FRAMES))
       content.push(obj)
-      if (explicit) selection.push(obj)
+      if (selected.has(rec.id)) selection.push(obj)
     }
     if (frames.length === 0 && content.length === 0) return
 
@@ -2396,13 +2832,21 @@ export class Editor {
     })
   }
 
+  private layoutItems(objects: readonly FabricObject[]): FabricObject[] {
+    const ids = new Set(objects.map(idOf))
+    return objects.filter((o) => {
+      const imageId = captionOf(o)
+      return !imageId || !ids.has(imageId)
+    })
+  }
+
   /** Translates each selected object independently, leaving its shape and stacking alone. */
   layoutSelection(op: Layout) {
     if (!this.editable || this.busy || this.selectionLocked() || this.canvas.getActiveObjects().length < 2) return
     this.finishEditing()
     const selected = new Set(this.canvas.getActiveObjects())
     const all = this.canvas.getObjects()
-    const members = all.filter((o) => selected.has(o)) // stable distribution order for tied bounds
+    const members = this.layoutItems(all.filter((o) => selected.has(o))) // stable distribution order for tied bounds
     const offsets = layoutOffsets(this.layoutBounds(members), op)
     if (!offsets) return
     const moves = new Map<FabricObject, number>()
@@ -2423,8 +2867,10 @@ export class Editor {
       if (delta === undefined) continue
       this.placeObject(o, o.left + (offsets.axis === 'x' ? delta : 0), o.top + (offsets.axis === 'y' ? delta : 0))
     }
-    this.applyOwnership(base, [...moves.keys()])
-    this.selectByIds(members)
+    const moved = [...moves.keys()]
+    this.detachTransformedCaptions(base, moved)
+    this.applyOwnership(base, moved)
+    this.selectByIds([...selected])
     this.canvas.requestRenderAll()
     this.commit()
   }
@@ -2613,11 +3059,14 @@ export class Editor {
     return { zoom: v[0], panX: v[4], panY: v[5] }
   }
 
-  private setViewport(vp: Viewport, persist = true) {
+  private setViewport(vp: Viewport, persist = true, jumpReturn?: Viewport | null) {
+    const changed = !sameViewport(vp, this.getViewport())
+    if (jumpReturn !== undefined || changed) this.jumpReturn = jumpReturn ?? null
     this.canvas.setViewportTransform([vp.zoom, 0, 0, vp.zoom, vp.panX, vp.panY])
+    this.feedback.edgePan.replay()
     this.canvas.requestRenderAll()
-    this.setState({ viewport: vp })
-    if (persist && this.state.ready) this.autosaver.markDirty()
+    this.setState({ viewport: vp, jumpReturns: this.jumpReturn !== null })
+    if (changed && persist && this.state.ready) this.autosaver.markDirty()
   }
 
   zoomBy(factor: number) {
@@ -2644,6 +3093,73 @@ export class Editor {
       }
     }
     this.setViewport(fitViewport(bounds, { width: this.canvas.getWidth(), height: this.canvas.getHeight() }))
+  }
+
+  private frameDestinations(): readonly FrameDestination[] {
+    const scene = this.history.current
+    if (scene !== this.destinationScene) {
+      this.destinationScene = scene
+      const next = collectFrameDestinations(scene)
+      if (!valuesEqual(next, this.state.frameDestinations)) return next
+    }
+    return this.state.frameDestinations
+  }
+
+  canNavigateFrames(): boolean {
+    return this.live && !this.busy && !this.primaryDown && !this.pan && !this.crop &&
+      !this.state.editingText && !this.spaceHeld && !this.layerPressActive
+  }
+
+  jumpToFrame(id: string): boolean {
+    if (!this.canNavigateFrames()) return false
+    const frame = this.state.frameDestinations.find((entry) => entry.id === id)
+    if (!frame) return false
+    const current = this.getViewport()
+    const fitted = fitViewport(frame.bounds, this.state.canvasSize)
+    if (sameViewport(current, fitted)) return true
+    const start = this.jumpReturn ?? current
+    this.setViewport(fitted, true, sameViewport(start, fitted) ? null : start)
+    return true
+  }
+
+  returnFromJump(): boolean {
+    if (!this.canNavigateFrames() || !this.jumpReturn) return false
+    this.setViewport(this.jumpReturn, true, null)
+    return true
+  }
+
+  /** Capture a settled scene. Each stop renders on its own detached canvas. */
+  startFrameTour(): FrameTourSession | null {
+    const focused = document.activeElement
+    if (!this.canNavigateFrames() || this.pendingImageDecodes > 0 || this.stagedImports.length || this.stagedReplacements.length ||
+      focused?.closest('input, textarea, select, [contenteditable="true"]')) return null
+
+    const selectedIds = new Set(this.canvas.getActiveObjects().filter(isFrame).flatMap((object) => idOf(object) ?? []))
+    const scene = this.history.current
+    const host = this.host.getBoundingClientRect()
+    const view = window.visualViewport
+    const left = (view?.offsetLeft ?? 0) - host.left
+    const top = (view?.offsetTop ?? 0) - host.top
+    const frames = frameTourPath(this.state.frameDestinations, selectedIds, this.getViewport(), {
+      left: Math.max(0, left),
+      top: Math.max(0, top),
+      right: Math.min(this.state.canvasSize.width, left + (view?.width ?? window.innerWidth)),
+      bottom: Math.min(this.state.canvasSize.height, top + (view?.height ?? window.innerHeight)),
+    })
+    const frameIds = new Set(frames.map(({ id }) => id))
+    let rendering = Promise.resolve()
+    return {
+      frames,
+      renderFrame: (id, signal) => {
+        const preview = rendering.then(() => {
+          signal.throwIfAborted()
+          if (this.disposed || !frameIds.has(id)) throw new Error('The tour frame is unavailable.')
+          return renderFramePreview(scene, id, (assetId) => this.assets.get(assetId))
+        })
+        rendering = preview.then(() => undefined, () => undefined)
+        return preview
+      },
+    }
   }
 
   // ---- save / notices ---------------------------------------------------------------------------
@@ -2685,6 +3201,9 @@ function bakeFrame(frame: FabricObject) {
 /** Two stored crops (undefined: the whole image) are the same. */
 const sameCrop = (a: CropRect | undefined, b: CropRect | undefined) =>
   a === b || (a !== undefined && b !== undefined && a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height)
+
+const sameViewport = (a: Viewport, b: Viewport) =>
+  a.zoom === b.zoom && a.panX === b.panX && a.panY === b.panY
 
 /** Corner (and side) scaling, as opposed to moving, rotating or changing a text's wrap width. */
 function isScaleAction(transform: Transform): boolean {

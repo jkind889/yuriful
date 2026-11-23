@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Editor } from '../editor/Editor.ts'
 import { HistoryControls, ZoomControls } from './Controls.tsx'
+import { BoardMap } from './BoardMap.tsx'
 import { CloseIcon } from './icons.tsx'
 import { Inspector } from './Inspector.tsx'
 import { LayerPanel } from './LayerPanel.tsx'
@@ -23,7 +24,6 @@ export function Overlays({ editor }: { editor: Editor }) {
   const state = useEditorState(editor)
   const fileInput = useRef<HTMLInputElement>(null)
   const root = useRef<HTMLDivElement>(null)
-  const [dragging, setDragging] = useState(false)
   // Whether the layer list is expanded. Kept here, for this session only, so that it survives
   // the list becoming empty (which unmounts the panel) and filling again.
   const [layersOpen, setLayersOpen] = useState(true)
@@ -42,28 +42,42 @@ export function Overlays({ editor }: { editor: Editor }) {
     const target = root.current?.parentElement
     if (!target) return
     let depth = 0
+    const preview = (e: DragEvent) => {
+      // File names are protected until drop, but MIME types are usually available.
+      const items = Array.from(e.dataTransfer?.items ?? []).filter((item) => item.kind === 'file')
+      editor.previewFileDrop(items.length === 0 || items.some((item) => item.type === '' || item.type.startsWith('image/')) ? e : undefined)
+    }
+    const clear = () => {
+      depth = 0
+      editor.previewFileDrop()
+    }
+    const clearOnEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') clear()
+    }
+    const clearOnWindowLeave = (e: DragEvent) => {
+      if (e.relatedTarget === null && (e.target === window || e.target === document.documentElement)) clear()
+    }
     const onEnter = (e: DragEvent) => {
       if (!Editor.hasFiles(e.dataTransfer)) return
       e.preventDefault()
       depth++
-      // A read-only board accepts no drops; the drop itself explains why.
-      if (editor.getState().readOnly === null) setDragging(true)
+      preview(e) // a read-only board shows no marker; the drop itself explains why
     }
     const onOver = (e: DragEvent) => {
       if (!Editor.hasFiles(e.dataTransfer)) return
       e.preventDefault()
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+      preview(e)
     }
     const onLeave = (e: DragEvent) => {
       if (!Editor.hasFiles(e.dataTransfer)) return
       depth = Math.max(0, depth - 1)
-      if (depth === 0) setDragging(false)
+      if (depth === 0) clear()
     }
     const onDrop = (e: DragEvent) => {
       if (!Editor.hasFiles(e.dataTransfer)) return
       e.preventDefault()
-      depth = 0
-      setDragging(false)
+      clear()
       const files = Array.from(e.dataTransfer?.files ?? [])
       void editor.addImageFiles(files, { clientX: e.clientX, clientY: e.clientY })
     }
@@ -71,11 +85,21 @@ export function Overlays({ editor }: { editor: Editor }) {
     target.addEventListener('dragover', onOver)
     target.addEventListener('dragleave', onLeave)
     target.addEventListener('drop', onDrop)
+    window.addEventListener('dragend', clear)
+    window.addEventListener('drop', clear)
+    window.addEventListener('blur', clear)
+    window.addEventListener('keydown', clearOnEscape, true)
+    window.addEventListener('dragleave', clearOnWindowLeave)
     return () => {
       target.removeEventListener('dragenter', onEnter)
       target.removeEventListener('dragover', onOver)
       target.removeEventListener('dragleave', onLeave)
       target.removeEventListener('drop', onDrop)
+      window.removeEventListener('dragend', clear)
+      window.removeEventListener('drop', clear)
+      window.removeEventListener('blur', clear)
+      window.removeEventListener('keydown', clearOnEscape, true)
+      window.removeEventListener('dragleave', clearOnWindowLeave)
     }
   }, [editor])
 
@@ -146,6 +170,7 @@ export function Overlays({ editor }: { editor: Editor }) {
 
       {state?.ready && <Toolbar editor={editor} state={state} onAddImage={openPicker} />}
       {state?.ready && <HistoryControls editor={editor} state={state} />}
+      {state?.ready && <BoardMap editor={editor} state={state} />}
       {state?.ready && <ZoomControls editor={editor} state={state} />}
       {state?.ready && (
         // The inspector on top and the layer list anchored at the bottom share one column, so they never overlap.
@@ -169,12 +194,6 @@ export function Overlays({ editor }: { editor: Editor }) {
               Add text
             </button>
           </div>
-        </div>
-      )}
-
-      {dragging && (
-        <div className="drop-overlay" aria-hidden="true">
-          <span>Drop images to add them</span>
         </div>
       )}
 
