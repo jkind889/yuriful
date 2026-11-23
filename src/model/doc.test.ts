@@ -11,7 +11,7 @@ import {
   sceneEqual,
   serializeDoc,
 } from './doc.ts'
-import type { BoardDoc, FrameRecord, ImageRecord, ObjectRecord, TextRecord } from './types.ts'
+import type { BlockNode, BoardDoc, FrameRecord, ImageRecord, ObjectRecord, TextRecord } from './types.ts'
 
 const text: TextRecord = { type: 'text', id: 't1', left: 1, top: 2, angle: 0, text: 'hi', fontSize: 24, width: 200 }
 const image: ImageRecord = { type: 'image', id: 'i1', left: 5, top: 6, angle: 15, assetId: 'asset-1', scaleX: 0.5, scaleY: 0.5 }
@@ -52,7 +52,8 @@ describe('parseDoc: wire version 1 (milestone 1 boards)', () => {
     expect(parseDoc(null)).toBeNull()
     expect(parseDoc('x')).toBeNull()
     expect(parseDoc([])).toBeNull()
-    expect(parseDoc({ ...wireV1(), version: 3 })).toBeNull()
+    expect(parseDoc({ ...wireV1(), version: 4 })).toBeNull()
+    expect(parseDoc({ ...wireV1(), frames: [], version: 4 })).toBeNull()
     expect(parseDoc({ ...wireV1(), version: 0 })).toBeNull()
     expect(parseDoc({ ...wireV1(), version: '1' })).toBeNull()
     expect(parseDoc({ ...wireV1(), objects: 'nope' })).toBeNull()
@@ -495,5 +496,80 @@ describe('formatted text', () => {
     expect(sceneEqual(scene(rich), scene({ ...copy, headings: [1, 3] }))).toBe(false)
     expect(sceneEqual(scene(rich), scene({ ...copy, headings: undefined }))).toBe(false)
     expect(sceneEqual(scene({ ...rich, headings: undefined }), scene({ ...copy, headings: undefined }))).toBe(true)
+  })
+})
+
+describe('wire version 3 (rich text)', () => {
+  const quote: BlockNode[] = [{ type: 'blockquote', blocks: [{ type: 'paragraph', content: [{ text: 'Warm bassline', italic: true }] }] }]
+  const card: TextRecord = { ...text, id: 'c1', text: 'Warm bassline', blocks: quote }
+
+  it('is written exactly when a text has blocks, a fixed height or paper, always with frames', () => {
+    for (const rich of [card, { ...text, height: 240 }, { ...text, surface: 'card' as const }]) {
+      const frameless = serializeDoc({ ...good(), objects: [image, { ...rich, frameId: 'stale' }] })
+      expect(frameless.version).toBe(3)
+      expect(Object.keys(frameless)).toEqual(['version', 'title', 'frames', 'objects', 'viewport'])
+      expect(frameless).toMatchObject({ frames: [] })
+      expect(frameless.objects[1]).not.toHaveProperty('frameId') // no frame exists, so nothing owns it
+      const withFrames = serializeDoc({ ...framed(), objects: [image, { ...rich, frameId: 'f1' }] })
+      expect(withFrames.version).toBe(3)
+      expect(withFrames.objects[1]).toMatchObject({ frameId: 'f1' })
+    }
+    expect(serializeDoc(good()).version).toBe(1)
+    expect(serializeDoc(framed()).version).toBe(2)
+  })
+
+  it('round-trips through storage, with or without frames', () => {
+    const fixed = { ...card, height: 360, surface: 'card' as const, font: 'serif' as const, align: 'center' as const }
+    for (const doc of [{ ...good(), objects: [image, fixed] }, { ...framed(), objects: [image, { ...fixed, frameId: 'f2' }] }]) {
+      expect(parseDoc(wire(doc))).toStrictEqual(doc)
+    }
+  })
+
+  it('requires a frames list, and reads owners, like version 2', () => {
+    const raw = wire({ ...framed(), objects: [image, { ...card, frameId: 'f1' }] })
+    expect(parseDoc({ ...raw, frames: undefined })).toBeNull()
+    expect(parseDoc(raw)?.objects[1]).toMatchObject({ frameId: 'f1' })
+  })
+
+  it('keeps the example review card of the plan exactly', () => {
+    const rev = {
+      id: 'rev-1',
+      type: 'text',
+      left: 140,
+      top: 90,
+      angle: 0,
+      text: 'Blue Lines\nWarm bassline\nCheck 2012 remaster\nSide B',
+      fontSize: 18,
+      width: 480,
+      height: 360,
+      blocks: [
+        { type: 'heading', level: 1, content: [{ text: 'Blue Lines' }] },
+        { type: 'blockquote', blocks: [{ type: 'paragraph', content: [{ text: 'Warm bassline', italic: true }] }] },
+        { type: 'taskList', items: [{ checked: false, blocks: [{ type: 'paragraph', content: [{ text: 'Check 2012 remaster' }] }] }] },
+        { type: 'divider' },
+        { type: 'paragraph', content: [{ text: 'Side B', code: true }] },
+      ],
+    }
+    const doc = parseDoc({ version: 3, title: 'Reviews', frames: [], objects: [rev], viewport: { zoom: 1, panX: 0, panY: 0 } })
+    expect(doc?.objects).toStrictEqual([rev])
+    expect(JSON.parse(JSON.stringify(serializeDoc(doc!))).objects).toStrictEqual([rev])
+  })
+
+  it('never shares blocks with the document it was given', () => {
+    const stored = serializeDoc({ ...good(), objects: [card] })
+    const out = stored.objects[0] as TextRecord
+    expect(out.blocks).toStrictEqual(card.blocks)
+    expect(out.blocks).not.toBe(card.blocks)
+    expect(out.blocks![0]).not.toBe(card.blocks![0])
+  })
+
+  it('scene equality compares blocks, height and paper structurally', () => {
+    const scene = (o: TextRecord) => ({ frames: [], objects: [o] })
+    const copy = JSON.parse(JSON.stringify(card)) as TextRecord
+    expect(sceneEqual(scene(card), scene(copy))).toBe(true)
+    expect(sceneEqual(scene(card), scene({ ...copy, blocks: [{ type: 'blockquote', blocks: [{ type: 'paragraph', content: [{ text: 'Warm bassline' }] }] }] }))).toBe(false)
+    expect(sceneEqual(scene(card), scene({ ...copy, height: 100 }))).toBe(false)
+    expect(sceneEqual(scene(card), scene({ ...copy, surface: 'card' }))).toBe(false)
+    expect(sceneEqual(scene(card), scene({ ...copy, height: undefined, surface: undefined }))).toBe(true)
   })
 })

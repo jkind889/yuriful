@@ -311,7 +311,7 @@ test.describe('storage that refuses or stalls', () => {
   test('a database from a newer build is read-only here and nothing in it is written', async ({ page }) => {
     const errors = errorsOf(page)
     await openBlank(page)
-    await seedRaw(page, 3, { version: 1, title: 'From the future', objects: [TEXT], viewport: UNIT })
+    await seedRaw(page, 4, { version: 1, title: 'From the future', objects: [TEXT], viewport: UNIT })
     const before = await snapshotIdb(page)
     await page.goto('/')
     await expect(page.locator('.toolbar')).toBeVisible()
@@ -324,7 +324,7 @@ test.describe('storage that refuses or stalls', () => {
     await page.mouse.click(500, 500)
     await page.waitForTimeout(AUTOSAVE_QUIET_MS)
     expect(await snapshotIdb(page)).toEqual(before)
-    expect(await dbVersion(page)).toBe(3)
+    expect(await dbVersion(page)).toBe(4)
     expect(errors).toEqual([])
   })
 
@@ -384,6 +384,164 @@ test.describe('storage that refuses or stalls', () => {
     expect(saved.version).toBe(2)
     expect(saved.frames).toHaveLength(1)
     expect(await dbVersion(page)).toBe(2)
+    expect(errors).toEqual([])
+  })
+})
+
+/** A review card that uses rich blocks and a fixed height: only a later build can make one. */
+const RICH_CARD = {
+  type: 'text',
+  id: 'rev-1',
+  left: 600,
+  top: 200,
+  angle: 0,
+  text: 'Blue Lines\nCheck 2012 remaster',
+  fontSize: 18,
+  width: 320,
+  height: 200,
+  blocks: [
+    { type: 'heading', level: 1, content: [{ text: 'Blue Lines' }] },
+    { type: 'taskList', items: [{ checked: false, blocks: [{ type: 'paragraph', content: [{ text: 'Check 2012 remaster' }] }] }] },
+  ],
+}
+const ORPHAN = { id: 'orphan', name: 'unused.png', width: 40, height: 40, seed: 3 }
+
+/** Presses, keys and drags that would change or save a board that is editable. */
+async function tryToEdit(page: Page) {
+  const at = await sceneToPage(page, UNIT)
+  await page.mouse.click(at(400, 260).x, at(400, 260).y)
+  await drag(page, at(400, 260), at(480, 320))
+  await page.keyboard.press('t')
+  await page.mouse.click(at(200, 500).x, at(200, 500).y)
+  await page.keyboard.type('nope')
+  await page.keyboard.press('f')
+  await drag(page, at(800, 150), at(950, 300))
+  await page.keyboard.press('Control+a')
+  await page.keyboard.press('Delete')
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+}
+
+test.describe('rich text from a later build', () => {
+  test('rich-board-opens-read-only-until-its-slice: a board with a rich card opens read-only as from a newer build; nothing is written or pruned', async ({ page }) => {
+    const errors = errorsOf(page)
+    await openBlank(page)
+    await seedRaw(page, 3, { version: 3, title: 'Reviews', frames: [], objects: [IMAGE, RICH_CARD], viewport: UNIT }, [PIC, ORPHAN])
+    const before = await snapshotIdb(page)
+    const rowBefore = await rawRow(page)
+
+    await page.goto('/')
+    await expect(page.locator('.toolbar')).toBeVisible()
+    await expect(banner(page)).toContainText('newer yuriful')
+    await expect(status(page)).toContainText('Not saving')
+    await tryToEdit(page)
+    await expect(page.locator('.inspector')).toHaveCount(0) // nothing was ever selected
+
+    expect(await snapshotIdb(page)).toEqual(before) // same row, same timestamp, and the unused image is still there
+    expect(await rawRow(page)).toEqual(rowBefore)
+    expect(await dbVersion(page)).toBe(3)
+    expect(errors).toEqual([])
+  })
+
+  test('failed-restore-blocks-writes-on-unknown-block-type: a card with a block this build does not know makes the board unreadable, and it is left exactly as stored', async ({ page }) => {
+    const errors = errorsOf(page)
+    await openBlank(page)
+    const table = { ...RICH_CARD, blocks: [...RICH_CARD.blocks, { type: 'table', rows: [] }] }
+    await seedRaw(page, 3, { version: 3, title: 'Tables', frames: [], objects: [IMAGE, table], viewport: UNIT }, [PIC, ORPHAN])
+    const before = await snapshotIdb(page)
+
+    await page.goto('/')
+    await expect(page.locator('.toolbar')).toBeVisible()
+    await expect(banner(page)).toContainText('could not be read')
+    await expect(status(page)).toContainText('Not saving')
+    await tryToEdit(page)
+    expect(await snapshotIdb(page)).toEqual(before)
+    expect(await dbVersion(page)).toBe(3)
+    expect(errors).toEqual([])
+  })
+
+  test('v3-fence-blocks-stale-v2-tab: the first save of a rich card upgrades the database to 3 in one step; open tabs let go and cannot overwrite it', async ({ context }) => {
+    const frame = { id: 'A', name: 'Cover', left: 250, top: 150, width: 500, height: 400 }
+    const seed = await context.newPage()
+    await openBlank(seed)
+    await seedRaw(seed, 2, { version: 2, title: 'Framed', frames: [frame], objects: [{ ...IMAGE, frameId: 'A' }, TEXT], viewport: UNIT }, [PIC])
+    await seed.close()
+
+    // A tab of this build with the board open and editable.
+    const app = await context.newPage()
+    const errors = errorsOf(app)
+    await openApp(app)
+    await expect(banner(app)).toHaveCount(0)
+
+    // A tab of a build that stops at database version 2, holding its connection the way every
+    // build's store does: it lets go when another tab needs to change the version.
+    const old = await context.newPage()
+    await openBlank(old)
+    await old.evaluate(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          const open = indexedDB.open('yuriful')
+          open.onerror = () => reject(open.error)
+          open.onsuccess = () => {
+            const db = open.result
+            db.onversionchange = () => db.close()
+            ;(window as unknown as { __db: IDBDatabase }).__db = db
+            resolve()
+          }
+        }),
+    )
+
+    // A later build's tab saves the board's first rich card, through this build's own store code.
+    const later = await context.newPage()
+    await openBlank(later)
+    await later.evaluate(async (card) => {
+      const path = '/src/persistence/boardStore.ts'
+      const { IndexedDbBoardStore } = await import(/* @vite-ignore */ path)
+      const store = new IndexedDbBoardStore()
+      const loaded = await store.load()
+      await store.save({ ...loaded.doc, objects: [...loaded.doc.objects, card] }, loaded.token, () => undefined)
+    }, RICH_CARD)
+    expect(await dbVersion(later)).toBe(3)
+    const saved = await storedDoc(later)
+    expect(saved.version).toBe(3)
+    expect(saved.frames).toEqual([frame])
+    expect(saved.objects[2]).toEqual(RICH_CARD)
+    const after = await snapshotIdb(later)
+
+    // The old build's connection was closed, and when it opens again it finds a database newer than it knows.
+    const attempts = await old.evaluate(async () => {
+      const db = (window as unknown as { __db: IDBDatabase }).__db
+      let write = 'ok'
+      try {
+        db.transaction('boards', 'readwrite').objectStore('boards').put({ id: 'current', doc: { version: 1, title: 'Stale', objects: [], viewport: { zoom: 1, panX: 0, panY: 0 } } })
+      } catch (e) {
+        write = e instanceof Error ? e.name : String(e)
+      }
+      const version = await new Promise<number>((resolve, reject) => {
+        const open = indexedDB.open('yuriful')
+        open.onerror = () => reject(open.error)
+        open.onsuccess = () => {
+          resolve(open.result.version)
+          open.result.close()
+        }
+      })
+      return { write, version }
+    })
+    expect(attempts).toEqual({ write: 'InvalidStateError', version: 3 }) // a build that stops at 2 refuses anything newer
+
+    // This build's open tab does not overwrite either: its next save finds another tab's board.
+    const at = await sceneToPage(app, UNIT)
+    await app.bringToFront()
+    await drag(app, at(400, 260), at(450, 300))
+    await expect(banner(app)).toContainText('changed in another tab')
+    expect(await snapshotIdb(app)).toEqual(after)
+
+    // Reloaded, it opens the rich board read-only, because it cannot edit the card yet.
+    await banner(app).getByRole('button', { name: 'Reload' }).click()
+    await expect(app.locator('.toolbar')).toBeVisible()
+    await expect(banner(app)).toContainText('newer yuriful')
+    await app.waitForTimeout(AUTOSAVE_QUIET_MS)
+    expect(await snapshotIdb(app)).toEqual(after)
+    expect(await dbVersion(app)).toBe(3)
     expect(errors).toEqual([])
   })
 })

@@ -1,7 +1,7 @@
 import type { BoardAppearance } from './appearance.ts'
 
 /** In-memory document version. The wire format may be older; see `StoredDoc`. */
-export const DOC_VERSION = 2
+export const DOC_VERSION = 3
 export const DEFAULT_TITLE = 'Untitled board'
 
 export interface RecordBase {
@@ -69,12 +69,53 @@ export interface TextSpan {
   font?: FontId
 }
 
+/** An inline mark of a rich text run. `code` exists only in the rich (`blocks`) form. */
+export type TextMark = 'bold' | 'italic' | 'underline' | 'strike' | 'code'
+
+/** A run of characters with the same formatting, inside a paragraph or heading of `blocks`. */
+export interface InlineRun {
+  /** Non-empty text; never contains '\n'. */
+  text: string
+  bold?: true
+  italic?: true
+  underline?: true
+  strike?: true
+  code?: true
+  /** Present only when different from the box's base font. */
+  font?: FontId
+}
+
+export interface ListItemNode {
+  /** Non-empty. */
+  blocks: BlockNode[]
+}
+
+export interface TaskItemNode {
+  checked: boolean
+  /** Non-empty. */
+  blocks: BlockNode[]
+}
+
+/** A block of a rich text. See src/model/textDoc.ts for validation and the canonical form. */
+export type BlockNode =
+  /** `content` is omitted when the paragraph is empty. */
+  | { type: 'paragraph'; content?: InlineRun[] }
+  | { type: 'heading'; level: 1 | 2 | 3; content?: InlineRun[] }
+  | { type: 'bulletList'; items: ListItemNode[] }
+  /** `start` is omitted when it is 1. */
+  | { type: 'orderedList'; start?: number; items: ListItemNode[] }
+  | { type: 'taskList'; items: TaskItemNode[] }
+  | { type: 'blockquote'; blocks: BlockNode[] }
+  | { type: 'codeBlock'; text: string }
+  | { type: 'divider' }
+
 /**
  * Formatting fields are absent when they have their default, so a plain text has exactly
  * the milestone 1 keys.
  */
 export interface TextRecord extends RecordBase {
   type: 'text'
+  /** Always a string. With `blocks`, it is their plain-text projection (`plainTextOf`). */
   text: string
   /** The box's own size; headings are drawn larger (see HEADING_SCALE). */
   fontSize: number
@@ -82,15 +123,22 @@ export interface TextRecord extends RecordBase {
   width: number
   /** Drawn minimum height in scene units, possibly zero for a flat drag. Absent on click-created and older boxes. */
   minHeight?: number
+  /** A fixed, scrollable height in scene units. Absent: the box grows with its text. */
+  height?: number
   /** Absent: 'sans'. */
   font?: FontId
   /** Absent: left. */
   align?: 'center' | 'right'
   /** `#rrggbb`, lower case. Absent: the default ink. */
   color?: string
+  /** Present only when `blocks` is absent (the compact form). */
   spans?: TextSpan[]
-  /** Heading level (0 to 3) per paragraph (`text.split('\n')`), trailing zeros trimmed. */
+  /** Heading level (0 to 3) per paragraph (`text.split('\n')`), trailing zeros trimmed. Present only when `blocks` is absent. */
   headings?: number[]
+  /** Present only when the text uses blocks other than paragraphs and headings, or the inline `code` mark. */
+  blocks?: BlockNode[]
+  /** Paper background and padding. Absent: bare text. */
+  surface?: 'card'
   captionOf?: string
   captionSide?: CaptionSide
   /** Fraction along the edge at the center of the caption. Absent uses legacy alignment. */
@@ -153,8 +201,18 @@ export interface StoredDocV2 {
   appearance?: BoardAppearance
 }
 
+/** Written only for a board with a text that uses `blocks`, `height` or `surface`. `frames` is always present. */
+export interface StoredDocV3 {
+  version: 3
+  title: string
+  frames: FrameRecord[]
+  objects: ObjectRecord[]
+  viewport: Viewport
+  appearance?: BoardAppearance
+}
+
 /** The document as stored on disk. */
-export type StoredDoc = StoredDocV1 | StoredDocV2
+export type StoredDoc = StoredDocV1 | StoredDocV2 | StoredDocV3
 
 export interface StoredAsset {
   id: string

@@ -1,5 +1,5 @@
 import { boardAppearance } from './appearance.ts'
-import { canonicalTextFormatting } from './richText.ts'
+import { canonicalHeight, canonicalSurface, canonicalTextContent, cloneBlocks, needsRichFence } from './textDoc.ts'
 import { DEFAULT_TITLE, DOC_VERSION } from './types.ts'
 import type { BoardDoc, CropRect, FrameRecord, ObjectRecord, Scene, StoredDoc, TextRecord, Viewport } from './types.ts'
 
@@ -72,9 +72,28 @@ function parseObject(raw: unknown): ObjectRecord | null {
     const { text, fontSize, width, minHeight } = raw
     if (!isStr(text) || !isNum(fontSize) || !isNum(width) || fontSize <= 0 || width <= 0) return null
     // Formatting is read leniently, like a dangling owner: whatever is malformed is dropped
-    // or trimmed, and the text itself still loads.
-    const height = isNum(minHeight) && minHeight >= 0 ? { minHeight } : {}
-    return { type, id, left, top, angle, text, fontSize, width, ...height, ...canonicalTextFormatting(text, raw), ...lockOf(raw), ...captionFields(raw) }
+    // or trimmed, and the text itself still loads. Rich `blocks` are the exception: a tree
+    // this build cannot read in full makes the board unreadable rather than losing part of it.
+    const content = canonicalTextContent(raw)
+    if (!content) return null
+    const { text: words, ...formatting } = content
+    const floor = isNum(minHeight) && minHeight >= 0 ? { minHeight } : {}
+    return {
+      type,
+      id,
+      left,
+      top,
+      angle,
+      text: words,
+      fontSize,
+      width,
+      ...floor,
+      ...canonicalHeight(raw.height),
+      ...formatting,
+      ...canonicalSurface(raw.surface),
+      ...lockOf(raw),
+      ...captionFields(raw),
+    }
   }
   return null
 }
@@ -89,16 +108,17 @@ function parseFrame(raw: unknown): FrameRecord | null {
 }
 
 /**
- * Validates untrusted stored data (wire versions 1 and 2). Returns null when the shape
+ * Validates untrusted stored data (wire versions 1, 2 and 3). Returns null when the shape
  * is wrong or the version is unknown; callers must not overwrite the stored value in
  * that case. Membership (`frameId`) is restored as stored and never recomputed.
  */
 export function parseDoc(raw: unknown): BoardDoc | null {
-  if (!isRecord(raw) || (raw.version !== 1 && raw.version !== 2) || !Array.isArray(raw.objects)) return null
+  if (!isRecord(raw) || (raw.version !== 1 && raw.version !== 2 && raw.version !== 3) || !Array.isArray(raw.objects)) return null
   const seen = new Set<string>()
+  const hasFrames = raw.version !== 1
 
   const frames: FrameRecord[] = []
-  if (raw.version === 2) {
+  if (hasFrames) {
     if (!Array.isArray(raw.frames)) return null
     for (const f of raw.frames) {
       const frame = parseFrame(f)
@@ -115,7 +135,7 @@ export function parseDoc(raw: unknown): BoardDoc | null {
     if (!rec || seen.has(rec.id)) return null
     seen.add(rec.id)
     // A dangling or malformed owner is dropped (the object becomes loose), not fatal.
-    const owner = raw.version === 2 ? (o as Record<string, unknown>).frameId : undefined
+    const owner = hasFrames ? (o as Record<string, unknown>).frameId : undefined
     if (isStr(owner) && frameIds.has(owner)) rec.frameId = owner
     objects.push(rec)
   }
@@ -153,6 +173,7 @@ function storable<T extends ObjectRecord | FrameRecord>(rec: T): T {
   if ('crop' in out && out.crop) out.crop = { ...out.crop }
   if ('spans' in out && out.spans) out.spans = out.spans.map((span) => ({ ...span }))
   if ('headings' in out && out.headings) out.headings = [...out.headings]
+  if ('blocks' in out && out.blocks) out.blocks = cloneBlocks(out.blocks)
   if ('type' in out && out.type === 'text') {
     const caption = captionFields(out)
     if (!caption.captionOf) delete out.captionOf
@@ -165,13 +186,30 @@ function storable<T extends ObjectRecord | FrameRecord>(rec: T): T {
 }
 
 /**
- * The document as it is written to storage. A board without frames is written in
- * exactly the milestone 1 shape (wire version 1), so only a board that really has a
- * frame needs the newer format. Optional fields (such as `locked`) are written by both
- * versions, and only when set: a key whose value is undefined is never stored.
+ * The document as it is written to storage. A board with a text that uses `blocks`,
+ * `height` or `surface` is written as wire version 3, which builds that do not know those
+ * fields cannot open; `frames` is then always present, even when empty. Otherwise a board
+ * without frames is written in exactly the milestone 1 shape (wire version 1), so only a
+ * board that really has a frame needs version 2. Optional fields (such as `locked`) are
+ * written by every version, and only when set: a key whose value is undefined is never stored.
  */
 export function serializeDoc(doc: BoardDoc): StoredDoc {
   const appearance = boardAppearance(doc.appearance)
+  if (needsRichFence(doc)) {
+    const framed = doc.frames.length > 0
+    return {
+      version: 3,
+      title: doc.title,
+      frames: doc.frames.map((f) => storable(f)),
+      objects: doc.objects.map((o) => {
+        const rest = storable(o)
+        if (!framed) delete rest.frameId // no frame exists, so there is nothing to own it
+        return rest
+      }),
+      viewport: { ...doc.viewport },
+      ...(appearance && { appearance }),
+    }
+  }
   if (doc.frames.length === 0) {
     return {
       version: 1,
@@ -207,8 +245,8 @@ export function objectsEqual(a: readonly ObjectRecord[], b: readonly ObjectRecor
 
 /**
  * Structural equality of record values: plain objects field by field (key order and
- * `undefined` vs absent do not matter), arrays element by element. A text's spans and
- * headings are arrays, and two equal lists must not look like a change on every commit.
+ * `undefined` vs absent do not matter), arrays element by element. A text's spans, headings and
+ * blocks are nested values, and two equal ones must not look like a change on every commit.
  */
 export function valuesEqual(x: unknown, y: unknown): boolean {
   if (x === y) return true

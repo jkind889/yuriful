@@ -314,6 +314,9 @@ export interface StoredObject {
   color?: string
   spans?: Array<{ start: number; end: number; bold?: true; italic?: true; underline?: true; strike?: true; font?: string }>
   headings?: number[]
+  height?: number
+  blocks?: unknown[]
+  surface?: 'card'
   captionOf?: string
   captionSide?: 'top' | 'left' | 'right'
   captionPosition?: number

@@ -86,8 +86,15 @@ export interface BoardStore {
 }
 
 const DB_NAME = 'yuriful'
-/** Version of a database that holds (or has held) a board with frames. Milestone 1 cannot open it. */
-const FENCED_DB_VERSION = 2
+/**
+ * The newest database version this build reads and writes. A database is promoted to the
+ * version its board's wire version needs (`DB_VERSION_FOR_WIRE`) by the first save that needs
+ * it, and is never demoted: version 2 holds (or has held) a board with frames, which
+ * milestone 1 cannot open; version 3 holds (or has held) a board with a rich text, which
+ * builds that stop at version 2 cannot open. Anything newer opens read-only.
+ */
+const FENCED_DB_VERSION = 3
+const DB_VERSION_FOR_WIRE: Readonly<Record<StoredDoc['version'], number>> = { 1: 1, 2: 2, 3: 3 }
 const BOARDS = 'boards'
 const ASSETS = 'assets'
 /** There is a single board; the key leaves room for a board list later. */
@@ -195,7 +202,7 @@ async function writeBoard(tx: IDBTransaction, doc: BoardDoc, wire: StoredDoc, ex
 const isDomainError = (e: unknown) => e instanceof BoardConflictError || e instanceof MissingAssetError || e instanceof StorageBusyError
 
 export interface IndexedDbBoardStoreOptions {
-  /** How long the first save of a framed board may wait for other tabs to let go before failing with a retryable error. */
+  /** How long a save that upgrades the database (a first frame, a first rich text) may wait for other tabs to let go before failing with a retryable error. */
   deadlineMs?: number
   /**
    * How long any open may wait. An open only waits when it is queued behind a promotion
@@ -247,7 +254,7 @@ export class IndexedDbBoardStore implements BoardStore {
   }
 
   /**
-   * Opens without naming a version: connects to whatever exists (version 1 or 2), or
+   * Opens without naming a version: connects to whatever exists (version 1, 2 or 3), or
    * creates version 1 with the two stores. Never changes an existing database.
    */
   private connect(factory: IDBFactory): Promise<IDBDatabase> {
@@ -307,10 +314,12 @@ export class IndexedDbBoardStore implements BoardStore {
   async save(doc: BoardDoc, expected: RevisionToken, bytes: AssetBytes): Promise<RevisionToken> {
     const wire = serializeDoc(doc)
     let db = await this.open()
-    if (wire.version === 2 && db.version < FENCED_DB_VERSION) {
-      // The first save of a board with a frame: promote the database and write the
-      // board in one atomic step, so milestone 1 can never open (and flatten) it.
-      const fenced = await this.fence(doc, wire, expected, bytes)
+    const needed = DB_VERSION_FOR_WIRE[wire.version]
+    if (db.version < needed) {
+      // The first save of a board with a frame (version 2) or a rich text (version 3):
+      // promote the database and write the board in one atomic step, so a build that
+      // would drop what it does not know can never open (and flatten) it.
+      const fenced = await this.fence(doc, wire, expected, bytes, needed)
       if ('token' in fenced) return fenced.token
       db = fenced.db // another tab promoted first: an ordinary write on that connection
     }
@@ -358,12 +367,12 @@ export class IndexedDbBoardStore implements BoardStore {
   }
 
   /**
-   * Promotes the database to the fenced version and writes the board inside the very
-   * same `versionchange` transaction. Either both happen or neither does: a conflict,
-   * missing bytes, a failed write or an expired attempt aborts the upgrade, which leaves
-   * the row and the database version exactly as they were.
+   * Promotes the database to `version` and writes the board inside the very same
+   * `versionchange` transaction. Either both happen or neither does: a conflict, missing
+   * bytes, a failed write or an expired attempt aborts the upgrade, which leaves the row
+   * and the database version exactly as they were.
    */
-  private fence(doc: BoardDoc, wire: StoredDoc, expected: RevisionToken, bytes: AssetBytes): Promise<{ token: RevisionToken } | { db: IDBDatabase }> {
+  private fence(doc: BoardDoc, wire: StoredDoc, expected: RevisionToken, bytes: AssetBytes, version: number): Promise<{ token: RevisionToken } | { db: IDBDatabase }> {
     const factory = this.factory
     if (!factory) return Promise.reject(new Error('IndexedDB is not available in this browser.'))
     const attempt = ++this.fenceSeq
@@ -372,7 +381,7 @@ export class IndexedDbBoardStore implements BoardStore {
         new Promise((resolve, reject) => {
           let req: IDBOpenDBRequest
           try {
-            req = factory.open(DB_NAME, FENCED_DB_VERSION)
+            req = factory.open(DB_NAME, version)
           } catch (e) {
             reject(new Error(describe(e, 'Could not open local storage.')))
             return
@@ -435,6 +444,13 @@ export class IndexedDbBoardStore implements BoardStore {
             event.preventDefault()
             clearTimeout(timer)
             if (expired) return
+            if (failure === null && req.error?.name === 'VersionError') {
+              // Another tab promoted the database past `version` first (to 3 while this
+              // save asked for 2): nothing to upgrade, so write on the regular path.
+              if (attempt !== this.fenceSeq) reject(new StorageBusyError(SUPERSEDED))
+              else this.open().then((db) => resolve({ db }), reject)
+              return
+            }
             if (isDomainError(failure)) reject(failure)
             else reject(new Error(describe(failure ?? req.error, 'Could not write to local storage (it may be full).'), { cause: failure ?? req.error }))
           }
