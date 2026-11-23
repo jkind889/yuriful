@@ -10,7 +10,7 @@ import {
   LINE_PITCH,
   SceneLayer,
   boundsOf,
-  breakableTokenRanges,
+  candidateTokenRanges,
   FIT_SLACK,
   drawnNoWrapRanges,
   isOffscreen,
@@ -176,23 +176,21 @@ describe('viewport-culling-and-foreignobject-xhtml-escaping', () => {
 })
 
 describe('click-created boxes keep words whole', () => {
-  const tokens = (line: string) => breakableTokenRanges(line).map(({ start, end }) => line.slice(start, end))
+  const tokens = (line: string) => candidateTokenRanges(line).map(({ start, end }) => line.slice(start, end))
 
-  it('lists the tokens CSS could break inside, and only those', () => {
+  it('lists every word that must be measured: all but ASCII letters, digits and apostrophes, and single graphemes', () => {
     expect(tokens('a state-of-the-art 2012—2014 and/or plain words')).toEqual(['state-of-the-art', '2012—2014', 'and/or'])
     expect(tokens('see https://example.com/a-b?c=d now')).toEqual(['https://example.com/a-b?c=d'])
-    expect(tokens('日本語のテキスト and 한국어 and ไทย')).toEqual(['日本語のテキスト', '한국어', 'ไทย'])
-    expect(tokens("don't it’s café 123 Ünïcödé")).toEqual([])
-    expect(tokens('end. comma, 😀😀 x 😀 - —')).toEqual(['😀😀'])
-    // Opening punctuation before a word and closing punctuation after it never break; inside a word they may.
-    expect(tokens('(word) [x] "quoted" “curly” ‘single’ «mot» ¿qué? ¡sí! wow!! end… semi; colon:')).toEqual([])
-    expect(tokens('a.b c?d (e-f) x:y ok."')).toEqual(['a.b', 'c?d', '(e-f)', 'x:y'])
+    expect(tokens('日本語のテキスト and 한국어 and ไทย (ＡＢＣ)')).toEqual(['日本語のテキスト', '한국어', 'ไทย', '(ＡＢＣ)'])
+    expect(tokens("don't it’s 123 abc123 café Ünïcödé")).toEqual(['café', 'Ünïcödé'])
+    expect(tokens('end. comma, 😀😀 x 😀 - —')).toEqual(['end.', 'comma,', '😀😀'])
     expect(tokens('tab\tsep-arated  double  spaces\r-x-')).toEqual(['sep-arated', '-x-'])
-    expect(breakableTokenRanges('a-b c-d')).toEqual([{ start: 0, end: 3 }, { start: 4, end: 7 }])
-    expect(breakableTokenRanges('')).toEqual([])
+    expect(candidateTokenRanges('a-b c-d')).toEqual([{ start: 0, end: 3 }, { start: 4, end: 7 }])
+    expect(candidateTokenRanges('')).toEqual([])
   })
 
   it('wraps each such token in one no-wrap span that holds its marks', () => {
+    // No layout here: every candidate counts as breakable (a no-wrap span is harmless).
     const body = document.createElement('div')
     const text = 'Ab state-of-the-art cd 日本語のテキスト'
     // A bold piece and an italic piece inside the first token; a bold mark that starts at its start.
@@ -213,15 +211,21 @@ describe('click-created boxes keep words whole', () => {
     expect(Array.from(drawn.querySelectorAll('.yp-nowrap'), (el) => el.textContent)).toEqual(['state-of-the-art', '日本語のテキスト'])
     expect(noWrapRanges({ text: 'a\nk-pop lo-fi', fontSize: 16, width: 50, minHeight: 0 })).toEqual([[], [{ start: 0, end: 5 }, { start: 6, end: 11 }]])
   })
+
+  it('puts each tab in its own tab span', () => {
+    const body = document.createElement('div')
+    renderCardBody(body, { text: 'a\tb\t\tc', fontSize: 16, width: 200 })
+    expect(body.innerHTML).toBe('<p>a<span class="yp-tab">\t</span>b<span class="yp-tab">\t</span><span class="yp-tab">\t</span>c</p>')
+  })
 })
 
 describe('drawn boxes keep a breakable word whole when it fits the box, and cut it as Fabric does when it does not', () => {
-  /** A word whose graphemes are 10 px wide each, at `start` in its line. */
-  const word = (start: number, text: string, w = 10): MeasuredToken => ({
+  /** A word whose graphemes are `w` px wide each (`kerned` after another), at `start` in its line. */
+  const word = (start: number, text: string, w = 10, kerned = w): MeasuredToken => ({
     start,
     end: start + text.length,
-    width: text.length * w,
-    graphemes: Array.from(text, (_, i) => ({ end: start + i + 1, width: (i + 1) * w })),
+    width: w + (text.length - 1) * kerned,
+    graphemes: Array.from(text, (_, i) => ({ end: start + i + 1, width: w, kerned })),
   })
 
   it('keeps a word whole up to the box width, within FIT_SLACK', () => {
@@ -229,25 +233,43 @@ describe('drawn boxes keep a breakable word whole when it fits the box, and cut 
     expect(drawnNoWrapRanges([t], 80)).toEqual([{ start: 3, end: 8 }])
     expect(drawnNoWrapRanges([t], 50)).toEqual([{ start: 3, end: 8 }])
     expect(drawnNoWrapRanges([t], 50 - FIT_SLACK)).toEqual([{ start: 3, end: 8 }])
-    expect(drawnNoWrapRanges([t], 49.9)).toEqual([{ start: 3, end: 7 }])
+    // Wider than the box: its first piece starts a line of its own; a last piece of one grapheme needs no span.
+    expect(drawnNoWrapRanges([t], 49.9)).toEqual([{ start: 3, end: 7, cut: true }])
   })
 
-  it('cuts a wider word into pieces that each fill the box, the last one holding the rest', () => {
+  it('leaves alone a word CSS cannot break inside that fits', () => {
+    expect(drawnNoWrapRanges([{ ...word(0, 'plain'), breakable: false }], 80)).toEqual([])
+  })
+
+  it('cuts a wider word into pieces that each fill the box, the first starting its own line, the last holding the rest', () => {
     expect(drawnNoWrapRanges([word(0, 'state-of-the-art')], 49)).toEqual([
-      { start: 0, end: 4 }, { start: 4, end: 8 }, { start: 8, end: 12 }, { start: 12, end: 16 },
+      { start: 0, end: 4, cut: true }, { start: 4, end: 8 }, { start: 8, end: 12 }, { start: 12, end: 16 },
     ])
-    expect(drawnNoWrapRanges([word(2, 'and/or')], 40)).toEqual([{ start: 2, end: 6 }, { start: 6, end: 8 }])
+    expect(drawnNoWrapRanges([word(2, 'and/or')], 40)).toEqual([{ start: 2, end: 6, cut: true }, { start: 6, end: 8 }])
+    // Cut even when CSS could not break inside it: the cut is where Fabric cuts.
+    expect(drawnNoWrapRanges([{ ...word(0, 'abcdefgh'), breakable: false }], 45)).toEqual([{ start: 0, end: 4, cut: true }, { start: 4, end: 8 }])
   })
 
-  it('needs no span for a piece of one grapheme, and gives every piece at least one grapheme in a box narrower than a grapheme', () => {
-    expect(drawnNoWrapRanges([word(0, 'a-b')], 20)).toEqual([{ start: 0, end: 2 }])
-    expect(drawnNoWrapRanges([word(0, 'a-b')], 5)).toEqual([])
+  it('always gives the first piece a span (it starts its own line), at least one grapheme each, even in a box narrower than a grapheme', () => {
+    expect(drawnNoWrapRanges([word(0, 'a-b')], 20)).toEqual([{ start: 0, end: 2, cut: true }])
+    expect(drawnNoWrapRanges([word(0, 'a-b')], 5)).toEqual([{ start: 0, end: 1, cut: true }])
   })
 
-  it('measures pieces from where the last one ended, with uneven graphemes', () => {
-    const t: MeasuredToken = { start: 0, end: 5, width: 50, graphemes: [{ end: 1, width: 5 }, { end: 2, width: 25 }, { end: 3, width: 30 }, { end: 4, width: 45 }, { end: 5, width: 50 }] }
+  it('fills a line as Fabric does: a grapheme’s own width first, then each next one’s kerned width', () => {
+    // 10 + 8 + 8 = 26 fits 27 (adding own widths would give 30 and cut after two).
+    expect(drawnNoWrapRanges([{ ...word(0, 'AVAVAV', 10, 8), width: 60 }], 27)).toEqual([{ start: 0, end: 3, cut: true }, { start: 3, end: 6 }])
+    const uneven: MeasuredToken = {
+      start: 0,
+      end: 5,
+      width: 50,
+      graphemes: [5, 20, 5, 15, 5].map((w, i) => ({ end: i + 1, width: w, kerned: w })),
+    }
     // 5 | 20 | 5 | 15 | 5 in a 26 px box: [5+20] [5+15+5]
-    expect(drawnNoWrapRanges([t], 26)).toEqual([{ start: 0, end: 2 }, { start: 2, end: 5 }])
+    expect(drawnNoWrapRanges([uneven], 26)).toEqual([{ start: 0, end: 2, cut: true }, { start: 2, end: 5 }])
+  })
+
+  it('keeps whole a word the layout measures over the box but Fabric fits on one line', () => {
+    expect(drawnNoWrapRanges([{ ...word(0, 'k-pop', 10, 9.9), width: 50.5 }], 50)).toEqual([{ start: 0, end: 5 }])
   })
 })
 

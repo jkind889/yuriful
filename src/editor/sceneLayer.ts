@@ -4,6 +4,7 @@ import { HEADING_SCALE, splitGraphemes } from '../model/richText.ts'
 import type { HeadingLevel } from '../model/richText.ts'
 import type { CropRect, FontId, FrameRecord, ImageRecord, ObjectRecord, Scene, TextRecord, Viewport } from '../model/types.ts'
 import type { Size } from '../model/viewport.ts'
+import { FONT_STACKS } from './fonts.ts'
 import { docFromText, nodes, renderStatic } from './textSchema.ts'
 
 /**
@@ -40,8 +41,8 @@ import { docFromText, nodes, renderStatic } from './textSchema.ts'
 // the font puts it (its rounded ascent plus half the leading), so each block is shifted by a
 // measured amount (`baselineShift`) through the custom properties `--yp-shift-0..3`. Both
 // decorations are CSS underlines (a strikethrough is an underline with a negative offset, which
-// CSS places from the baseline for every font), thick `--yp-deco`. A tab is an inline block
-// `--yp-tab` wide (the box font's space, measured).
+// CSS places from the baseline for every font), thick `--yp-deco`. A tab is drawn as a
+// generated space of the font it sits in, the tab itself taking no room.
 
 /** `lineHeight` of every text box (objects.ts `createObject`). */
 export const FABRIC_LINE_HEIGHT = 1.25
@@ -78,7 +79,6 @@ const PROBE_POSITION = 'position:fixed;left:0;top:0;visibility:hidden;pointer-ev
 
 const TYPE_CACHE_LIMIT = 400
 const shiftCache = new Map<string, number>()
-const spaceCache = new Map<FontId, number>()
 let typeProbe: HTMLElement | null = null
 
 /** A hidden `.yuriful-prose` probe holding one line: a zero-size mark at the baseline, then "x x". */
@@ -125,46 +125,24 @@ export function baselineShift(font: FontId, px: number, doc: Document = document
   }
 }
 
-/** A space's advance in `font`, in font sizes (what a tab is drawn as). 0.25 where nothing can be measured; not kept then. */
-export function spaceWidth(font: FontId, doc: Document = document): number {
-  const hit = spaceCache.get(font)
-  if (hit !== undefined) return hit
-  if (!doc.body) return 0.25
-  const { probe, text } = typographyProbe(doc)
-  probe.dataset.font = font
-  probe.style.fontSize = '100px'
-  doc.body.append(probe)
-  try {
-    const range = doc.createRange()
-    range.setStart(text, 1)
-    range.setEnd(text, 2)
-    if (typeof range.getBoundingClientRect !== 'function' || !proseRulesApply(probe)) return 0.25
-    const ratio = Math.round(range.getBoundingClientRect().width * 100) / 10000
-    if (!(ratio > 0)) return 0.25
-    spaceCache.set(font, ratio)
-    return ratio
-  } finally {
-    probe.remove()
-  }
-}
-
 // ---- words that must not wrap -----------------------------------------------------------------
+//
+// Fabric wraps a click-created box only between words, and moves a drawn box's word to the next
+// line whole. CSS may break inside a word: after a hyphen, dash or slash, between CJK or Hangul
+// characters, emoji, full-width forms... Rather than a list of scripts and punctuation (which
+// always misses a case), a word counts as breakable when Chromium's narrowest layout of it, with
+// a click-created card's own rules, is narrower than the word: measured once per distinct word.
+// Only a word that provably cannot break skips the measurement (`PROVABLY_WHOLE`).
 
 /** Fabric's word joiners (Textbox `_wordJoiners`): the only places a click-created box wraps. */
 const JOINERS = /[ \t\r\n]+/g
-/**
- * A token CSS cannot break inside: letters, digits and apostrophes, with at most opening
- * punctuation before them and closing punctuation after them, where Unicode line breaking never
- * breaks (no break after an opening bracket or quote, none before a closing bracket, quote,
- * full stop, comma, colon, semicolon, ! ? or …; e2e/scene-layer.spec.ts checks each in
- * Chromium)...
- */
-const PLAIN_TOKEN = /^[([{"'“‘«¡¿]*[\p{L}\p{N}'’]+[)\]}"'”’».,;:!?…]*$/u
-/** ...and no letter of a script that CSS breaks between characters. */
-const BREAKS_BETWEEN = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}\p{Script=Yi}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u
+/** A word Unicode line breaking never breaks inside: ASCII letters, digits and apostrophes only. */
+const PROVABLY_WHOLE = /^[A-Za-z0-9'’]+$/
+/** A narrowest layout this much narrower than the word means a break inside it (any piece is at least a grapheme narrower). */
+const BREAK_MARGIN = 0.5
 
-/** True when CSS could wrap inside this space-separated word, where Fabric would not. */
-const isBreakable = (token: string): boolean => (!PLAIN_TOKEN.test(token) || BREAKS_BETWEEN.test(token)) && splitGraphemes(token).length > 1
+/** True when a word must be measured to know whether CSS could break inside it. */
+const isCandidate = (token: string): boolean => !PROVABLY_WHOLE.test(token) && splitGraphemes(token).length > 1
 
 /** The space-separated words of a line (Fabric's words). */
 function wordRanges(line: string): Array<{ start: number; end: number }> {
@@ -179,14 +157,19 @@ function wordRanges(line: string): Array<{ start: number; end: number }> {
 }
 
 /**
- * The UTF-16 ranges `[start, end)` of the space-separated tokens of one line that CSS could
- * wrap inside (after a hyphen, dash or slash, between CJK characters or emoji...), where Fabric
- * wraps a click-created box only between words. A token of one grapheme cannot be wrapped
- * inside and is never listed. The static HTML wraps these ranges in `white-space: nowrap`; the
- * live editor's decoration (a later slice) must use exactly the same ranges.
+ * The UTF-16 ranges `[start, end)` of the space-separated words of one line that CSS might break
+ * inside: every word but those of ASCII letters, digits and apostrophes only, and of one
+ * grapheme. Which of them really are breakable is measured (`noWrapRanges`).
  */
-export function breakableTokenRanges(line: string): Array<{ start: number; end: number }> {
-  return wordRanges(line).filter(({ start, end }) => isBreakable(line.slice(start, end)))
+export function candidateTokenRanges(line: string): Array<{ start: number; end: number }> {
+  return wordRanges(line).filter(({ start, end }) => isCandidate(line.slice(start, end)))
+}
+
+/** A no-wrap range of a line. `cut`: the first piece of a word wider than its drawn box, which starts a line of its own. */
+export interface NoWrapRange {
+  start: number
+  end: number
+  cut?: true
 }
 
 /**
@@ -195,24 +178,34 @@ export function breakableTokenRanges(line: string): Array<{ start: number; end: 
  * Chromium decides a break at an element boundary by the `white-space` of the nearest common
  * ancestor of the two characters, so a token cut into several no-wrap pieces by its marks could
  * still wrap where two pieces meet (measured: `日本` bold, `語` italic, then `のテキストです`).
+ * A `cut` piece is also `yp-cut`: an inline block as wide as the line, so it can follow nothing
+ * on a line. An underline or strikethrough around it is repeated inside it (an inline block is
+ * not decorated by its ancestors).
  */
-function wrapRanges(block: Element, ranges: ReadonlyArray<{ start: number; end: number }>) {
+function wrapRanges(block: Element, ranges: readonly NoWrapRange[]) {
   if (ranges.length === 0) return
   const doc = block.ownerDocument
   const { at } = textIndex(block)
   const range = doc.createRange()
   // From the last token back: wrapping one only splits nodes after the earlier tokens' positions.
   for (let i = ranges.length - 1; i >= 0; i--) {
-    const { start, end } = ranges[i]!
+    const { start, end, cut } = ranges[i]!
     const a = at(start, 1)
     const b = at(end, -1)
     if (!a || !b) continue
     range.setStart(a.node, a.offset)
     range.setEnd(b.node, b.offset)
     const span = doc.createElement('span')
-    span.className = 'yp-nowrap'
+    span.className = cut ? 'yp-nowrap yp-cut' : 'yp-nowrap'
     span.append(range.extractContents())
     range.insertNode(span)
+    if (!cut) continue
+    for (let up = span.parentElement; up && up !== block; up = up.parentElement) {
+      if (up.localName !== 'u' && up.localName !== 's') continue
+      const again = doc.createElement(up.localName)
+      again.append(...Array.from(span.childNodes))
+      span.append(again)
+    }
   }
   range.detach()
   // A mark the token began or ended at the edge of is left empty in front of or behind it.
@@ -222,9 +215,10 @@ function wrapRanges(block: Element, ranges: ReadonlyArray<{ start: number; end: 
 }
 
 /**
- * Puts every tab of `block` in its own `<span class="yp-tab">`, an inline block as wide as a
- * space (Fabric draws a tab as a space; CSS would jump to the next tab stop). The live editor's
- * decoration (a later slice) must wrap the same characters, every "\t" of a line.
+ * Puts every tab of `block` in its own `<span class="yp-tab">`, drawn as Fabric draws a tab: a
+ * space of the font it sits in (generated before it), the tab itself taking no room, so it wraps,
+ * hangs at a line's end and fits as a space does. CSS would jump to the next tab stop. The live
+ * editor's decoration (a later slice) must give every "\t" of a line the same class.
  */
 function wrapTabs(block: Element) {
   const doc = block.ownerDocument
@@ -257,12 +251,18 @@ function wrapTabs(block: Element) {
 // per word (a repeated word is measured once), and only when measured with the stylesheet in
 // place. `resetTypography()` drops every cache.
 
-/** A word of one line as laid out: its width and, once needed, the width from its start to each grapheme's end. */
+/**
+ * A word of one line as laid out: its width and, once it has been needed (a word wider than a
+ * drawn box), each grapheme as Fabric measures it: its own width and its width after the
+ * grapheme before it (kerning included), as `DrawnTextbox` fills a line.
+ */
 export interface MeasuredToken {
   start: number
   end: number
   width: number
-  graphemes?: Array<{ end: number; width: number }>
+  /** False when CSS cannot break inside it (measured); absent counts as breakable. */
+  breakable?: boolean
+  graphemes?: Array<{ end: number; width: number; kerned: number }>
 }
 
 interface LineMeasure {
@@ -275,25 +275,34 @@ interface LineMeasure {
   widestGrapheme?: number
 }
 
+interface WordEntry {
+  width: number
+  /** Whether CSS could break inside it; absent until measured. */
+  breakable?: boolean
+  /** Relative to the word's start. */
+  graphemes?: Array<{ end: number; width: number; kerned: number }>
+}
+
 const LINE_CACHE_LIMIT = 4000
 const lineCache = new Map<string, LineMeasure>()
-/** A word's or grapheme's width (and graphemes, relative to its start) by text, marks, line level, box font and size. */
+/** A word's or grapheme's measurements by its text, marks, line level, box font and size. */
 const WORD_CACHE_LIMIT = 20000
-const wordCache = new Map<string, { width: number; graphemes?: Array<{ end: number; width: number }> }>()
+const wordCache = new Map<string, WordEntry>()
 /** The word-cache key of a measured word, when it lies in one run of the same marks. */
 const wordKeys = new WeakMap<MeasuredToken, string>()
 
-/** Drops every measurement taken (baseline shifts, space widths, words): call when fonts or the stylesheet change. */
+/** Drops every measurement taken (baseline shifts, words): call when fonts or the stylesheet change. */
 export function resetTypography() {
   shiftCache.clear()
-  spaceCache.clear()
   lineCache.clear()
   wordCache.clear()
+  glyphCache.clear()
   lastLines = null
 }
 
 interface CardLines {
   font: FontId
+  fontSize: number
   blocks: PMNode[]
   /** Per line: what its widths depend on (the line itself, the box font and size). */
   keys: string[]
@@ -312,7 +321,7 @@ function cardLines(rec: CardSource): CardLines | null {
     read.doc.forEach((block) => {
       blocks.push(block)
     })
-    lines = { font, blocks, keys: blocks.map((b) => JSON.stringify([b.toJSON(), font, rec.fontSize])) }
+    lines = { font, fontSize: rec.fontSize, blocks, keys: blocks.map((b) => JSON.stringify([b.toJSON(), font, rec.fontSize])) }
   }
   lastLines = { key, lines }
   return lines
@@ -329,23 +338,23 @@ function wordKey(block: PMNode, start: number, end: number, font: FontId, fontSi
   return key
 }
 
-function remember(key: string, value: { width: number; graphemes?: Array<{ end: number; width: number }> }) {
+function remember(key: string, value: WordEntry) {
   if (wordCache.size >= WORD_CACHE_LIMIT) wordCache.clear()
-  wordCache.set(key, value)
+  wordCache.set(key, { ...wordCache.get(key), ...value })
 }
 
 /**
  * Lays the given lines out on an unwrapped, untransformed, hidden copy of a card in `doc` and
- * calls `fn` with each line's element (in the same order) and a range. False, and nothing
- * called, where nothing can be laid out (jsdom) or the stylesheet is missing.
+ * calls `fn` with each line's element (in the same order), a range and the probe itself. False,
+ * and nothing called, where nothing can be laid out (jsdom) or the stylesheet is missing.
  */
-function withProbe(blocks: readonly PMNode[], font: FontId, fontSize: number, doc: Document, fn: (lines: Element[], range: Range) => void): boolean {
+function withProbe(blocks: readonly PMNode[], font: FontId, fontSize: number, doc: Document, fn: (lines: Element[], range: Range, probe: HTMLElement) => void): boolean {
   if (!doc.body || blocks.length === 0) return false
   const probe = doc.createElement('div')
   probe.className = 'yuriful-prose'
   probe.dataset.font = font
   probe.setAttribute('aria-hidden', 'true')
-  probe.style.cssText = `${PROBE_POSITION}white-space:pre;font-size:${fontSize}px;--yp-tab:${spaceWidth(font, doc)}em`
+  probe.style.cssText = `${PROBE_POSITION}white-space:pre;font-size:${fontSize}px`
   const frag = renderStatic(nodes.doc.create(null, blocks), doc)
   for (const block of Array.from(frag.children)) wrapTabs(block)
   probe.append(frag)
@@ -353,7 +362,7 @@ function withProbe(blocks: readonly PMNode[], font: FontId, fontSize: number, do
   try {
     const range = doc.createRange()
     if (typeof range.getClientRects !== 'function' || probe.getBoundingClientRect().height === 0 || !proseRulesApply(probe)) return false
-    fn(Array.from(probe.children), range)
+    fn(Array.from(probe.children), range, probe)
     return true
   } finally {
     probe.remove()
@@ -373,8 +382,10 @@ function textWidth(index: TextIndex, range: Range, start: number, end: number): 
 
 /**
  * Every word of every line of a text, with widths as the card shows them (marks, fonts and
- * heading sizes included), measured on a hidden copy in `doc`. Cached per line and per word. In
- * a document without layout (or without the stylesheet) every width is 0 and nothing is kept.
+ * heading sizes included) and whether CSS could break inside each, measured on a hidden copy in
+ * `doc`. Cached per line and per word. In a document without layout (or without the stylesheet)
+ * every width is 0, every candidate word counts as breakable (a no-wrap span is harmless), and
+ * nothing is kept.
  */
 function measureLines(rec: CardSource, doc: Document): LineMeasure[] | null {
   const lines = cardLines(rec)
@@ -382,35 +393,65 @@ function measureLines(rec: CardSource, doc: Document): LineMeasure[] | null {
   const out = lines.keys.map((key) => lineCache.get(key))
   const fresh: number[] = []
   const unmeasured = new Set<MeasuredToken>()
+  /** Candidate words whose breakability is not known yet: until measured, they count as breakable. */
+  const undecided = new Set<MeasuredToken>()
   out.forEach((hit, i) => {
     if (hit) return
     const block = lines.blocks[i]!
     const text = block.textContent
     const words = wordRanges(text).map(({ start, end }) => {
-      const t: MeasuredToken = { start, end, width: 0 }
+      const t: MeasuredToken = { start, end, width: 0, breakable: false }
       const key = wordKey(block, start, end, lines.font, rec.fontSize)
       const known = key === undefined ? undefined : wordCache.get(key)
       if (key !== undefined) wordKeys.set(t, key)
       if (known) t.width = known.width
       else unmeasured.add(t)
+      if (isCandidate(text.slice(start, end))) {
+        t.breakable = known?.breakable ?? true
+        if (known?.breakable === undefined) undecided.add(t)
+      }
       return t
     })
-    out[i] = { words, tokens: words.filter((t) => isBreakable(text.slice(t.start, t.end))), widestWord: 0 }
+    out[i] = { words, tokens: [], widestWord: 0 }
     fresh.push(i)
   })
-  const probed = fresh.filter((i) => out[i]!.words.some((t) => unmeasured.has(t)))
-  const measured = withProbe(probed.map((i) => lines.blocks[i]!), lines.font, rec.fontSize, doc, (els, range) => {
+  const probed = fresh.filter((i) => out[i]!.words.some((t) => unmeasured.has(t) || undecided.has(t)))
+  const measured = withProbe(probed.map((i) => lines.blocks[i]!), lines.font, rec.fontSize, doc, (els, range, probe) => {
+    const alone: Array<{ t: MeasuredToken; el: HTMLElement }> = []
     els.forEach((el, k) => {
       const index = textIndex(el)
       for (const t of out[probed[k]!]!.words) {
-        if (!unmeasured.has(t)) continue
-        t.width = textWidth(index, range, t.start, t.end)
-        const key = wordKeys.get(t)
-        if (key !== undefined) remember(key, { width: t.width })
+        if (unmeasured.has(t)) {
+          t.width = textWidth(index, range, t.start, t.end)
+          const key = wordKeys.get(t)
+          if (key !== undefined) remember(key, { width: t.width })
+        }
+        if (!undecided.has(t)) continue
+        // The word alone, with its marks, in a block of its line's kind (so a heading's size),
+        // laid out as narrow as a click-created card's own rules allow.
+        const a = index.at(t.start, 1)
+        const b = index.at(t.end, -1)
+        if (!a || !b) continue
+        range.setStart(a.node, a.offset)
+        range.setEnd(b.node, b.offset)
+        const block = doc.createElement(el.localName)
+        block.style.cssText = 'width:min-content;white-space:pre-wrap;top:0'
+        block.append(range.cloneContents())
+        alone.push({ t, el: block })
       }
     })
+    for (const { el } of alone) probe.append(el)
+    for (const { t, el } of alone) {
+      t.breakable = el.getBoundingClientRect().width < t.width - BREAK_MARGIN
+      const key = wordKeys.get(t)
+      if (key !== undefined) remember(key, { width: t.width, breakable: t.breakable })
+    }
   })
-  for (const i of fresh) out[i]!.widestWord = Math.max(0, ...out[i]!.words.map((t) => t.width))
+  for (const i of fresh) {
+    const m = out[i]!
+    m.tokens = m.words.filter((t) => t.breakable)
+    m.widestWord = Math.max(0, ...m.words.map((t) => t.width))
+  }
   if (measured || probed.length === 0) {
     if (lineCache.size + fresh.length > LINE_CACHE_LIMIT) lineCache.clear()
     for (const i of fresh) lineCache.set(lines.keys[i]!, out[i]!)
@@ -472,21 +513,91 @@ export function effectiveCardWidth(rec: CardSource, doc: Document = document): n
   return Math.max(rec.width, minCardWidth(rec, doc))
 }
 
+// ---- graphemes as Fabric measures them ----------------------------------------------------------
+//
+// To cut a word wider than a drawn box exactly where Fabric does, its graphemes are measured as
+// Fabric measures them (Text `_measureChar`): on a 2D canvas, at 400 px, then scaled; a
+// grapheme's kerned width is the pair with the grapheme before it minus that one, when both
+// have the same font declaration.
+
+const CACHE_FONT_SIZE = 400
+let glyphContext: CanvasRenderingContext2D | null | undefined
+const glyphCache = new Map<string, Map<string, number>>()
+
+function glyphWidth(font400: string, text: string, doc: Document): number | undefined {
+  if (glyphContext === undefined) glyphContext = doc.createElement('canvas').getContext('2d')
+  if (!glyphContext) return undefined
+  let widths = glyphCache.get(font400)
+  if (!widths) {
+    widths = new Map()
+    glyphCache.set(font400, widths)
+  }
+  let w = widths.get(text)
+  if (w === undefined) {
+    glyphContext.font = font400
+    w = glyphContext.measureText(text).width
+    widths.set(text, w)
+  }
+  return w
+}
+
+/** The font of the character at `offset` of a line, as Fabric declares it: measured at 400 px, and at its own size. */
+function fabricFont(block: PMNode, offset: number, font: FontId, fontSize: number): { measure: string; decl: string; size: number } {
+  const level = (block.attrs.level as number | undefined) ?? 0
+  let marks: readonly { type: { name: string }; attrs: Record<string, unknown> }[] = []
+  block.forEach((child, at) => {
+    if (at <= offset && offset < at + child.nodeSize) marks = child.marks
+  })
+  const has = (name: string) => marks.some((m) => m.type.name === name)
+  const family = FONT_STACKS[(marks.find((m) => m.type.name === 'font')?.attrs.font as FontId | undefined) ?? font]
+  const weight = level > 0 || has('bold') ? 'bold' : 'normal'
+  const style = has('italic') ? 'italic' : 'normal'
+  const size = fontSize * levelScale(level)
+  return { measure: `${style} ${weight} ${CACHE_FONT_SIZE}px ${family}`, decl: `${style} ${weight} ${size}px ${family}`, size }
+}
+
+/** The graphemes of `[start, end)` of a line as `DrawnTextbox` measures them; undefined without a 2D canvas. */
+function fabricGraphemes(block: PMNode, start: number, end: number, font: FontId, fontSize: number, doc: Document): MeasuredToken['graphemes'] {
+  const text = block.textContent
+  const out: NonNullable<MeasuredToken['graphemes']> = []
+  let offset = start
+  let prev: { g: string; decl: string } | undefined
+  for (const g of splitGraphemes(text.slice(start, end))) {
+    const { measure, decl, size } = fabricFont(block, offset, font, fontSize)
+    const mult = size / CACHE_FONT_SIZE
+    const own = glyphWidth(measure, g, doc)
+    if (own === undefined) return undefined
+    let kerned = own
+    if (prev && prev.decl === decl) {
+      const pair = glyphWidth(measure, prev.g + g, doc)
+      const before = glyphWidth(measure, prev.g, doc)
+      if (pair !== undefined && before !== undefined) kerned = pair - before
+    }
+    offset += g.length
+    out.push({ end: offset, width: own * mult, kerned: kerned * mult })
+    prev = { g, decl }
+  }
+  return out
+}
+
 // ---- drawn boxes: breakable words kept whole -------------------------------------------------
 //
 // Fabric's drawn box (DrawnTextbox `_wrapText`) fills a line grapheme by grapheme while the
 // line, its spaces included, is no wider than the box. A line that must end there goes back to
 // its last space; only a line with no space in it is cut at a grapheme. So a word moves whole to
-// the next line unless it is wider than the box on its own; such a word starts a new line and
-// is cut where the box is full, line after line. A word stays at the end of a line only if the
-// space after it fits too (that is `white-space: break-spaces` on `.is-drawn`).
+// the next line unless it is wider than the box on its own; such a word always starts a line of
+// its own (whatever came before it on the line moves back behind the last space), then is cut
+// where the box is full, line after line, and the text after its last piece follows on that
+// piece's line. A word stays at the end of a line only if the space after it fits too (that is
+// `white-space: break-spaces` on `.is-drawn`).
 //
-// CSS `overflow-wrap: anywhere` does the same for a word with no break opportunity inside it.
-// A breakable word (see `breakableTokenRanges`) would break inside instead. So on a drawn box:
+// CSS `overflow-wrap: anywhere` breaks a word only where nothing else fits, but a breakable word
+// (one CSS could break inside, measured) would break at its own break points. So on a drawn box:
 //  - a breakable word no wider than the box is one no-wrap span, and moves whole;
-//  - a wider one is cut into no-wrap pieces, each as many graphemes as fill the box (Fabric's
-//    cut). CSS can then break it only where two pieces meet, by the emergency break of
-//    `anywhere`, and its first piece, a full line wide, cannot follow anything else on a line.
+//  - a wider word (breakable or not) is cut into no-wrap pieces where Fabric cuts it, measuring
+//    its graphemes as Fabric does; CSS can then break it only where two pieces meet (an emergency
+//    break of `anywhere`). Its first piece is a line-wide inline block (`cut`), so it always
+//    starts a line, as in Fabric, whatever the widths of its graphemes.
 // Both depend on the box width, so the ranges are worked out again for every width, from word
 // widths measured once (`measureDrawnTokens`, cached).
 
@@ -498,105 +609,105 @@ export function effectiveCardWidth(rec: CardSource, doc: Document = document): n
 export const FIT_SLACK = 0.05
 
 /**
- * The no-wrap ranges of one line of a drawn box `width` wide: each breakable word that fits
- * the box whole, and the pieces of each one that does not (a piece of a single grapheme needs
- * no span; a wider word whose graphemes are not measured gets none). Pure: the live editor's
- * decoration can use it with the same measured words (`measureDrawnTokens`).
+ * The no-wrap ranges of one line of a drawn box `width` wide, from its measured words: each
+ * breakable word that fits the box whole, and the pieces of each word that does not (cut as
+ * `DrawnTextbox` cuts it; the first piece marked `cut`, a later piece of one grapheme needs no
+ * span). A wider word whose graphemes are not measured gets nothing. Pure: the live editor's
+ * decoration can use it with the same measured words (`measureDrawnTokens`, `measureWideTokens`).
  */
-export function drawnNoWrapRanges(tokens: readonly MeasuredToken[], width: number): Array<{ start: number; end: number }> {
-  const out: Array<{ start: number; end: number }> = []
-  const limit = width + FIT_SLACK
+export function drawnNoWrapRanges(tokens: readonly MeasuredToken[], width: number): NoWrapRange[] {
+  const out: NoWrapRange[] = []
   for (const t of tokens) {
-    if (t.width <= limit) {
+    if (t.width <= width + FIT_SLACK) {
+      if (t.breakable !== false) out.push({ start: t.start, end: t.end })
+      continue
+    }
+    const gs = t.graphemes
+    if (!gs || gs.length === 0) continue
+    // Fabric's limit: the box, or its widest grapheme when that is wider.
+    const limit = Math.max(width, ...gs.map((g) => g.width))
+    const pieces: Array<{ start: number; end: number; count: number }> = []
+    let start = t.start
+    let filled = 0
+    let count = 0
+    let end = t.start
+    for (const g of gs) {
+      if (count > 0 && filled + g.kerned > limit) {
+        pieces.push({ start, end, count })
+        start = end
+        count = 0
+      }
+      filled = count === 0 ? g.width : filled + g.kerned
+      count++
+      end = g.end
+    }
+    pieces.push({ start, end, count })
+    // Fabric fits it on one line after all: kept whole.
+    if (pieces.length === 1) {
       out.push({ start: t.start, end: t.end })
       continue
     }
-    let start = t.start
-    let base = 0
-    let count = 0
-    let prev = { end: t.start, width: 0 }
-    for (const g of t.graphemes ?? []) {
-      if (count > 0 && g.width - base > limit) {
-        if (count > 1) out.push({ start, end: prev.end })
-        start = prev.end
-        base = prev.width
-        count = 0
-      }
-      count++
-      prev = g
-    }
-    if (count > 1) out.push({ start, end: prev.end })
+    pieces.forEach((p, i) => {
+      if (i === 0) out.push({ start: p.start, end: p.end, cut: true })
+      else if (p.count > 1) out.push({ start: p.start, end: p.end })
+    })
   }
   return out
 }
 
 /**
- * The breakable words of each line of a text, with their widths as the card shows them,
- * measured on a hidden copy in `doc`. Cached per line and word, so a resize only compares widths
- * and an edit measures only the lines it changed. Without layout every width is 0 (every word fits).
+ * The words of each line of a text that a drawn box must keep from breaking at CSS's own break
+ * points: the breakable ones (measured) and any word that may turn out wider than the box (all
+ * of them, `breakable` telling which is which). Cached per line and word, so a resize only
+ * compares widths and an edit measures only the lines it changed. Without layout every width is
+ * 0 (every word fits).
  */
 export function measureDrawnTokens(rec: CardSource, doc: Document = document): MeasuredToken[][] {
-  return (measureLines(rec, doc) ?? []).map((m) => m.tokens)
+  return (measureLines(rec, doc) ?? []).map((m) => m.words)
 }
 
 /**
  * Measures, once, the graphemes of every word of `tokens` (from `measureDrawnTokens(rec)`) that
- * is wider than `width`: the width from the word's start to each grapheme's end. Words that fit
- * are left alone, so this costs nothing unless a word is wider than the box, and only once per word.
+ * is wider than `width`, as Fabric measures them. Words that fit are left alone, so this costs
+ * nothing unless a word is wider than the box, and only once per word.
  */
 export function measureWideTokens(rec: CardSource, tokens: MeasuredToken[][], width: number, doc: Document = document) {
-  const wide = tokens.map((line) =>
-    line.filter((t) => {
-      if (t.graphemes || t.width <= width + FIT_SLACK) return false
+  const lines = cardLines(rec)
+  if (!lines) return
+  tokens.forEach((line, i) => {
+    const block = lines.blocks[i]
+    if (!block) return
+    for (const t of line) {
+      if (t.graphemes || t.width <= width + FIT_SLACK) continue
       // A repeated word measured before: its graphemes, moved to where this one starts.
       const key = wordKeys.get(t)
       const known = key === undefined ? undefined : wordCache.get(key)?.graphemes
-      if (known) t.graphemes = known.map((g) => ({ end: t.start + g.end, width: g.width }))
-      return !t.graphemes
-    }),
-  )
-  const which = wide.flatMap((line, i) => (line.length > 0 ? [i] : []))
-  if (which.length === 0) return
-  const lines = cardLines(rec)
-  if (!lines) return
-  withProbe(which.map((i) => lines.blocks[i]!), lines.font, rec.fontSize, doc, (els, range) => {
-    els.forEach((el, k) => {
-      const index = textIndex(el)
-      for (const t of wide[which[k]!]!) {
-        if (t.graphemes) continue // an earlier repeat in this pass
-        const key = wordKeys.get(t)
-        const known = key === undefined ? undefined : wordCache.get(key)?.graphemes
-        if (known) {
-          t.graphemes = known.map((g) => ({ end: t.start + g.end, width: g.width }))
-          continue
-        }
-        const graphemes: Array<{ end: number; width: number }> = []
-        let offset = t.start
-        for (const g of splitGraphemes(index.text.slice(t.start, t.end))) {
-          offset += g.length
-          graphemes.push({ end: offset, width: textWidth(index, range, t.start, offset) })
-        }
-        t.graphemes = graphemes
-        if (key !== undefined) remember(key, { width: t.width, graphemes: graphemes.map((g) => ({ end: g.end - t.start, width: g.width })) })
+      if (known) {
+        t.graphemes = known.map((g) => ({ ...g, end: t.start + g.end }))
+        continue
       }
-    })
+      const graphemes = fabricGraphemes(block, t.start, t.end, lines.font, rec.fontSize, doc)
+      if (!graphemes) continue
+      t.graphemes = graphemes
+      if (key !== undefined) remember(key, { width: t.width, graphemes: graphemes.map((g) => ({ ...g, end: g.end - t.start })) })
+    }
   })
 }
 
 /**
  * The no-wrap ranges of every line of a card (UTF-16 offsets into each line): on a
- * click-created box every breakable word; on a drawn box the words that fit its effective width
- * whole, and the pieces of those that do not. What the live editor's decoration must apply.
+ * click-created box every word CSS could break inside (measured); on a drawn box those that fit
+ * its effective width whole, and the pieces of every word that does not. What the live editor's
+ * decoration must apply (a `cut` piece as a line-wide inline block, `yp-cut`).
  */
-export function noWrapRanges(rec: CardSource, doc: Document = document): Array<Array<{ start: number; end: number }>> {
+export function noWrapRanges(rec: CardSource, doc: Document = document): NoWrapRange[][] {
   if (isDrawn(rec)) {
     const width = effectiveCardWidth(rec, doc)
     const tokens = measureDrawnTokens(rec, doc)
     measureWideTokens(rec, tokens, width, doc)
     return tokens.map((line) => drawnNoWrapRanges(line, width))
   }
-  const lines = cardLines(rec)
-  return lines ? lines.blocks.map((b) => breakableTokenRanges(b.textContent)) : []
+  return (measureLines(rec, doc) ?? []).map((m) => m.tokens.map(({ start, end }) => ({ start, end })))
 }
 
 // ---- a text card's body ---------------------------------------------------------------------
@@ -615,8 +726,8 @@ function cardLook(rec: CardSource): Omit<CardSource, 'width'> {
 
 /**
  * Gives `body` the classes and styles of its card, leaving its children alone: font, size,
- * alignment, colour, caption background, drawn minimum height, wrapping kind, baseline shifts,
- * decoration thickness and tab width. Safe on a card whose live editor is mounted.
+ * alignment, colour, caption background, drawn minimum height, wrapping kind, baseline shifts
+ * and decoration thickness. Safe on a card whose live editor is mounted.
  */
 export function applyCardStyle(body: HTMLElement, rec: CardSource) {
   const doc = body.ownerDocument
@@ -634,7 +745,6 @@ export function applyCardStyle(body: HTMLElement, rec: CardSource) {
   s.backgroundColor = rec.captionBackground ?? ''
   for (const level of LEVELS) s.setProperty(`--yp-shift-${level}`, `${baselineShift(font, rec.fontSize * levelScale(level), doc)}px`)
   s.setProperty('--yp-deco', `${Math.round(rec.fontSize * DECORATION_THICKNESS * 1000) / 1000}px`)
-  s.setProperty('--yp-tab', `${spaceWidth(font, doc)}em`)
 }
 
 /**
@@ -643,7 +753,7 @@ export function applyCardStyle(body: HTMLElement, rec: CardSource) {
  * may be passed in when already worked out) and tab spans. The live editor is later mounted into
  * the same element and inherits all of it.
  */
-export function renderCardBody(body: HTMLElement, rec: CardSource, ranges: Array<Array<{ start: number; end: number }>> = noWrapRanges(rec, body.ownerDocument)) {
+export function renderCardBody(body: HTMLElement, rec: CardSource, ranges: NoWrapRange[][] = noWrapRanges(rec, body.ownerDocument)) {
   const doc = body.ownerDocument
   applyCardStyle(body, rec)
   const read = docFromText(rec)

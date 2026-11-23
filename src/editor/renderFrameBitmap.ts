@@ -112,11 +112,18 @@ export const PROSE_CSS = `
 .yuriful-prose .yp-nowrap {
   white-space: nowrap;
 }
-/* A tab is as wide as a space, as on the canvas */
+/* A tab is drawn as a space of the font it sits in, as on the canvas: the tab itself takes no
+   room, and a space before it (generated) wraps, hangs and fits as any space does */
 .yuriful-prose .yp-tab {
-  display: inline-block;
-  width: var(--yp-tab, 0.25em);
   tab-size: 0;
+}
+.yuriful-prose .yp-tab::before {
+  content: " ";
+}
+/* The first piece of a word wider than its drawn box: a line of its own, as on the canvas */
+.yuriful-prose .yp-cut {
+  display: inline-block;
+  width: 100%;
 }
 .yuriful-prose[data-font="sans"],
 .yuriful-prose [data-font="sans"] {

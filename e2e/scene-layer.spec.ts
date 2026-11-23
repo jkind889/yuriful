@@ -122,6 +122,7 @@ async function compareTypography(page: Page, recs: Array<Record<string, unknown>
       const domHeight = layer.measureCard(text.id)!.height
       // The wrapped lines as laid out: characters grouped by the top of their box.
       const rows = new Map<number, string>()
+      const spans: Array<{ top: number; bottom: number; key: number }> = []
       const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT)
       const range = document.createRange()
       for (let n = walker.nextNode(); n; n = walker.nextNode()) {
@@ -131,13 +132,14 @@ async function compareTypography(page: Page, recs: Array<Record<string, unknown>
           range.setEnd(t, i + 1)
           const r = range.getClientRects()[0]
           if (!r) continue
-          const key = Math.round(r.top + r.height / 2)
-          let rowKey = [...rows.keys()].find((k) => Math.abs(k - key) <= 2)
-          if (rowKey === undefined) {
-            rowKey = key
-            rows.set(rowKey, '')
+          // Characters of one line overlap vertically, whatever their fonts' boxes.
+          let row = spans.find((x) => Math.min(x.bottom, r.bottom) - Math.max(x.top, r.top) > Math.min(x.bottom - x.top, r.height) / 2)
+          if (!row) {
+            row = { top: r.top, bottom: r.bottom, key: Math.round(r.top + r.height / 2) }
+            spans.push(row)
+            rows.set(row.key, '')
           }
-          rows.set(rowKey, rows.get(rowKey)! + t.data[i])
+          rows.set(row.key, rows.get(row.key)! + t.data[i])
         }
       }
       // A line of spaces alone is left out on both sides (a drawn box can start a line with the
@@ -161,6 +163,7 @@ async function compareTypography(page: Page, recs: Array<Record<string, unknown>
           ctx.drawImage(img, 0, 0)
           return ctx.getImageData(0, 0, c.width, c.height)
         }
+        const s = prepared.scale
         const fab = await pixels(prepared.png)
         const dom = await pixels(`data:image/png;base64,${shot}`)
         const inkIn = (data: ImageData, y0: number, y1: number): { top: number; bottom: number; left: number; right: number } | null => {
@@ -181,20 +184,39 @@ async function compareTypography(page: Page, recs: Array<Record<string, unknown>
           }
           return top < 0 ? null : { top: top / prepared.scale, bottom: (bottom + 1) / prepared.scale, left: left / prepared.scale, right: (right + 1) / prepared.scale }
         }
-        const present = (data: ImageData, y0: number, y1: number): boolean => {
+        // Something drawn on a line: a pixel inside the card that differs from the line's own paper
+        // (the commonest colour there: white, or a caption background).
+        // Only inside the card's own box: a last line's band runs on below it, onto other paper.
+        const present = (data: ImageData, y0: number, band1: number, width: number, height: number): boolean => {
+          const x0 = Math.round(prepared.margin * s)
+          const x1 = Math.min(data.width, Math.round((prepared.margin + width) * s))
+          const y1 = Math.min(band1, Math.floor((prepared.margin + height) * s))
+          const counts = new Map<number, number>()
           for (let y = Math.max(0, y0); y < Math.min(data.height, y1); y++) {
-            for (let x = 0; x < data.width; x++) {
+            for (let x = x0; x < x1; x++) {
               const i = (y * data.width + x) * 4
-              if (data.data[i]! < 235 || data.data[i + 1]! < 235 || data.data[i + 2]! < 235) return true
+              const key = ((data.data[i]! >> 3) << 10) | ((data.data[i + 1]! >> 3) << 5) | (data.data[i + 2]! >> 3)
+              counts.set(key, (counts.get(key) ?? 0) + 1)
+            }
+          }
+          let paper = 0
+          let most = -1
+          for (const [key, n] of counts) if (n > most) [paper, most] = [key, n]
+          const pr = (paper >> 10) << 3
+          const pg = ((paper >> 5) & 31) << 3
+          const pb = (paper & 31) << 3
+          for (let y = Math.max(0, y0); y < Math.min(data.height, y1); y++) {
+            for (let x = x0; x < x1; x++) {
+              const i = (y * data.width + x) * 4
+              if (Math.abs(data.data[i]! - pr) + Math.abs(data.data[i + 1]! - pg) + Math.abs(data.data[i + 2]! - pb) > 60) return true
             }
           }
           return false
         }
-        const s = prepared.scale
         return prepared.lineTops.map((t, i) => {
           const y0 = Math.round((t + prepared.margin) * s)
           const y1 = Math.round((t + prepared.pitches[i]! + prepared.margin) * s)
-          return { line: i, text: prepared.lines[i]!, fabric: inkIn(fab, y0, y1), dom: inkIn(dom, y0, y1), fabricPresent: present(fab, y0, y1), domPresent: present(dom, y0, y1) }
+          return { line: i, text: prepared.lines[i]!, fabric: inkIn(fab, y0, y1), dom: inkIn(dom, y0, y1), fabricPresent: present(fab, y0, y1, prepared.fabricWidth, prepared.fabricHeight), domPresent: present(dom, y0, y1, prepared.domWidth, prepared.domHeight) }
         })
       },
       { prepared, shot: shot.toString('base64') },
@@ -451,7 +473,7 @@ test('keeping drawn words whole costs little on a 1,500-word card, on every step
     const editedLine = layer.bodyOf('long')!.firstElementChild!
     const newWordKept = editedLine.lastElementChild?.className === 'yp-nowrap' && editedLine.lastElementChild.textContent === 'neo-soul'
     const pct = (xs: number[], p: number) => [...xs].sort((a, b) => a - b)[Math.min(xs.length - 1, Math.floor(xs.length * p))]!
-    const breakable = tokens.reduce((n, line) => n + line.length, 0)
+    const breakable = tokens.reduce((n, line) => n + line.filter((t) => t.breakable).length, 0)
     return { words: words.length, breakable, measureFirstInPage, measure, first, editMeasure, editRender, newWordKept, steps: step.length, rerenders, ruleP50: pct(rule, 0.5), ruleMax: Math.max(...rule), stepP50: pct(step, 0.5), stepP95: pct(step, 0.95), stepMax: Math.max(...step) }
   })
   console.log(JSON.stringify(out, (_, v) => (typeof v === 'number' ? Math.round(v * 100) / 100 : v)))
@@ -464,20 +486,23 @@ test('keeping drawn words whole costs little on a 1,500-word card, on every step
   expect(out.newWordKept).toBe(true)
 })
 
-test('a word with only opening punctuation before it and closing punctuation after it has no break opportunity in Chromium', async ({ page }) => {
+test('a word gets a no-wrap span exactly when Chromium could break inside it (measured, not a character rule)', async ({ page }) => {
   await openHarness(page)
   const out = await page.evaluate(async () => {
     const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
-    const { breakableTokenRanges } = (await load('/src/editor/sceneLayer.ts')) as typeof import('../src/editor/sceneLayer.ts')
-    const plain = ['beats,', 'mix.', '(word)', '[x]', '{y}', '"quoted"', "'tis", "rock'n'roll", '“curly”', '‘single’', '«mot»', '¿qué?', '¡sí!', 'wow!!', 'end…', 'semi;', 'colon:', 'ok.”', '(K-pop', 'a.b']
-    // Words Chromium does break inside (it keeps 'and/or' whole, which is listed all the same: a span is harmless).
-    const breakable = ['K-pop', 'state-of-the-art', '2012—2014', '日本語', '😀😀']
-    const minContent = (token: string) => {
-      // A click-created card's own rules; the narrowest it can be laid out is its widest unbreakable piece.
+    const { noWrapRanges } = (await load('/src/editor/sceneLayer.ts')) as typeof import('../src/editor/sceneLayer.ts')
+    const words = [
+      // No break inside: edge punctuation, apostrophes, accented letters.
+      'beats,', 'mix.', '(word)', '[x]', '"quoted"', '“curly”', '«mot»', '¿qué?', '¡sí!', 'wow!!', 'end…', 'semi;', 'colon:', 'café', 'Ünïcödé', 'a.b', 'and/or',
+      // Breaks inside: hyphen, dash, CJK, emoji, full-width forms in brackets, Hangul.
+      'K-pop', '(K-pop', 'state-of-the-art', '2012—2014', '日本語', '😀😀', '(ＡＢＣ)', 'ＡＢＣ', '한국어', '음악은',
+    ]
+    // An independent check: a click-created card's own rules laid out as narrow as they allow.
+    const narrowest = (token: string) => {
       const d = document.createElement('div')
       d.className = 'yuriful-prose'
       d.dataset.font = 'sans'
-      d.style.cssText = 'position:absolute;left:0;top:0;font-size:20px;width:min-content'
+      d.style.cssText = 'position:fixed;left:0;top:0;font-size:20px;width:min-content'
       const p = document.createElement('p')
       p.textContent = token
       d.append(p)
@@ -487,22 +512,20 @@ test('a word with only opening punctuation before it and closing punctuation aft
       d.style.width = 'max-content'
       const whole = d.getBoundingClientRect().width
       d.remove()
-      return { token, narrow, whole, listed: breakableTokenRanges(token).length > 0 }
+      return { narrow, whole }
     }
-    return { plain: plain.map(minContent), breakable: breakable.map(minContent) }
+    return words.map((token) => {
+      const ranges = noWrapRanges({ text: `Ab ${token} cd`, fontSize: 20, width: 1000 })[0]!
+      return { token, ...narrowest(token), spanned: ranges.some((r) => r.start === 3 && r.end === 3 + token.length) }
+    })
   })
-  for (const r of out.plain) {
-    // Left without a span, and CSS cannot break it anyway: its narrowest layout is the whole word.
-    if (r.token === '(K-pop' || r.token === 'a.b') continue
-    expect(r.listed, r.token).toBe(false)
-    expect(r.narrow, r.token).toBeCloseTo(r.whole, 2)
+  for (const r of out) {
+    console.log(`${r.token}: narrowest ${r.narrow.toFixed(2)} of ${r.whole.toFixed(2)} px, span ${r.spanned}`)
+    expect(r.spanned, r.token).toBe(r.narrow < r.whole - 0.5)
   }
-  // Breakable inside: listed, and CSS would break it.
-  expect(out.plain.find((r) => r.token === '(K-pop')!.listed).toBe(true)
-  for (const r of out.breakable) {
-    expect(r.listed, r.token).toBe(true)
-    expect(r.narrow, r.token).toBeLessThan(r.whole - 1)
-  }
+  // Both kinds really occur, including the cases a character rule missed.
+  for (const token of ['(ＡＢＣ)', '한국어', 'K-pop']) expect(out.find((r) => r.token === token)!.spanned, token).toBe(true)
+  for (const token of ['beats,', 'café', '(word)']) expect(out.find((r) => r.token === token)!.spanned, token).toBe(false)
 })
 
 test('click-created boxes wrap only between words: state-of-the-art, 2012—2014, and/or, a URL and a CJK run stay whole', async ({ page }) => {
@@ -580,7 +603,8 @@ test('click-created boxes wrap only between words: state-of-the-art, 2012—2014
     // The token is whole on a line of its own, exactly as Fabric wraps it.
     expect(r.dom, `${r.token} marked=${r.marked}`).toContain(r.token)
     expect(r.dom, `${r.token} marked=${r.marked}`).toEqual(r.fabric)
-    expect(r.nowrapSpans).toBeGreaterThan(0)
+    // A span only where Chromium could break inside (it never breaks inside "and/or").
+    expect(r.nowrapSpans > 0, r.token).toBe(r.token !== 'and/or')
   }
 })
 
@@ -935,6 +959,21 @@ test('typography matches the canvas with tabs, and with a word wider than its cl
     { ...base, id: 'wide right', fontSize: 18, width: 110, align: 'right', text: `${'M'.repeat(30)} short` },
     { ...base, id: 'wide centred', fontSize: 18, width: 110, align: 'center', text: `${'M'.repeat(20)} tail words here` },
     { ...base, id: 'wide heading', fontSize: 12, width: 60, text: 'Heading Supercalifragilistic\nbody', headings: [1] },
+    // A tab under a mark in another font is a space of that font.
+    { ...base, id: 'tab in a mono mark', fontSize: 20, width: 75, text: 'Hi\tQ\tM\tX', spans: [{ start: 0, end: 7, font: 'mono' }] },
+    { ...base, id: 'tab in a mono mark drawn', fontSize: 20, width: 75, minHeight: 0, text: 'Hi\tQ\tM\tX', spans: [{ start: 0, end: 7, font: 'mono' }] },
+    // Full-width letters in brackets, and Hangul: breakable inside in CSS, kept whole as in Fabric.
+    { ...base, id: 'full-width in brackets', fontSize: 20, width: 84, text: 'Hi (ＡＢＣ) ok' },
+    { ...base, id: 'hangul', fontSize: 20, width: 90, text: '음악은 한국어로 듣기 좋아요 정말' },
+    // A word wider than a drawn box starts its own line, whatever its graphemes' widths, then the text after it follows.
+    { ...base, id: 'over-wide emoji word', fontSize: 20, width: 63, minHeight: 0, text: `Hi ${'🎧é🔥'.repeat(8)} tail` },
+    { ...base, id: 'over-wide emoji word centred', fontSize: 20, width: 63, minHeight: 0, align: 'center', text: `Hi ${'🎧é🔥'.repeat(8)} tail` },
+    { ...base, id: 'over-wide emoji word right', fontSize: 20, width: 63, minHeight: 0, align: 'right', text: `Hi ${'🎧é🔥'.repeat(8)} tail` },
+    { ...base, id: 'over-wide plain word', fontSize: 20, width: 63, minHeight: 0, text: 'a Supercalifragilisticexpialidocious b' },
+    { ...base, id: 'long url', fontSize: 20, width: 80, minHeight: 0, text: 'Listen https://example.com/playlists/lo-fi-beats-to-relax-and-study-to?list=morning-mix&shuffle=true then https://music.example.org/artists/lo-fi-collective/albums/rainy-day-sessions-volume-two again' },
+    { ...base, id: 'long url underlined', fontSize: 20, width: 80, minHeight: 0, text: 'See https://example.com/playlists/lo-fi-beats-to-relax done', spans: [{ start: 0, end: 59, underline: true }] },
+    // A line on a caption background: something must be drawn on it, not just its colour.
+    { ...base, id: 'caption paper', fontSize: 18, width: 260, captionBackground: '#fff3c4', text: 'First line\nSecond line' },
   ]
   const cases = await compareTypography(page, recs)
   const rs = residuals(cases)
@@ -1132,8 +1171,8 @@ test('typography measured before the stylesheet is not kept, and a font that loa
   await openBlank(page)
   // No stylesheet yet: nothing measured is kept.
   const early = await page.evaluate(async () => {
-    const { baselineShift, spaceWidth } = (await import(/* @vite-ignore */ ['/src/editor', 'sceneLayer.ts'].join('/'))) as typeof import('../src/editor/sceneLayer.ts')
-    return { shift: baselineShift('mono', 97), space: spaceWidth('mono') }
+    const { baselineShift } = (await import(/* @vite-ignore */ ['/src/editor', 'sceneLayer.ts'].join('/'))) as typeof import('../src/editor/sceneLayer.ts')
+    return { shift: baselineShift('mono', 97) }
   })
   await page.evaluate(async () => {
     const link = document.createElement('link')
@@ -1145,10 +1184,10 @@ test('typography measured before the stylesheet is not kept, and a font that loa
     })
   })
   const out = await page.evaluate(async () => {
-    const { SceneLayer, baselineShift, resetTypography, spaceWidth } = (await import(/* @vite-ignore */ ['/src/editor', 'sceneLayer.ts'].join('/'))) as typeof import('../src/editor/sceneLayer.ts')
-    const later = { shift: baselineShift('mono', 97), space: spaceWidth('mono') }
+    const { SceneLayer, baselineShift, resetTypography } = (await import(/* @vite-ignore */ ['/src/editor', 'sceneLayer.ts'].join('/'))) as typeof import('../src/editor/sceneLayer.ts')
+    const later = { shift: baselineShift('mono', 97) }
     resetTypography()
-    const fresh = { shift: baselineShift('mono', 97), space: spaceWidth('mono') }
+    const fresh = { shift: baselineShift('mono', 97) }
     // A mounted card in the mono font, then a font that changes what "mono" draws with.
     const host = document.createElement('div')
     host.style.cssText = 'position:fixed;left:0;top:0;width:1000px;height:800px'
@@ -1167,7 +1206,7 @@ test('typography measured before the stylesheet is not kept, and a font that loa
     const expected = `${baselineShift('mono', 97)}px`
     return { later, fresh, before, after, expected }
   })
-  expect(early).toEqual({ shift: 0, space: 0.25 })
+  expect(early).toEqual({ shift: 0 })
   expect(out.later).toEqual(out.fresh)
   expect(out.fresh.shift).not.toBe(0)
   expect(out.after.shift).not.toBe(out.before.shift)
@@ -1398,4 +1437,54 @@ test('the bitmap draws a click-created card at its effective width: a caption wi
   expect(Math.abs(out.ours.green - out.fabric.green)).toBeLessThanOrEqual(1)
   expect(out.fabric.short).toBeGreaterThan(400)
   expect(Math.abs(out.ours.short - out.fabric.short)).toBeLessThanOrEqual(1)
+})
+
+test('measuring which words can break costs little on 1,500-word English, Korean and Japanese cards', async ({ page }) => {
+  test.setTimeout(120_000)
+  await openHarness(page)
+  const out = await page.evaluate(async () => {
+    const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
+    const { SceneLayer, noWrapRanges, resetTypography } = (await load('/src/editor/sceneLayer.ts')) as typeof import('../src/editor/sceneLayer.ts')
+    type TextRecord = import('../src/model/types.ts').TextRecord
+    const paragraphs = (vocab: string[], words: number, joiner: string) => {
+      const all: string[] = []
+      for (let i = 0; i < words; i++) all.push(vocab[(i * 7 + (i >> 3)) % vocab.length]!)
+      const out: string[] = []
+      for (let i = 0; i < all.length; i += 100) out.push(all.slice(i, i + 100).join(joiner))
+      return out.join('\n')
+    }
+    const english = paragraphs(['the', 'K-pop', 'record', 'lo-fi', 'beats,', 'and/or', 'a', 'hip-hop', '2012—2014', 'sound', 'of', 'state-of-the-art', 'mix.', '(live)', 'synth-pop', 'bass', 'drop', 'café', 'warm', 'https://example.com/x-y'], 1500, ' ')
+    const korean = paragraphs(['음악은', '정말', '좋아요', '이', '노래를', '들으면', '기분이', '좋아져요.', '케이팝', '로파이', '비트,', '힙합', '(라이브)', '앨범', '2012—2014', '베이스'], 1500, ' ')
+    // Japanese is written without spaces: a paragraph is one long word, cut on a drawn box.
+    const japanese = paragraphs(['音楽', 'は', '本当', 'に', '良い', 'です。', 'この', '曲', 'を', '聴く', 'と', '気分', 'が', '良く', 'なります、', 'ローファイ'], 1500, '')
+    const host = document.createElement('div')
+    host.style.cssText = 'position:fixed;left:0;top:0;width:1200px;height:800px'
+    document.body.append(host)
+    const layer = new SceneLayer({ getImage: () => undefined })
+    layer.mount(host)
+    const time = (f: () => void) => {
+      const t = performance.now()
+      f()
+      return performance.now() - t
+    }
+    const results: Record<string, unknown> = {}
+    for (const [name, text, drawn] of [['English', english, false], ['English drawn', english, true], ['Korean', korean, false], ['Korean drawn', korean, true], ['Japanese drawn', japanese, true]] as const) {
+      resetTypography()
+      const rec: TextRecord = { type: 'text', id: name, left: 0, top: 0, angle: 0, width: 600, fontSize: 16, text, ...(drawn && { minHeight: 0 }) }
+      // Everything measured from nothing: widths, which words can break, and the first render.
+      const first = time(() => layer.setRecords({ frames: [], objects: [rec] }))
+      const breakable = noWrapRanges(rec).reduce((n, line) => n + line.length, 0)
+      const steps: number[] = []
+      for (let width = 600; width >= 300; width -= 10) steps.push(time(() => noWrapRanges({ ...rec, width })))
+      const edited = { ...rec, text: text.replace('\n', ' 새로운-단어\n') }
+      const edit = time(() => noWrapRanges(edited))
+      results[name] = { first: +first.toFixed(1), spans: breakable, stepMax: +Math.max(...steps).toFixed(2), edit: +edit.toFixed(1) }
+    }
+    return results
+  })
+  console.log(JSON.stringify(out, null, 1))
+  for (const r of Object.values(out) as Array<{ stepMax: number; edit: number }>) {
+    expect(r.stepMax).toBeLessThan(16)
+    expect(r.edit).toBeLessThan(30)
+  }
 })
