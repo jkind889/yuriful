@@ -41,7 +41,7 @@ import {
   selectionOnCharacters,
   settledDoc,
 } from './textRules.ts'
-import type { FormatReadout, Pending } from './textRules.ts'
+import type { CompactContent, FormatReadout, Pending } from './textRules.ts'
 
 /**
  * One edit of one text (plan Section 7): the ProseMirror state of the text being edited, the
@@ -163,6 +163,16 @@ export class EditSession {
   private reported: string
   /** What ProseMirror is pasting or dropping right now (set by its clipboard hooks, read by `transformPasted`). */
   private incoming: 'text' | 'html' | null = null
+  /**
+   * A selection being replaced by text that came some other way than a key the session saw
+   * (an IME composition, an insertion with no keydown, the browser's own editing): the text
+   * before it, the replaced range and the pending choices. Styled as today's canvas styles it
+   * once the text is known (`replacementPlugin`); while a composition is still open,
+   * `content()` already gives that final form.
+   */
+  private replacing: { old: CompactContent; from: number; to: number; pending: Pending | null } | null = null
+  /** Between a composition's start and ProseMirror counting it as composing. */
+  private compositionStarting = false
   /** A plain-text paste in progress: what it pastes, where, and with which pending choices. */
   private plainPaste: { text: string; from: number; to: number; pending: Pending | null } | null = null
   /** Where a drop in progress lands (from the drop event), for the destination font. */
@@ -244,6 +254,8 @@ export class EditSession {
    * else.
    */
   content(): TextContent {
+    const replaced = this.replacementResult(this.current)
+    if (replaced) return { text: replaced.text, ...canonicalTextFormatting(replaced.text, { ...this.box, spans: replaced.spans, headings: replaced.headings }) }
     const doc = settledDoc(this.current, this.baseFont)
     if (doc === this.initial.doc && JSON.stringify(this.box) === JSON.stringify(this.initial.box)) return this.initial.content
     const c = this.cached
@@ -295,8 +307,9 @@ export class EditSession {
 
   /**
    * Keeps `conversions` keyed by the undo depth of their history steps: a recorded change
-   * clears the redo side (and an event it extends no longer ends with a conversion), and
-   * when the history drops its oldest events the depths shift down with them.
+   * forgets every conversion at or above its own depth (it discarded the redo side, and an
+   * event it starts or extends no longer ends with a conversion), and when the history drops
+   * its oldest events the depths shift down with them.
    */
   private trackHistory(before: EditorState, after: EditorState, transactions: readonly Transaction[]) {
     if (this.conversions.size === 0 || transactions.some(isHistoryTransaction)) return
@@ -307,7 +320,9 @@ export class EditSession {
     const shift = now < was ? was + 1 - now : 0 // the oldest events were dropped
     for (const [depth, pending] of this.conversions) {
       const d = depth - shift
-      if (d <= 0 || d > now || (d === now && now <= was)) continue // gone, redo side, or extended
+      // Gone, or at or above the depth of this change: the redo side it discarded (a reverted
+      // conversion among it), or the event it starts or extends, which no longer ends with a conversion.
+      if (d <= 0 || d >= now) continue
       shifted.set(d, pending)
     }
     this.conversions = shifted
@@ -421,7 +436,25 @@ export class EditSession {
 
   /** A composition starts without a view (a mounted view knows its own). */
   compositionStart() {
+    this.beginComposition()
+    this.compositionStarting = false // only a mounted view needs it: here the composition counts at once
     this.composingHeadless = true
+  }
+
+  /**
+   * A composition starting over a non-empty selection replaces it: the replacement is
+   * remembered now, before anything changes (ProseMirror itself deletes a selection that
+   * spans lines at this point, before it counts as composing), and styled as today once the
+   * composed text is known (`otherReplacement`).
+   */
+  private beginComposition() {
+    const state = this.current
+    const sel = state.selection
+    if (this.composing || this.done || sel.empty || !(sel instanceof TextSelection)) return
+    const old = contentFromDoc(state.doc, this.box)
+    this.replacing = { old: { text: old.text, spans: old.spans, headings: old.headings }, from: textOffsetAt(state.doc, sel.from, -1), to: textOffsetAt(state.doc, sel.to, 1), pending: pendingOf(state) }
+    this.compositionStarting = true
+    queueMicrotask(() => (this.compositionStarting = false)) // after ProseMirror's own compositionstart handling
   }
 
   /** A composition ends without a view; what it inserted is made canonical now. */
@@ -432,7 +465,7 @@ export class EditSession {
 
   /** Once no composition is in progress, makes what the last one inserted canonical (`canonicalGuard`). */
   private settleComposition() {
-    if (this.done || this.composing || !owesCanonical(this.current)) return
+    if (this.done || this.composing || (!owesCanonical(this.current) && !this.replacing)) return
     this.dispatch(this.current.tr.setMeta(SETTLE, true))
   }
 
@@ -620,17 +653,70 @@ export class EditSession {
    * Gives a plain-text paste (or plain text dropped from elsewhere), and typing, Enter or a
    * deletion over a selection (`META.replaced`), their marks exactly as today's canvas does.
    */
+  /** The content the selection replacement in progress (`replacing`) leaves with the text `state` now holds; null when there is none or the text no longer fits it. */
+  private replacementResult(state: EditorState): CompactContent | null {
+    const rec = this.replacing
+    if (!rec) return null
+    const text = plainTextOfDoc(state.doc)
+    const old = rec.old.text
+    if (text === old) return null // nothing replaced yet (or a composition cancelled)
+    const length = text.length - (old.length - (rec.to - rec.from))
+    if (length < 0 || text.slice(0, rec.from) !== old.slice(0, rec.from) || text.slice(rec.from + length) !== old.slice(rec.to)) return null
+    return plainPasteContent(rec.old, this.baseFont, rec.from, rec.to, text.slice(rec.from, rec.from + length), rec.pending)
+  }
+
+  /** Gives every block of `doc` the runs of `want` (same text). True when anything changed. */
+  private imposeContent(tr: Transaction, doc: PMNode, want: CompactContent): boolean {
+    const expected = docFromBlocks(legacyToBlocks(want.text, want, this.baseFont))
+    let changed = false
+    doc.forEach((block, offset, i) => {
+      const b = blockOf(expected.child(i))
+      const runs = b.type === 'paragraph' || b.type === 'heading' ? (b.content ?? []) : []
+      if (imposeRuns(tr, block, offset + 1, runs)) changed = true
+    })
+    return changed
+  }
+
+  /**
+   * Any other change that replaces a non-empty selection with text: an IME composition (the
+   * text is known when it ends; `SETTLE` or `finish`), an insertion with no keydown, or the
+   * browser's own editing. Not a paste or a drop, which have their own rules, nor in-edit undo.
+   */
+  private otherReplacement(trs: readonly Transaction[], oldState: EditorState, newState: EditorState): Transaction | null {
+    const root = trs[0]!
+    if (trs.some(isHistoryTransaction)) {
+      this.replacing = null
+      return null
+    }
+    if (!this.replacing) {
+      const sel = oldState.selection
+      const insertsText = root.steps.some((st) => st instanceof ReplaceStep) && root.getMeta('paste') !== true && root.getMeta('uiEvent') !== 'drop' && root.getMeta(META.levelsSet) !== true
+      if (!insertsText || sel.empty || !(sel instanceof TextSelection)) return null
+      if (plainTextOfDoc(oldState.doc) === plainTextOfDoc(newState.doc)) return null
+      const old = contentFromDoc(oldState.doc, this.box)
+      this.replacing = { old: { text: old.text, spans: old.spans, headings: old.headings }, from: textOffsetAt(oldState.doc, sel.from, -1), to: textOffsetAt(oldState.doc, sel.to, 1), pending: pendingOf(oldState) }
+    }
+    if ((this.composing || this.compositionStarting) && !trs.some((t) => t.getMeta(SETTLE) === 'force')) return null
+    const rec = this.replacing
+    const want = this.replacementResult(newState)
+    this.replacing = null
+    // A composition that changed nothing (cancelled over a selection on one line) replaced nothing.
+    if (!want || rec === null || plainTextOfDoc(newState.doc) === rec.old.text) return null
+    const tr = newState.tr
+    return this.imposeContent(tr, newState.doc, want) ? tr : null
+  }
+
   private pastePlugin(): Plugin {
     return new Plugin({
       key: new PluginKey('yuriful-plain-paste'),
       appendTransaction: (trs, oldState, newState) => {
         const root = trs[0]
-        if (!root) return null
+        if (!root || root.getMeta('appendedTransaction')) return null
         const replaced = root.getMeta(META.replaced) as { text: string; from: number; to: number } | undefined
-        const rec = replaced ? { ...replaced, pending: pendingOf(oldState) } : this.plainPaste
-        if (!rec) return null
         const drop = !replaced && root.getMeta('uiEvent') === 'drop'
-        if (!replaced && root.getMeta('paste') !== true && !drop) return null
+        const rec = replaced ? { ...replaced, pending: pendingOf(oldState) } : this.plainPaste && (root.getMeta('paste') === true || drop) ? this.plainPaste : null
+        if (!rec) return this.otherReplacement(trs, oldState, newState)
+        this.replacing = null
         this.plainPaste = null
         let { from, to } = rec
         if (drop) {
@@ -642,15 +728,8 @@ export class EditSession {
         const old = contentFromDoc(oldState.doc, this.box)
         const want = plainPasteContent({ text: old.text, spans: old.spans, headings: old.headings }, this.baseFont, from, to, rec.text, rec.pending)
         if (want.text !== plainTextOfDoc(newState.doc)) return null
-        const expected = docFromBlocks(legacyToBlocks(want.text, want, this.baseFont))
         const tr = newState.tr
-        let changed = false
-        newState.doc.forEach((block, offset, i) => {
-          const b = blockOf(expected.child(i))
-          const runs = b.type === 'paragraph' || b.type === 'heading' ? (b.content ?? []) : []
-          if (imposeRuns(tr, block, offset + 1, runs)) changed = true
-        })
-        return changed ? tr : null
+        return this.imposeContent(tr, newState.doc, want) ? tr : null
       },
     })
   }
@@ -670,6 +749,10 @@ export class EditSession {
           drop: (view, e) => {
             this.dropPos = view.posAtCoords({ left: e.clientX, top: e.clientY })?.pos ?? null
             queueMicrotask(() => (this.dropPos = null))
+            return false
+          },
+          compositionstart: () => {
+            this.beginComposition()
             return false
           },
           compositionend: () => {
@@ -725,7 +808,7 @@ export class EditSession {
     if (this.done) return
     // A composition still in progress ends here: its text is made canonical first, exactly as
     // when it ends by itself, so the record and the static HTML are the final ones.
-    if (owesCanonical(this.current) && this.editable) this.dispatch(this.current.tr.setMeta(SETTLE, 'force'))
+    if ((owesCanonical(this.current) || this.replacing) && this.editable) this.dispatch(this.current.tr.setMeta(SETTLE, 'force'))
     this.done = true
     this.revert = null
     this.typed = null
@@ -735,7 +818,7 @@ export class EditSession {
     m.view.destroy()
     for (const a of Array.from(m.el.attributes)) if (!m.attrs.some(([name]) => name === a.name)) m.el.removeAttribute(a.name)
     for (const [name, value] of m.attrs) m.el.setAttribute(name, value)
-    renderStaticInto(m.el, settledDoc(this.current, this.baseFont))
+    renderStaticInto(m.el, docFromText(this.content())?.doc ?? settledDoc(this.current, this.baseFont))
   }
 }
 
@@ -816,6 +899,8 @@ export function sanitizePastedHTML(html: string): string {
   }
   /** `para`: inside a block that holds text (not a list, table or the body), where spaces are content. */
   const walk = (node: Node, inherited: PasteMarks, pre: boolean, para: boolean, heading: boolean) => {
+    // Whitespace beside block elements is layout between them, even inside a block.
+    const blocksInside = Array.from(node.childNodes).some((c) => c.nodeType === 1 && BLOCKS.has((c as Element).localName))
     node.childNodes.forEach((child) => {
       if (child.nodeType === 3) {
         const raw = child.nodeValue ?? ''
@@ -828,7 +913,7 @@ export function sanitizePastedHTML(html: string): string {
           return
         }
         // Whitespace between blocks, or layout whitespace running across a source line break, is not text.
-        if (line === null && raw.trim() === '' && (!para || /[\r\n]/.test(raw))) return
+        if (line === null && raw.trim() === '' && (!para || blocksInside || /[\r\n]/.test(raw))) return
         ensureLine().push({ text: raw.replace(/[ \t\f]*[\r\n][\s]*/g, ' '), marks: inherited })
         return
       }
