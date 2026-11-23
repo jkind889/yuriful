@@ -1,15 +1,15 @@
-import { chainCommands, deleteSelection, joinBackward, joinForward, selectAll, splitBlock } from 'prosemirror-commands'
+import { chainCommands, deleteSelection, joinBackward, joinForward, splitBlock } from 'prosemirror-commands'
 import { closeHistory, isHistoryTransaction, redo, undo } from 'prosemirror-history'
 import { Mark as PMMark } from 'prosemirror-model'
 import type { Node as PMNode } from 'prosemirror-model'
-import { Plugin, PluginKey, TextSelection } from 'prosemirror-state'
+import { AllSelection, Plugin, PluginKey, TextSelection } from 'prosemirror-state'
 import type { Command, EditorState, Transaction } from 'prosemirror-state'
 import { AddMarkStep, RemoveMarkStep } from 'prosemirror-transform'
-import { MARKS, splitGraphemes } from '../model/richText.ts'
-import type { HeadingLevel, Mark, MarkState, PendingTextStyle, RangeFormat } from '../model/richText.ts'
-import { blockOf, blockTypeFor, fontOf, levelOf, linesOf, marks, marksOfRun, nodes, textOffsetAt } from './textSchema.ts'
+import { MARKS, canonicalTextFormatting, headingsAfterEdit, isHeadingLevel, markMask, spansFromCharStyles, splitGraphemes, textAfterEdit, withPendingMarks } from '../model/richText.ts'
+import type { CharStyle, HeadingLevel, Mark, MarkState, PendingTextStyle, RangeFormat } from '../model/richText.ts'
+import { blockOf, blockTypeFor, fontOf, levelOf, marks, marksOfRun, nodes, plainTextOfDoc, textOffsetAt } from './textSchema.ts'
 import { blocksToLegacy, legacyToBlocks } from '../model/textDoc.ts'
-import type { FontId, InlineRun } from '../model/types.ts'
+import type { FontId, InlineRun, TextSpan } from '../model/types.ts'
 
 /**
  * The text rules of Milestone 2, re-expressed on ProseMirror (plan Section 8): typing
@@ -194,103 +194,53 @@ export function changedRange(trs: readonly Transaction[], withMarks = false): { 
   return from < 0 ? null : { from, to }
 }
 
-// ---- line levels through an edit ------------------------------------------------------------
+// ---- which part of the document a set of transactions inserted ------------------------------------
 
-function lineStarts(lines: readonly string[]): number[] {
-  const out: number[] = []
-  let at = 0
-  for (const l of lines) {
-    out.push(at)
-    at += l.length + 1
-  }
-  return out
-}
-
-/** The line an offset is on; an offset at a line's end (before its break) is on that line. */
-function lineAt(starts: readonly number[], offset: number): number {
-  let lo = 0
-  let hi = starts.length - 1
-  while (lo < hi) {
-    const mid = (lo + hi + 1) >> 1
-    if ((starts[mid] as number) <= offset) lo = mid
-    else hi = mid - 1
-  }
-  return lo
-}
-
-/**
- * The heading level each line of `newDoc` should have after an edit changed `range` (of
- * `newDoc`, see `changedRange`) of `oldDoc`: the rule of `textAfterEdit` in `richText.ts`
- * (a heading is a property of a line, carried over by how the text changed), with the
- * change taken from the transaction rather than guessed from the two texts. Returns the
- * levels of the lines the change touched, by line index, or null when the text did not
- * change (a change of marks or of block types alone).
- * - lines the change did not touch keep their level;
- * - when the change leaves the number of lines of the block it touches unchanged, each line
- *   of the block keeps its level by position (an emptied heading line stays a heading);
- * - otherwise the line the change starts in keeps its level, lines the change creates are
- *   normal, and the last line keeps the level of the line its remaining text came from
- *   (Enter at the end of a heading starts a normal line; in the middle or at the start it
- *   leaves two headings; a multi-line paste joins its first line to the line it went into);
- * - joining lines: the joined line keeps the level of the line the change starts in, unless
- *   nothing of that line is left before the change and text of a later line follows it, in
- *   which case it takes that later line's level (a heading joined onto an empty line stays a
- *   heading).
- */
-export function levelsAfterEdit(oldDoc: PMNode, newDoc: PMNode, range: { from: number; to: number }): Map<number, number> | null {
-  const oldLines = linesOf(oldDoc)
-  const newLines = linesOf(newDoc)
-  const oldText = oldLines.join('\n')
-  const newText = newLines.join('\n')
-  const oldTo = range.to - (newDoc.content.size - oldDoc.content.size)
-  const rawStart = textOffsetAt(newDoc, range.from, -1)
-  const rawNextEnd = Math.max(rawStart, textOffsetAt(newDoc, range.to, 1))
-  let start = rawStart
-  let prevEnd = Math.max(start, textOffsetAt(oldDoc, oldTo, 1))
-  let nextEnd = rawNextEnd
-  // The smallest change that explains it: common text at either end of the range is not part of it.
-  while (start < prevEnd && start < nextEnd && oldText.charCodeAt(start) === newText.charCodeAt(start)) start++
-  while (prevEnd > start && nextEnd > start && oldText.charCodeAt(prevEnd - 1) === newText.charCodeAt(nextEnd - 1)) {
-    prevEnd--
-    nextEnd--
-  }
-  if (start === prevEnd && start === nextEnd) return null
-  const oldStarts = lineStarts(oldLines)
-  const newStarts = lineStarts(newLines)
-  const level = (i: number) => levelOf(oldDoc.child(i))
-  const ls = lineAt(oldStarts, start)
-  const le = lineAt(oldStarts, prevEnd)
-  const ne = lineAt(newStarts, nextEnd)
-  const out = new Map<number, number>()
-  // Lines inside the range that the text change itself does not reach keep their level
-  // (ProseMirror may have changed their block type as a side effect, e.g. `splitBlock`).
-  const first = lineAt(newStarts, rawStart)
-  const last = lineAt(newStarts, rawNextEnd)
-  for (let i = first; i < ls; i++) out.set(i, level(i))
-  for (let i = ne + 1; i <= last; i++) out.set(i, level(i - ne + le))
-  if (le - ls === ne - ls) {
-    for (let i = ls; i <= le; i++) out.set(i, level(i))
-  } else {
-    const restOfLast = (oldStarts[le] as number) + (oldLines[le] as string).length > prevEnd // text of line `le` follows the change
-    if (ne === ls) {
-      const fromStart = start === oldStarts[ls]
-      out.set(ls, fromStart && le > ls && restOfLast ? level(le) : level(ls))
-    } else {
-      out.set(ls, level(ls))
-      for (let i = ls + 1; i < ne; i++) out.set(i, 0) // lines strictly between are new: normal
-      out.set(ne, restOfLast ? level(le) : 0)
+/** The ranges of the final document that `trs` inserted (new or replacing content). */
+export function insertedRanges(trs: readonly Transaction[]): Array<{ from: number; to: number }> {
+  let out: Array<{ from: number; to: number }> = []
+  for (const tr of trs) {
+    for (const step of tr.steps) {
+      const map = step.getMap()
+      out = out.map((r) => ({ from: map.map(r.from, 1), to: map.map(r.to, -1) })).filter((r) => r.to > r.from)
+      map.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
+        if (newEnd > newStart) out.push({ from: newStart, to: newEnd })
+      })
     }
   }
   return out
 }
 
-/** Sets the levels of the given top-level blocks where they differ. True when anything changed. */
-function applyLevels(tr: Transaction, levels: ReadonlyMap<number, number>): boolean {
+// ---- line levels through an edit ------------------------------------------------------------
+
+/** The heading level of every top-level block. */
+function levelsOf(doc: PMNode): number[] {
+  const out: number[] = []
+  doc.forEach((block) => {
+    out.push(levelOf(block))
+  })
+  return out
+}
+
+/**
+ * The heading level of every line of `newDoc` after a change of the text: exactly today's
+ * rule, `headingsAfterEdit` in `richText.ts`, the one authority (a heading is a property of a
+ * line, carried over by how the text changed, never guessed from it), given the text and
+ * levels before, the text after and `caret`, the UTF-16 offset of the end of the selection
+ * after the change (what the canvas reads as its caret).
+ */
+export function levelsAfterEdit(oldDoc: PMNode, newDoc: PMNode, caret: number): number[] {
+  const next = headingsAfterEdit(plainTextOfDoc(oldDoc), levelsOf(oldDoc), plainTextOfDoc(newDoc), caret)
+  return Array.from({ length: newDoc.childCount }, (_, i) => next?.[i] ?? 0)
+}
+
+/** Sets the level of every top-level block `levelAt` gives a level for, where it differs. True when anything changed. */
+function applyLevels(tr: Transaction, levelAt: (index: number) => number | undefined): boolean {
   let changed = false
   // Changing a block's type keeps every position, so the offsets of `doc` stay valid.
   const doc = tr.doc
   doc.forEach((block, offset, index) => {
-    const want = levels.get(index)
+    const want = levelAt(index)
     if (want === undefined || want === levelOf(block)) return
     const { type, attrs } = blockTypeFor(want)
     tr.setNodeMarkup(offset, type, attrs)
@@ -301,9 +251,10 @@ function applyLevels(tr: Transaction, levels: ReadonlyMap<number, number>): bool
 
 /**
  * After every change of the text that does not set levels itself (typing, Enter, Backspace,
- * Delete, a paste, a drop, a cut, typing over a selection, an IME composition), the lines it
- * touched get the levels `levelsAfterEdit` gives, whatever block types ProseMirror's own
- * commands chose. Undo and redo restore exact earlier states and are left alone.
+ * Delete, a paste, a drop, a cut, typing over a selection, an IME composition), every line
+ * gets the level `levelsAfterEdit` gives, whatever block types ProseMirror's own commands
+ * chose. A change that leaves the text as it was keeps every level. Undo and redo restore
+ * exact earlier states and are left alone.
  */
 export function lineLevels(): Plugin {
   return new Plugin({
@@ -311,12 +262,9 @@ export function lineLevels(): Plugin {
     appendTransaction(trs, oldState, newState) {
       if (!trs.some((t) => t.docChanged)) return null
       if (trs.some((t) => t.getMeta(META.levelsSet) === true || isHistoryTransaction(t))) return null
-      const range = changedRange(trs)
-      if (!range) return null
-      const levels = levelsAfterEdit(oldState.doc, newState.doc, range)
-      if (!levels) return null
+      const levels = levelsAfterEdit(oldState.doc, newState.doc, textOffsetAt(newState.doc, newState.selection.to, 1))
       const tr = newState.tr
-      return applyLevels(tr, levels) ? tr.setMeta(META.levelsSet, true) : null
+      return applyLevels(tr, (i) => levels[i]) ? tr.setMeta(META.levelsSet, true) : null
     },
   })
 }
@@ -325,19 +273,26 @@ export function lineLevels(): Plugin {
 
 const runKey = (run: Partial<Record<Mark, true | undefined>> & { font?: FontId }) => `${MARKS.map((m) => (run[m] ? 1 : 0)).join('')}|${run.font ?? ''}`
 
-/**
- * Makes a block's runs canonical, like loading a record does: a heading stores no bold, a
- * font override equal to the box font is dropped, and a character (grapheme cluster) is
- * never half marked (a half-marked character counts as marked). Only marks change, so no
- * position moves. True when anything changed.
- */
-function canonicalizeBlock(tr: Transaction, block: PMNode, contentStart: number, baseFont: FontId): boolean {
-  const own = blockOf(block)
-  const compact = blocksToLegacy([own], baseFont)
-  if (!compact) return false
-  const canonical = legacyToBlocks(compact.text, compact, baseFont)[0]
-  const runs: readonly InlineRun[] = canonical && (canonical.type === 'paragraph' || canonical.type === 'heading') ? (canonical.content ?? []) : []
-  const ownRuns = own.type === 'paragraph' || own.type === 'heading' ? (own.content ?? []) : []
+/** The runs of a list of code-unit mark sets over `text`. */
+function runsOfUnits(text: string, units: ReadonlyArray<readonly PMMark[]>): InlineRun[] {
+  const out: InlineRun[] = []
+  let start = 0
+  for (let i = 1; i <= text.length; i++) {
+    if (i < text.length && PMMark.sameSet(units[i]!, units[start]!)) continue
+    const run: InlineRun = { text: text.slice(start, i) }
+    for (const m of MARKS) if (marks[m].isInSet(units[start]!)) run[m] = true
+    const font = fontOf(units[start]!)
+    if (font) run.font = font
+    out.push(run)
+    start = i
+  }
+  return out
+}
+
+/** Replaces the marks of a block's text with `runs` (same text) where they differ. True when anything changed. */
+export function imposeRuns(tr: Transaction, block: PMNode, contentStart: number, runs: readonly InlineRun[]): boolean {
+  const current = blockOf(block)
+  const ownRuns = current.type === 'paragraph' || current.type === 'heading' ? (current.content ?? []) : []
   if (runs.length === ownRuns.length && runs.every((r, i) => r.text === ownRuns[i]!.text && runKey(r) === runKey(ownRuns[i]!))) return false
   let at = contentStart
   for (const run of runs) {
@@ -350,34 +305,116 @@ function canonicalizeBlock(tr: Transaction, block: PMNode, contentStart: number,
 }
 
 /**
+ * Makes a block's runs canonical, like loading a record does: a heading stores no bold, a
+ * font override equal to the box font is dropped, and a character (grapheme cluster) is
+ * never half marked. A cluster that text was just inserted into (an accent composed onto a
+ * letter, a skin tone typed after an emoji) takes the marks of what was inserted, as the
+ * canvas gives the whole character the typed character's style and the pending choices;
+ * any other half-marked cluster counts as marked. Only marks change, so no position moves.
+ * True when anything changed.
+ */
+function canonicalizeBlock(tr: Transaction, block: PMNode, contentStart: number, baseFont: FontId, inserted: ReadonlyArray<{ from: number; to: number }>): boolean {
+  const text = block.textContent
+  const units: Array<readonly PMMark[]> = []
+  block.forEach((child) => {
+    for (let i = 0; i < (child.text ?? '').length; i++) units.push(child.marks)
+  })
+  let at = 0
+  for (const g of splitGraphemes(text)) {
+    const end = at + g.length
+    if (g.length > 1 && !units.slice(at, end).every((u) => PMMark.sameSet(u, units[at]!))) {
+      for (let i = end - 1; i >= at; i--) {
+        const pos = contentStart + i
+        if (!inserted.some((r) => pos >= r.from && pos < r.to)) continue
+        const pick = units[i]!
+        for (let k = at; k < end; k++) units[k] = pick
+        break
+      }
+    }
+    at = end
+  }
+  const own = runsOfUnits(text, units)
+  const level = levelOf(block)
+  const compact = blocksToLegacy([isHeadingLevel(level) ? { type: 'heading', level, content: own } : { type: 'paragraph', content: own }], baseFont)
+  if (!compact) return false
+  const canonical = legacyToBlocks(compact.text, compact, baseFont)[0]
+  const runs: readonly InlineRun[] = canonical && (canonical.type === 'paragraph' || canonical.type === 'heading') ? (canonical.content ?? []) : []
+  return imposeRuns(tr, block, contentStart, runs)
+}
+
+interface GuardState {
+  /** Text inserted during an IME composition, made canonical once the composition has ended. */
+  owed: Array<{ from: number; to: number }>
+}
+const guardKey = new PluginKey<GuardState>('yuriful-canonical')
+/** Metadata on an otherwise empty transaction that makes text owed since a composition canonical. */
+export const SETTLE = 'yuriful/settle'
+
+/** True when a composition left text that is not canonical yet. */
+export function owesCanonical(state: EditorState): boolean {
+  return (guardKey.getState(state)?.owed.length ?? 0) > 0
+}
+
+/**
  * Keeps what is shown in canonical form after every change (plan Section 7's heading-bold
  * guard, plus the rest of the canonical run form of Section 5): the blocks a change touched
  * are made canonical (`canonicalizeBlock`), and stored marks never carry bold while the caret
- * is on a heading line. Skipped while an IME composition is in progress (rewriting marks
- * under it would break it); the change that ends the composition is made canonical.
+ * is on a heading line. While an IME composition is in progress nothing is rewritten under
+ * it; what it inserted is remembered and made canonical by the first transaction after it
+ * has ended (the session sends one, `SETTLE`), so the live document always equals the record
+ * once the composition is over.
  */
-export function canonicalGuard(opts: { baseFont: () => FontId; composing?: () => boolean }): Plugin {
-  return new Plugin({
-    key: new PluginKey('yuriful-canonical'),
+export function canonicalGuard(opts: { baseFont: () => FontId; composing?: () => boolean }): Plugin<GuardState> {
+  return new Plugin<GuardState>({
+    key: guardKey,
+    state: {
+      init: () => ({ owed: [] }),
+      apply(tr, value) {
+        if (tr.getMeta(guardKey) === 'clear') return { owed: [] }
+        let owed = value.owed
+        if (tr.docChanged) owed = owed.map((r) => ({ from: tr.mapping.map(r.from, 1), to: tr.mapping.map(r.to, -1) })).filter((r) => r.to > r.from)
+        if (tr.docChanged && opts.composing?.()) owed = [...owed, ...insertedRanges([tr])]
+        return owed === value.owed ? value : { owed }
+      },
+    },
     appendTransaction(trs, _oldState, state) {
       if (opts.composing?.()) return null
       const tr = state.tr
       let changed = false
-      const range = trs.some((t) => t.docChanged) ? changedRange(trs, true) : null
+      const owed = guardKey.getState(state)?.owed ?? []
+      const inserted = [...insertedRanges(trs), ...owed]
+      let range = trs.some((t) => t.docChanged) ? changedRange(trs, true) : null
+      for (const r of owed) range = range ? { from: Math.min(range.from, r.from), to: Math.max(range.to, r.to) } : { ...r }
       if (range) {
         const baseFont = opts.baseFont()
+        const { from, to } = range
         state.doc.forEach((block, offset) => {
-          if (offset + block.nodeSize < range.from || offset > range.to) return
-          if (canonicalizeBlock(tr, block, offset + 1, baseFont)) changed = true
+          if (offset + block.nodeSize < from || offset > to) return
+          if (canonicalizeBlock(tr, block, offset + 1, baseFont, inserted)) changed = true
         })
+      }
+      if (owed.length > 0) {
+        tr.setMeta(guardKey, 'clear')
+        changed = true
       }
       const sel = state.selection
       const $c = sel instanceof TextSelection ? sel.$cursor : null
-      if (!changed && $c && $c.parent.type === nodes.heading && state.storedMarks && marks.bold.isInSet(state.storedMarks)) {
+      if (!tr.docChanged && $c && $c.parent.type === nodes.heading && state.storedMarks && marks.bold.isInSet(state.storedMarks)) {
         tr.setStoredMarks(marks.bold.removeFromSet(state.storedMarks))
         changed = true
       }
       return changed ? tr : null
+    },
+  })
+}
+
+/** Turns a whole-document selection (`AllSelection`) into the selection of all the text, as the canvas's select-all is. */
+export function wholeTextSelection(): Plugin {
+  return new Plugin({
+    key: new PluginKey('yuriful-whole-text-selection'),
+    appendTransaction(_trs, _old, state) {
+      if (!(state.selection instanceof AllSelection)) return null
+      return state.tr.setSelection(TextSelection.create(state.doc, 1, state.doc.content.size - 1))
     },
   })
 }
@@ -429,15 +466,17 @@ const sameMarks = (a: readonly PMMark[] | null, b: readonly PMMark[] | null) => 
 /**
  * Marks and a font chosen with only a caret, as today: kept through typing, deleting, Enter,
  * a paste and every step of an IME composition (any change of the text), dropped when the
- * caret or selection moves for any other reason, by in-edit undo and redo, and when the
- * session ends. A pending bold is dropped whenever the caret's line is or becomes a heading
- * (a heading is bold of itself); every other choice stays. Set with `pendingKey` metadata.
+ * caret or selection moves for any other reason and when the session ends. In-edit undo
+ * drops them, except that redoing a typing shortcut brings back the choices it left
+ * (`afterHistory`: "plain after the shortcut"). A pending bold is dropped once the caret's
+ * line is or becomes a heading, judged on the final state of a change (after its lines have
+ * their levels); every other choice stays. Set with `pendingKey` metadata.
  *
  * ProseMirror's stored marks are kept equal to what a typed character would get (the
  * neighbouring marks with the pending choices applied), so typing uses them; they are null
  * when that is just the neighbouring marks.
  */
-export function pendingMarks(opts: { baseFont: () => FontId }): Plugin<Pending | null> {
+export function pendingMarks(opts: { baseFont: () => FontId; afterHistory?: (doc: PMNode) => Pending | null }): Plugin<Pending | null> {
   return new Plugin<Pending | null>({
     key: pendingKey,
     state: {
@@ -446,27 +485,31 @@ export function pendingMarks(opts: { baseFont: () => FontId }): Plugin<Pending |
         const meta = tr.getMeta(pendingKey) as Pending | null | undefined
         let next = value
         if (meta !== undefined) next = normalPending(meta)
-        else if (isHistoryTransaction(tr)) next = null
+        else if (isHistoryTransaction(tr)) next = normalPending(opts.afterHistory?.(newState.doc))
         else if (tr.selectionSet && !tr.docChanged) next = null
-        if (next && next.bold !== undefined && caretOnHeading(newState)) {
-          const { bold: _dropped, ...rest } = next
-          void _dropped
-          next = normalPending(rest)
-        }
         if (next && !caretOf(newState)) next = null // a choice belongs to a caret
         return next
       },
     },
     appendTransaction(_trs, _old, state) {
+      let pending = pendingOf(state)
+      let tr: Transaction | null = null
+      if (pending && pending.bold !== undefined && caretOnHeading(state)) {
+        const { bold: _dropped, ...rest } = pending
+        void _dropped
+        pending = normalPending(rest)
+        tr = state.tr.setMeta(pendingKey, pending)
+      }
       const $c = caretOf(state)
       let want: readonly PMMark[] | null = null
       if ($c) {
         const natural = $c.marks()
-        let set = applyPending(natural, pendingOf(state), opts.baseFont())
+        let set = applyPending(natural, pending, opts.baseFont())
         if ($c.parent.type === nodes.heading) set = marks.bold.removeFromSet(set)
         want = PMMark.sameSet(set, natural) ? null : set
       }
-      return sameMarks(state.storedMarks, want) ? null : state.tr.setStoredMarks(want)
+      if (!sameMarks(state.storedMarks, want)) tr = (tr ?? state.tr).setStoredMarks(want)
+      return tr
     },
   })
 }
@@ -669,9 +712,7 @@ export function setRangeFont(tr: Transaction, from: number, to: number, font: Fo
 
 /** Sets the level (0: body text) of the lines `first` to `last`. A heading stores no bold, so bold marks in them go (`canonicalGuard`). True when anything changed. */
 export function setLinesLevel(tr: Transaction, first: number, last: number, level: number): boolean {
-  const levels = new Map<number, number>()
-  for (let i = first; i <= last; i++) levels.set(i, level)
-  const changed = applyLevels(tr, levels)
+  const changed = applyLevels(tr, (i) => (i >= first && i <= last ? level : undefined))
   if (changed) tr.setMeta(META.levelsSet, true)
   return changed
 }
@@ -704,22 +745,55 @@ export function clearRangeFonts(tr: Transaction): boolean {
 
 // ---- keys ---------------------------------------------------------------------------------------
 
-/** Backspace inside a line: deletes the whole character (grapheme cluster) before the caret, as the canvas does. */
+/** A code point that makes Backspace take the whole emoji sequence it ends (Blink's backspace rule). */
+function isEmojiTail(ch: string): boolean {
+  const c = ch.codePointAt(0) ?? 0
+  return (
+    /\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(ch) ||
+    (c >= 0x1f3fb && c <= 0x1f3ff) || // skin tones
+    (c >= 0xfe00 && c <= 0xfe0f) || // variation selectors
+    c === 0x20e3 || // keycap
+    (c >= 0xe0020 && c <= 0xe007f) || // tags
+    (c >= 0xe0100 && c <= 0xe01ef) // variation selectors supplement
+  )
+}
+
+/**
+ * How many UTF-16 code units Backspace deletes at the end of `before`, as the canvas does
+ * today: its editing textarea takes the key (Chromium's backspace), which deletes one code
+ * point (a combining accent, a vowel sign, a Hangul jamo on its own) except that an emoji
+ * sequence goes whole (a ZWJ sequence, a skin tone, a flag, a keycap, a variation selector,
+ * a tag sequence). Forward Delete takes the whole character instead (`deleteCharForward`).
+ */
+export function backspaceLength(before: string): number {
+  const chars = splitGraphemes(before)
+  const last = chars[chars.length - 1] ?? ''
+  const points = Array.from(last)
+  const tail = points[points.length - 1] ?? ''
+  return isEmojiTail(tail) ? last.length : tail.length
+}
+
+/** Backspace inside a line, as the canvas does it (`backspaceLength`). */
 export const deleteCharBackward: Command = (state, dispatch) => {
   const $c = caretOf(state)
   if (!$c || $c.parentOffset === 0) return false
-  const chars = splitGraphemes($c.parent.textBetween(0, $c.parentOffset))
-  const last = chars[chars.length - 1] ?? ''
-  dispatch?.(state.tr.delete($c.pos - last.length, $c.pos).scrollIntoView())
+  const n = backspaceLength($c.parent.textBetween(0, $c.parentOffset))
+  dispatch?.(state.tr.delete($c.pos - n, $c.pos).scrollIntoView())
   return true
 }
 
-/** Delete inside a line: deletes the whole character after the caret. */
+/** Delete inside a line: deletes the whole character (grapheme cluster) after the caret. */
 export const deleteCharForward: Command = (state, dispatch) => {
   const $c = caretOf(state)
   if (!$c || $c.parentOffset === $c.parent.content.size) return false
   const first = splitGraphemes($c.parent.textBetween($c.parentOffset, $c.parent.content.size))[0] ?? ''
   dispatch?.(state.tr.delete($c.pos, $c.pos + first.length).scrollIntoView())
+  return true
+}
+
+/** Ctrl/Cmd+A: all the text, from the start of the first line to the end of the last (never ProseMirror's `AllSelection`). */
+export const selectAllText: Command = (state, dispatch) => {
+  dispatch?.(state.tr.setSelection(TextSelection.create(state.doc, 1, state.doc.content.size - 1)))
   return true
 }
 
@@ -737,8 +811,275 @@ export const editKeys: Readonly<Record<string, Command>> = {
   Delete: chainCommands(deleteSelection, joinForward, deleteCharForward),
   'Mod-Backspace': chainCommands(deleteSelection, joinBackward),
   'Mod-Delete': chainCommands(deleteSelection, joinForward),
-  'Mod-a': selectAll,
+  'Mod-a': selectAllText,
   'Mod-z': undo,
   'Shift-Mod-z': redo,
   'Mod-y': redo,
 }
+
+// ---- pasted plain text, styled as the canvas styles it today -------------------------------------
+//
+// Plain text pasted into a text gets its marks exactly as today's canvas gives them: the
+// steps below are Fabric 7.4.0's own (ITextKeyBehavior `onInput`, ITextBehavior
+// `removeStyleFromTo`, `shiftLineStyles`, `insertNewlineStyleObject`, `insertCharStyleObject`,
+// `insertNewStyleBlock`) on a model of its per-character styles, followed by the editor's
+// reading of them (`readTextFormatting` in objects.ts: heading bold never carried onto a
+// normal line, the pending choices on what was inserted). Their quirks are kept on purpose:
+// several characters pasted at the start of a line take no style, text over a selection takes
+// the first selected character's style, and a multi-line paste can restyle the first
+// character after it.
+
+interface FabricStyle {
+  fontWeight?: 'bold'
+  fontStyle?: 'italic'
+  underline?: true
+  linethrough?: true
+  fontFamily?: FontId
+  /** A heading line's size, as its level. */
+  fontSize?: number
+}
+type FabricStyles = Record<number, Record<number, FabricStyle>>
+
+/** The compact content of a text (its text with "\n" line breaks, spans and levels). */
+export interface CompactContent {
+  text: string
+  spans?: TextSpan[]
+  headings?: number[]
+}
+
+/**
+ * The compact content after plain text `pasted` ("\n" line breaks) replaced the UTF-16 range
+ * [from, to) of `old`, styled exactly as today's canvas styles it (see above), with `pending`
+ * the choices made with only a caret. `baseFont` is the box font.
+ */
+export function plainPasteContent(old: CompactContent, baseFont: FontId, from: number, to: number, pasted: string, pending: Pending | null): CompactContent {
+  const rawLines = old.text.split('\n')
+  const lines = rawLines.map((l) => splitGraphemes(l)) // Fabric's `_unwrappedTextLines`, before the change
+  const styles: FabricStyles = {}
+  // The canonical styles of the text before the paste (`stylesFor` in objects.ts).
+  const spans = old.spans ?? []
+  let si = 0
+  let lineStart = 0
+  lines.forEach((gs, li) => {
+    const level = old.headings?.[li]
+    const heading: FabricStyle = isHeadingLevel(level) ? { fontSize: level, fontWeight: 'bold' } : {}
+    const row: Record<number, FabricStyle> = {}
+    let end = lineStart
+    gs.forEach((g, k) => {
+      const start = end
+      end += g.length
+      while (si < spans.length && spans[si]!.end <= start) si++
+      const span = spans[si]
+      const on = span && span.start < end ? span : undefined
+      const st: FabricStyle = { ...heading }
+      if (on?.bold) st.fontWeight = 'bold'
+      if (on?.italic) st.fontStyle = 'italic'
+      if (on?.underline) st.underline = true
+      if (on?.strike) st.linethrough = true
+      if (on?.font) st.fontFamily = on.font
+      if (Object.keys(st).length > 0) row[k] = st
+    })
+    if (gs.length === 0 && heading.fontSize !== undefined) row[0] = heading
+    if (Object.keys(row).length > 0) styles[li] = row
+    lineStart += rawLines[li]!.length + 1
+  })
+
+  const loc = (position: number) => {
+    let p = position
+    let i = 0
+    for (; i < lines.length; i++) {
+      if (p <= lines[i]!.length) return { lineIndex: i, charIndex: p }
+      p -= lines[i]!.length + 1
+    }
+    return { lineIndex: i - 1, charIndex: lines[i - 1]!.length < p ? lines[i - 1]!.length : p }
+  }
+  /** Fabric's grapheme index of a UTF-16 offset (an offset inside a character counts as before it). */
+  const graphemeAt = (offset: number) => {
+    let g = 0
+    let o = 0
+    for (let li = 0; li < lines.length; li++) {
+      for (const ch of lines[li]!) {
+        if (o + ch.length > offset) return g
+        o += ch.length
+        g++
+      }
+      if (o >= offset) return g
+      o++
+      g++
+    }
+    return Math.max(0, g - 1)
+  }
+  const shiftLineStyles = (lineIndex: number, offset: number) => {
+    const cloned = { ...styles }
+    for (const line in styles) {
+      const n = parseInt(line, 10)
+      if (n > lineIndex) {
+        styles[n + offset] = cloned[n]!
+        if (!cloned[n - offset]) delete styles[n]
+      }
+    }
+  }
+  const removeStyleFromTo = (start: number, end: number) => {
+    const { lineIndex: lineStart, charIndex: charStart } = loc(start)
+    const { lineIndex: lineEnd, charIndex: charEnd } = loc(end)
+    if (lineStart !== lineEnd) {
+      if (styles[lineStart]) for (let i = charStart; i < lines[lineStart]!.length; i++) delete styles[lineStart]![i]
+      if (styles[lineEnd]) {
+        for (let i = charEnd; i < lines[lineEnd]!.length; i++) {
+          const st = styles[lineEnd]![i]
+          if (st) {
+            styles[lineStart] ??= {}
+            styles[lineStart]![charStart + i - charEnd] = st
+          }
+        }
+      }
+      for (let i = lineStart + 1; i <= lineEnd; i++) delete styles[i]
+      shiftLineStyles(lineEnd, lineStart - lineEnd)
+    } else if (styles[lineStart]) {
+      const row = styles[lineStart]!
+      const diff = charEnd - charStart
+      for (let i = charStart; i < charEnd; i++) delete row[i]
+      for (const ch in row) {
+        const n = parseInt(ch, 10)
+        if (n >= charEnd) {
+          row[n - diff] = row[n]!
+          delete row[n]
+        }
+      }
+    }
+  }
+  const insertNewlineStyleObject = (lineIndex: number, charIndex: number, qtyIn: number) => {
+    const newLineStyles: Record<number, FabricStyle> = {}
+    const originalLineLength = lines[lineIndex]!.length
+    const isEndOfLine = originalLineLength === charIndex
+    let someStyleIsCarryingOver = false
+    let qty = qtyIn || 1
+    shiftLineStyles(lineIndex, qty)
+    const currentCharStyle = styles[lineIndex] ? styles[lineIndex]![charIndex === 0 ? charIndex : charIndex - 1] : undefined
+    for (const index in styles[lineIndex]) {
+      const n = parseInt(index, 10)
+      if (n >= charIndex) {
+        someStyleIsCarryingOver = true
+        newLineStyles[n - charIndex] = styles[lineIndex]![n]!
+        if (!(isEndOfLine && charIndex === 0)) delete styles[lineIndex]![n]
+      }
+    }
+    let styleCarriedOver = false
+    if (someStyleIsCarryingOver && !isEndOfLine) {
+      styles[lineIndex + qty] = newLineStyles
+      styleCarriedOver = true
+    }
+    if (styleCarriedOver || originalLineLength > charIndex) qty--
+    while (qty > 0) {
+      if (currentCharStyle) styles[lineIndex + qty] = { 0: { ...currentCharStyle } }
+      else delete styles[lineIndex + qty]
+      qty--
+    }
+  }
+  const insertCharStyleObject = (lineIndex: number, charIndex: number, quantityIn: number, copiedStyle?: FabricStyle[]) => {
+    const current = styles[lineIndex]
+    const cloned = current ? { ...current } : {}
+    let quantity = quantityIn || 1
+    for (const index in cloned) {
+      const n = parseInt(index, 10)
+      if (n >= charIndex) {
+        current![n + quantity] = cloned[n]!
+        if (!cloned[n - quantity]) delete current![n]
+      }
+    }
+    if (copiedStyle) {
+      while (quantity--) {
+        if (!Object.keys(copiedStyle[quantity]!).length) continue
+        styles[lineIndex] ??= {}
+        styles[lineIndex]![charIndex + quantity] = { ...copiedStyle[quantity] }
+      }
+      return
+    }
+    if (!current) return
+    const newStyle = current[charIndex ? charIndex - 1 : 1]
+    while (newStyle && quantity--) styles[lineIndex]![charIndex + quantity] = { ...newStyle }
+  }
+  const insertNewStyleBlock = (insertedText: string[], start: number, copiedIn?: FabricStyle[]) => {
+    let copiedStyle = copiedIn
+    const cursorLoc = loc(start)
+    const addedLines = [0]
+    let linesLength = 0
+    for (const ch of insertedText) {
+      if (ch === '\n') {
+        linesLength++
+        addedLines[linesLength] = 0
+      } else addedLines[linesLength]!++
+    }
+    if (addedLines[0]! > 0) {
+      insertCharStyleObject(cursorLoc.lineIndex, cursorLoc.charIndex, addedLines[0]!, copiedStyle)
+      copiedStyle = copiedStyle && copiedStyle.slice(addedLines[0]! + 1)
+    }
+    if (linesLength) insertNewlineStyleObject(cursorLoc.lineIndex, cursorLoc.charIndex + addedLines[0]!, linesLength)
+    let i = 1
+    for (; i < linesLength; i++) {
+      if (addedLines[i]! > 0) insertCharStyleObject(cursorLoc.lineIndex + i, 0, addedLines[i]!, copiedStyle)
+      else if (copiedStyle && styles[cursorLoc.lineIndex + i] && copiedStyle[0]) styles[cursorLoc.lineIndex + i]![0] = copiedStyle[0]
+      copiedStyle = copiedStyle && copiedStyle.slice(addedLines[i]! + 1)
+    }
+    if (addedLines[i]! > 0) insertCharStyleObject(cursorLoc.lineIndex + i, 0, addedLines[i]!, copiedStyle)
+  }
+
+  // `onInput`: the textarea now holds the new text, its caret after what was pasted.
+  const nextText = old.text.slice(0, from) + pasted + old.text.slice(to)
+  const globalOf = (ls: string[][]) => ls.flatMap((gs, i) => (i === 0 ? gs : ['\n', ...gs]))
+  const oldGlobal = globalOf(lines)
+  const nextGlobal = globalOf(nextText.split('\n').map((l) => splitGraphemes(l)))
+  const selStart = graphemeAt(from)
+  const selEnd = graphemeAt(to)
+  const caretG = splitGraphemes(nextText.slice(0, from + pasted.length)).length
+  let charDiff = nextGlobal.length - oldGlobal.length
+  let removed: string[] | undefined
+  if (selStart !== selEnd) {
+    removed = oldGlobal.slice(selStart, selEnd)
+    charDiff += selEnd - selStart
+  }
+  const inserted = nextGlobal.slice(caretG - charDiff, caretG)
+  let copied: FabricStyle[] | undefined
+  if (removed && removed.length > 0) {
+    if (inserted.length > 0) {
+      const { lineIndex, charIndex } = loc(selStart)
+      const first = styles[lineIndex]?.[charIndex] ?? {}
+      copied = inserted.map(() => first)
+    }
+    removeStyleFromTo(selStart, selEnd)
+  }
+  if (inserted.length > 0) insertNewStyleBlock(inserted, selStart, copied)
+
+  // `readTextFormatting`: levels carried over, marks read from the styles.
+  const edit = textAfterEdit(old.text, old.headings, nextText, from + pasted.length)
+  const headings = edit.headings
+  const withChoices = pending && Object.keys(pending).length > 0 ? pending : null
+  const chars = new Map<number, CharStyle>()
+  let at = 0
+  nextText.split('\n').forEach((raw, li) => {
+    const row = styles[li]
+    let start = at
+    at += raw.length + 1
+    if (!row && !withChoices) return
+    splitGraphemes(raw).forEach((g, k) => {
+      const end = start + g.length
+      const st = row?.[k]
+      let mask = st ? markMask({ bold: st.fontWeight === 'bold', italic: st.fontStyle === 'italic', underline: st.underline === true, strike: st.linethrough === true }) : 0
+      let font = st?.fontFamily
+      if (st && mask & BOLD_BIT && (headings?.[li] ?? 0) === 0) {
+        const before = edit.levelBefore(start, end)
+        if ((before !== undefined && before > 0) || st.fontSize !== undefined) mask &= ~BOLD_BIT
+      }
+      if (withChoices && edit.levelBefore(start, end) === undefined) {
+        mask = withPendingMarks(mask, withChoices)
+        font = withChoices.font ?? font
+      }
+      if (mask || font) chars.set(start, { mask, font })
+      start = end
+    })
+  })
+  const fmt = canonicalTextFormatting(nextText, { font: baseFont, spans: spansFromCharStyles(nextText, headings, (a) => chars.get(a)), headings })
+  return { text: nextText, ...(fmt.spans && { spans: fmt.spans }), ...(fmt.headings && { headings: fmt.headings }) }
+}
+
+const BOLD_BIT = markMask({ bold: true })

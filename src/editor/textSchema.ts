@@ -153,15 +153,16 @@ export type TextSource = Pick<TextRecord, 'text' | 'font' | 'align' | 'color' | 
  * A stored text as a ProseMirror document and its box formatting (font, alignment, colour),
  * read the way loading reads it (`canonicalTextContent`): "\r\n" is one line break, spans
  * become runs that never split a character, an empty heading line stays a heading, bold
- * inside a heading and a span font equal to the box font are dropped. Null when the record is
- * not readable, or uses rich blocks this schema cannot hold yet.
+ * inside a heading and a span font equal to the box font are dropped. `content` is the record's
+ * own canonical content (what loading stores, a "\r\n" kept). Null when the record is not
+ * readable, or uses rich blocks this schema cannot hold yet.
  */
-export function docFromText(rec: TextSource): { doc: PMNode; box: TextFormatting } | null {
+export function docFromText(rec: TextSource): { doc: PMNode; box: TextFormatting; content: TextContent } | null {
   const content = canonicalTextContent(rec as unknown as Record<string, unknown>)
   if (!content || content.blocks) return null
   const box = boxOf(content)
   const blocks = legacyToBlocks(content.text, { spans: content.spans, headings: content.headings }, box.font ?? DEFAULT_FONT)
-  return { doc: docFromBlocks(blocks), box }
+  return { doc: docFromBlocks(blocks), box, content }
 }
 
 /** Only the box-wide fields of a text's formatting, in canonical form. */

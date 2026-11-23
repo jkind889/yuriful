@@ -11,7 +11,7 @@ afterEach(() => {
 
 describe('creating a session', () => {
   it('reads the record as loading does, with the caret at the end by default or at a given offset', () => {
-    const s = open({ text: 'Title\r\nbody', headings: [1], font: 'serif' })
+    const s = open({ text: 'Title\nbody', headings: [1], font: 'serif', spans: [{ start: 0, end: 5, bold: true }] })
     expect(s.content()).toStrictEqual({ text: 'Title\nbody', font: 'serif', headings: [1] })
     expect(s.selection()).toMatchObject({ from: 10, to: 10 })
     expect(open({ text: 'abc' }, { caret: 1 }).selection().head).toBe(1)

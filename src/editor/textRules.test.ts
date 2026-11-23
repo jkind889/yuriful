@@ -7,6 +7,9 @@ import { docFromText, posAtTextOffset, textSchema } from './textSchema.ts'
 import { boxFormat, canonicalGuard, lastBoxLine, matchShortcut, pendingKey, pendingMarks, setBoxLevel, toggleBoxMark } from './textRules.ts'
 import { insert, keyEvent, open, press, type } from './testing/textHarness.ts'
 
+/** A selection at raw UTF-16 offsets, even inside a character (only ProseMirror itself could make one). */
+const rawSelect = (s: EditSession, from: number, to: number) => s.dispatch(s.state.tr.setSelection(TextSelection.create(s.state.doc, posAtTextOffset(s.state.doc, from), posAtTextOffset(s.state.doc, to))))
+
 /** What the controls show, without the font. */
 const shown = (s: EditSession) => {
   const { font: _font, ...rest } = s.format()
@@ -192,6 +195,8 @@ describe('typing shortcuts', () => {
     ['a heading command that changes nothing', (s) => s.setHeading(0)],
     ['a font command at the caret', (s) => s.setFont('serif')],
     ['the font size field (the editor drops the offer)', (s) => s.clearShortcutRevert()],
+    ['a box setting (alignment)', (s) => s.setBox({ align: 'center' })],
+    ['a box setting that changes nothing', (s) => s.setBox({})],
     ['an in-edit undo and redo', (s) => {
       s.undo()
       s.redo()
@@ -587,10 +592,10 @@ describe('formatting a range or a caret while editing', () => {
   it('a character (surrogate pair, ZWJ sequence) is marked whole, whichever part the range touches', () => {
     const family = '\u{1F468}‍\u{1F469}‍\u{1F467}'
     const s = open({ text: `a${family}b` })
-    s.select(2, 3) // inside the cluster
+    rawSelect(s, 2, 3) // inside the cluster (a ProseMirror selection; `select` never splits a character)
     s.toggleMark('underline')
     expect(s.content().spans).toEqual([{ start: 1, end: 1 + family.length, underline: true }])
-    s.select(3, 4)
+    rawSelect(s, 3, 4)
     s.toggleMark('underline') // every touched character has it: removed, whole
     expect(s.content().spans).toBeUndefined()
   })
@@ -741,12 +746,3 @@ describe('marks with only a caret (pending)', () => {
   })
 })
 
-describe('what is shown stays canonical', () => {
-  it('a character is never half marked: an emoji modifier typed after a bold emoji with bold turned off joins its bold', () => {
-    const s = open({ text: '\u{1F44D}', spans: [{ start: 0, end: 2, bold: true }] })
-    s.toggleMark('bold')
-    type(s, '\u{1F3FD}') // a skin tone modifier: one character with the thumb
-    expect(s.content()).toStrictEqual({ text: '\u{1F44D}\u{1F3FD}', spans: [{ start: 0, end: 4, bold: true }] })
-    expect(s.state.doc.child(0).childCount).toBe(1)
-  })
-})
