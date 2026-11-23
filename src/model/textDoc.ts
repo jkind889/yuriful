@@ -305,18 +305,43 @@ export function blocksToLegacy(blocks: readonly BlockNode[], baseFont: FontId = 
 
 export type TextContent = TextFormatting & Pick<TextRecord, 'text' | 'blocks'>
 
+interface StrictTextParts {
+  text: string
+  /** The box formatting (font, align, colour), which every form shares. */
+  box: TextFormatting
+  /** Validated canonical blocks; absent for a compact text. */
+  blocks?: BlockNode[]
+}
+
+/**
+ * The only part of reading a text's content that can refuse it: `text` must be a string and
+ * `blocks`, when present, must be valid. Compact formatting (`spans`, `headings`) is lenient
+ * and never read here, so this costs nothing for compact texts.
+ */
+function strictTextParts(raw: Record<string, unknown>): StrictTextParts | null {
+  if (typeof raw.text !== 'string') return null
+  const box = canonicalTextFormatting('', { font: raw.font, align: raw.align, color: raw.color })
+  if (raw.blocks === undefined) return { text: raw.text, box }
+  const blocks = parseBlocks(raw.blocks, box.font ?? DEFAULT_FONT)
+  return blocks && { text: raw.text, box, blocks }
+}
+
+/** True exactly when `canonicalTextContent` would read `raw`, without building its formatting. */
+export function isReadableTextContent(raw: Record<string, unknown>): boolean {
+  return strictTextParts(raw) !== null
+}
+
 /**
  * A stored text's words and formatting in canonical form: `text`, `font`, `align`, `color`,
  * then `spans` and `headings` (compact form) or `blocks` (rich form). Null when `text` is not
  * a string or `blocks` is present but not valid.
  */
 export function canonicalTextContent(raw: Record<string, unknown>): TextContent | null {
-  if (typeof raw.text !== 'string') return null
-  if (raw.blocks === undefined) return { text: raw.text, ...canonicalTextFormatting(raw.text, raw) }
-  const box = canonicalTextFormatting('', { font: raw.font, align: raw.align, color: raw.color })
+  const parts = strictTextParts(raw)
+  if (!parts) return null
+  const { box, blocks } = parts
+  if (!blocks) return { text: parts.text, ...canonicalTextFormatting(parts.text, raw) }
   const baseFont = box.font ?? DEFAULT_FONT
-  const blocks = parseBlocks(raw.blocks, baseFont)
-  if (!blocks) return null
   const compact = blocksToLegacy(blocks, baseFont)
   if (compact) return { text: compact.text, ...canonicalTextFormatting(compact.text, { ...box, spans: compact.spans, headings: compact.headings }) }
   return { text: plainTextOf(blocks), ...box, blocks }
@@ -330,11 +355,6 @@ export function canonicalHeight(raw: unknown): { height?: number } {
 /** Paper, kept only when it is exactly `'card'`. */
 export function canonicalSurface(raw: unknown): { surface?: 'card' } {
   return raw === 'card' ? { surface: 'card' } : {}
-}
-
-/** A deep copy of blocks, never sharing a node with the original. */
-export function cloneBlocks(blocks: readonly BlockNode[]): BlockNode[] {
-  return JSON.parse(JSON.stringify(blocks)) as BlockNode[]
 }
 
 // ---- storage fence ----------------------------------------------------------------------------

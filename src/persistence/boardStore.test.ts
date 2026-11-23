@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { IDBFactory } from 'fake-indexeddb'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createEmptyDoc, serializeDoc } from '../model/doc.ts'
 import type { BoardDoc, StoredAsset } from '../model/types.ts'
 import {
@@ -715,6 +715,28 @@ describe('the store never writes a board it could not load again', () => {
       expect((await newStore(factory).store.load())?.doc.title).toBe(start.title)
       await store.save({ ...start, title: 'Still saving' }, t1, none) // the token is still good
     }
+  })
+
+  it('blocks are checked before they are copied: a tree that loops on itself, or a huge run, is refused with storage untouched', async () => {
+    const { factory, store } = newStore()
+    const t1 = await store.save(textOnly(), ABSENT, none)
+    const before = await readRaw(factory)
+    const loop: Record<string, unknown> = { type: 'blockquote' }
+    loop.blocks = [loop]
+    const stringify = vi.spyOn(JSON, 'stringify')
+    try {
+      for (const blocks of [[loop], [{ type: 'paragraph', content: [{ text: 'x'.repeat(10_000_000) }] }]]) {
+        await expect(store.save(withText(textOnly(), { text: 'x', blocks }), t1, none)).rejects.toBeInstanceOf(UnstorableBoardError)
+      }
+      expect(stringify).not.toHaveBeenCalled() // nothing was serialized to find out
+    } finally {
+      stringify.mockRestore()
+    }
+    // Any failure to prepare the document for writing is the same refusal.
+    const broken = { ...textOnly().objects[0]! }
+    Object.defineProperty(broken, 'width', { enumerable: true, get: () => { throw new Error('unreadable field') } })
+    await expect(store.save({ ...textOnly(), objects: [broken] }, t1, none)).rejects.toBeInstanceOf(UnstorableBoardError)
+    expect(await readRaw(factory)).toEqual(before)
   })
 
   it('a card that only needs the compact form is written compact, with its projection, and upgrades nothing', async () => {

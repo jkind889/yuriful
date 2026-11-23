@@ -1,4 +1,4 @@
-import { parseDoc, referencedAssetIds, serializeDoc } from '../model/doc.ts'
+import { isLoadableDoc, parseDoc, referencedAssetIds, serializeDoc } from '../model/doc.ts'
 import { newId } from '../model/id.ts'
 import type { BoardDoc, StoredAsset, StoredDoc } from '../model/types.ts'
 
@@ -324,9 +324,17 @@ export class IndexedDbBoardStore implements BoardStore {
   }
 
   async save(doc: BoardDoc, expected: RevisionToken, bytes: AssetBytes): Promise<RevisionToken> {
-    const wire = serializeDoc(doc)
     // What is written must load again: checked before anything is opened, upgraded or written.
-    if (!parseDoc(wire)) throw new UnstorableBoardError()
+    // A document that cannot even be prepared for writing (one that is not a tree, say) is
+    // refused the same way.
+    let wire: StoredDoc | null
+    try {
+      wire = serializeDoc(doc)
+      if (!isLoadableDoc(wire)) wire = null
+    } catch {
+      wire = null
+    }
+    if (!wire) throw new UnstorableBoardError()
     let db = await this.open()
     const needed = DB_VERSION_FOR_WIRE[wire.version]
     if (db.version < needed) {

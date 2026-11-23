@@ -1,5 +1,5 @@
 import { boardAppearance } from './appearance.ts'
-import { canonicalHeight, canonicalSurface, canonicalTextContent, cloneBlocks, needsRichFence } from './textDoc.ts'
+import { canonicalHeight, canonicalSurface, canonicalTextContent, isReadableTextContent, needsRichFence } from './textDoc.ts'
 import { DEFAULT_TITLE, DOC_VERSION } from './types.ts'
 import type { BoardDoc, CropRect, FrameRecord, ObjectRecord, Scene, StoredDoc, TextRecord, Viewport } from './types.ts'
 
@@ -58,8 +58,16 @@ const cropOf = (raw: Record<string, unknown>): { crop?: CropRect } => {
   return { crop: { x, y, width, height } }
 }
 
+/**
+ * How a document is read. `load` builds canonical records. `check` runs exactly the same
+ * walk and the same strict checks, but skips building what is read leniently and so can never
+ * refuse a document (a compact text's spans and headings): it answers "would `load` refuse
+ * this?" cheaply, and only through the very code `load` uses.
+ */
+type Reading = 'load' | 'check'
+
 /** Allowlist parse: `frameId` is deliberately not read here (see the v2 path in parseDoc). */
-function parseObject(raw: unknown): ObjectRecord | null {
+function parseObject(raw: unknown, reading: Reading = 'load'): ObjectRecord | null {
   if (!isRecord(raw)) return null
   const { id, type, left, top, angle } = raw
   if (!isStr(id) || id === '' || !isNum(left) || !isNum(top) || !isNum(angle)) return null
@@ -71,6 +79,7 @@ function parseObject(raw: unknown): ObjectRecord | null {
   if (type === 'text') {
     const { text, fontSize, width, minHeight } = raw
     if (!isStr(text) || !isNum(fontSize) || !isNum(width) || fontSize <= 0 || width <= 0) return null
+    if (reading === 'check') return isReadableTextContent(raw) ? { type, id, left, top, angle, text, fontSize, width } : null
     // Formatting is read leniently, like a dangling owner: whatever is malformed is dropped
     // or trimmed, and the text itself still loads. Rich `blocks` are the exception: a tree
     // this build cannot read in full makes the board unreadable rather than losing part of it.
@@ -113,6 +122,19 @@ function parseFrame(raw: unknown): FrameRecord | null {
  * that case. Membership (`frameId`) is restored as stored and never recomputed.
  */
 export function parseDoc(raw: unknown): BoardDoc | null {
+  return readDoc(raw, 'load')
+}
+
+/**
+ * True exactly when `parseDoc` would read `raw`, at the cost of only what can make it refuse:
+ * the structure, ids and geometry, frames, and rich `blocks`. A compact text's formatting is
+ * never canonicalized here. The store checks every document with it before writing.
+ */
+export function isLoadableDoc(raw: unknown): boolean {
+  return readDoc(raw, 'check') !== null
+}
+
+function readDoc(raw: unknown, reading: Reading): BoardDoc | null {
   if (!isRecord(raw) || (raw.version !== 1 && raw.version !== 2 && raw.version !== 3) || !Array.isArray(raw.objects)) return null
   const seen = new Set<string>()
   const hasFrames = raw.version !== 1
@@ -131,7 +153,7 @@ export function parseDoc(raw: unknown): BoardDoc | null {
 
   const objects: ObjectRecord[] = []
   for (const o of raw.objects) {
-    const rec = parseObject(o)
+    const rec = parseObject(o, reading)
     if (!rec || seen.has(rec.id)) return null
     seen.add(rec.id)
     // A dangling or malformed owner is dropped (the object becomes loose), not fatal.
@@ -173,7 +195,6 @@ function storable<T extends ObjectRecord | FrameRecord>(rec: T): T {
   if ('crop' in out && out.crop) out.crop = { ...out.crop }
   if ('spans' in out && out.spans) out.spans = out.spans.map((span) => ({ ...span }))
   if ('headings' in out && out.headings) out.headings = [...out.headings]
-  if ('blocks' in out && out.blocks) out.blocks = cloneBlocks(out.blocks)
   if ('type' in out && out.type === 'text') {
     const caption = captionFields(out)
     if (!caption.captionOf) delete out.captionOf
@@ -187,11 +208,12 @@ function storable<T extends ObjectRecord | FrameRecord>(rec: T): T {
 
 /**
  * A record as it is written. A text with a rich field (`blocks`, `height` or `surface`) goes
- * through the very canonicalization `parseDoc` applies, so what is written is what a load
- * gives back: blocks that only hold paragraphs and headings are written in the compact form,
- * `text` is their projection, and an invalid `height` or `surface` is left out. A text whose
- * rich content cannot be read back (malformed or over the bounds) is left as it is, so that the
- * store's read-back check refuses to write it.
+ * through the very canonicalization `parseDoc` applies, so its content is written exactly as a
+ * load gives it back: blocks that only hold paragraphs and headings are written in the compact
+ * form, `text` is their projection, and an invalid `height` or `surface` is left out. The
+ * bounded parser builds a fresh tree, so blocks are never copied before they are validated. A
+ * text whose rich content cannot be read back (malformed, over the bounds, or not a tree at all)
+ * is returned uncopied, still sharing its blocks, so that the store's check refuses to write it.
  */
 function writable(rec: ObjectRecord): ObjectRecord {
   const out = storable(rec)

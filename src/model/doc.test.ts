@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   createEmptyDoc,
+  isLoadableDoc,
   normalizeFrameName,
   normalizeTitle,
   objectsEqual,
@@ -583,6 +584,7 @@ describe('wire version 3 (rich text)', () => {
     const written = serializeDoc({ ...good(), objects: [table] })
     expect(written.version).toBe(3)
     expect(parseDoc(written)).toBeNull()
+    expect(isLoadableDoc(written)).toBe(false)
   })
 
   it('never shares blocks with the document it was given', () => {
@@ -601,5 +603,54 @@ describe('wire version 3 (rich text)', () => {
     expect(sceneEqual(scene(card), scene({ ...copy, height: 100 }))).toBe(false)
     expect(sceneEqual(scene(card), scene({ ...copy, surface: 'card' }))).toBe(false)
     expect(sceneEqual(scene(card), scene({ ...copy, height: undefined, surface: undefined }))).toBe(true)
+  })
+})
+
+describe('isLoadableDoc: the cheap check before every save agrees with parseDoc', () => {
+  const view = { zoom: 1, panX: 0, panY: 0 }
+  const v3 = (objects: unknown[], extra: Record<string, unknown> = {}) => ({ version: 3, title: 'T', frames: [], objects, viewport: view, ...extra })
+  const para = (t: string) => ({ type: 'paragraph', content: [{ text: t }] })
+  const nested = (depth: number): unknown[] => (depth <= 1 ? [para('deep')] : [{ type: 'blockquote', blocks: nested(depth - 1) }])
+  const formatted = { ...text, text: 'Title\nsome bold words', headings: [1], spans: [{ start: 11, end: 15, bold: true }] }
+  const docs: Array<[string, unknown]> = [
+    // Readable: compact formatting is lenient, however malformed.
+    ['milestone 1', wireV1()],
+    ['framed', wire(framed())],
+    ['formatted', { ...wireV1(), objects: [formatted] }],
+    ['junk formatting', { ...wireV1(), objects: [{ ...text, spans: 'bold', headings: { 0: 1 }, font: 3, color: {} }] }],
+    ['dangling owner and caption', { ...wire(framed()), objects: [{ ...image, frameId: 'nope' }, { ...text, captionOf: 'missing' }] }],
+    ['rich', v3([{ ...text, blocks: [para('a'), { type: 'divider' }], height: 40, surface: 'card' }])],
+    ['collapsible blocks', v3([{ ...text, blocks: [para('a')] }])],
+    ['deepest allowed', v3([{ ...text, blocks: nested(6) }])],
+    ['junk height and surface', v3([{ ...text, height: -1, surface: 'x' }])],
+    // Refused.
+    ['not an object', 'x'],
+    ['unknown version', { ...wireV1(), version: 4 }],
+    ['objects not a list', { ...wireV1(), objects: {} }],
+    ['v3 without frames', { ...v3([text]), frames: undefined }],
+    ['v2 bad frame', { ...wire(framed()), frames: [{ ...frame, width: 0 }] }],
+    ['duplicate ids', { ...wireV1(), objects: [text, { ...image, id: text.id }] }],
+    ['frame and object share an id', { ...wire(framed()), objects: [{ ...text, id: 'f1' }] }],
+    ['bad image', { ...wireV1(), objects: [{ ...image, scaleX: 0 }] }],
+    ['unknown object type', { ...wireV1(), objects: [{ ...text, type: 'blob' }] }],
+    ['text not a string', { ...wireV1(), objects: [{ ...formatted, text: 5 }] }],
+    ['zero font size', { ...wireV1(), objects: [{ ...formatted, fontSize: 0 }] }],
+    ['NaN position', { ...wireV1(), objects: [{ ...formatted, left: Number.NaN }] }],
+    ['unknown block', v3([{ ...text, blocks: [para('a'), { type: 'table' }] }])],
+    ['empty blocks', v3([{ ...text, blocks: [] }])],
+    ['blocks not a list', v3([{ ...text, blocks: 'oops' }])],
+    ['too deep', v3([{ ...text, blocks: nested(7) }])],
+    ['too long', v3([{ ...text, blocks: [{ type: 'codeBlock', text: 'x'.repeat(500_001) }] }])],
+    ['blocks in a version 1 document', { ...wireV1(), objects: [{ ...text, blocks: [{ type: 'table' }] }] }],
+  ]
+
+  it.each(docs)('%s', (_name, raw) => {
+    expect(isLoadableDoc(raw)).toBe(parseDoc(raw) !== null)
+  })
+
+  it('the set really holds both readable and refused documents', () => {
+    const readable = docs.filter(([, raw]) => parseDoc(raw) !== null).length
+    expect(readable).toBe(9)
+    expect(docs.length - readable).toBe(18)
   })
 })
