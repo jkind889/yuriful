@@ -43,7 +43,12 @@ export class FakeObject {
     Object.assign(this, opts)
   }
   set(patch: Record<string, unknown>) {
-    Object.assign(this, patch)
+    for (const [key, value] of Object.entries(patch)) this._set(key, value)
+    return this
+  }
+  /** Like Fabric: every property `set` changes goes through here (a subclass may override it). */
+  _set(key: string, value: unknown) {
+    ;(this as unknown as Record<string, unknown>)[key] = value
     return this
   }
   setCoords() {}
@@ -327,6 +332,15 @@ export class Canvas {
     this._currentTransform = null
   }
   requestRenderAll() {}
+  /**
+   * What Fabric does on the animation frame after `requestRenderAll`, reduced to the event the
+   * DOM renderer follows: `before:render` with the main context. Only tests call it (the fake
+   * never renders by itself, and draws nothing, so `after:render` is left to the tests that
+   * install a recording context).
+   */
+  renderAll() {
+    this.fire('before:render', { ctx: this.mainContext })
+  }
   setDimensions(d: { width: number; height: number }) {
     this.width = d.width
     this.height = d.height
@@ -390,6 +404,11 @@ export class Canvas {
   async dispose() {
     return true
   }
+}
+
+/** The one control factory the DOM renderer's text proxies use (the fake has no controls of its own). */
+export const controlsUtils = {
+  createTextboxDefaultControls: () => ({}),
 }
 
 export const util = {

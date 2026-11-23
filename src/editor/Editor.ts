@@ -1,4 +1,4 @@
-import { ActiveSelection, Point as FabricPoint, Textbox } from 'fabric'
+import { ActiveSelection, Point as FabricPoint } from 'fabric'
 import type { FabricImage, FabricObject, Transform } from 'fabric'
 import { boardAppearance, boardStyle, DEFAULT_BOARD_STYLE, normalizePresetName, sameBoardStyle } from '../model/appearance.ts'
 import type { BoardAppearance, BoardStyle } from '../model/appearance.ts'
@@ -7,7 +7,6 @@ import { captionWillDetach } from '../model/feedback.ts'
 import { storedSnapSide } from '../model/captionSnap.ts'
 import {
   DEFAULT_VIEWPORT,
-  MAX_FONT_SIZE,
   MIN_FONT_SIZE,
   clamp,
   normalizeFrameName,
@@ -50,24 +49,7 @@ import type { CropHit, CropRect, Placement } from '../model/crop.ts'
 import { History } from '../model/history.ts'
 import { layoutOffsets } from '../model/layout.ts'
 import type { Layout } from '../model/layout.ts'
-import {
-  DEFAULT_TEXT_COLOR,
-  applyTypingShortcut,
-  fontAtCaret,
-  fontOfRange,
-  formatAtCaret,
-  formatOfRange,
-  formatOfText,
-  marksAtCaret,
-  matchTypingShortcut,
-  pendingMarksAt,
-  setHeading as setHeadingOfRange,
-  setHeadingEverywhere,
-  setRangeFont,
-  toggleMark as toggleMarkOfRange,
-  togglePendingMark,
-} from '../model/richText.ts'
-import type { Mark, MarkState, PendingTextStyle, RangeFormat, TextAlign, TextFormatting } from '../model/richText.ts'
+import type { Mark, MarkState, TextAlign } from '../model/richText.ts'
 import { canReorderLayered, reorderLayered } from '../model/layers.ts'
 import type { LayerDropSide, LayerOp } from '../model/layers.ts'
 import { DEFAULT_TITLE, DOC_VERSION } from '../model/types.ts'
@@ -80,13 +62,12 @@ import { ABSENT } from '../persistence/boardStore.ts'
 import type { BoardStore } from '../persistence/boardStore.ts'
 import { hydrateBoard } from '../persistence/hydrate.ts'
 import { canvasPrefs } from '../persistence/prefsStore.ts'
-import { isConfirmKey, isPanHoldKey, resolveEditingShortcut, resolveShortcut, typedCharacter } from '../input/shortcuts.ts'
+import { isConfirmKey, isPanHoldKey, resolveShortcut } from '../input/shortcuts.ts'
 import type { ShortcutAction } from '../input/shortcuts.ts'
 import { AssetCache, isImageFile, readImageFile } from './assets.ts'
 import { CROP_HIT_TOLERANCE, cropCursor, cropOverlay, drawCropOverlay } from './cropLayer.ts'
-import { findCaptionSnap, makeSnapCaption } from './captionSnapLayer.ts'
 import type { CaptionSnapPreview } from './captionSnapLayer.ts'
-import { DrawnTextbox } from './DrawnTextbox.ts'
+import { DomScene } from './domScene.ts'
 import { EdgePan } from './edgePan.ts'
 import { renderFramePreview } from './framePreview.ts'
 import { FeedbackLayer } from './feedbackLayer.ts'
@@ -100,8 +81,9 @@ import {
   captionSideOf,
   centerOf,
   createFrame,
+  createFrameProxy,
   createObject,
-  editTextAtEnd,
+  createProxy,
   frameNameOf,
   hasResidualScale,
   idOf,
@@ -110,25 +92,19 @@ import {
   isImage,
   isLocked,
   newId,
-  normalizeTextScale,
   ownerOf,
-  applyTextFormatting,
-  readTextFormatting,
-  reconcileTextFormatting,
-  replaceEditedText,
-  selectedRange,
   setCaption,
   setFrameName,
   setImageCrop,
   setImageElement,
   setLocked,
   setOwner,
-  setTextFontSize,
-  setTextWrapWidth,
   toFrameRecord,
   toRecord,
 } from './objects.ts'
-import type { TextEdit } from './objects.ts'
+import type { CardMeasurer } from './sceneLayer.ts'
+import { DomTextAdapter, FabricTextAdapter } from './textAdapter.ts'
+import type { TextAdapter, TextHost } from './textAdapter.ts'
 
 export type Tool = 'select' | 'hand' | 'text' | 'frame'
 export type { LayerItem } from './layerList.ts'
@@ -294,6 +270,17 @@ interface ReplaceJob {
   seq: number
 }
 
+/**
+ * How the editor is built. `renderer` picks what draws the board: `'fabric'` (the default, and the
+ * only one the app ships) or `'dom'`, the scene layer under a transparent canvas of proxies,
+ * reachable only from a development build for tests (see `App.tsx`). `measurer` sizes text cards
+ * on the DOM renderer (tests inject one; jsdom lays nothing out).
+ */
+export interface EditorOptions {
+  renderer?: 'fabric' | 'dom'
+  measurer?: CardMeasurer
+}
+
 /** A Frame- or Text-tool press that moves less than this many screen pixels is a click (default-sized frame or text). */
 const DRAFT_CLICK_SLOP = 4
 /** A Text-tool drag narrower than this many font sizes is no usable width: it gives the default box, as a click does. */
@@ -365,32 +352,31 @@ export class Editor {
   private pressAppliedCrop = false
   /** The press that began the current double-click followed a press that applied a crop. */
   private dblClickAfterCrop = false
+  /** Everything the editor does with text (see `textAdapter.ts`): the Fabric text path, or the DOM renderer's. */
+  private readonly text: TextAdapter
+  /** The DOM renderer's scene layer; null on the default Fabric renderer, which never builds one. */
+  private readonly scene: DomScene | null
+
   /**
-   * Marks and font chosen with only a caret in a text being edited, for what is typed next. Dropped
-   * when the caret moves for any other reason than typing, and when the edit ends.
+   * The pending caret choices and the typing-shortcut revert lived on the editor before the text
+   * adapter existed, and the unit tests still read them here (`Editor.typing.test.ts`). Read-only
+   * views of the Fabric adapter's state; nothing in the editor uses them (protected only so that the
+   * compiler does not report them unused).
    */
-  private pending: { target: Textbox; style: PendingTextStyle } | null = null
-  /**
-   * The character a key is typing into the text being edited (a space or a `*`, see
-   * `typedCharacter`), from its keydown until the text change it causes or its keyup. Only a
-   * typed character can fire a typing shortcut: pasted, dropped and composed text cannot.
-   */
-  private typed: string | null = null
-  /**
-   * The typing shortcut that has just fired, with what puts its literal characters back (the
-   * text, formatting, caret and pending choices from just before it fired). Only "straight
-   * after": dropped by the next text change, any caret or selection move, any formatting
-   * command, the end of the edit and any rebuild from records (undo, redo, a cancelled gesture).
-   */
-  private shortcutRevert: { target: Textbox; text: string; fmt: TextFormatting; caret: number; pending: PendingTextStyle | null } | null = null
-  /** A selection-info refresh is queued (see `queueSelectionSync`). */
-  private selectionSyncQueued = false
+  protected get pending(): unknown {
+    return this.text instanceof FabricTextAdapter ? this.text.transientState().pending : null
+  }
+
+  protected get shortcutRevert(): unknown {
+    return this.text instanceof FabricTextAdapter ? this.text.transientState().shortcutRevert : null
+  }
 
   constructor(
     private readonly host: HTMLElement,
     private readonly store: BoardStore,
     private readonly assets: AssetSource = new AssetCache(),
     readonly getPrefs: () => CanvasPrefs = canvasPrefs.get,
+    options: EditorOptions = {},
   ) {
     this.canvasEl = document.createElement('canvas')
     host.appendChild(this.canvasEl)
@@ -416,6 +402,26 @@ export class Editor {
       selectionBorderColor: ACCENT,
       selectionLineWidth: 1,
     })
+    // The DOM renderer (a test-only switch until the default flips): its scene layer listens to
+    // the canvas before anything else does, so it follows each change before the editor reacts.
+    this.scene = options.renderer === 'dom' ? new DomScene(this.canvas, host, this.assets, { measurer: options.measurer, gestureActive: () => this.gesture !== null }) : null
+    const textHost: TextHost = {
+      canvas: this.canvas,
+      editable: () => this.editable,
+      busy: () => this.busy,
+      applying: () => this.applying,
+      cropping: () => this.crop !== null,
+      disposed: () => this.disposed,
+      isNew: (obj) => !this.history.current.objects.some((o) => o.id === idOf(obj)),
+      frameRecords: () => this.frameRecords(),
+      selectByIds: (objs) => this.selectByIds(objs),
+      commit: (coalesceKey) => this.commit(coalesceKey),
+      markDirty: () => this.autosaver.markDirty(),
+      syncState: () => this.syncState(),
+      syncSelection: () => this.syncSelection(),
+      syncCaptions: (edited) => this.syncCaptions(edited),
+    }
+    this.text = this.scene ? new DomTextAdapter(textHost, this.scene) : new FabricTextAdapter(textHost)
 
     this.feedback = new FeedbackLayer(new EdgePan(this.canvas, host, (dx, dy) => {
       const vp = this.getViewport()
@@ -465,6 +471,7 @@ export class Editor {
       if (interactionCleared || snapCleared) this.canvas.requestRenderAll()
     }))
     this.applyToolState()
+    this.scene?.mount()
   }
 
   // ---- external store for React -------------------------------------------
@@ -569,6 +576,7 @@ export class Editor {
     for (const c of this.cleanups.splice(0)) c()
     this.autosaver.dispose()
     this.listeners.clear()
+    this.scene?.dispose()
     this.assets.dispose()
     void this.canvas.dispose()
     this.host.replaceChildren()
@@ -590,7 +598,7 @@ export class Editor {
       // into, and is discarded when that edit ends. Keeping it out of the scene means no
       // save (whatever triggered it: typing, a pan, a title edit) and no history step can
       // ever hold one.
-      if (obj instanceof Textbox && obj.text.trim() === '') continue
+      if (this.text.isBlank(obj)) continue
       const rec = toRecord(obj)
       if (rec) objects.push(rec)
     }
@@ -622,15 +630,15 @@ export class Editor {
   }
 
   /** The first caption in back-to-front order is the one that claims the image. */
-  private captionFor(image: FabricObject): Textbox | undefined {
+  private captionFor(image: FabricObject): FabricObject | undefined {
     const id = idOf(image)
-    return this.canvas.getObjects().find((o): o is Textbox => o instanceof Textbox && id !== undefined && captionOf(o) === id)
+    return this.canvas.getObjects().find((o) => this.text.isText(o) && id !== undefined && captionOf(o) === id)
   }
 
   /** Repair relationships, then place changed pairs or the one caption being edited. */
-  private syncCaptions(editedCaption?: Textbox) {
+  private syncCaptions(editedCaption?: FabricObject) {
     const objects = this.canvas.getObjects()
-    const captions = objects.filter((o): o is Textbox => o instanceof Textbox && captionOf(o) !== undefined)
+    const captions = objects.filter((o) => this.text.isText(o) && captionOf(o) !== undefined)
     if (captions.length === 0) return
     const images = new Map(objects.filter(isImage).map((image) => [idOf(image), image]))
     const recorded = editedCaption ? undefined : new Map(this.history.current.objects.map((record) => [record.id, record]))
@@ -660,7 +668,7 @@ export class Editor {
     if (changed) this.canvas.requestRenderAll()
   }
 
-  private positionCaption(caption: Textbox, image: FabricImage, rec: TextRecord, parent: ImageRecord): boolean {
+  private positionCaption(caption: FabricObject, image: FabricImage, rec: TextRecord, parent: ImageRecord): boolean {
     const bounds = captionImageBounds(parent, imageSizeOf(image))
     const side = captionSideOf(caption)
     const scale = caption.getObjectScaling()
@@ -668,10 +676,10 @@ export class Editor {
     let placement = captionPlacement(bounds, side, box, rec.captionPosition)
     // A single grapheme may require more room than the image. The text box has already
     // measured it using the actual styles. Rewrap before placing a caption above an image.
-    const width = Math.max(placement.width / scale.x, caption.dynamicMinWidth)
+    const width = Math.max(placement.width / scale.x, this.text.minWidthOf(caption))
     const resized = roundPositive(width * scale.x) !== rec.width
     if (resized) {
-      setTextWrapWidth(caption, width)
+      this.text.setWrapWidth(caption, width)
       placement = captionPlacement(bounds, side, { ...box, width: caption.width * scale.x, height: caption.height * scale.y }, rec.captionPosition)
     }
     if (!resized && rec.angle === 0 && rec.left === placement.left && rec.top === placement.top) return false
@@ -684,25 +692,35 @@ export class Editor {
   /** Rebuilds the canvas from records (frames behind content), preserving selection by id. */
   private applyRecords(scene: Scene) {
     this.applying = true
-    this.pending = null
-    this.shortcutRevert = null
+    this.text.resetTransient()
     try {
       const selected = new Set(this.selectedIds())
       this.canvas.discardActiveObject()
       const existing = this.canvas.getObjects()
       if (existing.length) this.canvas.remove(...existing)
-      const built: FabricObject[] = scene.frames.map((rec) => createFrame(rec))
+      const built: FabricObject[] = scene.frames.map((rec) => this.buildFrame(rec))
       for (const rec of scene.objects) {
         if (rec.type === 'text' && rec.text.trim() === '') continue // an old board may still store a blank text: invisible, so not shown
-        const obj = createObject(rec, (id) => this.assets.get(id))
+        const obj = this.build(rec, (id) => this.assets.get(id))
         if (obj) built.push(obj)
       }
       if (built.length) this.canvas.add(...built)
+      this.scene?.rebuild() // text proxies take their cards' sizes before a selection is formed
       this.selectByIds(built.filter((o) => selected.has(idOf(o) ?? '')))
     } finally {
       this.applying = false
     }
     this.canvas.requestRenderAll()
+  }
+
+  /** A content object for a record: a Fabric object, or on the DOM renderer a proxy. */
+  private build(rec: Scene['objects'][number], getImage: (assetId: string) => HTMLImageElement | undefined): FabricObject | null {
+    return this.scene ? createProxy(rec, getImage) : createObject(rec, getImage)
+  }
+
+  /** A frame for a record: a Fabric rectangle that paints the paper, or on the DOM renderer a proxy (the layer paints it). */
+  private buildFrame(rec: FrameRecord): FabricObject {
+    return this.scene ? createFrameProxy(rec) : createFrame(rec)
   }
 
   /**
@@ -762,13 +780,14 @@ export class Editor {
     const locked = single !== undefined && isLocked(single)
     const layoutItems = this.layoutItems(objs)
     const bounds = layoutItems.length >= 3 ? this.layoutBounds(layoutItems) : []
-    const attached = isImage(single) ? this.captionFor(single) : single instanceof Textbox && captionOf(single) ? single : undefined
+    const attached = isImage(single) ? this.captionFor(single) : this.text.isText(single) && captionOf(single) ? single : undefined
     const canDetach = this.captionToDetach(objs) !== undefined
     const styledText = this.detachedTextWithBackground(single)
+    const styled = attached ?? styledText
     return {
-      kind: objs.length > 1 ? 'multiple' : frame ? 'frame' : single instanceof Textbox ? 'text' : 'image',
+      kind: objs.length > 1 ? 'multiple' : frame ? 'frame' : this.text.isText(single) ? 'text' : 'image',
       count: objs.length,
-      fontSize: single instanceof Textbox ? Math.max(MIN_SELECTION_FONT, Math.round(single.fontSize * 10) / 10) : null,
+      fontSize: this.text.isText(single) ? Math.max(MIN_SELECTION_FONT, Math.round(this.text.fontSizeOf(single) * 10) / 10) : null,
       frameName: frame ? (frameNameOf(frame) ?? '') : null,
       memberCount: frame ? this.canvas.getObjects().filter((o) => ownerOf(o) === frameId).length : null,
       locked,
@@ -787,9 +806,9 @@ export class Editor {
         canDetach,
         canMake: this.captionPair(objs) !== undefined,
         canStyle: canDetach || (styledText !== undefined && !locked),
-        background: (attached ?? styledText)?.backgroundColor || undefined,
+        background: (styled ? this.text.backgroundOf(styled) : undefined) || undefined,
       },
-      text: single instanceof Textbox ? this.textFormatInfo(single) : null,
+      text: this.text.isText(single) ? this.text.formatInfo(single) : null,
     }
   }
 
@@ -804,48 +823,6 @@ export class Editor {
     return { cropped: rec.crop !== undefined, canFit: changes(fitRecord(rec, size)), canFill: changes(fillRecord(rec, size)) }
   }
 
-  private textFormatInfo(tb: Textbox): TextFormatInfo {
-    const fmt = readTextFormatting(tb)
-    const text = tb.text
-    const editing = tb.isEditing === true
-    const range = editing ? selectedRange(tb) : undefined
-    let state: RangeFormat
-    let font: TextFormatInfo['font']
-    if (range && range.start === range.end) {
-      const pending = this.pendingFor(tb)
-      state = formatAtCaret(text, fmt, range.start, pending)
-      font = pending.font ?? fontAtCaret(text, fmt, range.start)
-    } else {
-      state = range ? formatOfRange(text, fmt, range.start, range.end) : formatOfText(text, fmt)
-      font = fontOfRange(text, fmt, range?.start ?? 0, range?.end ?? text.length)
-    }
-    return { editing, font, align: fmt.align ?? 'left', color: fmt.color ?? DEFAULT_TEXT_COLOR, ...state }
-  }
-
-  private pendingFor(tb: Textbox): PendingTextStyle {
-    return this.pending?.target === tb ? this.pending.style : {}
-  }
-
-  private setPending(tb: Textbox, style: PendingTextStyle) {
-    this.pending = Object.keys(style).length > 0 ? { target: tb, style } : null
-  }
-
-  /**
-   * A heading line is always bold, so bold is never pending while the caret is on one: called
-   * wherever the caret's line can become a heading while marks are pending (the heading
-   * command, and every text change, which covers the `# ` shortcut and joining lines). Only a
-   * pending bold is dropped; italic, underline and strikethrough stay. It does not come back
-   * if the line goes back to body text.
-   */
-  private dropPendingBoldOnHeading(tb: Textbox) {
-    const p = this.pending
-    if (!p || p.target !== tb || !tb.isEditing) return
-    const caret = selectedRange(tb)?.end
-    if (caret === undefined) return
-    const style = pendingMarksAt(tb.text, readTextFormatting(tb), caret, p.style)
-    if (style !== p.style) this.setPending(tb, style)
-  }
-
   /**
    * Refreshes only the selection info, and only tells React when it really changed: the caret
    * moving inside a text being edited fires often, mostly without changing what the
@@ -855,19 +832,6 @@ export class Editor {
     const selection = this.computeSelection()
     if (JSON.stringify(selection) === JSON.stringify(this.state.selection)) return
     this.setState({ selection })
-  }
-
-  /**
-   * After Fabric's own handling has returned: Fabric fires its text selection event before
-   * it has stored the new selection in some cases (IText.mjs `_updateAndFire`).
-   */
-  private queueSelectionSync() {
-    if (this.selectionSyncQueued) return
-    this.selectionSyncQueued = true
-    queueMicrotask(() => {
-      this.selectionSyncQueued = false
-      if (!this.disposed) this.syncSelection()
-    })
   }
 
   private syncState() {
@@ -880,7 +844,7 @@ export class Editor {
       // An open crop that differs from where it began can be undone too: Undo applies it, then undoes it.
       canUndo: this.history.canUndo || (this.crop !== null && !sameCrop(storedCrop(this.crop.rect, this.crop.size), storedCrop(this.crop.start, this.crop.size))),
       canRedo: this.history.canRedo,
-      editingText: active instanceof Textbox && active.isEditing === true,
+      editingText: this.text.isEditing(active),
       cropping: this.crop !== null,
     })
   }
@@ -970,7 +934,7 @@ export class Editor {
       if (!this.editable) return
       const target = transform.target
       // Caret and text-selection presses inside an editing textbox stay on the text path.
-      if (target instanceof Textbox && target.isEditing) return
+      if (this.text.isEditing(target)) return
       this.clearFeedback()
       const g: Gesture = { id: ++this.gestureSeq, kind: 'transform', base: this.snapshot(), transform }
       if (transform.action === 'drag') g.carry = this.collectFollowers(target)
@@ -986,8 +950,8 @@ export class Editor {
       if (prefs.captionSnap && transform.action === 'drag') {
         lastSnapMove = e
         const { target } = transform
-        this.feedback.captionSnap = this.state.tool === 'select' && target instanceof Textbox && !suppressesSnap(e)
-          ? findCaptionSnap(target, c.getObjects(), c.getZoom(), this.feedback.captionSnap)
+        this.feedback.captionSnap = this.state.tool === 'select' && !suppressesSnap(e)
+          ? this.text.findCaptionSnap(target, c.getObjects(), c.getZoom(), this.feedback.captionSnap)
           : null
       }
       if (prefs.feedback) this.feedback.updateTransform(g.base, transform, c.getObjects(), g.carry?.followers ?? [], () => sceneEqual(this.snapshot(), g.base))
@@ -1066,91 +1030,14 @@ export class Editor {
       // No gesture: a text left its edit with changes, or an editing textbox was resized by
       // a handle. (Fabric 7.4 hides an editing textbox's handles, so the second case is not
       // reachable today; the limit is applied anyway so that it can never bypass it.)
-      if (target instanceof Textbox) {
-        if (transform && isScaleAction(transform)) this.limitScale(transform, [], [{ fontSize: target.fontSize }])
-        normalizeTextScale(target)
+      if (this.text.isText(target)) {
+        if (transform && isScaleAction(transform)) this.limitScale(transform, [], [{ fontSize: this.text.fontSizeOf(target) }])
+        this.text.normalizeScale(target)
       }
       this.commit()
     })
 
-    c.on('text:editing:entered', () => this.syncState())
-    c.on('text:changed', ({ target }) => {
-      // Fabric fires this after it has changed the text, shifted its character styles and
-      // placed the caret, and does nothing to the text afterwards (fabric 7.4.0,
-      // ITextKeyBehavior.mjs onInput, DraggableTextDelegate.mjs drop/dragend; a drag also
-      // fires it on its source text, which may no longer be the one being edited). So the
-      // styles are made canonical right here, before the typing save is scheduled: each
-      // line keeps the level it had before the change (never one guessed from the sizes a
-      // paste brought), marks come from the styles, and a save can never store formatting
-      // that the canvas does not show.
-      // Marks and a font chosen with only a caret go to what was just typed (they last through every
-      // step of an IME composition, which fires this without moving the caret otherwise).
-      // Then a typed character that completes a typing shortcut converts the text, in the same
-      // callback, before the save below is scheduled (see `typingShortcut`).
-      const typed = this.typed
-      this.typed = null
-      this.shortcutRevert = null // any change of the text ends "straight after a shortcut"
-      if (target instanceof Textbox) {
-        let edit = undefined as TextEdit | undefined
-        reconcileTextFormatting(target, target.isEditing ? this.pendingFor(target) : undefined, (e) => (edit = e))
-        if (edit && typed !== null) this.typingShortcut(target, edit, typed)
-        // The change (a `# ` shortcut, or Backspace joining a line into the heading above it)
-        // may have left the caret on a heading line: no pending bold there.
-        this.dropPendingBoldOnHeading(target)
-      }
-      if (!this.applying && this.editable) {
-        if (!this.busy && !this.crop && target instanceof Textbox && captionOf(target)) this.syncCaptions(target)
-        this.autosaver.markDirty() // keep typing durable; history commits on exit
-      }
-      this.syncState() // the layer list follows typing (a text that is blank right now is not listed); marks nothing dirty
-      this.queueSelectionSync()
-    })
-    // The caret or the selected range moved for any other reason than typing (arrow keys, a
-    // click or drag in the text, select all). Typing moves it without this event (fabric
-    // 7.4.0, ITextBehavior.mjs `updateFromTextArea`), and so does an IME composition.
-    c.on('text:selection:changed', ({ target }) => {
-      if (this.pending?.target === target) this.pending = null
-      if (this.shortcutRevert?.target === target) this.shortcutRevert = null
-      this.queueSelectionSync()
-    })
-    c.on('text:editing:exited', ({ target }) => {
-      if (this.pending?.target === target) this.pending = null
-      if (this.shortcutRevert?.target === target) this.shortcutRevert = null
-      // A press inside the text may still be held (it started no gesture, and the text could
-      // not move while it was being edited). End it, or the text would now be dragged with
-      // no gesture: visible to saves half-way and impossible to cancel.
-      if (c._currentTransform?.target === target) c.endCurrentTransform()
-      if (this.applying || !this.editable) return
-      if (target instanceof Textbox && target.text.trim() === '') {
-        // A blank text is discarded. It is already out of the scene (see snapshot), so the
-        // commit below records its removal now. The object itself is taken off the canvas
-        // only after Fabric has finished leaving the edit: Fabric still fires events on the
-        // text after this callback, and they fail on a text that has no canvas any more.
-        queueMicrotask(() => {
-          if (this.disposed || target.isEditing || target.text.trim() !== '' || !c.getObjects().includes(target)) return
-          // Shift-clicking another object leaves the edit AND puts this text into a new
-          // multi-selection. Take it out again, or the selection would keep a member that is
-          // no longer on the canvas.
-          const active = c.getActiveObject()
-          if (active instanceof ActiveSelection && active.getObjects().includes(target) && !c._currentTransform) {
-            const rest = active.getObjects().filter((o) => o !== target)
-            c.discardActiveObject()
-            c.remove(target)
-            this.selectByIds(rest)
-          } else {
-            c.remove(target)
-          }
-          c.requestRenderAll()
-          this.syncState()
-        })
-      } else if (target instanceof Textbox && !captionOf(target) && !this.history.current.objects.some((o) => o.id === idOf(target))) {
-        // A NEW text (history has never held it): its box grew while it was typed, so its
-        // owner is decided once more from where it ended up. Re-editing an existing text
-        // never changes its owner, whatever the typing does to its size.
-        setOwner(target, ownerAfterManipulation(ownerOf(target), centerOf(target), this.frameRecords(), NO_FRAMES))
-      }
-      this.commit()
-    })
+    this.text.bindCanvasEvents()
 
     // Double-clicking a frame's label (or outline) is "rename": the UI puts the cursor in the
     // name field. Deferred, like everything else that follows from a canvas event.
@@ -1273,7 +1160,7 @@ export class Editor {
   /** Adds a frame in front of every other frame and behind all content, and selects it. */
   private insertFrame(box: Box): FabricObject {
     const frames = this.frameRecords()
-    const obj = createFrame({
+    const obj = this.buildFrame({
       id: newId(),
       name: nextFrameName(frames.map((f) => f.name)),
       left: round(box.left),
@@ -1295,17 +1182,17 @@ export class Editor {
     const members = target instanceof ActiveSelection ? target.getObjects().slice() : [target]
     if (g.carry) this.placeFollowers(g.carry, target)
     this.settleScale(g.base, transform, members)
-    if (g.captionSnap && this.getPrefs().captionSnap && target instanceof Textbox) {
+    if (g.captionSnap && this.getPrefs().captionSnap && this.text.isText(target)) {
       members[0] = this.attachSnappedCaption(target, g.captionSnap)
     } else this.detachTransformedCaptions(g.base, members)
     this.applyOwnership(g.base, members)
   }
 
-  private attachSnappedCaption(text: Textbox, snap: CaptionSnapPreview): Textbox {
+  private attachSnappedCaption(text: FabricObject, snap: CaptionSnapPreview): FabricObject {
     let target = text
-    if (!(text instanceof DrawnTextbox)) {
-      const drawn = makeSnapCaption(text)
-      if (!drawn) return text
+    const drawn = this.text.drawnCaptionOf(text) // the text itself when it already wraps as a caption does
+    if (!drawn) return text
+    if (drawn !== text) {
       const index = this.canvas.getObjects().indexOf(text)
       this.canvas.discardActiveObject()
       this.canvas.remove(text)
@@ -1418,7 +1305,7 @@ export class Editor {
       if (isFrame(m)) {
         const rec = base.frames.find((f) => f.id === id)
         if (rec) baseFrames.push(rec)
-      } else if (m instanceof Textbox) {
+      } else if (this.text.isText(m)) {
         const rec = base.objects.find((o) => o.id === id)
         if (rec?.type === 'text') baseTexts.push({ fontSize: rec.fontSize })
       }
@@ -1428,19 +1315,19 @@ export class Editor {
     if (target instanceof ActiveSelection) {
       // Judged per member, on its absolute scale: a selection that returns to scale 1 can
       // still leave a member scaled (one that joined while the selection was scaled).
-      if (members.some((o) => (o instanceof Textbox || isFrame(o)) && hasResidualScale(o))) {
+      if (members.some((o) => (this.text.isText(o) || isFrame(o)) && hasResidualScale(o))) {
         // Fold the scale into member text (font size/width) and bake it into member frames
         // (which are stored at scale 1), which means dissolving and re-forming the selection.
         const keep = members.slice()
         this.canvas.discardActiveObject()
         for (const o of keep) {
-          if (o instanceof Textbox) normalizeTextScale(o)
+          if (this.text.isText(o)) this.text.normalizeScale(o)
           else if (isFrame(o)) bakeFrame(o)
         }
         this.selectByIds(keep)
       }
-    } else if (target instanceof Textbox) {
-      normalizeTextScale(target)
+    } else if (this.text.isText(target)) {
+      this.text.normalizeScale(target)
     }
   }
 
@@ -1671,7 +1558,7 @@ export class Editor {
 
     const onKeyDown = (e: KeyboardEvent) => this.handleKeyDown(e)
     const onKeyUp = (e: KeyboardEvent) => {
-      this.typed = null // what the key typed has arrived by now, if it typed anything
+      this.text.onKeyUp() // what the key typed has arrived by now, if it typed anything
       if (e.code === 'Space' && this.spaceHeld) {
         this.spaceHeld = false
         this.applyToolState()
@@ -1724,15 +1611,8 @@ export class Editor {
   private healPrimaryDown(buttons: number) {
     if (!this.primaryDown || (buttons & 1) !== 0) return
     this.primaryDown = false
-    // Fabric normally unregisters the range drag on text mouse-up. Keep the edit and
-    // range as they are when that release never comes.
-    const active = this.canvas.getActiveObject()
-    if (active instanceof Textbox && active.isEditing) {
-      const manager = this.canvas.textEditingManager
-      // Textbox extends ITextBehavior. Fabric's polymorphic toObject signature makes
-      // those types incompatible here even though the manager registers textboxes.
-      manager.unregister(active as unknown as Parameters<typeof manager.unregister>[0])
-    }
+    // A range drag inside the text being edited stays as it is (the edit and its range go on).
+    this.text.onPrimaryLost()
     if (this.cancelGesture()) this.queueIdle()
   }
 
@@ -1766,15 +1646,13 @@ export class Editor {
   handleKeyDown(e: KeyboardEvent) {
     if (!this.live) return
     const active = this.canvas.getActiveObject()
-    const edited = active instanceof Textbox && active.isEditing ? active : null
     const ctx = {
       editingText: this.state.editingText,
-      textSelected: active instanceof Textbox && !active.isEditing,
+      textSelected: this.text.isText(active) && !this.text.isEditing(active),
       hasSelection: !!active,
       canEditCaption: e.key === 'Enter' && !e.defaultPrevented && this.captionImage() !== undefined,
     }
-    const editing = { editedTextarea: edited?.hiddenTextarea ?? null, canRevertShortcut: edited !== null && this.shortcutRevert?.target === edited }
-    this.typed = this.busy ? null : typedCharacter(e, editing) // observed only, never claimed
+    this.text.observeKey(e) // what a key types into the text being edited: observed only, never claimed
     if (this.busy) {
       // Mid-gesture: Esc cancels it, zoom still works, everything else waits.
       const action = resolveShortcut(e, ctx)
@@ -1792,19 +1670,8 @@ export class Editor {
       }
       return
     }
-    // Keys typed into the text being edited reach this window listener from Fabric's hidden
-    // textarea; Fabric does nothing with Ctrl/Cmd+B, I or U and lets them bubble (fabric
-    // 7.4.0, ITextKeyBehavior.mjs `onKeyDown`, constants.mjs `ctrlKeysMapDown`), so no capture
-    // listener is needed. Backspace is not Fabric's either: the textarea deletes and Fabric
-    // follows from its input event (constants.mjs `keysMap` has no Backspace), so preventing it
-    // here keeps anything from being deleted. Everything else typed there is left alone.
-    const claimed = resolveEditingShortcut(e, editing)
-    if (claimed) {
-      e.preventDefault()
-      if (claimed === 'revert-shortcut') this.revertShortcut()
-      else if (claimed !== 'ignore') this.toggleMark(claimed)
-      return
-    }
+    // A key the text being edited claims (see the adapter's `onKeyDown`).
+    if (this.text.onKeyDown(e)) return
     if (isPanHoldKey(e, ctx)) {
       e.preventDefault()
       if (!this.spaceHeld) {
@@ -1961,8 +1828,7 @@ export class Editor {
    */
   private finishEditing(opts: { keepCrop?: boolean } = {}) {
     if (!opts.keepCrop) this.applyCrop()
-    const active = this.canvas.getActiveObject()
-    if (active instanceof Textbox && active.isEditing) active.exitEditing()
+    this.text.finishEditing()
   }
 
   // ---- image tools: crop, Fit and Fill -------------------------------------------------------
@@ -1973,7 +1839,8 @@ export class Editor {
    * the crop box over it; Fabric's own handles are hidden and Fabric sees no presses.
    */
   startCrop() {
-    if (!this.editable || this.busy || this.crop) return
+    // Crop mode on the DOM renderer is Slice 2c-iii: inert there until then.
+    if (!this.editable || this.busy || this.crop || this.scene) return
     const img = this.canvas.getActiveObject()
     if (!isImage(img) || isLocked(img) || img.group) return
     this.finishEditing()
@@ -2251,7 +2118,7 @@ export class Editor {
 
   editCaption() {
     const image = this.captionImage()
-    if (!image) return
+    if (!image || !this.text.canEdit) return
     const imageId = idOf(image)
     const rec = toRecord(image)
     if (!imageId || rec?.type !== 'image') return
@@ -2260,25 +2127,25 @@ export class Editor {
     if (!caption) {
       const fontSize = this.newTextFontSize()
       const placement = captionPlacement(captionImageBounds(rec, imageSizeOf(image)), undefined, { fontSize, width: 0, height: 0 })
-      const made = createObject({
+      const made = this.build({
         id: newId(), type: 'text', text: '', angle: 0, fontSize, minHeight: 0, ...placement, captionOf: imageId,
         ...(rec.frameId && { frameId: rec.frameId }),
       }, () => undefined)
-      if (!(made instanceof Textbox)) return
+      if (!this.text.isText(made)) return
       this.canvas.insertAt(this.canvas.getObjects().indexOf(image) + 1, made)
       caption = made
     }
     this.canvas.setActiveObject(caption)
-    editTextAtEnd(caption)
+    this.text.startEditing(caption, 'end')
     this.canvas.requestRenderAll()
     this.syncState()
   }
 
-  private captionToDetach(objects: readonly FabricObject[]): Textbox | undefined {
+  private captionToDetach(objects: readonly FabricObject[]): FabricObject | undefined {
     if (objects.length !== 1) return
     const selected = objects[0]!
     if (isLocked(selected)) return
-    const caption = isImage(selected) ? this.captionFor(selected) : selected instanceof Textbox ? selected : undefined
+    const caption = isImage(selected) ? this.captionFor(selected) : this.text.isText(selected) ? selected : undefined
     if (!caption || isLocked(caption)) return
     const imageId = captionOf(caption)
     if (!imageId) return
@@ -2291,13 +2158,13 @@ export class Editor {
     const caption = this.captionToDetach(this.canvas.getActiveObjects())
     if (!caption) return
     this.finishEditing()
-    if (caption.text.trim() === '') return // discarded by the ordinary edit exit
+    if (this.text.isBlank(caption)) return // discarded by the ordinary edit exit
     setCaption(caption, undefined)
     this.commit()
   }
 
-  private detachedTextWithBackground(object: FabricObject | undefined): Textbox | undefined {
-    if (object instanceof Textbox && !captionOf(object) && object.backgroundColor) return object
+  private detachedTextWithBackground(object: FabricObject | undefined): FabricObject | undefined {
+    if (this.text.isText(object) && !captionOf(object) && this.text.backgroundOf(object)) return object
   }
 
   setCaptionBackground(value?: string) {
@@ -2305,21 +2172,22 @@ export class Editor {
     const selected = this.canvas.getActiveObjects()
     if (selected.length !== 1) return
     const caption = this.captionToDetach(selected) ?? this.detachedTextWithBackground(selected[0])
-    if (!caption || isLocked(caption) || caption.text.trim() === '') return
+    if (!caption || isLocked(caption) || this.text.isBlank(caption)) return
     const color = value === undefined ? '' : captionBackground(value)
-    if (color === undefined || color === caption.backgroundColor) return
-    const coalesce = color && caption.backgroundColor ? `caption-color:${idOf(caption)}` : undefined
+    const current = this.text.backgroundOf(caption)
+    if (color === undefined || color === current) return
+    const coalesce = color && current ? `caption-color:${idOf(caption)}` : undefined
     this.finishEditing()
-    caption.set({ backgroundColor: color })
+    this.text.setBackground(caption, color)
     this.canvas.requestRenderAll()
     this.commit(coalesce)
   }
 
-  private captionPair(objects: readonly FabricObject[]): { image: FabricImage; text: Textbox } | undefined {
+  private captionPair(objects: readonly FabricObject[]): { image: FabricImage; text: FabricObject } | undefined {
     if (objects.length !== 2) return
     const image = objects.find(isImage)
-    const text = objects.find((o): o is Textbox => o instanceof Textbox)
-    if (!image || !text || isLocked(image) || isLocked(text) || captionOf(text) || this.captionFor(image) || text.text.trim() === '') return
+    const text = objects.find((o) => this.text.isText(o))
+    if (!image || !text || isLocked(image) || isLocked(text) || captionOf(text) || this.captionFor(image) || this.text.isBlank(text)) return
     return { image, text }
   }
 
@@ -2336,8 +2204,8 @@ export class Editor {
     const width = captionPlacement(captionImageBounds(parent, imageSizeOf(image)), undefined, { ...rec, height: text.height }).width
     // A text made with a click has legacy word wrapping. Rebuild it as a drawn box in its
     // existing stack slot, retaining its id and all its formatting and drawn height.
-    const made = createObject({ ...rec, captionOf: imageId, width, minHeight: rec.minHeight ?? 0 }, () => undefined)
-    if (!(made instanceof Textbox)) return
+    const made = this.build({ ...rec, captionOf: imageId, width, minHeight: rec.minHeight ?? 0 }, () => undefined)
+    if (!this.text.isText(made)) return
     const index = this.canvas.getObjects().indexOf(text)
     const selected = this.canvas.getActiveObjects().map((o) => o === text ? made : o)
     this.canvas.discardActiveObject()
@@ -2370,7 +2238,8 @@ export class Editor {
    * default box (ten font sizes wide) at `at`.
    */
   private addTextAt(at: Point, anchor: 'center' | 'top-left', dragTo?: Point) {
-    if (!this.editable || this.busy) return
+    // A new text is typed into at once: not until text can be edited on this renderer (Slice 2c-ii on the DOM path).
+    if (!this.editable || this.busy || !this.text.canEdit) return
     // Placement is single-use. Switch tools first: switching ends any editing.
     if (this.state.tool !== 'select') this.switchTool('select')
     this.finishEditing()
@@ -2389,14 +2258,14 @@ export class Editor {
       left: drag?.left ?? (anchor === 'center' ? at.x - width / 2 : at.x),
       top: drag?.top ?? (anchor === 'center' ? at.y - fontSize * 0.625 : at.y),
     }
-    const obj = createObject(rec, () => undefined)
-    if (!(obj instanceof Textbox)) return
+    const obj = this.build(rec, () => undefined)
+    if (!this.text.isText(obj)) return
     this.canvas.add(obj)
     // Owner first, in the same step that adds it: typing is saved as it happens, so no
     // save may ever see this text without its owner. (Touches no history.)
     setOwner(obj, this.ownerForNew(obj))
     this.canvas.setActiveObject(obj)
-    obj.enterEditing()
+    this.text.startEditing(obj)
     this.canvas.requestRenderAll()
     this.syncState()
   }
@@ -2480,7 +2349,7 @@ export class Editor {
     this.finishEditing() // first, so that text being typed is committed as its own step
     const added: FabricObject[] = []
     for (const rec of records) {
-      const obj = createObject(rec, (id) => this.assets.get(id))
+      const obj = this.build(rec, (id) => this.assets.get(id))
       if (!obj) continue
       this.canvas.add(obj)
       setOwner(obj, this.ownerForNew(obj)) // same synchronous step as the add and the commit
@@ -2550,7 +2419,7 @@ export class Editor {
   selectLayer(id: string, opts: { toggle?: boolean } = {}) {
     if (!this.editable || this.busy) return
     // A blank text is not part of the scene and is not listed, so it cannot be selected from the list.
-    const listed = (o: FabricObject) => !(o instanceof Textbox && o.text.trim() === '')
+    const listed = (o: FabricObject) => !this.text.isBlank(o)
     const target = this.canvas.getObjects().find((o) => idOf(o) === id && listed(o))
     if (!target) return
     this.finishEditing() // commits typed text as its own step; a blank text is discarded
@@ -2610,172 +2479,47 @@ export class Editor {
     this.canvas.requestRenderAll()
   }
 
+  /** The font size of the one selected text (headings keep their ratio). One undo step per text, coalesced. */
   setFontSize(size: number) {
-    this.shortcutRevert = null
-    if (!this.editable || this.busy) return
-    const active = this.canvas.getActiveObject()
-    if (!(active instanceof Textbox) || isLocked(active) || !Number.isFinite(size)) return
-    const fontSize = clamp(size, MIN_FONT_SIZE, MAX_FONT_SIZE)
-    if (fontSize === active.fontSize) return
-    setTextFontSize(active, fontSize) // headings keep their ratio
-    active.setCoords()
-    this.canvas.requestRenderAll()
-    // A text that is blank right now (emptied in the middle of an edit) is not in the scene:
-    // committing would record "text removed" while it is still being typed into.
-    if (active.text.trim() === '') return
-    if (active.isEditing && captionOf(active)) {
-      this.syncCaptions(active)
-      this.autosaver.markDirty()
-      this.syncSelection()
-    } else this.commit(`font-size:${idOf(active) ?? ''}`)
+    this.text.setFontSize(size)
   }
 
   // ---- text formatting ----------------------------------------------------------------------
   //
   // Every command acts on the one selected text, and only while the board is editable and no
-  // gesture is unsettled. While the text is being edited, marks and headings act on the
-  // selected range (marks with only a caret: on what is typed next), and the change is saved
-  // as it happens and becomes part of the single undo step recorded when the edit ends; the
-  // edit, its caret and its selected range go on. On a selected box that is not being edited
-  // they act on the whole box, as an undo step of its own (quick repeats of the same kind
-  // coalesce, like the font size). None of them changes ownership.
+  // gesture is unsettled (see `textAdapter.ts`). While the text is being edited, marks and
+  // headings act on the selected range; on a selected box that is not being edited they act on
+  // the whole box, as an undo step of its own. None of them changes ownership.
 
-  /** The text a formatting command acts on, or null when there is none or the board may not change now. */
-  private formatTarget(): Textbox | null {
-    this.shortcutRevert = null // a formatting command ends "straight after a shortcut"
-    if (!this.editable || this.busy) return null
-    const active = this.canvas.getActiveObject()
-    return active instanceof Textbox && !isLocked(active) ? active : null
-  }
-
-  /** Applies a formatting change through the one canvas path, then saves or records it. */
-  private formatText(tb: Textbox, kind: string, change: (fmt: TextFormatting, text: string) => TextFormatting) {
-    if (!applyTextFormatting(tb, change)) return // nothing changed: nothing recorded, nothing saved
-    this.canvas.requestRenderAll()
-    if (tb.isEditing) {
-      // Saved as it happens, like typing. A blank text being typed into is not in the scene,
-      // so there is nothing to save (and a commit would record its removal).
-      if (captionOf(tb) && !this.crop) this.syncCaptions(tb)
-      if (tb.text.trim() !== '') this.autosaver.markDirty()
-      this.syncSelection()
-      return
-    }
-    this.commit(`format-${kind}:${idOf(tb) ?? ''}`)
-  }
-
-  /**
-   * Bold, italic, underline or strikethrough. Editing: toggled on the selected range (off if
-   * every character has it, otherwise on), or with only a caret, chosen for what is typed
-   * next. Not editing: the whole box. Bold never changes in heading lines.
-   */
+  /** Bold, italic, underline or strikethrough: the selected range, a caret's next characters, or the whole box. */
   toggleMark(mark: Mark) {
-    const tb = this.formatTarget()
-    if (!tb) return
-    const range = tb.isEditing ? (selectedRange(tb) ?? { start: 0, end: tb.text.length }) : { start: 0, end: tb.text.length }
-    if (tb.isEditing && range.start === range.end) {
-      this.setPending(tb, togglePendingMark(tb.text, readTextFormatting(tb), range.start, this.pendingFor(tb), mark))
-      this.syncSelection()
-      return
-    }
-    this.formatText(tb, `mark-${mark}`, (fmt, text) => toggleMarkOfRange(text, fmt, mark, range.start, range.end))
+    this.text.toggleMark(mark)
   }
 
   /** Heading level 1 to 3, or 0 for body text. Editing: every line the selection touches (the caret's line). Not editing: every line. */
   setHeading(level: 0 | 1 | 2 | 3) {
-    const tb = this.formatTarget()
-    if (!tb) return
-    const range = tb.isEditing ? selectedRange(tb) : undefined
-    this.formatText(tb, 'heading', (fmt, text) => (range ? setHeadingOfRange(text, fmt, level, range.start, range.end) : setHeadingEverywhere(text, fmt, level)))
-    if (tb.isEditing) {
-      this.dropPendingBoldOnHeading(tb) // the caret's line may now be a heading
-      this.syncSelection()
-    }
+    this.text.setHeading(level)
   }
 
   /** The font of the selection or whole box, or the next characters typed at a caret. */
   setTextFont(font: FontId) {
-    const tb = this.formatTarget()
-    if (!tb) return
-    const range = tb.isEditing ? selectedRange(tb) : undefined
-    if (tb.isEditing && !range) return
-    if (range && range.start === range.end) {
-      this.setPending(tb, { ...this.pendingFor(tb), font })
-      this.syncSelection()
-      return
-    }
-    this.formatText(tb, 'font', (fmt, text) => setRangeFont(text, fmt, font, range))
+    this.text.setFont(font)
   }
 
   /** The alignment of the whole box, also while it is being edited. The box keeps its position and width. */
   setTextAlign(align: TextAlign) {
-    const tb = this.formatTarget()
-    if (tb) this.formatText(tb, 'align', (fmt) => ({ ...fmt, align: align === 'left' ? undefined : align }))
+    this.text.setAlign(align)
   }
 
   /** The colour (`#rrggbb`) of the whole box, also while it is being edited. The default ink is stored as no colour. */
   setTextColor(color: string) {
-    const tb = this.formatTarget()
-    if (tb) this.formatText(tb, 'color', (fmt) => ({ ...fmt, color }))
-  }
-
-  // ---- typing shortcuts ----------------------------------------------------------------------
-  //
-  // While a text is typed into, `# `, `## `, `### ` at the start of a line make it a heading,
-  // and a closing `**` or `*` makes the text since the opening marker bold or italic; the
-  // markers go (see `matchTypingShortcut`). Backspace straight afterwards puts the literal
-  // characters back. Like typing, a conversion is saved as it happens and is part of the one
-  // undo step recorded when the edit ends; it never changes ownership.
-
-  /**
-   * After a text change, in the `text:changed` callback, once its styles are canonical: when
-   * the change is exactly one character typed at the caret (`typed`, seen on its keydown),
-   * with nothing replaced, and it completes a typing shortcut, the text and its formatting are
-   * changed together in one step. Fabric 7.4 does nothing to the text after this callback
-   * (ITextKeyBehavior.mjs `onInput`: `updateAndFire` only asks for a render afterwards), and
-   * the save that typing schedules is scheduled after this returns, so no save can see the
-   * marker typed but not yet converted.
-   */
-  private typingShortcut(tb: Textbox, edit: TextEdit, typed: string) {
-    if (this.applying || !this.editable || this.busy || !tb.isEditing || this.canvas.getActiveObject() !== tb) return
-    if ((tb as unknown as { inCompositionMode?: boolean }).inCompositionMode) return
-    const { start, prevEnd, nextEnd } = edit.change
-    if (prevEnd !== start || nextEnd !== start + 1 || edit.text[start] !== typed) return
-    const caret = selectedRange(tb)
-    if (!caret || caret.start !== nextEnd || caret.end !== nextEnd) return
-    const sc = matchTypingShortcut(edit.text, nextEnd, typed)
-    if (!sc) return
-    const fmt = readTextFormatting(tb) // canonical: the reconcile has just remembered it
-    const pendingBefore = this.pending?.target === tb ? this.pending.style : null
-    const out = applyTypingShortcut(edit.text, fmt, sc)
-    replaceEditedText(tb, out.text, out.fmt, out.caret)
-    if (sc.kind !== 'heading') {
-      // What is typed next is plain again: a pending "off" (none where typing would not carry
-      // the mark anyway, nor for bold on a heading line, where it cannot change).
-      const mark = sc.kind
-      const style = { ...pendingBefore }
-      if (marksAtCaret(out.text, out.fmt, out.caret)[mark] && !(mark === 'bold' && formatAtCaret(out.text, out.fmt, out.caret).boldFromHeading)) style[mark] = false
-      else delete style[mark]
-      this.setPending(tb, style)
-    }
-    this.shortcutRevert = { target: tb, text: edit.text, fmt, caret: nextEnd, pending: pendingBefore }
-  }
-
-  /** Backspace straight after a typing shortcut fired: its literal characters come back, exactly as typed, and nothing is deleted. */
-  private revertShortcut() {
-    const r = this.shortcutRevert
-    this.shortcutRevert = null
-    if (!r || !this.editable || this.busy || !r.target.isEditing || this.canvas.getActiveObject() !== r.target) return
-    replaceEditedText(r.target, r.text, r.fmt, r.caret)
-    this.setPending(r.target, r.pending ?? {})
-    if (captionOf(r.target)) this.syncCaptions(r.target)
-    this.canvas.requestRenderAll()
-    this.autosaver.markDirty() // like typing (a blank text is out of the scene, so a save stores none)
-    this.syncSelection()
+    this.text.setColor(color)
   }
 
   /** Duplicates selected objects and the contents of selected frames as one undo step. */
   duplicateSelection() {
-    if (!this.editable || this.busy || this.selectionLocked() || this.canvas.getActiveObjects().length === 0) return
+    // Duplicate on the DOM renderer is Slice 2c-iii: inert there until then.
+    if (!this.editable || this.busy || this.selectionLocked() || this.canvas.getActiveObjects().length === 0 || this.scene) return
     this.finishEditing()
     const selected = new Set(this.selectedIds())
     const scene = this.snapshot()
@@ -2898,7 +2642,7 @@ export class Editor {
   private layerMove(sourceId: string, targetId: string, side: LayerDropSide) {
     if (!this.editable || this.busy || sourceId === targetId) return null
     const all = this.canvas.getObjects()
-    const listed = (o: FabricObject) => !(o instanceof Textbox && o.text.trim() === '')
+    const listed = (o: FabricObject) => !this.text.isBlank(o)
     const sourceIndex = all.findIndex((o) => idOf(o) === sourceId && listed(o))
     const targetIndex = all.findIndex((o) => idOf(o) === targetId && listed(o))
     const source = all[sourceIndex]
@@ -2944,7 +2688,7 @@ export class Editor {
   setSelectionLocked(locked: boolean) {
     if (!this.editable || this.busy) return
     this.finishEditing()
-    const objs = this.canvas.getActiveObjects().filter((o) => !(o instanceof Textbox && o.text.trim() === ''))
+    const objs = this.canvas.getActiveObjects().filter((o) => !this.text.isBlank(o))
     const changing = objs.filter((o) => isLocked(o) !== locked)
     if (changing.length === 0) return
     for (const o of changing) setLocked(o, locked)
@@ -2969,7 +2713,7 @@ export class Editor {
   toggleLayerLock(id: string) {
     if (!this.editable || this.busy) return
     // A blank text is not part of the scene and is not listed, so it has no padlock.
-    const listed = (o: FabricObject) => !(o instanceof Textbox && o.text.trim() === '')
+    const listed = (o: FabricObject) => !this.text.isBlank(o)
     const target = this.canvas.getObjects().find((o) => idOf(o) === id && listed(o))
     if (!target) return
     this.finishEditing() // commits typed text as its own step
@@ -3084,6 +2828,7 @@ export class Editor {
 
   fit() {
     if (!this.live) return
+    this.scene?.syncAllCards() // text proxies are their cards' current size
     let bounds: Rect | null = null
     for (const obj of this.canvas.getObjects()) {
       for (const p of obj.getCoords()) {

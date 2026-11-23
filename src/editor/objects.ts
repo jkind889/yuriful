@@ -1,4 +1,4 @@
-import { FabricImage, Rect, Textbox, util } from 'fabric'
+import { FabricImage, Rect, Textbox, controlsUtils, util } from 'fabric'
 import type { FabricObject, TextStyle, TextStyleDeclaration } from 'fabric'
 import { clampCrop, storedCrop } from '../model/crop.ts'
 import { round, roundPositive } from '../model/doc.ts'
@@ -585,6 +585,164 @@ export function createFrame(rec: FrameRecord): FabricObject {
   return rect
 }
 
+// ---- proxies (the DOM renderer, behind `new Editor(..., { renderer: 'dom' })`) -----------------
+//
+// On the DOM renderer the scene layer (`sceneLayer.ts`) draws frame paper, images and text, and
+// every Fabric object is a transparent proxy: it paints nothing, but keeps Fabric's selection,
+// handles, hit testing and transforms. Its identity is the same `meta` as a Fabric object's
+// (`kind` says what it stands for); what it draws lives beside it, in `proxyText` and
+// `proxyImage`. A data object is replaced, never changed, whenever what it draws changes, so
+// the editor can tell by identity which items the layer must draw again. Nothing here is used
+// on the default Fabric renderer.
+
+/** What a text proxy's card shows: the record's text, size, wrap width and canonical formatting. */
+export type TextData = Pick<TextRecord, 'text' | 'fontSize' | 'width' | 'minHeight' | 'font' | 'align' | 'color' | 'spans' | 'headings' | 'captionBackground'>
+
+/** What an image proxy shows: the picture's own size and the crop's top-left (its size is the proxy's). */
+export interface ImageData {
+  natural: Size
+  cropX: number
+  cropY: number
+}
+
+const proxyText = new WeakMap<FabricObject, TextData>()
+const proxyImage = new WeakMap<FabricObject, ImageData>()
+
+/**
+ * A Fabric object that paints nothing (`render` is empty, so no fill, background or shadow
+ * either) and is otherwise an ordinary rectangle: visible, evented, selectable, transformed and
+ * hit like any object. A text proxy stops a side handle at `minTextWidth`, as a Fabric text box
+ * stops at its widest word (the clamp sits in `_set`, so Fabric's fixed-anchor handling sees it).
+ */
+export class ProxyRect extends Rect {
+  /** Texts: the narrowest width the text allows (scene units); 0 for anything else. */
+  minTextWidth = 0
+
+  override render() {}
+
+  override _set(key: string, value: unknown) {
+    const clamped = key === 'width' && typeof value === 'number' && this.minTextWidth > 0 ? Math.max(value, this.minTextWidth) : value
+    return super._set(key, clamped)
+  }
+}
+
+const PROXY_STYLE = { fill: 'transparent', strokeWidth: 0, objectCaching: false } as const
+
+/** A text proxy's card, or undefined for anything else. */
+export const textDataOf = (obj: FabricObject | null | undefined): TextData | undefined => (obj ? proxyText.get(obj) : undefined)
+
+/** Replaces what a text proxy's card shows (never a Fabric text box). */
+export function setTextData(obj: FabricObject, data: TextData) {
+  if (proxyText.has(obj)) proxyText.set(obj, data)
+}
+
+/** An image proxy's picture data, or undefined for anything else. */
+export const imageDataOf = (obj: FabricObject): ImageData | undefined => proxyImage.get(obj)
+
+/** A text on either renderer, by identity (a Fabric text box or a text proxy). */
+export const isText = (obj: FabricObject | null | undefined): boolean => !!obj && meta.get(obj)?.kind === 'text'
+
+const naturalSizeOf = (el: HTMLImageElement): Size => ({ width: el.naturalWidth || el.width, height: el.naturalHeight || el.height })
+
+/** A text record's card data, its formatting in canonical form (as a Fabric text box reads it back). */
+export function textDataFrom(rec: TextRecord): TextData {
+  const fmt = canonicalTextFormatting(rec.text, { font: rec.font, align: rec.align, color: rec.color, spans: rec.spans, headings: rec.headings })
+  return {
+    text: rec.text,
+    fontSize: rec.fontSize,
+    width: rec.width,
+    ...(rec.minHeight !== undefined && { minHeight: rec.minHeight }),
+    ...fmt,
+    ...(rec.captionBackground && { captionBackground: rec.captionBackground }),
+  }
+}
+
+/**
+ * The DOM renderer's `createObject`: a transparent proxy for an image or a text record. An image
+ * proxy is the size of its shown crop, scaled as stored; a text proxy is the stored width and
+ * the drawn minimum height until the editor sizes it from the scene layer (its effective width
+ * and measured height). Null for an image whose picture is not decoded, as `createObject`.
+ */
+export function createProxy(rec: ObjectRecord, getImage: (assetId: string) => HTMLImageElement | undefined): FabricObject | null {
+  if (rec.type === 'image') {
+    const el = getImage(rec.assetId)
+    if (!el) return null
+    const natural = naturalSizeOf(el)
+    const crop = clampCrop(rec.crop, natural)
+    const proxy = new ProxyRect({
+      ...SELECTION_STYLE,
+      ...PROXY_STYLE,
+      left: rec.left,
+      top: rec.top,
+      angle: rec.angle,
+      scaleX: rec.scaleX,
+      scaleY: rec.scaleY,
+      width: crop?.width ?? natural.width,
+      height: crop?.height ?? natural.height,
+    })
+    proxy.setControlsVisibility({ ml: false, mr: false, mt: false, mb: false })
+    meta.set(proxy, { id: rec.id, kind: 'image', assetId: rec.assetId, ...(rec.frameId !== undefined && { frameId: rec.frameId }), ...lockMeta(rec) })
+    proxyImage.set(proxy, { natural, cropX: crop?.x ?? 0, cropY: crop?.y ?? 0 })
+    applyLockFlags(proxy, 'image', rec.locked === true)
+    return proxy
+  }
+  const proxy = new ProxyRect({ ...SELECTION_STYLE, ...PROXY_STYLE, left: rec.left, top: rec.top, angle: rec.angle, width: rec.width, height: rec.minHeight ?? 0 })
+  // A text box's handles: the sides change the wrap width (Fabric's `changeWidth`), the corners scale.
+  proxy.controls = controlsUtils.createTextboxDefaultControls()
+  proxy.setControlsVisibility({ mt: false, mb: false })
+  meta.set(proxy, { id: rec.id, kind: 'text', ...(rec.frameId !== undefined && { frameId: rec.frameId }), ...lockMeta(rec) })
+  setCaption(proxy, rec.captionOf, rec.captionSide, rec.captionPosition)
+  proxyText.set(proxy, textDataFrom(rec))
+  applyLockFlags(proxy, 'text', rec.locked === true)
+  return proxy
+}
+
+/** The DOM renderer's `createFrame`: the same frame, painting nothing (the scene layer draws its paper). */
+export function createFrameProxy(rec: FrameRecord): FabricObject {
+  const rect = new ProxyRect({
+    ...SELECTION_STYLE,
+    ...PROXY_STYLE,
+    padding: 0,
+    left: rec.left,
+    top: rec.top,
+    width: rec.width,
+    height: rec.height,
+    lockRotation: true,
+    lockSkewingX: true,
+    lockSkewingY: true,
+  })
+  rect.setControlsVisibility({ mtr: false })
+  meta.set(rect, { id: rec.id, kind: 'frame', name: rec.name, ...lockMeta(rec) })
+  applyLockFlags(rect, 'frame', rec.locked === true)
+  return rect
+}
+
+/** A text proxy's record: as `toRecord` reads a Fabric text box, from the card data instead of the box. */
+function proxyTextRecord(td: TextData, m: Meta, base: { id: string; left: number; top: number; angle: number }, owner: { frameId?: string; locked?: true }, sx: number, sy: number): TextRecord {
+  const s = (sx + sy) / 2
+  const { font, align, color, spans, headings } = td
+  return {
+    ...base,
+    type: 'text',
+    text: td.text,
+    fontSize: roundPositive(td.fontSize * s, 2),
+    width: roundPositive(td.width * sx),
+    ...(td.minHeight !== undefined && { minHeight: round(td.minHeight * sy) }),
+    ...(font !== undefined && { font }),
+    ...(align !== undefined && { align }),
+    ...(color !== undefined && { color }),
+    ...(spans !== undefined && { spans }),
+    ...(headings !== undefined && { headings }),
+    ...owner,
+    ...(m.captionOf && {
+      captionOf: m.captionOf,
+      ...(m.captionSide && { captionSide: m.captionSide }),
+      ...(m.captionPosition !== undefined && { captionPosition: m.captionPosition }),
+    }),
+    ...(td.captionBackground && { captionBackground: td.captionBackground }),
+  }
+}
+
 function rotate(x: number, y: number, deg: number): [number, number] {
   const r = (deg * Math.PI) / 180
   const c = Math.cos(r)
@@ -621,6 +779,8 @@ export function toRecord(obj: FabricObject): ObjectRecord | null {
   const [ox, oy] = rotate((obj.width * sx) / 2, (obj.height * sy) / 2, d.angle)
   const base = { id: m.id, left: round(d.translateX - ox), top: round(d.translateY - oy), angle: round(d.angle) }
   const owner = { ...(m.frameId !== undefined && { frameId: m.frameId }), ...lockMeta(m) }
+  const proxyTextData = proxyText.get(obj)
+  if (proxyTextData) return proxyTextRecord(proxyTextData, m, base, owner, sx, sy)
   if (obj instanceof Textbox) {
     const s = (sx + sy) / 2
     const fmt = readTextFormatting(obj)
@@ -646,7 +806,7 @@ export function toRecord(obj: FabricObject): ObjectRecord | null {
   }
   if (m.assetId === undefined) return null
   // A fresh object every time: snapshots never share a crop.
-  const crop = obj instanceof FabricImage ? imageCropOf(obj) : undefined
+  const crop = obj instanceof FabricImage || proxyImage.has(obj) ? imageCropOf(obj as FabricImage) : undefined
   const rec: ImageRecord = {
     ...base,
     type: 'image',
@@ -659,10 +819,17 @@ export function toRecord(obj: FabricObject): ObjectRecord | null {
   return rec
 }
 
-export const isImage = (obj: FabricObject | undefined | null): obj is FabricImage => obj instanceof FabricImage
+/**
+ * An image: a Fabric image, or on the DOM renderer an image proxy, which only stands in for the
+ * picture the scene layer draws (`imageSizeOf`, `imageCropOf`, `setImageCrop` and
+ * `setImageElement` work on both; nothing else of `FabricImage` may be used on a proxy).
+ */
+export const isImage = (obj: FabricObject | undefined | null): obj is FabricImage => obj instanceof FabricImage || (!!obj && proxyImage.has(obj))
 
 /** The original image's size in source pixels. */
 export function imageSizeOf(img: FabricImage): Size {
+  const proxy = proxyImage.get(img)
+  if (proxy) return { ...proxy.natural }
   return img.getOriginalSize()
 }
 
@@ -671,6 +838,8 @@ export function imageSizeOf(img: FabricImage): Size {
  * or undefined when that is the whole image. A fresh object.
  */
 export function imageCropOf(img: FabricImage): CropRect | undefined {
+  const proxy = proxyImage.get(img)
+  if (proxy) return storedCrop({ x: proxy.cropX, y: proxy.cropY, width: img.width, height: img.height }, proxy.natural)
   return storedCrop({ x: img.cropX, y: img.cropY, width: img.width, height: img.height }, imageSizeOf(img))
 }
 
@@ -681,6 +850,15 @@ export function imageCropOf(img: FabricImage): CropRect | undefined {
 export function setImageElement(img: FabricImage, assetId: string, el: HTMLImageElement) {
   const m = meta.get(img)
   if (!m || m.kind !== 'image') return
+  if (proxyImage.has(img)) {
+    // An image proxy: a new data object tells the scene layer to draw the new picture.
+    m.assetId = assetId
+    const natural = naturalSizeOf(el)
+    proxyImage.set(img, { natural, cropX: 0, cropY: 0 })
+    img.set({ width: natural.width, height: natural.height })
+    img.setCoords()
+    return
+  }
   m.assetId = assetId
   img.setElement(el)
   img.set({ cropX: 0, cropY: 0, dirty: true })
@@ -694,6 +872,13 @@ export function setImageElement(img: FabricImage, assetId: string, el: HTMLImage
 export function setImageCrop(img: FabricImage, crop: CropRect | undefined) {
   const size = imageSizeOf(img)
   const c = crop ?? { x: 0, y: 0, width: size.width, height: size.height }
+  const proxy = proxyImage.get(img)
+  if (proxy) {
+    proxyImage.set(img, { ...proxy, cropX: c.x, cropY: c.y })
+    img.set({ width: c.width, height: c.height })
+    img.setCoords()
+    return
+  }
   img.set({ cropX: c.x, cropY: c.y, width: c.width, height: c.height, dirty: true })
   img.setCoords()
 }

@@ -15,7 +15,12 @@ export default function App() {
   useEffect(() => {
     const el = host.current
     if (!el) return
-    const ed = new Editor(el, new IndexedDbBoardStore())
+    // The DOM renderer is a test-only switch until it becomes the default: only a development
+    // build reads it, from a global that a test sets before the app mounts (Playwright's
+    // `addInitScript`). There is no UI, URL parameter, shortcut or stored flag for it, and a
+    // production build compiles `import.meta.env.DEV` to false and drops the branch.
+    const renderer = import.meta.env.DEV && (window as { __YURIFUL_RENDERER__?: string }).__YURIFUL_RENDERER__ === 'dom' ? 'dom' : 'fabric'
+    const ed = new Editor(el, new IndexedDbBoardStore(), undefined, undefined, { renderer })
     setEditor(ed)
     void ed.init()
     return () => {

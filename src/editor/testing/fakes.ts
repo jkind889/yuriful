@@ -1,6 +1,7 @@
-import type { BoardDoc, StoredAsset } from '../../model/types.ts'
+import type { BoardDoc, StoredAsset, TextRecord } from '../../model/types.ts'
 import type { AssetBytes, BoardStore, LoadedBoard, RevisionToken } from '../../persistence/boardStore.ts'
 import type { AssetSource } from '../assets.ts'
+import type { CardMeasurer } from '../sceneLayer.ts'
 
 export interface Deferred<T> {
   promise: Promise<T>
@@ -109,5 +110,26 @@ export class FakeAssets implements AssetSource {
   }
   dispose() {
     this.cache.clear()
+  }
+}
+
+/**
+ * Sizes text cards without layout (jsdom lays nothing out): the DOM renderer's size authority
+ * in unit tests (plan Section 6). A line is 1.25 font sizes tall, a heading line 2, 1.5 or 1.25
+ * times that; the height is at least the drawn minimum height. The narrowest width is half a
+ * font size per character of the longest space-separated word. Every result is deterministic.
+ */
+export class FakeCardMeasurer implements CardMeasurer {
+  readonly heights: string[] = []
+  measureHeight(_el: HTMLElement, rec: TextRecord): number {
+    this.heights.push(rec.id)
+    if (rec.height !== undefined) return rec.height
+    const scale: Record<number, number> = { 1: 2, 2: 1.5, 3: 1.25 }
+    const laid = rec.text.split('\n').reduce((sum, _line, i) => sum + rec.fontSize * 1.25 * (scale[rec.headings?.[i] ?? 0] ?? 1), 0)
+    return Math.max(rec.minHeight ?? 0, laid)
+  }
+  measureMinWidth(_el: HTMLElement, rec: TextRecord): number {
+    const longest = Math.max(0, ...rec.text.split(/\s+/).map((w) => Array.from(w).length))
+    return Math.ceil(longest * rec.fontSize * 0.5 * 100) / 100
   }
 }
