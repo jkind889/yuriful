@@ -1,0 +1,5 @@
+interface:
+  display_name: "Full Send"
+  short_description: "Finish an explicitly authorized task through merge"
+policy:
+  allow_implicit_invocation: false
