@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CANVAS_OWNER, WHEEL_LATCH_MS, WheelLatch, hasRoom, pickWheelOwner } from './wheelGesture.ts'
+import { CANVAS_OWNER, WHEEL_LATCH_MS, WheelLatch, boxHolds, canScroll, pickWheelOwner } from './wheelGesture.ts'
 import type { WheelFacts, WheelOwner } from './wheelGesture.ts'
 
 const card = (id: string): WheelOwner => ({ kind: 'card', id })
@@ -50,11 +50,38 @@ describe('pickWheelOwner: who a new wheel gesture belongs to (plan Section 4, th
     expect(pickWheelOwner(facts({ deltaY: 0 }))).toEqual(CANVAS_OWNER)
   })
 
-  it('hasRoom: within half a unit of an end counts as at it', () => {
-    expect(hasRoom({ top: 399.6, max: 400 }, 1)).toBe(false)
-    expect(hasRoom({ top: 399.4, max: 400 }, 1)).toBe(true)
-    expect(hasRoom({ top: 0.4, max: 400 }, -1)).toBe(false)
-    expect(hasRoom({ top: 0.6, max: 400 }, -1)).toBe(true)
+  it('canScroll: any room at all counts, a fraction or a single pixel included (the fades and the thumb use the same answer)', () => {
+    expect(canScroll({ top: 399.6, max: 400 }, 1)).toBe(true)
+    expect(canScroll({ top: 400, max: 400 }, 1)).toBe(false)
+    expect(canScroll({ top: 0.4, max: 400 }, -1)).toBe(true)
+    expect(canScroll({ top: 0, max: 400 }, -1)).toBe(false)
+    // 785 px of text in a 784 px box: one pixel to scroll.
+    expect(canScroll({ top: 0, max: 1 }, 1)).toBe(true)
+    expect(canScroll({ top: 1, max: 1 }, 1)).toBe(false)
+    expect(canScroll({ top: 1, max: 1 }, -1)).toBe(true)
+    expect(canScroll({ top: 0, max: 0 }, 1)).toBe(false)
+    expect(pickWheelOwner(facts({ front: { id: 'c', scroll: { top: 0, max: 1 } } }))).toEqual(card('c'))
+  })
+
+  it('boxHolds: a point in a box turned, scaled and moved, in its own coordinates, edges included', () => {
+    // A 250 × 140 box turned −45° about its centre at (300, 200), as Fabric's calcTransformMatrix gives it.
+    const r = (-45 * Math.PI) / 180
+    const m = [Math.cos(r), Math.sin(r), -Math.sin(r), Math.cos(r), 300, 200]
+    const at = (lx: number, ly: number) => ({ x: 300 + lx * Math.cos(r) - ly * Math.sin(r), y: 200 + lx * Math.sin(r) + ly * Math.cos(r) })
+    expect(boxHolds(m, 250, 140, at(0, 0))).toBe(true)
+    expect(boxHolds(m, 250, 140, at(-125, -70))).toBe(true) // the top-left corner itself
+    expect(boxHolds(m, 250, 140, at(125, 70))).toBe(true)
+    expect(boxHolds(m, 250, 140, at(-125.01, 0))).toBe(false)
+    expect(boxHolds(m, 250, 140, at(0, 70.01))).toBe(false)
+    // The screen row through the top-left corner, just inside: the case the canvas library's corner crossing test missed.
+    const corner = at(-125, -70)
+    expect(boxHolds(m, 250, 140, { x: corner.x + 5, y: corner.y })).toBe(true)
+    expect(boxHolds(m, 250, 140, { x: corner.x - 5, y: corner.y })).toBe(false)
+    // Scaled (an image at scale 2): its untransformed size and the matrix's scale together.
+    expect(boxHolds([2, 0, 0, 2, 0, 0], 10, 10, { x: 10, y: -10 })).toBe(true)
+    expect(boxHolds([2, 0, 0, 2, 0, 0], 10, 10, { x: 10.1, y: 0 })).toBe(false)
+    // A degenerate matrix holds nothing.
+    expect(boxHolds([0, 0, 0, 0, 0, 0], 10, 10, { x: 0, y: 0 })).toBe(false)
   })
 })
 

@@ -5,6 +5,7 @@ import type { HeadingLevel } from '../model/richText.ts'
 import type { CropRect, FontId, FrameRecord, ImageRecord, ObjectRecord, Scene, TextRecord, Viewport } from '../model/types.ts'
 import type { Size } from '../model/viewport.ts'
 import { FONT_STACKS } from './fonts.ts'
+import { canScroll } from './wheelGesture.ts'
 import { docFromText, isListType, nodes, renderStatic, textblocksOf } from './textSchema.ts'
 
 /**
@@ -1078,6 +1079,8 @@ interface ItemState {
   /** The thumb is pressed (dragged) or hovered: it stays shown. */
   thumbHeld?: boolean
   thumbHover?: boolean
+  /** Texts with a fixed height: how far the page lets the body scroll (scene units), measured after each layout. */
+  scrollMax?: number
 }
 
 // ---- fixed height: scrolling, its cues and its thumb ----------------------------------------------
@@ -1249,8 +1252,11 @@ export class SceneLayer {
 
   /** The viewport, as the editor stores it. */
   setViewport(view: Viewport) {
+    const zoomed = view.zoom !== this.view.zoom
     this.view = { ...view }
     this.world.style.transform = matrixCss([view.zoom, 0, 0, view.zoom, view.panX, view.panY])
+    // A thumb on show keeps its size on screen.
+    if (zoomed) for (const item of this.items.values()) if (item.thumb?.classList.contains('is-shown')) this.placeThumb(item)
   }
 
   /** The viewport as Fabric's `viewportTransform` (`[zoom, 0, 0, zoom, panX, panY]`). */
@@ -1358,45 +1364,55 @@ export class SceneLayer {
   }
 
   // ---- fixed height: scrolling ------------------------------------------------------------------
+  //
+  // The layer keeps each fixed-height card's exact scroll position itself (`scrollTops`, scene units,
+  // a fraction included); the page gets it rounded as the browser rounds `scrollTop`. So any series of
+  // wheel events moves the text by exactly the sum of their distances, at every zoom, and stops exactly
+  // at the ends. Whatever else moves the scroll (the browser following the caret, a key such as Page
+  // Down, the text getting shorter) is taken from the page, and the fraction goes. One answer to
+  // "can this card scroll, and which way" (`canScroll`) serves the wheel, the fades and the thumb.
 
   /**
-   * A fixed-height card's scroll: how far it is scrolled and how far it can be (scene units), or
-   * null for any other item (a text that grows with its text, an image, a frame, a culled card).
+   * A fixed-height card's scroll: its exact position and how far it can go (scene units), or null for
+   * any other item (a text that grows with its text, an image, a frame, a culled card).
    */
   scrollOf(id: string): { top: number; max: number } | null {
     const item = this.items.get(id)
-    const body = item && this.textBody(item)
-    if (!item || !body || item.fixed === undefined || item.culled || !this.root.isConnected) return null
-    return { top: body.scrollTop, max: Math.max(0, body.scrollHeight - body.clientHeight) }
+    if (!item || item.fixed === undefined || item.culled || !this.root.isConnected || !this.textBody(item)) return null
+    return this.scrollState(item)
   }
 
-  /** Scrolls a fixed-height card by `dy` scene units (clamped to its text) and shows its thumb. True when it moved. */
+  /** Scrolls a fixed-height card by exactly `dy` scene units (clamped to its text) and shows its thumb. True when it moved. */
   scrollCardBy(id: string, dy: number): boolean {
     const item = this.items.get(id)
-    const body = item && this.textBody(item)
-    if (!item || !body || item.fixed === undefined || item.culled || !Number.isFinite(dy)) return false
-    const before = body.scrollTop
+    if (!item || item.fixed === undefined || item.culled || !this.textBody(item) || !Number.isFinite(dy)) return false
+    const before = this.scrollState(item).top
     this.setScroll(item, before + dy)
-    const moved = body.scrollTop !== before
+    const moved = this.scrollState(item).top !== before
     if (moved) this.showThumb(item)
     return moved
   }
 
   /**
-   * Takes a fixed-height card's scroll position from the page into the layer's memory: before the
-   * body's children are replaced by someone else (the live editor mounting or finishing).
+   * Takes a fixed-height card's scroll position from the page into the layer's memory, when the page
+   * has moved it: before the body's children are replaced by someone else (the live editor mounting
+   * or finishing).
    */
   captureScroll(id: string) {
     const item = this.items.get(id)
-    const body = item && this.textBody(item)
-    if (!item || !body || item.fixed === undefined || item.culled || !this.root.isConnected) return
-    this.remember(id, body.scrollTop)
+    if (item) this.adopt(item)
   }
 
   /** Puts a fixed-height card back at the scroll position the layer remembers for it (clamped to its text). */
   restoreScroll(id: string) {
     const item = this.items.get(id)
     if (item) this.restore(item)
+  }
+
+  /** The thumb of some card is being dragged right now. */
+  thumbDragging(): boolean {
+    for (const item of this.items.values()) if (item.thumbHeld) return true
+    return false
   }
 
   /**
@@ -1420,7 +1436,7 @@ export class SceneLayer {
 
   /**
    * Scrolls a fixed-height card just enough to show the span from `top` to `bottom` (its own
-   * coordinates, as shown now: see `toCard`), with a little room above or below it.
+   * coordinates, as shown now: see `toCard`), with `CARET_MARGIN` of room above or below it.
    */
   revealSpan(id: string, top: number, bottom: number) {
     const item = this.items.get(id)
@@ -1428,13 +1444,16 @@ export class SceneLayer {
     if (!item || !body || item.fixed === undefined || item.culled) return
     const view = body.clientHeight
     const margin = Math.min(CARET_MARGIN, Math.max(0, (view - (bottom - top)) / 2))
-    const at = body.scrollTop
-    let next = at
-    if (top - margin < 0 || bottom - top > view) next = at + top - margin
-    else if (bottom + margin > view) next = at + bottom + margin - view
-    if (Math.abs(next - at) < 0.5) return
+    // The span was measured on the page, which shows the rounded position.
+    const shown = body.scrollTop
+    let next = shown
+    if (top - margin < 0 || bottom - top > view) next = shown + top - margin
+    else if (bottom + margin > view) next = shown + bottom + margin - view
+    if (Math.abs(next - shown) < 0.5) return
+    this.measureScrollMax(item)
+    const before = this.scrollState(item).top
     this.setScroll(item, next)
-    if (body.scrollTop !== at) this.showThumb(item)
+    if (this.scrollState(item).top !== before) this.showThumb(item)
   }
 
   // ---- internals ----------------------------------------------------------------------------
@@ -1445,6 +1464,7 @@ export class SceneLayer {
     item.el.classList.toggle('is-culled', on)
     // A card brought back is shown where it was scrolled to (a hidden one may have lost its position).
     if (!on && item.fixed !== undefined) {
+      this.measureScrollMax(item)
       this.restore(item)
       this.syncCues(item)
     }
@@ -1459,42 +1479,95 @@ export class SceneLayer {
     else this.scrollTops.delete(id)
   }
 
-  /** Scrolls a fixed-height card to `top` (clamped by the browser to its text) and remembers where it ended up. */
+  /**
+   * How far a card's body can scroll (scene units): its text's own height (as a box that grows with
+   * it would be) less the fixed height, and never more than the page lets it. Both are asked of the
+   * browser within the same task, nothing painted in between: the text's height with the body's
+   * height let go for a moment, and the page's limit by scrolling to the very end and back.
+   * `scrollHeight` alone is rounded and can claim a fraction of a pixel the body cannot scroll (at
+   * 200% it does), and the page counts the last line's whole line box, below the text's trimmed last
+   * line, so a box exactly as tall as its text would scroll by a pixel or two of empty leading.
+   * Measured after each layout of the card (`fixHeight`, `setCulled`) and before the caret is
+   * revealed (the text may have just grown), and kept.
+   */
+  private measureScrollMax(item: ItemState) {
+    const body = this.textBody(item)
+    if (!body || item.fixed === undefined || item.culled || !this.root.isConnected) return
+    const keep = body.scrollTop
+    const height = body.style.height
+    body.style.height = 'auto'
+    const natural = parseFloat(this.doc.defaultView?.getComputedStyle(body).height ?? '') || 0
+    body.style.height = height
+    body.scrollTop = body.scrollHeight
+    const limit = body.scrollTop
+    body.scrollTop = keep
+    item.scrollMax = Math.max(0, Math.min(limit, natural - item.fixed))
+  }
+
+  /** How far a card can scroll (scene units), as last measured. */
+  private scrollMax(item: ItemState, body: HTMLElement): number {
+    return item.scrollMax ?? Math.max(0, body.scrollHeight - body.clientHeight)
+  }
+
+  /** A fixed-height card's exact position (remembered, within what it can scroll now) and how far it can go. */
+  private scrollState(item: ItemState): { top: number; max: number } {
+    const body = this.textBody(item)
+    const max = body ? this.scrollMax(item, body) : 0
+    const top = Math.min(max, Math.max(0, this.scrollTops.get(item.el.dataset.id ?? '') ?? 0))
+    return { top, max }
+  }
+
+  /** Scrolls a fixed-height card to exactly `top` (clamped to its text): remembered as it is, given to the page rounded. */
   private setScroll(item: ItemState, top: number) {
     const body = this.textBody(item)
     if (!body) return
-    body.scrollTop = Math.max(0, top)
-    const id = item.el.dataset.id ?? ''
-    this.remember(id, body.scrollTop)
+    const exact = Math.min(this.scrollMax(item, body), Math.max(0, top))
+    this.remember(item.el.dataset.id ?? '', exact)
+    body.scrollTop = exact
     this.syncCues(item)
   }
 
-  /** The remembered scroll position put back on the page; what the browser clamps it to (the text got shorter) is remembered instead. */
-  private restore(item: ItemState) {
-    const body = this.textBody(item)
-    const id = item.el.dataset.id ?? ''
-    if (!body || item.fixed === undefined || item.culled || !this.root.isConnected) return
-    const want = this.scrollTops.get(id) ?? 0
-    if (Math.abs(body.scrollTop - want) > 0.01) body.scrollTop = want
-    this.remember(id, Math.min(want, body.scrollTop))
+  /** The page shows a position the rounding of the remembered one cannot explain: something else moved it. */
+  private movedElsewhere(item: ItemState, body: HTMLElement): boolean {
+    return Math.abs(body.scrollTop - this.scrollState(item).top) >= 1
   }
 
-  /** The page scrolled a card (the caret, keys, the thumb, the wheel): remembered, with its cues and thumb. */
-  private onScroll(item: ItemState) {
+  /** Takes the page's position when something else moved it (the fraction goes); keeps the exact one otherwise. True when it took the page's. */
+  private adopt(item: ItemState): boolean {
     const body = this.textBody(item)
+    if (!body || item.fixed === undefined || item.culled || !this.root.isConnected) return false
     const id = item.el.dataset.id ?? ''
-    if (!body || item.fixed === undefined || item.culled || this.items.get(id) !== item) return
-    const top = body.scrollTop
-    if (top !== (this.scrollTops.get(id) ?? 0)) {
-      this.remember(id, top)
-      this.showThumb(item)
+    if (this.movedElsewhere(item, body)) {
+      this.remember(id, body.scrollTop)
+      // Past the end (the browser following the caret into the last line's empty leading): back to it.
+      const { top } = this.scrollState(item)
+      if (body.scrollTop > top + 0.5) body.scrollTop = top
+      return true
     }
+    this.remember(id, this.scrollState(item).top) // clamped, if the text got shorter
+    return false
+  }
+
+  /** The remembered position put back on the page (clamped to the text, which is then what is remembered). */
+  private restore(item: ItemState) {
+    const body = this.textBody(item)
+    if (!body || item.fixed === undefined || item.culled || !this.root.isConnected) return
+    const { top } = this.scrollState(item)
+    if (this.movedElsewhere(item, body)) body.scrollTop = top
+    this.remember(item.el.dataset.id ?? '', top)
+  }
+
+  /** The page scrolled a card: when something other than the layer moved it, that position is taken, with its cues and thumb. */
+  private onScroll(item: ItemState) {
+    const id = item.el.dataset.id ?? ''
+    if (item.fixed === undefined || item.culled || this.items.get(id) !== item) return
+    if (this.adopt(item)) this.showThumb(item)
     this.syncCues(item)
   }
 
   /**
-   * The fades (`fade-top` when the text is scrolled down, `fade-bottom` when more of it lies below)
-   * and the thumb's place, from the body's scroll. None on a card that grows with its text.
+   * The fades (`fade-top` when the text can scroll up, `fade-bottom` when it can scroll down: the
+   * wheel's own answer) and the thumb's place. None on a card that grows with its text.
    */
   private syncCues(item: ItemState) {
     const el = item.el
@@ -1505,10 +1578,9 @@ export class SceneLayer {
       return
     }
     if (item.culled || !this.root.isConnected) return
-    const top = body.scrollTop
-    const max = body.scrollHeight - body.clientHeight
-    el.classList.toggle('fade-top', top > 0.5)
-    el.classList.toggle('fade-bottom', max - top > 1)
+    const scroll = this.scrollState(item)
+    el.classList.toggle('fade-top', canScroll(scroll, -1))
+    el.classList.toggle('fade-bottom', canScroll(scroll, 1))
     if (item.thumb?.classList.contains('is-shown')) this.placeThumb(item)
   }
 
@@ -1531,32 +1603,43 @@ export class SceneLayer {
     return thumb
   }
 
+  /**
+   * The thumb's geometry in the card's own units, for the zoom now: its inset, its length (at most
+   * half its track, so it always has room to move: a drag from one end of the track to the other
+   * covers the whole text) and how far it can travel.
+   */
+  private thumbGeometry(body: HTMLElement): { z: number; inset: number; length: number; travel: number } {
+    const z = this.view.zoom > 0 ? this.view.zoom : 1
+    const view = body.clientHeight
+    const full = body.scrollHeight
+    const inset = THUMB_INSET_PX / z
+    const track = Math.max(0, view - 2 * inset)
+    const length = Math.min(track / 2, Math.max(THUMB_MIN_PX / z, full > 0 ? (track * view) / full : track))
+    return { z, inset, length, travel: track - length }
+  }
+
   /** Sizes and places the thumb on the card's right edge, in screen pixels whatever the zoom. */
   private placeThumb(item: ItemState) {
     const body = this.textBody(item)
     const thumb = item.thumb
     if (!body || !thumb) return
-    const z = this.view.zoom > 0 ? this.view.zoom : 1
-    const view = body.clientHeight
-    const full = body.scrollHeight
-    const max = full - view
-    const inset = THUMB_INSET_PX / z
-    const track = Math.max(0, view - 2 * inset)
-    const length = Math.min(track, Math.max(THUMB_MIN_PX / z, full > 0 ? (track * view) / full : track))
-    const at = inset + (max > 0 ? ((track - length) * body.scrollTop) / max : 0)
+    const { z, inset, length, travel } = this.thumbGeometry(body)
+    const { top, max } = this.scrollState(item)
     const s = thumb.style
     s.width = `${THUMB_PX / z}px`
     s.height = `${length}px`
     s.right = `${inset}px`
-    s.transform = `translateY(${at}px)`
+    s.transform = `translateY(${inset + (max > 0 ? (travel * top) / max : 0)}px)`
     s.color = body.style.color || DEFAULT_TEXT_COLOR
     s.setProperty('--thumb-px', `${1 / z}px`)
   }
 
-  /** Shows the thumb of a card whose text is longer than its height, and fades it out after the last scroll. */
+  /** Shows the thumb of a card that can scroll, and fades it out after the last scroll. */
   private showThumb(item: ItemState) {
     const body = this.textBody(item)
-    if (!body || item.fixed === undefined || body.scrollHeight - body.clientHeight <= 1) return
+    if (!body || item.fixed === undefined) return
+    const scroll = this.scrollState(item)
+    if (!canScroll(scroll, 1) && !canScroll(scroll, -1)) return
     const thumb = this.thumbOf(item)
     this.placeThumb(item)
     thumb.classList.add('is-shown')
@@ -1588,18 +1671,15 @@ export class SceneLayer {
     if (!body || !thumb || e.button !== 0 || !item.editing || item.fixed === undefined) return
     e.preventDefault()
     e.stopPropagation()
-    const z = this.view.zoom > 0 ? this.view.zoom : 1
+    const { z, travel } = this.thumbGeometry(body)
     // The card's own vertical axis on the page (the matrix's second column, times the zoom).
     const ax = item.matrix[2] * z
     const ay = item.matrix[3] * z
     const axis = ax * ax + ay * ay
-    if (!axis) return
-    const start = { x: e.clientX, y: e.clientY, top: body.scrollTop }
-    const view = body.clientHeight
-    const max = body.scrollHeight - view
-    const track = Math.max(0, view - (2 * THUMB_INSET_PX) / z)
-    const length = Math.min(track, Math.max(THUMB_MIN_PX / z, body.scrollHeight > 0 ? (track * view) / body.scrollHeight : track))
-    const ratio = track - length > 0 ? max / (track - length) : 0
+    if (!axis || !(travel > 0)) return
+    const { top, max } = this.scrollState(item)
+    const start = { x: e.clientX, y: e.clientY, top }
+    const ratio = max / travel
     item.thumbHeld = true
     clearTimeout(item.thumbTimer)
     thumb.classList.add('is-shown', 'is-dragging')
@@ -1770,8 +1850,11 @@ export class SceneLayer {
       item.fixed = fixed
       this.scrollTops.delete(id)
       if (body.scrollTop !== 0) body.scrollTop = 0
+      delete item.scrollMax
+      this.measureScrollMax(item)
     } else if (fixed !== undefined && !item.culled && this.root.isConnected) {
-      if (item.editing) this.remember(id, body.scrollTop)
+      this.measureScrollMax(item)
+      if (item.editing) this.adopt(item)
       else this.restore(item)
     }
     this.syncCues(item)

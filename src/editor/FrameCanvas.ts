@@ -40,12 +40,16 @@ export class FrameCanvas extends Canvas {
     })
   }
 
-  /** The front-most frame among `objects` whose label or outline is under the scene-space pointer. */
-  frameOverlayAt(objects: readonly FabricObject[], pointer: Point): FabricObject | undefined {
+  /**
+   * The front-most frame among `objects` whose label or outline is under the scene-space pointer.
+   * A locked frame takes no press, so it is passed over, unless `withLocked` (the wheel counts a
+   * locked frame's label and outline: they still cover what is beneath).
+   */
+  frameOverlayAt(objects: readonly FabricObject[], pointer: Point, withLocked = false): FabricObject | undefined {
     const viewportPoint = pointer.transform(this.viewportTransform)
     for (let i = objects.length - 1; i >= 0; i--) {
       const obj = objects[i] as FabricObject
-      if (isFrame(obj) && obj.visible && obj.evented && hitsFrameOverlay(frameOverlay(obj, this.viewportTransform), viewportPoint)) return obj
+      if (isFrame(obj) && obj.visible && (obj.evented || (withLocked && isLocked(obj))) && hitsFrameOverlay(frameOverlay(obj, this.viewportTransform), viewportPoint)) return obj
     }
     return undefined
   }

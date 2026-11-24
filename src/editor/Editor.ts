@@ -73,7 +73,7 @@ import type { CaptionSnapPreview } from './captionSnapLayer.ts'
 import { DomScene } from './domScene.ts'
 import { EdgePan } from './edgePan.ts'
 import { renderFrameToCanvas } from './renderFrameBitmap.ts'
-import { CANVAS_OWNER, WheelLatch, pickWheelOwner } from './wheelGesture.ts'
+import { CANVAS_OWNER, WheelLatch, boxHolds, pickWheelOwner } from './wheelGesture.ts'
 import type { WheelOwner } from './wheelGesture.ts'
 import { FeedbackLayer } from './feedbackLayer.ts'
 import { FrameCanvas } from './FrameCanvas.ts'
@@ -1104,22 +1104,32 @@ export class Editor {
   }
 
   /**
-   * Who a new wheel gesture belongs to (`pickWheelOwner`): the facts at the pointer. The board is
-   * free when no gesture, pan or crop is unsettled and neither the hand tool nor Space is in effect
-   * (a read-only board, whose only tool is the hand, still lets a long text be read). The front-most
-   * object whose box holds the pointer counts, locked or not: scrolling stores nothing, and a locked
-   * image in front still covers the text.
+   * Who a new wheel gesture belongs to (`pickWheelOwner`): the facts at the pointer.
+   *
+   * The board is free when nothing is pressed and held on it: a primary press passed to the canvas and
+   * not yet released (a marquee, a move, a handle, a rotation, a frame or text box being drawn, a press
+   * that has not moved yet), a gesture still settling, a pan (middle button, Space or the hand tool),
+   * crop mode (with or without a handle held), a layer row held in the layer list, or a text's scroll
+   * thumb being dragged. A selection being dragged inside the text being edited is the text's own (the
+   * canvas never sees that press): the wheel follows the ordinary rule there, so a long passage can be
+   * selected past the edge of a fixed-height text. Neither the hand tool nor Space may be in effect (a
+   * read-only board, whose only tool is the hand, still lets a long text be read).
+   *
+   * The front-most object whose box holds the pointer counts (`boxHolds`, in the object's own
+   * coordinates, so a turned box is a rectangle), locked or not, and so does a locked frame's label or
+   * outline: scrolling stores nothing, and a locked thing in front still covers the text.
    */
   private wheelOwner(e: WheelEvent): WheelOwner {
     const c = this.canvas
-    const free = !this.gesture && !this.pan && !this.crop && !this.spaceHeld && !(this.editable && this.state.tool === 'hand')
+    const held = this.primaryDown || this.layerPressActive || this.scene.layer.thumbDragging()
+    const free = !held && !this.gesture && !this.pan && !this.crop && !this.spaceHeld && !(this.editable && this.state.tool === 'hand')
     if (!free) return CANVAS_OWNER
     const p = c.getScenePoint(e)
     const objects = c.getObjects()
     let front: FabricObject | undefined
     for (let i = objects.length - 1; i >= 0; i--) {
       const o = objects[i]!
-      if (o.visible && o.containsPoint(p)) {
+      if (o.visible && boxHolds(o.calcTransformMatrix(), o.width, o.height, p)) {
         front = o
         break
       }
@@ -1130,7 +1140,7 @@ export class Editor {
       shiftKey: e.shiftKey,
       deltaX: e.deltaX,
       deltaY: e.deltaY,
-      frameOverlay: !!c.frameOverlayAt(objects, p),
+      frameOverlay: !!c.frameOverlayAt(objects, p, true),
       front: id ? { id, scroll: this.text.isText(front) ? this.scene.layer.scrollOf(id) : null } : null,
     })
   }

@@ -24,6 +24,12 @@ const UNIT: View = { zoom: 1, panX: 0, panY: 0 }
 /** `WHEEL_LATCH_MS` in `src/editor/wheelGesture.ts`: a gap longer than this starts a new wheel gesture. */
 const LATCH = 180
 const NEW_GESTURE_MS = LATCH + 150
+/**
+ * How far (scene px) the caret's character keeps from an edge where the text fades. The editor keeps
+ * the caret's line 20 px (the fade's length) from the edge; the character sits a little inside its
+ * line, and a little higher (the baseline shift).
+ */
+const CARET_CLEAR = 18
 
 /** Lines of a long review: one wraps in a 360-wide box at 18 px. */
 const lines = (n: number, from = 1) =>
@@ -40,6 +46,8 @@ interface CardProbe {
   controls: () => Record<string, { x: number; y: number }> | null
   proxy: (id: string) => { width: number; height: number; angle: number; left: number; top: number } | null
   preview: (frameId: string) => Promise<string>
+  /** A fixed-height card's exact scroll position, as the layer keeps it, and how far it can go. */
+  scroll: (id: string) => { top: number; max: number } | null
 }
 declare global {
   interface Window {
@@ -83,6 +91,7 @@ async function installProbe(page: Page) {
             const o = ed.canvas.getObjects().find((x) => cardsIdOf(x) === id)
             return o ? { width: o.width, height: o.height, angle: o.angle, left: o.left, top: o.top } : null
           },
+          scroll: (id) => ed.scene.layer.scrollOf(id),
           preview: async (frameId) => {
             ed.selectLayer(frameId)
             const tour = ed.startFrameTour()
@@ -133,7 +142,8 @@ function scrollOf(page: Page, id: string) {
     const card = b.parentElement!
     return {
       top: b.scrollTop,
-      max: b.scrollHeight - b.clientHeight,
+      // How far it can go: the editor's own answer (the fades, the thumb and the wheel share it).
+      max: window.__cards.scroll(id)?.max ?? b.scrollHeight - b.clientHeight,
       clientHeight: b.clientHeight,
       clientWidth: b.clientWidth,
       offsetWidth: b.offsetWidth,
@@ -231,7 +241,8 @@ function nothingElseScrolled(page: Page) {
 /**
  * The caret of the edited text is shown in its card (an upright card: its page rectangle is its box):
  * its middle inside the box, at most a third of it outside (a line box sits a few pixels above its
- * text's top, as the baseline shift moves it).
+ * text's top, as the baseline shift moves it). With `clear` (page pixels): on each side where the
+ * text fades (there is more text beyond), the caret's character keeps at least that far from the edge.
  */
 function caretInView(page: Page, id: string, clear = 0) {
   return page.evaluate(({ id, clear }) => {
@@ -246,10 +257,16 @@ function caretInView(page: Page, id: string, clear = 0) {
       rect = (n.nodeType === 1 ? (n as Element) : n.parentElement!).getBoundingClientRect()
     }
     const box = body.getBoundingClientRect()
+    const card = body.parentElement!
     const mid = (rect.top + rect.bottom) / 2
-    const slack = clear > 0 ? -clear : rect.height / 3
-    const ok = mid > box.top && mid < box.bottom && rect.top >= box.top - slack && rect.bottom <= box.bottom + slack
-    return { ok, caret: [rect.top, rect.bottom], box: [box.top, box.bottom] }
+    const slack = rect.height / 3
+    const gapTop = rect.top - box.top
+    const gapBottom = box.bottom - rect.bottom
+    const fadeTop = card.classList.contains('fade-top')
+    const fadeBottom = card.classList.contains('fade-bottom')
+    const shown = mid > box.top && mid < box.bottom && gapTop >= -slack && gapBottom >= -slack
+    const clearOfFades = (!fadeTop || gapTop >= clear) && (!fadeBottom || gapBottom >= clear)
+    return { ok: shown && clearOfFades, gapTop, gapBottom, fadeTop, fadeBottom }
   }, { id, clear })
 }
 
@@ -573,11 +590,11 @@ for (const zoom of [1, 2]) {
     const { errors } = await open(page, [textRec('c', 200, 100, { text: lines(20), height: 120 })], { view })
     await page.evaluate(() => navigator.clipboard.writeText('pasted one\npasted two\npasted three'))
     const fixedView = (await probe(page)).viewport
-    // `clear`: page pixels the caret keeps from the box's edges, where the fades are (with text beyond them).
-    const check = async (what: string, clear = 0) => {
+    // After every key: the caret is shown, and clear of a fade wherever there is one (CARET_CLEAR scene px).
+    const check = async (what: string) => {
       // A caret key the browser handles is scrolled to by the browser first (to the very edge), then
       // clear of the fade once the engine has read the move: within a frame or two.
-      await expect.poll(async () => (await caretInView(page, 'c', clear)).ok, { message: what, timeout: 1000 }).toBe(true)
+      await expect.poll(async () => (await caretInView(page, 'c', CARET_CLEAR * zoom)).ok, { message: what, timeout: 1000 }).toBe(true)
       expect(await nothingElseScrolled(page), what).toEqual([])
       expect((await probe(page)).viewport, what).toEqual(fixedView)
     }
@@ -589,9 +606,9 @@ for (const zoom of [1, 2]) {
     await page.keyboard.type('typed at the end')
     await check('typing and Enter')
     for (let i = 0; i < 12; i++) await page.keyboard.press('ArrowUp')
-    await check('ArrowUp', 12 * zoom)
+    await check('ArrowUp')
     for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown')
-    await check('ArrowDown', 12 * zoom)
+    await check('ArrowDown')
     await page.keyboard.press('PageUp')
     await check('PageUp')
     await page.keyboard.press('PageDown')
@@ -988,3 +1005,259 @@ test('a drawn box’s minimum height counts for nothing while its height is fixe
   expect(byId(await storedDoc(page), 'd').text).toBe(lines(3))
   expect(errors).toEqual([])
 })
+
+// ---- found by review (4032b1b) ------------------------------------------------------------------
+
+/** The layer's exact scroll position of a card (a fraction included) and how far it can go. */
+const exactOf = (page: Page, id: string) => page.evaluate((id) => window.__cards.scroll(id)!, id)
+
+for (const zoom of [0.5, 1, 2, 4]) {
+  test(`fine wheel scrolling moves the text by exactly the sum of the wheel's distances, and stops exactly at the ends (zoom ${zoom})`, async ({ page }) => {
+    const view = { zoom, panX: 350 - 260 * zoom, panY: 140 - 150 * zoom }
+    const { errors } = await open(page, [textRec('c', 260, 150, { height: 150 })], { view })
+    const p = await pt(page, 300, 175)
+    await page.mouse.move(p.x, p.y)
+    // Trusted wheel events, one, three and a hundred pixels at a time, down and back up.
+    let sum = 0
+    for (const d of [1, 3]) {
+      for (let i = 0; i < 32; i++) await page.mouse.wheel(0, d)
+      sum += (32 * d) / zoom
+      await expect.poll(async () => (await exactOf(page, 'c')).top).toBe(sum)
+      expect(Math.abs((await scrollOf(page, 'c')).top - sum)).toBeLessThan(1) // the page shows it rounded
+    }
+    for (const d of [3, 1]) {
+      for (let i = 0; i < 32; i++) await page.mouse.wheel(0, -d)
+      sum -= (32 * d) / zoom
+      await expect.poll(async () => (await exactOf(page, 'c')).top).toBe(sum)
+    }
+    expect(sum).toBe(0)
+    expect(await scrollOf(page, 'c')).toMatchObject({ top: 0, fadeTop: false, fadeBottom: true })
+    const { max } = await exactOf(page, 'c')
+    for (let i = 0; i < Math.ceil((max * zoom) / 100) + 2; i++) await page.mouse.wheel(0, 100)
+    await expect.poll(async () => (await exactOf(page, 'c')).top).toBe(max)
+    expect(await scrollOf(page, 'c')).toMatchObject({ top: max, fadeTop: true, fadeBottom: false })
+    for (let i = 0; i < Math.ceil((max * zoom) / 100) + 2; i++) await page.mouse.wheel(0, -100)
+    await expect.poll(async () => (await exactOf(page, 'c')).top).toBe(0)
+    expect(await scrollOf(page, 'c')).toMatchObject({ top: 0, fadeTop: false, fadeBottom: true })
+    expect((await probe(page)).viewport).toEqual(view)
+    expect(errors).toEqual([])
+  })
+}
+
+test('anything pressed and held on the board gives the wheel to the board; a selection dragged in the edited text scrolls it', async ({ page }) => {
+  const card = textRec('c', 300, 130, { height: 160 })
+  const other = textRec('t', 760, 420, { text: 'another note', width: 160 })
+  const { errors } = await open(page, [card, other])
+  let panY = 0
+  /** The card scrolled to 100, so that it could take a wheel either way; then a new wheel gesture. */
+  const middle = async () => {
+    const now = (await exactOf(page, 'c')).top
+    if (now !== 100) await wheel(page, [{ ...(await cardPoint()), dy: 100 - now }])
+    expect((await exactOf(page, 'c')).top).toBe(100)
+    await page.waitForTimeout(NEW_GESTURE_MS)
+  }
+  /**
+   * A trusted wheel over the card while the button is held, in a direction the card could scroll
+   * (up, unless a bottom-handle drag has just taken it back to its top): the board pans, the card
+   * stays where it was.
+   */
+  const wheelPans = async (what: string) => {
+    const before = (await exactOf(page, 'c')).top
+    const dy = before > 0 ? -40 : 40
+    await page.mouse.wheel(0, dy)
+    panY -= dy
+    await expect.poll(async () => (await probe(page)).viewport.panY, { message: what }).toBe(panY)
+    expect((await exactOf(page, 'c')).top, what).toBe(before)
+  }
+  const press = async (from: { x: number; y: number }, to: { x: number; y: number }) => {
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(to.x, to.y, { steps: 8 })
+  }
+  const cardPoint = () => pt(page, 420, 170)
+  // A marquee from empty canvas over the card.
+  await middle()
+  await press(await pt(page, 200, 60), await cardPoint())
+  await wheelPans('marquee')
+  await page.mouse.up()
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(NEW_GESTURE_MS)
+  // Another text dragged over the card (Esc puts it back).
+  await middle()
+  await press(await pt(page, 790, 430), await cardPoint())
+  await wheelPans('move')
+  await page.keyboard.press('Escape')
+  await page.mouse.up()
+  await page.waitForTimeout(NEW_GESTURE_MS)
+  // The card's own bottom handle and its rotation handle, held with the pointer over the card.
+  for (const key of ['mb', 'mtr']) {
+    await middle()
+    await selectById(page, 'c')
+    const h = await handle(page, key)
+    await press(h, await cardPoint())
+    await wheelPans(key)
+    await page.keyboard.press('Escape')
+    await page.mouse.up()
+    await page.waitForTimeout(NEW_GESTURE_MS)
+  }
+  // A frame being drawn over it.
+  await page.keyboard.press('Escape')
+  await middle()
+  await page.keyboard.press('f')
+  await press(await pt(page, 200, 60), await cardPoint())
+  await wheelPans('frame draft')
+  await page.keyboard.press('Escape')
+  await page.mouse.up()
+  await page.waitForTimeout(NEW_GESTURE_MS)
+  // A layer row held, the pointer then over the card.
+  const row = page.locator('.layer-row').first()
+  await middle()
+  const r = (await row.boundingBox())!
+  await press({ x: r.x + 30, y: r.y + r.height / 2 }, await cardPoint())
+  await wheelPans('layer row')
+  await page.keyboard.press('Escape')
+  await page.mouse.up()
+  await page.waitForTimeout(NEW_GESTURE_MS)
+  expect(byId(await storedDoc(page), 't')).toMatchObject({ left: 760, top: 420 })
+  expect(byId(await storedDoc(page), 'c')).toMatchObject({ height: 160, angle: 0 })
+  // The thumb held while editing.
+  await editAt(page, await pt(page, 330, 140))
+  await wheel(page, at(await cardPoint(), 30, 1))
+  const thumb = page.locator('.scene-text[data-id="c"] .scene-text-thumb')
+  await expect(thumb).toHaveClass(/is-shown/)
+  await page.waitForTimeout(NEW_GESTURE_MS) // a new wheel gesture
+  const tb = (await thumb.boundingBox())!
+  await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2)
+  await page.mouse.down()
+  const held = (await exactOf(page, 'c')).top
+  await page.mouse.wheel(0, -40)
+  panY += 40
+  await expect.poll(async () => (await probe(page)).viewport.panY).toBe(panY)
+  expect((await exactOf(page, 'c')).top).toBe(held)
+  await page.mouse.up()
+  await page.waitForTimeout(NEW_GESTURE_MS)
+  // A selection dragged inside the edited text is the text's own: the wheel scrolls the text.
+  const inText = await pt(page, 330, 200)
+  await page.mouse.move(inText.x, inText.y)
+  await page.mouse.down()
+  await page.mouse.move(inText.x + 40, inText.y + 10, { steps: 4 })
+  const before = (await exactOf(page, 'c')).top
+  await page.mouse.wheel(0, 40)
+  await expect.poll(async () => (await exactOf(page, 'c')).top).toBe(before + 40)
+  expect((await probe(page)).viewport.panY).toBe(panY)
+  await page.mouse.up()
+  expect(errors).toEqual([])
+})
+
+test("a locked frame's label and outline over a card take the wheel as an unlocked frame's do: the board pans", async ({ page }) => {
+  const frame = { id: 'f1', name: 'Spread', left: 320, top: 180, width: 300, height: 300, locked: true }
+  const { errors } = await open(page, [textRec('c', 300, 100, { height: 160 })], { frames: [frame] })
+  let panY = 0
+  for (const [sx, sy] of [[330, 166], [450, 180]] as const) {
+    await wheel(page, at(await pt(page, sx, sy), 20, 2))
+    panY -= 40
+    expect((await probe(page)).viewport.panY, `at ${sx}, ${sy}`).toBe(panY)
+    expect((await exactOf(page, 'c')).top).toBe(0)
+    await page.waitForTimeout(NEW_GESTURE_MS)
+  }
+  // The card itself, away from the frame, still scrolls.
+  await wheel(page, at(await pt(page, 500, 130), 20, 1))
+  expect((await exactOf(page, 'c')).top).toBe(20)
+  expect(errors).toEqual([])
+})
+
+test('the thumb always has room to move: in the shortest box, dragged end to end it covers the whole text', async ({ page }) => {
+  const { errors } = await open(page, [textRec('c', 200, 100, { height: 27 })])
+  await editAt(page, await pt(page, 228, 112))
+  await wheel(page, at(await pt(page, 315, 113), 80, 1))
+  expect((await exactOf(page, 'c')).top).toBe(80)
+  const thumb = page.locator('.scene-text[data-id="c"] .scene-text-thumb')
+  const box = (await thumb.boundingBox())!
+  expect(box.height).toBeLessThanOrEqual((27 - 4) / 2 + 0.01) // at most half its track
+  const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  await drag(page, centre, { x: centre.x, y: centre.y + 60 }, { steps: 6 })
+  const { max } = await exactOf(page, 'c')
+  expect((await exactOf(page, 'c')).top).toBe(max)
+  const b2 = (await thumb.boundingBox())!
+  await drag(page, { x: b2.x + b2.width / 2, y: b2.y + b2.height / 2 }, { x: b2.x + b2.width / 2, y: b2.y - 60 }, { steps: 6 })
+  expect((await exactOf(page, 'c')).top).toBe(0)
+  expect(errors).toEqual([])
+})
+
+test('a wheel that starts anywhere inside a turned card scrolls it, on the row through its corner too', async ({ page }) => {
+  const zoom = 2
+  const view = { zoom, panX: 480 - 320 * zoom, panY: 190 - 150 * zoom }
+  const { errors } = await open(page, [textRec('r', 320, 150, { width: 250, height: 140, angle: -45 })], { view })
+  // The screen row through the top-left corner, well inside the card, and a pixel above and below it.
+  const p = await pt(page, 320 + 70 * Math.SQRT2, 150)
+  let top = 0
+  for (const dy of [0, -1, 1]) {
+    await wheel(page, [{ x: p.x, y: p.y + dy, dy: 20 }])
+    top += 20 / zoom
+    expect((await exactOf(page, 'r')).top, `row ${dy}`).toBe(top)
+    expect((await probe(page)).viewport).toEqual(view)
+    await page.waitForTimeout(NEW_GESTURE_MS)
+  }
+  // Just outside the corner on that row: the board.
+  const outside = await pt(page, 320 - 3, 150)
+  await wheel(page, [{ ...outside, dy: 20 }])
+  expect((await exactOf(page, 'r')).top).toBe(top)
+  expect((await probe(page)).viewport.panY).toBe(view.panY - 20)
+  expect(errors).toEqual([])
+})
+
+test('a card that can scroll by a single pixel shows its fade and its thumb, and takes the wheel', async ({ context }) => {
+  // The text's own height first, as a box that grows with it shows it.
+  const measure = await context.newPage()
+  await open(measure, [textRec('b', 300, 100, { text: lines(30) })])
+  const content = await measure.evaluate(() => window.__cards.proxy('b')!.height)
+  await measure.close()
+  const page = await context.newPage()
+  const { errors } = await open(page, [textRec('b', 300, 100, { text: lines(30), height: Math.round((content - 1) * 100) / 100 })])
+  const s0 = await exactOf(page, 'b')
+  expect(s0.max).toBeGreaterThan(0)
+  expect(s0.max).toBeLessThanOrEqual(1.5)
+  expect(await scrollOf(page, 'b')).toMatchObject({ fadeTop: false, fadeBottom: true })
+  await wheel(page, at(await pt(page, 400, 200), 3, 1))
+  expect((await exactOf(page, 'b')).top).toBe(s0.max)
+  expect(await scrollOf(page, 'b')).toMatchObject({ fadeTop: true, fadeBottom: false })
+  await expect(page.locator('.scene-text[data-id="b"] .scene-text-thumb')).toHaveClass(/is-shown/)
+  expect((await probe(page)).viewport).toEqual(UNIT)
+  expect(errors).toEqual([])
+})
+
+test('the thumb stays 6 screen pixels wide when the zoom changes while it shows', async ({ page }) => {
+  const { errors } = await open(page, [textRec('c', 200, 100, { height: 160 })])
+  const thumb = page.locator('.scene-text[data-id="c"] .scene-text-thumb')
+  await wheel(page, at(await pt(page, 300, 150), 40, 1))
+  await expect(thumb).toHaveClass(/is-shown/)
+  expect((await thumb.boundingBox())!.width).toBeCloseTo(6, 1)
+  await wheel(page, at(await pt(page, 300, 150), -208, 1, { ctrl: true }))
+  expect((await probe(page)).viewport.zoom).toBeGreaterThan(1.9)
+  await expect(thumb).toHaveClass(/is-shown/)
+  expect((await thumb.boundingBox())!.width).toBeCloseTo(6, 1)
+  expect(errors).toEqual([])
+})
+
+for (const angle of [30, -45]) {
+  for (const zoom of [0.5, 2]) {
+    test(`a bottom-handle drag keeps a turned card's top-left corner where it was, on screen and stored (${angle}°, zoom ${zoom})`, async ({ page }) => {
+      const view = { zoom, panX: 640 - 400 * zoom, panY: 380 - 190 * zoom }
+      const rec = textRec('c', 300, 120, { text: lines(6), angle })
+      const { errors } = await open(page, [rec], { view })
+      await selectById(page, 'c')
+      const tl = await handle(page, 'tl')
+      const mb = await handle(page, 'mb')
+      // 50 screen pixels up the card's own axis: shorter than its text.
+      const a = (angle * Math.PI) / 180
+      await drag(page, mb, { x: mb.x + 50 * Math.sin(a), y: mb.y - 50 * Math.cos(a) }, { steps: 10 })
+      const d = await storedWhen(page, (doc) => byId(doc, 'c').height !== undefined)
+      expect(Math.abs((byId(d, 'c').left as number) - 300)).toBeLessThanOrEqual(0.01)
+      expect(Math.abs((byId(d, 'c').top as number) - 120)).toBeLessThanOrEqual(0.01)
+      const after = await handle(page, 'tl')
+      expect(Math.abs(after.x - tl.x)).toBeLessThan(0.5)
+      expect(Math.abs(after.y - tl.y)).toBeLessThan(0.5)
+      expect(errors).toEqual([])
+    })
+  }
+}
