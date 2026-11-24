@@ -187,7 +187,7 @@ describe('the DOM renderer, static (Slice 2c-i)', () => {
       out.push(store.saves.at(-1)?.doc.objects, store.saves.length)
       return out
     }
-    expect(await run(dom())).toEqual(await fabricReference('script', { records, steps }))
+    expect(await run(dom())).toStrictEqual(await fabricReference('script', { records, steps }))
   })
 
   it('a whole-box command that changes nothing records and saves nothing; a locked text or a read-only board takes none', async () => {
@@ -303,9 +303,9 @@ describe('the DOM renderer, static (Slice 2c-i)', () => {
     // Reopened on the Fabric renderer: the same scene. The reference holds the board Fabric was
     // given (what the DOM renderer saved when it was recorded) and the scene Fabric opened from it.
     const fabric = await fabricReference<{ given: BoardDoc; reopened: Scene }>('reopened', { records })
-    expect(fabric.reopened.frames).toEqual(fabric.given.frames)
-    expect(fabric.reopened.objects).toEqual(fabric.given.objects)
-    expect(saved.frames).toEqual(fabric.given.frames)
-    expect(saved.objects).toEqual(fabric.given.objects)
+    expect(fabric.reopened.frames).toStrictEqual(fabric.given.frames)
+    expect(fabric.reopened.objects).toStrictEqual(fabric.given.objects)
+    expect(saved.frames).toStrictEqual(fabric.given.frames)
+    expect(saved.objects).toStrictEqual(fabric.given.objects)
   })
 })

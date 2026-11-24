@@ -88,7 +88,8 @@ export interface LineShortcut {
  *   marker may touch another `*`: so `2 * 3 * 4`, `a ** b`, `snake*case*`, `***x***` stay as
  *   they are, and nothing fires at the first `*` of a closing `**`.
  * Every marker character must be a character of its own (not joined to a following mark).
- * Pure: the same rule as `matchTypingShortcut` in `richText.ts`, on one line (a block).
+ * Pure: the same rule as the Fabric renderer's `matchTypingShortcut` (deleted; its answers are a
+ * frozen reference in `textRules.test.ts`), on one line (a block).
  */
 export function matchShortcut(line: string, caret: number, inserted: string): LineShortcut | null {
   if ((inserted !== ' ' && inserted !== '*') || caret < 1 || caret > line.length || line[caret - 1] !== inserted) return null

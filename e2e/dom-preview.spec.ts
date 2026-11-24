@@ -291,6 +291,7 @@ test.describe('the lifted look casts the canvas\'s shadow at every scale', () =>
       test(`scale ${scale} at ${zoom * 100}%: uncropped and cropped, upright and turned`, async ({ browser }) => {
         const doc = board([PAPER], imagesAt(scale), { zoom, panX: 0, panY: 0 })
         const fabric = fabricReference<{ out: Array<{ png: string; clip: { x: number; y: number; width: number; height: number }; corners: Corner[] }> }>('shots', { doc, assets: ASSETS })
+        expect(fabric.out, 'a recorded shot for each image').toHaveLength(doc.objects.length)
         const dom = await shots(browser, doc, fabric.out.map((s) => s.clip))
         const report: string[] = []
         for (const [i, rec] of doc.objects.entries()) {

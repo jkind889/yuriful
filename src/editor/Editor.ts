@@ -85,7 +85,6 @@ import {
   frameNameOf,
   hasResidualScale,
   idOf,
-  imageDataOf,
   imageSizeOf,
   isFrame,
   isImage,
@@ -394,7 +393,6 @@ export class Editor {
       disposed: () => this.disposed,
       isNew: (obj) => !this.history.current.objects.some((o) => o.id === idOf(obj)),
       frameRecords: () => this.frameRecords(),
-      selectByIds: (objs) => this.selectByIds(objs),
       commit: (coalesceKey) => this.commit(coalesceKey),
       markDirty: () => this.autosaver.markDirty(),
       syncState: () => this.syncState(),
@@ -1963,11 +1961,9 @@ export class Editor {
     const onCanvas = this.canvas.getObjects().includes(img)
     if (!apply || unchanged || !onCanvas) {
       const b = s.before
-      if (imageDataOf(img)) {
-        // An image proxy: its picture data and size, exactly as they were (no rounding).
-        setImageCrop(img, { x: b.cropX, y: b.cropY, width: b.width, height: b.height })
-        img.set({ left: b.left, top: b.top })
-      } else img.set({ cropX: b.cropX, cropY: b.cropY, width: b.width, height: b.height, left: b.left, top: b.top, dirty: true })
+      // Its picture data and size, exactly as they were (no rounding).
+      setImageCrop(img, { x: b.cropX, y: b.cropY, width: b.width, height: b.height })
+      img.set({ left: b.left, top: b.top })
       img.setCoords()
     } else {
       const at = croppedPlacement(s.full, stored ?? { x: 0, y: 0 })

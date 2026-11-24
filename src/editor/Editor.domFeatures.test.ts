@@ -149,7 +149,7 @@ describe('crop mode on an image proxy', () => {
     const fabric = await fabricReference<{ out: unknown[] }>('script', { frames: frames(), objects: objects(), script })
     const domRun = await run(dom(), frames(), objects(), script)
     expect(domRun.b.obj('P')).toBeInstanceOf(ProxyRect)
-    expect(domRun.out).toEqual(fabric.out)
+    expect(domRun.out).toStrictEqual(fabric.out)
     const last = domRun.out.at(-1) as { saved: ImageRecord[] }
     expect(last.saved.find((o) => o.id === 'Q')!.frameId).toBeUndefined() // the crop moved it out of G
   })
@@ -197,7 +197,7 @@ describe('duplicate on the DOM renderer', () => {
     }
     const fabric = await fabricReference<{ out: unknown[] }>('script', { frames, objects, script })
     const domRun = await run(dom(), frames, objects, script)
-    expect(norm(domRun.out)).toEqual(fabric.out)
+    expect(norm(domRun.out)).toStrictEqual(fabric.out)
     expect((fabric.out[1] as { live: Scene }).live.frames).toHaveLength(2)
   })
 

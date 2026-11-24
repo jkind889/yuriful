@@ -491,15 +491,16 @@ test.describe('the DOM renderer, static (Slice 2c-i)', () => {
     // recorded), what Fabric loaded and saved from it, and where Fabric put every box.
     const reopened = fabricReference<{ given: StoredBoard; scene: Scene; saved: StoredBoard; bounds: Array<{ left: number; top: number; right: number; bottom: number }> }>('reopened', { doc, edits: 'move img, scale loose, bold and centre note' })
     // Fabric changed nothing in the board it was given, on load or on its next save.
-    expect(reopened.scene.frames).toEqual(reopened.given.frames)
-    expect(reopened.scene.objects).toEqual(reopened.given.objects)
+    expect(reopened.scene.frames).toStrictEqual(reopened.given.frames)
+    expect(reopened.scene.objects).toStrictEqual(reopened.given.objects)
     expect(reopened.saved.version).toBe(2)
-    expect(reopened.saved.frames).toEqual(reopened.given.frames)
-    expect(reopened.saved.objects).toEqual(reopened.given.objects)
-    // What the DOM renderer saves is what Fabric keeps (a text's measured geometry within the tolerance).
-    expect(domSaved.frames).toEqual(reopened.saved.frames)
-    expectSameRecords(domSaved.objects as never, reopened.saved.objects as never, 'saved on the DOM renderer, kept by Fabric')
+    expect(reopened.saved.frames).toStrictEqual(reopened.given.frames)
+    expect(reopened.saved.objects).toStrictEqual(reopened.given.objects)
+    // What the DOM renderer saves is exactly the board Fabric was given and kept, to the last digit:
+    // before the reference, the test handed Fabric the very board the DOM renderer had just saved.
+    expect(domSaved).toStrictEqual(reopened.given)
     // It looks the same: every box where the DOM renderer had it (text boxes within a pixel of each other's layout).
+    expect(reopened.bounds, 'a recorded box for each of F, img, note and loose').toHaveLength(domBounds.length)
     reopened.bounds.forEach((b, i) => {
       const d = domBounds[i]!
       for (const k of ['left', 'top', 'right', 'bottom'] as const) expect(Math.abs(b[k] - d![k]), `${i} ${k}`).toBeLessThanOrEqual(1)
@@ -671,7 +672,7 @@ test.describe('the DOM renderer, static (Slice 2c-i)', () => {
     }
     const dom = await runAll()
     const fabric = fabricReference<unknown[]>('commands', { doc, steps })
-    expect(dom).toEqual(fabric)
+    expect(dom).toStrictEqual(fabric)
   })
 })
 
@@ -761,7 +762,7 @@ function expectSameRecords(dom: readonly Record<string, unknown>[], fabric: read
         worst = Math.max(worst, diff)
         expect(diff, `${where} ${String(d.id)}.${key}: dom ${String(d[key])}, fabric ${String(f[key])}`).toBeLessThanOrEqual(GEOMETRY_TOLERANCE)
       } else {
-        expect(d[key], `${where} ${String(d.id)}.${key}`).toEqual(f[key])
+        expect(d[key], `${where} ${String(d.id)}.${key}`).toStrictEqual(f[key])
       }
     }
   })
@@ -771,14 +772,16 @@ function expectSameRecords(dom: readonly Record<string, unknown>[], fabric: read
 async function expectPaired(browser: Browser, doc: StoredBoard, steps: readonly Step[]) {
   const fabric = fabricReference<Awaited<ReturnType<typeof runScript>>>('script', { doc, steps })
   const dom = await runScript(browser, doc, steps)
+  // One recorded scene for each step of this script, by name: an empty or short reference compares nothing.
+  expect(fabric.scenes.map((f) => f.step), 'the recorded steps').toStrictEqual(dom.scenes.map((d) => d.step))
   let worst = 0
   fabric.scenes.forEach((f, i) => {
     const d = dom.scenes[i]!
     worst = Math.max(worst, expectSameRecords(d.scene.objects as never, f.scene.objects as never, `after ${f.step}`))
-    expect(d.scene.frames, `frames after ${f.step}`).toEqual(f.scene.frames)
+    expect(d.scene.frames, `frames after ${f.step}`).toStrictEqual(f.scene.frames)
   })
   worst = Math.max(worst, expectSameRecords(dom.saved.objects as never, fabric.saved.objects as never, 'saved'))
-  expect(dom.saved.frames).toEqual(fabric.saved.frames)
+  expect(dom.saved.frames).toStrictEqual(fabric.saved.frames)
   expect(dom.saved.version).toBe(fabric.saved.version)
   return { worst, fabric, dom }
 }
@@ -1225,22 +1228,24 @@ function expectSameFeedback(dom: FeedbackSnapshot, fabric: FeedbackSnapshot, whe
 async function expectFeaturePaired(browser: Browser, doc: StoredBoard, steps: readonly FeatureStep[], assets: SeedAsset[] = ASSETS) {
   const fabric = fabricReference<Awaited<ReturnType<typeof runFeatureScript>>>('script', { doc, steps, assets })
   const dom = await runFeatureScript(browser, doc, steps, assets)
+  // One recorded record for each step of this script, by name: an empty or short reference compares nothing.
+  expect(fabric.records.map((f) => f.step), 'the recorded steps').toStrictEqual(dom.records.map((d) => d.step))
   let worst = 0
   fabric.records.forEach((f, i) => {
     const d = dom.records[i]!
     const where = `after ${f.step}`
     worst = Math.max(worst, expectSameRecords(d.scene.objects as never, f.scene.objects as never, where))
-    expect(d.scene.frames, `frames ${where}`).toEqual(f.scene.frames)
+    expect(d.scene.frames, `frames ${where}`).toStrictEqual(f.scene.frames)
     worst = Math.max(worst, expectSameRecords(d.history.objects as never, f.history.objects as never, `history ${where}`))
-    expect(d.history.frames, `history frames ${where}`).toEqual(f.history.frames)
-    expect(d.state, `state ${where}`).toEqual(f.state)
+    expect(d.history.frames, `history frames ${where}`).toStrictEqual(f.history.frames)
+    expect(d.state, `state ${where}`).toStrictEqual(f.state)
     expect(d.feedback === undefined, `feedback recorded ${where}`).toBe(f.feedback === undefined)
     if (d.feedback && f.feedback) worst = Math.max(worst, expectSameFeedback(d.feedback, f.feedback, where))
   })
   worst = Math.max(worst, expectSameRecords(dom.saved.objects as never, fabric.saved.objects as never, 'saved'))
-  expect(dom.saved.frames, 'saved frames').toEqual(fabric.saved.frames)
+  expect(dom.saved.frames, 'saved frames').toStrictEqual(fabric.saved.frames)
   expect(dom.saved.version).toBe(fabric.saved.version)
-  expect(dom.saved.viewport).toEqual(fabric.saved.viewport)
+  expect(dom.saved.viewport).toStrictEqual(fabric.saved.viewport)
   return { worst, fabric, dom }
 }
 
@@ -1906,11 +1911,11 @@ test.describe('a frame preview draws only what overlaps the frame (Slice 2c-iii 
     const fabricPreview = (target: string) => fabricReference<{ drawn: boolean; error: string | null }>(target, { target, svg: TAINTING_SVG })
     const outside = { fabric: fabricPreview('OUT'), dom: await previewAfterReplacing(browser, 'OUT') }
     expect(outside.fabric).toEqual({ drawn: true, error: null })
-    expect(outside.dom).toEqual(outside.fabric)
+    expect(outside.dom).toStrictEqual(outside.fabric)
     // Inside the frame both renderers draw it, as they must, and the browser refuses the tainted bitmap.
     const inside = { fabric: fabricPreview('IN'), dom: await previewAfterReplacing(browser, 'IN') }
     expect(inside.fabric).toEqual({ drawn: false, error: 'SecurityError' })
-    expect(inside.dom).toEqual(inside.fabric)
+    expect(inside.dom).toStrictEqual(inside.fabric)
   })
 
   test('a text card outside the frame is never rasterized, and with the layer\'s sizes never laid out either; one within its ink bleed is', async ({ page }) => {

@@ -81,7 +81,7 @@ describe('proxy identity', () => {
     const p = createProxy(texts[1]!, getImage) as unknown as FakeObject & { hasControls: boolean }
     const f = await fabricReference<boolean[]>('flags', texts[1])
     expect(isLocked(p as never)).toBe(true)
-    expect([p.evented, p.selectable, p.hasControls]).toEqual(f)
+    expect([p.evented, p.selectable, p.hasControls]).toStrictEqual(f)
   })
 })
 
@@ -108,6 +108,7 @@ describe('records round-trip through a proxy exactly', () => {
       { id: 'n1', type: 'text', left: 0, top: 0, angle: 0, text: 'Head\nbody', fontSize: 20, width: 200, headings: [1, 0], font: 'serif', color: '#1d2230', spans: [{ start: 0, end: 4, bold: true }, { start: 5, end: 9, font: 'serif' }] },
     ]
     const fabric = await fabricReference<unknown[]>('records', odd)
+    expect(fabric, 'one recorded record for each').toHaveLength(odd.length)
     odd.forEach((rec, i) => expect(toRecord(createProxy(rec, getImage)!), rec.id).toStrictEqual(fabric[i]))
   })
 
@@ -118,7 +119,7 @@ describe('records round-trip through a proxy exactly', () => {
     const a = toRecord(p) as TextRecord
     const b = await fabricReference<TextRecord>('scaled', rec)
     expect([a.fontSize, a.width, a.minHeight]).toEqual([18, 120, 96.38])
-    expect([a.fontSize, a.width, a.minHeight]).toEqual([b.fontSize, b.width, b.minHeight])
+    expect([a.fontSize, a.width, a.minHeight]).toStrictEqual([b.fontSize, b.width, b.minHeight])
   })
 })
 

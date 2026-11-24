@@ -351,7 +351,11 @@ test('drawn boxes keep a breakable word whole as Fabric does: at a line end, wit
   // The records: widths measured as the scene layer lays the line out ("Ab W", "Ab W " and W alone)
   // when the reference was recorded. The reference is Fabric's layout of exactly these records.
   const recs = fabricReference<Array<Record<string, unknown>>>('records', BREAKABLE_WORDS)
+  // One recorded record for each case, by name: an empty or short reference compares nothing.
+  const kinds = ['line-end', 'no-room-for-space', 'exact', 'too-wide', 'much-too-wide']
+  expect(recs.map((r) => r.id)).toStrictEqual([...BREAKABLE_WORDS.flatMap((w) => kinds.map((k) => `${w} ${k}`)), 'centred hip-hop'])
   const cases = await compareTypography(page, recs)
+  expect(cases.map((c) => c.name)).toStrictEqual(recs.map((r) => r.id))
   const rs = residuals(cases)
   report(rs, cases)
   expectMatch(rs)
@@ -532,6 +536,7 @@ test('click-created boxes wrap only between words: state-of-the-art, 2012—2014
     }, { cases, widths })
   // Fabric at the narrowest width (the scene layer's minimum width when it was recorded): its own width, its longest word, its lines.
   const fabric = fabricReference<Array<{ given: number; width: number; longest: number; lines: string[] }>>('fabric', cases)
+  expect(fabric, 'a recorded layout for each case').toHaveLength(cases.length)
   const measured = await dom(null)
   const atFabricWidth = await dom(fabric.map((f) => f.given))
   const out = cases.map(({ token, marked }, i) => ({
@@ -680,6 +685,7 @@ test('dom-card-measurer-ignores-zoom-and-rotation', async ({ page }) => {
   ]
   // Fabric's height and minimum width of each box.
   const fabric = fabricReference<Array<{ height: number; minWidth: number }>>('boxes', recs)
+  expect(fabric, 'a recorded box for each record').toHaveLength(recs.length)
   const measured = await page.evaluate(async (recs) => {
     const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
     const { SceneLayer } = (await load('/src/editor/sceneLayer.ts')) as typeof import('../src/editor/sceneLayer.ts')
@@ -1007,6 +1013,7 @@ test('underline and strikethrough sit where Fabric draws them, in every font, on
       // Fabric's box and line bands (device pixels at scale 2), and its dark rows in the ten columns either side of
       // each line's first space as the layer laid it out when the reference was recorded (only the decoration is drawn there).
       const fabric = fabricReference<{ frame: { width: number; height: number }; bands: Array<[number, number]>; lines: Array<Record<number, number[]>> }>(rec.id, rec)
+      expect(fabric.lines, `${rec.id}: recorded rows for each of its lines`).toHaveLength(text.split('\n').length)
       const columns = await domColumns(rec, fabric.frame)
       const size = [fabric.frame.width * 2, fabric.frame.height * 2]
       const shot = await page.screenshot({ clip: { x: 0, y: 0, width: size[0]!, height: size[1]! } })
@@ -1308,6 +1315,7 @@ test('mixed-direction text gets the minimum width Fabric gives it: bidi reorderi
   const recordOf = (text: string) => ({ type: 'text' as const, id: 't', left: 0, top: 0, angle: 0, width: 1000, fontSize: 24, text })
   // Fabric's minimum width of each.
   const fabric = fabricReference<number[]>('minimum widths', texts)
+  expect(fabric, 'a recorded width for each text').toHaveLength(texts.length)
   const measured = await page.evaluate(async (recs) => {
     const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
     const { minCardWidth } = (await load('/src/editor/sceneLayer.ts')) as typeof import('../src/editor/sceneLayer.ts')

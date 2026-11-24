@@ -10,8 +10,9 @@ import type { FontId, TextSpan } from '../../model/types.ts'
  * a record, fed the input a key gives through Fabric's own `onInput`, and its per-character
  * styles are reconciled and read back as a record exactly as the Fabric renderer did.
  *
- * Copied from the app as of commit 9e73b09 (the last commit with the Fabric renderer), leaving
- * out only what this oracle never reaches (selection styling, ids, captions, locks, drawn boxes,
+ * Copied from the app source as of commit 9e73b09, which commit 03fa4c2 leaves unchanged. 03fa4c2
+ * is the last commit in which the Fabric renderer exists and the only one in which
+ * `FABRIC_REFERENCE=check` and `FABRIC_REFERENCE=record` work. The copy leaves out only what this oracle never reaches (selection styling, ids, captions, locks, drawn boxes,
  * the `seen` callback) and comments: from `src/editor/objects.ts` the text half of
  * `createObject` (a plain `Textbox`: the spec builds no drawn boxes), `linesOf`, `stylesFor`,
  * `hasStyles`, `levelOf`, `marksOf`, the remembered canonical state, `caretOffset`,

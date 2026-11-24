@@ -19,6 +19,11 @@ import { fileURLToPath } from 'node:url'
  * commit out and running the command the file names there. Each carries a
  * hash of the test's inputs (the seeded board and the script), so a test whose script changes
  * fails here instead of comparing with a reference recorded for something else.
+ *
+ * The hash covers only what the test hands this helper: a changed board, options or declared
+ * script. It does not catch every change to how a script is performed (some tests hand it a
+ * prose description of what they do, and the shared helpers they call are not hashed), so the
+ * code that performs a paired script must not be edited at all.
  * See `docs/engineering-reference.md`.
  */
 

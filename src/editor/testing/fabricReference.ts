@@ -9,7 +9,10 @@ import { expect } from 'vitest'
  * recorded from the app; recording (`FABRIC_REFERENCE=record`, and `check`) exists only in the
  * commit that added these files. Each carries a hash of the test's inputs (functions by their
  * source), so a changed script fails here instead of comparing with a reference recorded for
- * something else. See `docs/engineering-reference.md`.
+ * something else. The hash covers only what the test hands this helper: a changed board, options
+ * or declared script. It does not catch every change to how a script is performed (a helper such
+ * as `typeKeys`, or the code around the call, is not hashed), so the code that performs a paired
+ * script must not be edited at all. See `docs/engineering-reference.md`.
  */
 
 interface Fs {

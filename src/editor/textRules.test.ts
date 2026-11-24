@@ -5,7 +5,7 @@ import { fabricReference } from './testing/fabricReference.ts'
 import { isBlankTextDoc } from '../model/textDoc.ts'
 import type { EditSession } from './textSession.ts'
 import { docFromText, posAtTextOffset, textSchema } from './textSchema.ts'
-import { boxFormat, canonicalGuard, lastBoxLine, matchShortcut, pendingKey, pendingMarks, setBoxLevel, toggleBoxMark, typedMarks } from './textRules.ts'
+import { boxFormat, canonicalGuard, completesShortcut, lastBoxLine, matchShortcut, pendingKey, pendingMarks, setBoxLevel, shortcutTransaction, toggleBoxMark, typedMarks } from './textRules.ts'
 import { insert, keyEvent, open, press, type } from './testing/textHarness.ts'
 
 /** A selection at raw UTF-16 offsets, even inside a character (only ProseMirror itself could make one). */
@@ -70,6 +70,7 @@ describe('the typing shortcut matcher (one line, no view)', () => {
     // What the Fabric renderer's matcher (`matchTypingShortcut` in `src/model/richText.ts` before it was deleted) gave for each.
     type Match = { kind: string; remove: unknown; content: unknown; level?: number } | null
     const matched = await fabricReference<Match[]>('matcher', inputs)
+    expect(matched, 'one recorded answer for each case').toHaveLength(inputs.length)
     for (const [i, { text, caret, typed }] of inputs.entries()) {
       const canvas = matched[i]!
       const ours = matchShortcut(text, caret, typed)
@@ -112,6 +113,104 @@ describe('typing shortcuts', () => {
     expect(s.content()).toStrictEqual({ text: 'Big x', headings: [1] })
     expect(s.format().marks.bold).toBe('on') // the heading's own
     expect(s.pending).toBeNull()
+  })
+
+  it('next to emoji, joined emoji and combining marks, the caret and the formatting land on the same characters (UTF-16 offsets)', () => {
+    // Characters longer than one UTF-16 unit: a surrogate pair, a ZWJ family (8 units, one
+    // character), a letter with a combining accent (2 units), a flag (two pairs) and a heart
+    // with a variation selector.
+    const wide = ['\u{1F600}', '\u{1F469}‍\u{1F469}‍\u{1F467}', 'é', '\u{1F1EB}\u{1F1F7}', '❤️']
+    /** The raw ProseMirror caret too: a selection getter that rounds to a character would hide a caret inside one. */
+    const caretAt = (s: EditSession, offset: number) => {
+      expect(s.state.selection.empty).toBe(true)
+      expect(s.state.selection.head).toBe(posAtTextOffset(s.state.doc, offset))
+      expect(s.selection()).toMatchObject({ from: offset, to: offset })
+    }
+    for (const w of wide) {
+      for (const [marker, mark] of [['**', 'bold'], ['*', 'italic']] as const) {
+        // Before, inside and after the converted run, and all three at once.
+        for (const [before, body, after] of [
+          [`${w} `, 'xy', ' z'],
+          ['', `a${w}b`, ''],
+          ['', `x${w}`, ''],
+          ['go ', 'x', ` ${w}`],
+          ['go ', 'x', w],
+          [`${w}${w} `, `${w}${w}`, ` ${w}`],
+        ] as Array<[string, string, string]>) {
+          const label = JSON.stringify({ before, marker, body, after })
+          // Everything but the final star is there; the caret is where that star goes.
+          const s = open({ text: `${before}${marker}${body}${marker.slice(1)}${after}` }, { caret: before.length + marker.length + body.length + marker.length - 1 })
+          type(s, '*')
+          expect(s.content(), label).toStrictEqual({ text: `${before}${body}${after}`, spans: [{ start: before.length, end: before.length + body.length, [mark]: true }] })
+          caretAt(s, before.length + body.length)
+          // What is typed next goes at that caret, plain.
+          type(s, '!')
+          expect(s.content(), label).toStrictEqual({ text: `${before}${body}!${after}`, spans: [{ start: before.length, end: before.length + body.length, [mark]: true }] })
+        }
+      }
+      for (const level of [1, 2, 3]) {
+        // A heading: wide characters on the line above, and in the rest of the line.
+        const above = `${w}a${w}\n`
+        const s = open({ text: `${above}${w} title${w}` }, { caret: above.length })
+        type(s, `${'#'.repeat(level)} `)
+        expect(s.content(), `${level} ${w}`).toStrictEqual({ text: `${above}${w} title${w}`, headings: [0, level] })
+        caretAt(s, above.length)
+        type(s, '!')
+        expect(s.content().text).toBe(`${above}!${w} title${w}`)
+      }
+    }
+    // The example the earlier canvas pinned: a surrogate pair before and inside.
+    const s = open({ text: '\u{1F600} **\u{1F680}* z' }, { caret: 8 })
+    type(s, '*')
+    expect(s.content()).toStrictEqual({ text: '\u{1F600} \u{1F680} z', spans: [{ start: 3, end: 5, bold: true }] })
+    caretAt(s, 5)
+    // A star typed just before a combining mark joins it, so it is no marker: it stays literal.
+    const literal = open({ text: '**x*⃣' }, { caret: 4 })
+    type(literal, '*')
+    expect(literal.content()).toStrictEqual({ text: '**x**⃣' })
+  })
+
+  it('looks only at the caret line: no character of any other line is read, so a long text costs no more than its line', () => {
+    const long = 'word '.repeat(50_000)
+    /** A state on `text` with the caret at its offset `caret`, in which reading a character of any line but the caret's is counted. */
+    const watched = (text: string, caret: number) => {
+      const { doc } = docFromText({ text })!
+      const at = posAtTextOffset(doc, caret)
+      const line = doc.resolve(at).parent
+      let reads = 0
+      let others = 0
+      doc.descendants((node, _pos, parent) => {
+        if (!node.isText || parent === line) return
+        const kept = node.text!
+        others += kept.length
+        Object.defineProperty(node, 'text', {
+          get: () => {
+            reads++
+            return kept
+          },
+        })
+      })
+      // The test is only as good as the lines it watches.
+      expect(others).toBeGreaterThan(2 * long.length - 10)
+      return { state: EditorState.create({ doc, selection: TextSelection.create(doc, at) }), at, reads: () => reads }
+    }
+    // A long line above the caret's line and one below it.
+    const before = watched(`${long}\n*x\n${long}`, long.length + 3)
+    const after = watched(`${long}\n*x*\n${long}`, long.length + 4)
+    const t0 = performance.now()
+    for (let i = 0; i < 200; i++) {
+      expect(completesShortcut(before.state, before.at, '*')).toBe(true)
+      expect(shortcutTransaction(after.state, '*')).not.toBeNull()
+    }
+    expect(before.reads()).toBe(0)
+    expect(after.reads()).toBe(0)
+    // A backstop with a wide margin: 200 checks of each, which once took a few milliseconds.
+    expect(performance.now() - t0).toBeLessThan(1000)
+    // What the conversion leaves on that line: the markers gone and the letter italic.
+    const tr = shortcutTransaction(after.state, '*')!
+    const changed = tr.doc.resolve(tr.selection.head).parent
+    expect(changed.textContent).toBe('x')
+    expect(changed.firstChild!.marks.map((m) => m.type.name)).toContain('italic')
   })
 
   it('pinned-literal-cases-and-backspace-plus-ctrl-z-after-shortcut', () => {

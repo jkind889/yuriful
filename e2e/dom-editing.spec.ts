@@ -431,7 +431,7 @@ function expectSameRecords(domIn: readonly Record<string, unknown>[], fabricIn: 
       } else if (d.type === 'text' && key === 'captionPosition') {
         expect(Math.abs((d[key] as number) - (f[key] as number)), `${where} ${String(d.id)}.${key}`).toBeLessThanOrEqual(0.001)
       } else {
-        expect(d[key], `${where} ${String(d.id)}.${key}`).toEqual(f[key])
+        expect(d[key], `${where} ${String(d.id)}.${key}`).toStrictEqual(f[key])
       }
     }
   })
@@ -454,6 +454,8 @@ async function expectPaired(browser: Browser, doc: StoredBoard, steps: readonly 
   const omit = opts.omit ?? new Set<string>()
   const fabric = fabricReference<Awaited<ReturnType<typeof runScript>>>('script', { doc, steps, assets: opts.assets, clipboard: opts.clipboard })
   const dom = await runScript(browser, doc, steps, opts.assets, opts.clipboard)
+  // One recorded record for each step of this script, by name: an empty or short reference compares nothing.
+  expect(fabric.records.map((f) => f.step), 'the recorded steps').toStrictEqual(dom.records.map((d) => d.step))
   let worst = 0
   if (process.env.DEBUG_STEPS) {
     fabric.records.forEach((f, i) => {
@@ -465,24 +467,24 @@ async function expectPaired(browser: Browser, doc: StoredBoard, steps: readonly 
     const d = dom.records[i]!
     const where = `after step ${i} ${f.step}`
     worst = Math.max(worst, expectSameRecords(d.scene.objects as never, f.scene.objects as never, where, omit))
-    expect(d.scene.frames, `frames ${where}`).toEqual(f.scene.frames)
+    expect(d.scene.frames, `frames ${where}`).toStrictEqual(f.scene.frames)
     worst = Math.max(worst, expectSameRecords(d.history.current.objects as never, f.history.current.objects as never, `history ${where}`, omit))
     // What is drawn while editing as well as after: every text box is as tall as on Fabric.
     expect(Object.keys(d.boxes).sort(), `boxes ${where}`).toEqual(Object.keys(f.boxes).sort())
     for (const [id, h] of Object.entries(f.boxes)) expect(Math.abs(d.boxes[id]! - h), `${where} ${id} box height: dom ${d.boxes[id]}, fabric ${h}`).toBeLessThanOrEqual(BOX_TOLERANCE)
-    expect([d.history.index, d.history.length], `history position ${where}`).toEqual([f.history.index, f.history.length])
+    expect([d.history.index, d.history.length], `history position ${where}`).toStrictEqual([f.history.index, f.history.length])
     // A selection as its two ends: Fabric keeps a stale direction after select-all (its `_selectionDirection`).
     const ends = (e: EditInfo | null) => e && { id: e.id, text: e.text, from: Math.min(e.anchor, e.head), to: Math.max(e.anchor, e.head), focused: e.focused }
-    expect(ends(d.edit), `edit ${where}`).toEqual(ends(f.edit))
+    expect(ends(d.edit), `edit ${where}`).toStrictEqual(ends(f.edit))
     const skip = new Set((JSON.parse(f.step) as Step).skip ?? [])
     const { canUndo: du, canRedo: dr, layers: dl, ...dState } = d.state
     const { canUndo: fu, canRedo: fr, layers: fl, ...fState } = f.state
-    if (!skip.has('layers')) expect(dl, `layers ${where}`).toEqual(fl)
-    expect(dState, `state ${where}`).toEqual(fState)
-    if (!f.state.editing) expect([du, dr], `undo and redo ${where}`).toEqual([fu, fr])
+    if (!skip.has('layers')) expect(dl, `layers ${where}`).toStrictEqual(fl)
+    expect(dState, `state ${where}`).toStrictEqual(fState)
+    if (!f.state.editing) expect([du, dr], `undo and redo ${where}`).toStrictEqual([fu, fr])
   })
   worst = Math.max(worst, expectSameRecords(dom.saved.objects as never, fabric.saved.objects as never, 'saved', omit))
-  expect(dom.saved.frames, 'saved frames').toEqual(fabric.saved.frames)
+  expect(dom.saved.frames, 'saved frames').toStrictEqual(fabric.saved.frames)
   expect(dom.saved.version).toBe(fabric.saved.version)
   return { worst, fabric, dom }
 }
@@ -1385,6 +1387,7 @@ test.describe('the caret where a person clicks, in the real card (Slice 2c-ii)',
     for (const id of ['Z', 'R', 'D']) {
       const fabric = fabricReference<number[]>(id, { doc, id, points })
       const dom = await caretsAt(browser, doc, id, points)
+      expect(fabric, `${id}: a recorded caret for each point`).toHaveLength(points.length)
       fabric.forEach((f, i) => {
         total++
         if (dom[i] === f) same++

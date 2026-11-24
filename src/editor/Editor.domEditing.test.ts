@@ -51,7 +51,7 @@ async function open(frames: FrameRecord[], objects: ObjectRecord[], options: Edi
   const scene = () => internals.snapshot()
   const rec = (id: string) => scene().objects.find((o) => o.id === id) as TextRecord | undefined
   const session = (): EditSession => {
-    const s = internals.text instanceof DomTextAdapter ? internals.text.editSession() : null
+    const s = internals.text.editSession()
     if (!s) throw new Error('no text is being edited')
     return s
   }

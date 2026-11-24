@@ -41,7 +41,6 @@ export interface TextHost {
   /** History has never held this object (a new text). */
   isNew(obj: FabricObject): boolean
   frameRecords(): FrameRecord[]
-  selectByIds(objs: FabricObject[]): void
   commit(coalesceKey?: string): void
   /** The autosaver's `markDirty`. */
   markDirty(): void
