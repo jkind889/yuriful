@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { albumSpread, drag, editedText, imageFile, openApp, openBlank, releaseHydration, sceneToPage, screenPixels, seedRaw, snapshotIdb, stallHydration, storedDoc } from './helpers.ts'
+import { albumSpread, drag, editedText, expectSameLettering, imageFile, letteringAt, openApp, openBlank, releaseHydration, sceneToPage, screenPixels, seedRaw, snapshotIdb, stallHydration, storedDoc } from './helpers.ts'
 import type { StoredBoard } from './helpers.ts'
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
@@ -382,7 +382,11 @@ for (const exit of editExits) {
       if (blank) await button(page, 'Add caption').click()
       else await page.keyboard.press('Enter')
       await expect.poll(() => focusedEdit(page)).not.toBeNull()
+      // Below the turned image "back" (420 to 520 across, 154 to 274 down), where the new caption is.
+      const [c0, c1] = [at(370, 262), at(600, 372)]
+      const captionLettering = () => letteringAt(page, c0.x, c0.y, c1.x - c0.x, c1.y - c0.y)
       if (!blank) await page.keyboard.type('Back sleeve\nPrinted in 1991')
+      const live = blank ? null : await captionLettering() // what is typed is painted while it is typed
       if (exit === 'Esc') await page.keyboard.press('Escape')
       if (exit === 'empty board click') await page.mouse.click(at(810, 350).x, at(810, 350).y)
       if (exit === 'object click') await page.mouse.click(at(280, 200).x, at(280, 200).y)
@@ -400,6 +404,7 @@ for (const exit of editExits) {
         expect(await storedDoc(page)).toEqual(before)
         return
       }
+      expectSameLettering(live!, await captionLettering())
       const withCaption = await savedAfter(page, (doc) => doc.objects.length === before.objects.length + 1)
       const added = withCaption.objects.find((o) => !before.objects.some((old) => old.id === o.id))!
       expect(added.text).toBe('Back sleeve\nPrinted in 1991')

@@ -7,7 +7,7 @@
  */
 import { expect, test } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
-import { AUTOSAVE_QUIET_MS, editedText, openApp, openBlank, redoButton, sceneToPage, seedMilestone1, status, storedDoc, undoButton, waitSaved } from './helpers.ts'
+import { AUTOSAVE_QUIET_MS, editedText, expectSameLettering, letteringIn, openApp, openBlank, redoButton, sceneToPage, seedMilestone1, status, storedDoc, undoButton, waitSaved } from './helpers.ts'
 import type { StoredBoard, StoredObject, View } from './helpers.ts'
 
 const UNIT: View = { zoom: 1, panX: 0, panY: 0 }
@@ -154,8 +154,11 @@ test.describe('each shortcut, typed for real and stored after leaving the edit',
     const { errors, at } = await open(page, [rec])
     await editAtEnd(page, at(105, 112))
     await typeKeys(page, ' **bold**x *it*y')
+    const live = await letteringIn(page, 95, 90, 380, 50) // the converted text is painted while it is typed
     await page.keyboard.press('Escape')
     const done = await storedWhen(page, (d) => byId(d, 't').text === 'a boldx ity')
+    await page.keyboard.press('Escape') // deselect: no handles over the first letter
+    expectSameLettering(live, await letteringIn(page, 95, 90, 380, 50))
     expect(byId(done, 't')).toEqual({ ...rec, text: 'a boldx ity', spans: [{ start: 2, end: 6, bold: true }, { start: 8, end: 10, italic: true }] })
     expect(errors).toEqual([])
   })

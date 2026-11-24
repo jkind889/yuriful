@@ -446,38 +446,42 @@ export const chooseRenderer = (page: Page, renderer: 'dom' | 'fabric') =>
 export interface EditedText {
   /** The text, one `\n` per line break. */
   value: string
-  /** The selection the page shows in the text, as UTF-16 offsets (`start <= end`). */
-  start: number
-  end: number
-  /** The edited text has the keyboard. */
+  /** The selection the page shows in the text, as UTF-16 offsets (`start <= end`); both null when the page shows none in it. */
+  start: number | null
+  end: number | null
+  /** The edited text has the keyboard: it is focused and the page's selection is in it. */
   focused: boolean
 }
 
 /**
- * The text being edited, as the page shows it, or null when none is. On the DOM renderer the
- * edited card holds the text engine's live view: its text, and the page's own selection inside
- * it (mapped to text offsets by the engine's pure `textOffsetAt`). On the Fabric renderer, which
- * only the reference run (`E2E_RENDERER=fabric`) uses, Fabric's hidden textarea.
+ * The text being edited, as the page shows it, or null when none is. Which renderer the page
+ * runs decides where to look: the DOM renderer always has its scene layer, the Fabric renderer
+ * never does. On the DOM renderer the edited card holds the text engine's live view: its text,
+ * and the page's own selection inside it (mapped to text offsets by the engine's pure
+ * `textOffsetAt`); with no selection in it, `start` and `end` are null and it does not have the
+ * keyboard. On the Fabric renderer, which only the reference run (`E2E_RENDERER=fabric`) uses,
+ * Fabric's hidden textarea.
  */
 export function editedText(page: Page): Promise<EditedText | null> {
   return page.evaluate(async () => {
-    type Desc = { node: unknown; posFromDOM: (node: Node, offset: number, bias: number) => number }
-    const root = document.querySelector<HTMLElement & { pmViewDesc?: Desc }>('.scene-layer [contenteditable="true"].ProseMirror')
-    if (root?.pmViewDesc) {
+    if (document.querySelector('.scene-layer')) {
+      type Desc = { node: unknown; posFromDOM: (node: Node, offset: number, bias: number) => number }
+      const root = document.querySelector<HTMLElement & { pmViewDesc?: Desc }>('.scene-layer [contenteditable="true"].ProseMirror')
+      if (!root?.pmViewDesc) return null
       const path = '/src/editor/textSchema.ts'
       const { plainTextOfDoc, textOffsetAt } = await import(/* @vite-ignore */ path)
       const desc = root.pmViewDesc
       const doc = desc.node
       const sel = getSelection()
-      let start = 0
-      let end = 0
-      if (sel && sel.anchorNode && sel.focusNode && root.contains(sel.anchorNode) && root.contains(sel.focusNode)) {
+      let start: number | null = null
+      let end: number | null = null
+      if (sel && sel.rangeCount > 0 && sel.anchorNode && sel.focusNode && root.contains(sel.anchorNode) && root.contains(sel.focusNode)) {
         const a = textOffsetAt(doc, desc.posFromDOM(sel.anchorNode, sel.anchorOffset, -1), -1) as number
         const b = textOffsetAt(doc, desc.posFromDOM(sel.focusNode, sel.focusOffset, -1), -1) as number
         start = Math.min(a, b)
         end = Math.max(a, b)
       }
-      return { value: plainTextOfDoc(doc) as string, start, end, focused: document.activeElement === root }
+      return { value: plainTextOfDoc(doc) as string, start, end, focused: document.activeElement === root && start !== null }
     }
     const ta = document.querySelector<HTMLTextAreaElement>('textarea[data-fabric="textarea"]')
     return ta ? { value: ta.value, start: ta.selectionStart, end: ta.selectionEnd, focused: document.activeElement === ta } : null
@@ -569,8 +573,17 @@ export async function screenPixels(page: Page, left: number, top: number, width:
   return pagePixels(page, box.x + left, box.y + top, width, height)
 }
 
+/** What `pagePixels` may change while it takes its screenshot. */
+export interface ShotOptions {
+  /** A stylesheet applied for the screenshot only, after the one that hides the panels and dots. */
+  style?: string
+  /** The board's backdrop colour for this screenshot (RGB), instead of `BOARD_BACKDROP`. */
+  backdrop?: readonly number[]
+}
+
 /** As `screenPixels`, for a rectangle in page coordinates. */
-export async function pagePixels(page: Page, left: number, top: number, width: number, height: number) {
+export async function pagePixels(page: Page, left: number, top: number, width: number, height: number, opts: ShotOptions = {}) {
+  const backdrop = [...(opts.backdrop ?? BOARD_BACKDROP).slice(0, 3), 255]
   const vp = page.viewportSize()!
   // Only the part inside the viewport can be captured; the rest reads as the backdrop.
   const x0 = Math.max(0, Math.round(left))
@@ -580,14 +593,14 @@ export async function pagePixels(page: Page, left: number, top: number, width: n
   const w = Math.round(width)
   const h = Math.round(height)
   const data = new Uint8Array(w * h * 4)
-  for (let i = 0; i < data.length; i += 4) data.set(BOARD_BACKDROP, i)
+  for (let i = 0; i < data.length; i += 4) data.set(backdrop, i)
   if (x1 > x0 && y1 > y0) {
     const png = await page.screenshot({
       clip: { x: x0, y: y0, width: x1 - x0, height: y1 - y0 },
       scale: 'css',
       animations: 'disabled',
       caret: 'hide',
-      style: `.overlays { visibility: hidden !important; } .workspace { background-image: none !important; background-color: rgb(${BOARD_BACKDROP.slice(0, 3).join(',')}) !important; }`,
+      style: `.overlays { visibility: hidden !important; } .workspace { background-image: none !important; background-color: rgb(${backdrop.slice(0, 3).join(',')}) !important; } ${opts.style ?? ''}`,
     })
     const shot = decodePng(png)
     const dx = x0 - Math.round(left)
@@ -606,4 +619,83 @@ export async function pagePixels(page: Page, left: number, top: number, width: n
 export async function screenPixel(page: Page, x: number, y: number): Promise<[number, number, number, number]> {
   const { data } = await screenPixels(page, Math.round(x), Math.round(y), 1, 1)
   return [data[0]!, data[1]!, data[2]!, data[3]!]
+}
+
+/** A second backdrop colour, far from the first, for telling "nothing painted here" from "painted the backdrop's colour". */
+const OTHER_BACKDROP = [20, 160, 90] as const
+
+/**
+ * Whether anything is painted at a point of the canvas: the pixel is the backdrop under two very
+ * different backdrop colours only where nothing covers the board there, so something opaque
+ * painted in the backdrop's own colour still counts.
+ */
+export async function paintedAt(page: Page, x: number, y: number): Promise<boolean> {
+  const box = await page.locator('.canvas-host').boundingBox()
+  if (!box) throw new Error('canvas host not found')
+  const at = (backdrop: readonly number[]) => pagePixels(page, box.x + Math.round(x), box.y + Math.round(y), 1, 1, { backdrop })
+  const [a, b] = [(await at(BOARD_BACKDROP)).data, (await at(OTHER_BACKDROP)).data]
+  const same = (d: Uint8Array, c: readonly number[]) => d[0] === c[0] && d[1] === c[1] && d[2] === c[2]
+  return !(same(a, BOARD_BACKDROP) && same(b, OTHER_BACKDROP))
+}
+
+// ---- the lettering the page paints ---------------------------------------------------------------
+
+/** Lettering in a sampled rectangle: how many pixels, and their extent within it (Infinity / -Infinity when none). */
+export interface Lettering {
+  count: number
+  left: number
+  right: number
+  top: number
+  bottom: number
+}
+
+/** Hides the lettering of every text card, the edited one included, and nothing else (layout, outlines and highlights stay). */
+const NO_LETTERING = '.scene-layer .scene-text-body, .scene-layer .scene-text-body * { color: transparent !important; -webkit-text-fill-color: transparent !important; text-decoration-color: transparent !important; text-shadow: none !important; }'
+
+/**
+ * The text lettering the page paints in a rectangle of the page: the pixels that change when the
+ * lettering is taken away. On the DOM renderer that is every card's text colour (the card being
+ * edited included), so lettering that is invisible, clipped or out of place in the live editor
+ * shows here as missing or moved. On the Fabric renderer (the reference run only), the canvas is
+ * taken away, Fabric's caret (on its upper canvas) is never counted, and the accent-blue editing
+ * border and selection highlight Fabric paints are left out.
+ */
+export async function letteringAt(page: Page, left: number, top: number, width: number, height: number): Promise<Lettering> {
+  const dom = (await page.locator('.scene-layer').count()) > 0
+  const shown = await pagePixels(page, left, top, width, height, dom ? {} : { style: '.canvas-container canvas.upper-canvas { visibility: hidden !important; }' })
+  const bare = await pagePixels(page, left, top, width, height, { style: dom ? NO_LETTERING : '.canvas-container canvas { visibility: hidden !important; }' })
+  const ink: Lettering = { count: 0, left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity }
+  const d = shown.data
+  const e = bare.data
+  for (let i = 0; i < d.length; i += 4) {
+    const diff = Math.max(Math.abs(d[i]! - e[i]!), Math.abs(d[i + 1]! - e[i + 1]!), Math.abs(d[i + 2]! - e[i + 2]!))
+    if (diff <= 48) continue
+    if (!dom && d[i + 2]! > d[i]! + 60 && d[i + 2]! > d[i + 1]! + 30) continue
+    const x = (i / 4) % shown.width
+    const y = Math.floor(i / 4 / shown.width)
+    ink.count++
+    ink.left = Math.min(ink.left, x)
+    ink.right = Math.max(ink.right, x)
+    ink.top = Math.min(ink.top, y)
+    ink.bottom = Math.max(ink.bottom, y)
+  }
+  return ink
+}
+
+/** As `letteringAt`, for a rectangle of the canvas (CSS pixels from the canvas host's top-left). */
+export async function letteringIn(page: Page, left: number, top: number, width: number, height: number): Promise<Lettering> {
+  const box = await page.locator('.canvas-host').boundingBox()
+  if (!box) throw new Error('canvas host not found')
+  return letteringAt(page, box.x + left, box.y + top, width, height)
+}
+
+/**
+ * The lettering painted while a text is edited is the lettering painted once the edit has ended:
+ * visible (enough of it), in the same place (within 2 px), and as much of it (within 10 %).
+ */
+export function expectSameLettering(live: Lettering, idle: Lettering, min = 100) {
+  expect(idle.count, 'lettering once the edit has ended').toBeGreaterThan(min)
+  expect(live.count, 'lettering while editing').toBeGreaterThan(idle.count * 0.9)
+  expect(live.count, 'lettering while editing').toBeLessThan(idle.count * 1.1)
+  for (const side of ['left', 'right', 'top', 'bottom'] as const) expect(Math.abs(live[side] - idle[side]), `lettering's ${side} edge while editing`).toBeLessThanOrEqual(2)
 }

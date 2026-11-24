@@ -3,7 +3,7 @@ import type { FeedbackSnapshot } from '../src/editor/feedbackLayer.ts'
 import type { CanvasPrefs } from '../src/model/prefs.ts'
 import type { Scene, Viewport } from '../src/model/types.ts'
 import type { Rect } from '../src/model/viewport.ts'
-import { albumSpread, openApp, openBlank, pngBuffer, sceneToPage, seedRaw } from './helpers.ts'
+import { albumSpread, openApp, openBlank, pagePixels, pngBuffer, sceneToPage, seedRaw } from './helpers.ts'
 import type { SeedAsset, StoredBoard } from './helpers.ts'
 
 export const VIEW: Viewport = { zoom: 1, panX: 0, panY: 0 }
@@ -19,7 +19,6 @@ interface FeelProbe {
   viewport: () => Viewport
   scene: () => Scene
   history: () => Scene
-  shadows: () => boolean[]
   controls: () => Record<string, { x: number; y: number }> | undefined
   bounds: (id: string) => Rect | null
   viewSamples: () => Viewport[]
@@ -55,13 +54,6 @@ async function installFeelProbe(page: Page) {
           viewport: () => this.getViewport(),
           scene: () => this.snapshot(),
           history: () => this.history.current,
-          // Whether each object is drawn lifted: on the DOM renderer its scene item carries the
-          // lift (the is-lifted class, the shadow the layer paints); on the Fabric renderer, its shadow.
-          shadows: () => this.canvas.getObjects().map((obj) => {
-            if (!this.scene) return !!obj.shadow
-            const item = document.querySelector('.scene-layer [data-id="' + feelIdOf(obj) + '"]')
-            return !!item && item.classList.contains('is-lifted')
-          }),
           controls: () => this.canvas.getActiveObject()?.oCoords,
           bounds: (id) => {
             const obj = this.canvas.getObjects().find((obj) => feelIdOf(obj) === id)
@@ -104,6 +96,34 @@ async function openFeelBoard(page: Page, board: Record<string, unknown> & { view
   await installFeelProbe(page)
   await openApp(page)
   return sceneToPage(page, board.viewport)
+}
+
+/**
+ * Whether the page paints the drag lift's shadow under an object: a strip just below its bottom
+ * edge (a fifth to two fifths of the way along, clear of the corner and middle handles) is
+ * darkened by it. On the DOM renderer the strip is compared with the same strip with the scene
+ * layer's filters taken away, so a lifted item whose shadow is not actually painted reads as not
+ * lifted; on the Fabric renderer (the reference run only), with the mirrored strip above its top
+ * edge, which holds the same selection border and much less of the shadow (it falls downward).
+ */
+export async function liftShadow(page: Page, id: string): Promise<boolean> {
+  const { rect, view } = await page.evaluate((id) => ({ rect: window.__feel.bounds(id), view: window.__feel.viewport() }), id)
+  if (!rect) return false
+  const box = await canvasBox(page)
+  const width = Math.max(4, (rect.right - rect.left) * view.zoom * 0.2)
+  const x = box.x + rect.left * view.zoom + view.panX + width
+  const y = box.y + rect.bottom * view.zoom + view.panY + 2
+  const dom = (await page.locator('.scene-layer').count()) > 0
+  const shown = await pagePixels(page, x, y, width, 6)
+  if (dom) {
+    const bare = await pagePixels(page, x, y, width, 6, { style: '.scene-layer .scene-item { filter: none !important; }' })
+    let most = 0
+    for (let i = 0; i < shown.data.length; i++) most = Math.max(most, Math.abs(shown.data[i]! - bare.data[i]!))
+    return most > 8
+  }
+  const above = await pagePixels(page, x, box.y + rect.top * view.zoom + view.panY - 8, width, 6)
+  const mean = (d: Uint8Array) => { let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i]! + d[i + 1]! + d[i + 2]!; return s / (d.length / 4) / 3 }
+  return mean(above.data) - mean(shown.data) > 3
 }
 
 export const albumLayer = (page: Page, id: string) => page.getByRole('option').and(page.locator(`[data-layer-id="${id}"]`))

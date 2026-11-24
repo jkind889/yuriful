@@ -17,6 +17,8 @@ import {
   redoButton,
   sceneToPage,
   screenPixels,
+  expectSameLettering,
+  letteringIn,
   seedMilestone1,
   seedRaw,
   snapshotIdb,
@@ -132,8 +134,13 @@ test.describe('marks on a range while editing', () => {
     expect(byId(typed, 't')).toEqual({ ...rec, text: 'plain words! here', spans: [{ start: 6, end: 12, bold: true }] })
     await page.keyboard.press('Backspace')
     await storedWhen(page, (d) => byId(d, 't').text === 'plain words here')
+    // Painted bold while still editing: as much lettering as the reference stored bold.
+    const live = await letteringIn(page, 95, 90, 380, 50)
+    const reference = await letteringIn(page, 95, 290, 380, 50)
+    expect(Math.abs(live.count - reference.count)).toBeLessThan(reference.count * 0.05)
     await deselect(page)
     await waitSaved(page)
+    expectSameLettering(live, await letteringIn(page, 95, 90, 380, 50))
     // Drawn like a text stored bold there.
     const a = await inkIn(page, 95, 90, 380, 50)
     const b = await inkIn(page, 95, 290, 380, 50)
@@ -426,7 +433,7 @@ test.describe('font on a text range or at the caret', () => {
     await selectRight(page, 5) // one emoji, a space and three letters
     const range = async () => {
       const e = await editedText(page)
-      return e ? e.value.slice(e.start, e.end) : null
+      return e && e.start !== null && e.end !== null ? e.value.slice(e.start, e.end) : null
     }
     expect(await range()).toBe(word)
     await button(page, 'Mono').click()

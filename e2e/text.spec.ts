@@ -15,6 +15,8 @@ import {
   redoButton,
   sceneToPage,
   screenPixels,
+  expectSameLettering,
+  letteringIn,
   seedMilestone1,
   seedRaw,
   snapshotIdb,
@@ -27,6 +29,26 @@ import type { StoredBoard, StoredObject, View } from './helpers.ts'
 
 const UNIT: View = { zoom: 1, panX: 0, panY: 0 }
 const RED = '#c0392b'
+/** The default text colour (`DEFAULT_TEXT_COLOR` in `src/model/richText.ts`). */
+const INK = [0x1d, 0x22, 0x30] as const
+
+/**
+ * The colour of the solid middle of the strokes the page shows in a rectangle of the board: the
+ * average of the darkest sixth of the pixels darker than the background (at least 20 of them),
+ * which leaves out the anti-aliased edges and the browser's coloured subpixel fringes.
+ */
+async function strokeColour(page: Page, left: number, top: number, width: number, height: number): Promise<number[]> {
+  const { data: d } = await screenPixels(page, left, top, width, height)
+  const dark: Array<[number, number, number, number]> = []
+  for (let i = 0; i < d.length; i += 4) {
+    const lum = 0.299 * d[i]! + 0.587 * d[i + 1]! + 0.114 * d[i + 2]!
+    if (lum < 200) dark.push([lum, d[i]!, d[i + 1]!, d[i + 2]!])
+  }
+  dark.sort((a, b) => a[0] - b[0])
+  const core = dark.slice(0, Math.max(20, Math.floor(dark.length / 6)))
+  expect(core.length).toBeGreaterThanOrEqual(20)
+  return [1, 2, 3].map((k) => Math.round(core.reduce((s, p) => s + p[k]!, 0) / core.length))
+}
 
 type Seed = StoredObject & { type: 'text'; text: string; fontSize: number; width: number }
 const textRec = (id: string, left: number, top: number, text: string, extra: Partial<Seed> = {}): Seed => ({
@@ -173,6 +195,9 @@ test.describe('a stored formatted text', () => {
     const s = await inkIn(page, 435, 390, 380, 60)
     expect(w.red).toBe(0)
     expect(w.count).toBeGreaterThan(0)
+    // Plain words are painted in the ink colour itself.
+    const stroke = await strokeColour(page, 35, 390, 380, 60)
+    stroke.forEach((c, i) => expect(Math.abs(c - INK[i]!), `plain text colour ${stroke.join(',')}`).toBeLessThanOrEqual(24))
     expect(s.red).toBeGreaterThan(w.count) // red, and bold: more ink than the plain words
     expect(errors).toEqual([])
   })
@@ -278,9 +303,12 @@ test.describe('typing into a formatted text', () => {
     // Saved while still editing (the autosave debounce fires mid-edit).
     const typed = await storedWhen(page, (d) => byId(d, 't').text === 'plain boXYld rest')
     expect(byId(typed, 't')).toEqual({ ...rec, text: 'plain boXYld rest', spans: [{ start: 6, end: 12, bold: true }] })
+    const live = await letteringIn(page, 95, 90, 400, 50) // the typed letters are painted while they are typed
     await page.keyboard.press('Escape')
     await waitSaved(page)
     expect(await storedDoc(page)).toEqual(typed)
+    await page.keyboard.press('Escape') // deselect: no handles over the first letter
+    expectSameLettering(live, await letteringIn(page, 95, 90, 400, 50))
 
     await undoButton(page).click() // the whole edit is one step
     await storedWhen(page, (d) => byId(d, 't').text === 'plain bold rest')

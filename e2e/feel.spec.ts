@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { CENTRE, FRAME, FRONT, IMAGE, NO_FEEDBACK, VIEW, albumLayer, canvasBox, fileDrag, openAlbumFeel, openFeel, readFeedback, readView, sampleViewTwice } from './feel-helpers.ts'
+import { CENTRE, FRAME, FRONT, IMAGE, NO_FEEDBACK, VIEW, albumLayer, canvasBox, fileDrag, liftShadow, openAlbumFeel, openFeel, readFeedback, readView, sampleViewTwice } from './feel-helpers.ts'
 import type { StoredBoard, View } from './helpers.ts'
 import { AUTOSAVE_QUIET_MS, drag, editedText, imageFile, openApp, openBlank, redoButton, seedMilestone1, snapshotIdb, storedDoc, undoButton, waitSaved } from './helpers.ts'
 
@@ -151,7 +151,7 @@ test('lift is visible on the live canvas and absent from records, saves and undo
   const moved = async () => {
     await drag(page, start, end, { hold: true })
     expect((await readFeedback(page)).lifted).toEqual([IMAGE.id])
-    expect(await page.evaluate(() => window.__feel.shadows())).toContain(true)
+    await expect.poll(() => liftShadow(page, IMAGE.id)).toBe(true)
     expect(await page.evaluate(() => window.__feel.scene().objects[0])).toEqual({ ...IMAGE, left: 620 })
   }
   await page.getByRole('textbox', { name: 'Board title' }).fill('Save during lift')
@@ -163,7 +163,7 @@ test('lift is visible on the live canvas and absent from records, saves and undo
   await expect(undoButton(page)).toBeDisabled()
   await page.keyboard.press('Escape')
   expect(await readFeedback(page)).toEqual(NO_FEEDBACK)
-  expect(await page.evaluate(() => window.__feel.shadows())).not.toContain(true)
+  await expect.poll(() => liftShadow(page, IMAGE.id)).toBe(false)
   await page.mouse.up()
   await expect(undoButton(page)).toBeDisabled()
 
@@ -173,14 +173,14 @@ test('lift is visible on the live canvas and absent from records, saves and undo
   const after = { ...IMAGE, left: 620, frameId: FRONT.id }
   expect((await storedDoc(page)).objects).toEqual([after])
   expect(await page.evaluate(() => window.__feel.history().objects)).toEqual([after])
-  expect(await page.evaluate(() => window.__feel.shadows())).not.toContain(true)
+  await expect.poll(() => liftShadow(page, IMAGE.id)).toBe(false)
   await undoButton(page).click()
   await waitSaved(page)
   await expect.poll(async () => (await storedDoc(page)).objects).toEqual([IMAGE])
   await expect(undoButton(page)).toBeDisabled()
   await redoButton(page).click()
   await expect.poll(async () => (await storedDoc(page)).objects).toEqual([after])
-  expect(await page.evaluate(() => window.__feel.shadows())).not.toContain(true)
+  await expect.poll(() => liftShadow(page, IMAGE.id)).toBe(false)
 })
 
 test('turning off interaction feedback hides outlines, marks and lift', async ({ page }) => {
@@ -188,7 +188,7 @@ test('turning off interaction feedback hides outlines, marks and lift', async ({
   const end = at(670, 280)
   await drag(page, at(CENTRE.x, CENTRE.y), end, { hold: true })
   expect(await readFeedback(page)).toEqual(NO_FEEDBACK)
-  expect(await page.evaluate(() => window.__feel.shadows())).not.toContain(true)
+  await expect.poll(() => liftShadow(page, IMAGE.id)).toBe(false)
   await page.mouse.up()
   await expect.poll(async () => (await storedDoc(page)).objects[0]?.frameId).toBe(FRONT.id)
   await fileDrag(page, 'dragenter', end)
@@ -278,7 +278,7 @@ for (const reason of ['blur', 'lost release', 'dispose'] as const) {
     if (reason === 'dispose') await page.evaluate(() => window.__feel.dispose())
     await expectViewStopped(page)
     expect(await readFeedback(page)).toEqual(NO_FEEDBACK)
-    expect(await page.evaluate(() => window.__feel.shadows())).not.toContain(true)
+    await expect.poll(() => liftShadow(page, IMAGE.id)).toBe(false)
     await page.mouse.up()
     expect((await storedDoc(page)).objects).toEqual([IMAGE])
     if (reason !== 'dispose') {

@@ -6,7 +6,7 @@
  */
 import { expect, test } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
-import { AUTOSAVE_QUIET_MS, drag, editHasFocus, imageFile, openApp, pagePixels, openBlank, redoButton, sceneToPage, seedMilestone1, seedRaw, status, storedDoc, undoButton, waitSaved } from './helpers.ts'
+import { AUTOSAVE_QUIET_MS, drag, editHasFocus, expectSameLettering, imageFile, letteringIn, openApp, pagePixels, openBlank, redoButton, sceneToPage, seedMilestone1, seedRaw, status, storedDoc, undoButton, waitSaved } from './helpers.ts'
 import type { StoredBoard, StoredObject, View } from './helpers.ts'
 
 const UNIT: View = { zoom: 1, panX: 0, panY: 0 }
@@ -68,10 +68,12 @@ test.describe('dragging out a text box', () => {
     // The edited text's outline is in the accent colour. It is still at the drafted bottom before typing.
     await expect.poll(() => accentIn(page, base.x, base.y - 4, 240, 9)).toBeGreaterThan(100)
     await page.keyboard.type('a long sentence that has to wrap several times inside this box')
+    const live = await letteringIn(page, 90, 90, 600, 400) // what is typed is painted while it is typed
     await page.keyboard.press('Escape')
     await page.keyboard.press('Escape')
     const done = await storedWhen(page, (d) => texts(d).length === 1)
     expect(done.objects[0]).toMatchObject({ left: 100, top: 100, width: 300, minHeight: 300, fontSize: 24 })
+    expectSameLettering(live, await letteringIn(page, 90, 90, 600, 400), 500)
     const p0 = at(90, 90)
     const ink = await inkIn(page, p0.x, p0.y, 600, 400)
     expect(ink.right).toBeLessThanOrEqual(at(401, 0).x) // wrapped at the box's width
