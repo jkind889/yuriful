@@ -315,7 +315,9 @@ test('paper-box-geometry-floors-and-click-origin', async ({ page }) => {
   expect(Object.keys(scaled).sort()).toEqual(Object.keys(before).sort())
   // Both stored at two decimals: the width and the font size scaled by the same factor.
   expect(Math.abs((scaled.width as number) / (before.width as number) - k)).toBeLessThan(0.001)
-  expect(await look(page, 'bare')).toMatchObject({ padding: `${+(PAD_Y_EM * (scaled.fontSize as number)).toFixed(4)}px ${+(PAD_X_EM * (scaled.fontSize as number)).toFixed(4)}px` })
+  // The margins are rounded as records are (two decimals), so turning paper off and on is exact.
+  const r2 = (n: number) => Math.round(n * 100) / 100
+  expect(await look(page, 'bare')).toMatchObject({ padding: `${r2(PAD_Y_EM * (scaled.fontSize as number))}px ${r2(PAD_X_EM * (scaled.fontSize as number))}px` })
   expect(errors).toEqual([])
 })
 
@@ -336,6 +338,10 @@ test('paper-renders-in-frame-preview-and-with-caption-background', async ({ page
   const box = (await page.evaluate(() => window.__paper.proxy('p')))!
   const inPadding = px(60 + 4, 60 + box.height / 2)
   expect(inPadding).toEqual([255, 253, 248]) // --paper-fill, not the frame's white
+  // The edge (--paper-edge): a hairline ring just outside the sheet. On its left side halfway down it
+  // reads about 225; the shadow alone takes it only to about 245 there.
+  const ring = px(60 - 0.5, 60 + box.height / 2)
+  expect(ring[0]).toBeLessThan(235)
   const belowEdge = px(60 + 160, 60 + box.height + 2)
   expect(belowEdge[0]).toBeLessThan(255) // the shadow, drawn past the sheet, not clipped
   const farBelow = px(60 + 160, 60 + box.height + 40)
@@ -464,5 +470,265 @@ test('a press on the sheet round the words, while they are edited, puts the care
   expect((await probe(page)).editing).toBe(true)
   await page.keyboard.type('X')
   await storedWhen(page, (d) => byId(d, 't').text === 'Xfirst line\nsecond line')
+  expect(errors).toEqual([])
+})
+
+// ---- the first review's faults --------------------------------------------------------------------
+
+/** "Line 1" … "Line n", one to a line, and where line `k` (from 0) starts and ends in it. */
+const shortLines = (n: number) => Array.from({ length: n }, (_, i) => `Line ${i + 1}`).join('\n')
+const lineStart = (k: number) => Array.from({ length: k }, (_, i) => `Line ${i + 1}`.length + 1).reduce((a, b) => a + b, 0)
+const lineEnd = (k: number) => lineStart(k) + `Line ${k + 1}`.length
+
+/** A point given in a box's own coordinates (its top-left corner at 0, 0, turned with it) on the page. */
+function local(page: Page, box: { left: number; top: number; angle: number }, x: number, y: number) {
+  const a = (box.angle * Math.PI) / 180
+  return pt(page, box.left + x * Math.cos(a) - y * Math.sin(a), box.top + x * Math.sin(a) + y * Math.cos(a))
+}
+
+/** The height of one line of a card whose body holds `n` single lines (its own layout, untransformed). */
+const lineHeight = (page: Page, id: string, n: number) =>
+  page.evaluate(({ id, n }) => parseFloat(getComputedStyle(document.querySelector(`.scene-text[data-id="${id}"] > .scene-text-body`)!).height) / n, { id, n })
+
+const NOT_A_DOUBLE_CLICK_MS = 650
+
+/** Selects "Line" at the start of line 5 with the keyboard. */
+async function selectLine5Word(page: Page) {
+  await page.keyboard.press('Control+Home')
+  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown')
+  for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowRight')
+  await expect.poll(() => editedText(page)).toMatchObject({ start: lineStart(4), end: lineStart(4) + 4 })
+}
+
+test('the reviewer’s case: with a word selected on line 5, a click in the left margin beside line 1 puts a bare caret at its start', async ({ page }) => {
+  const rec = textRec('t', 100, 40, { surface: 'card', text: shortLines(28), width: 220 })
+  const { errors } = await open(page, [rec])
+  const lh = await lineHeight(page, 't', 28)
+  const into = await local(page, rec, 18 + 12, 13.5 + lh * 2.5)
+  await page.mouse.dblclick(into.x, into.y)
+  await expect.poll(async () => (await editedText(page))?.focused).toBe(true)
+  await page.waitForTimeout(NOT_A_DOUBLE_CLICK_MS)
+  await selectLine5Word(page)
+  const margin = await local(page, rec, 9, 13.5 + lh * 0.5)
+  await page.mouse.click(margin.x, margin.y)
+  await expect.poll(() => editedText(page)).toMatchObject({ start: 0, end: 0, focused: true })
+  await page.keyboard.type('X')
+  await storedWhen(page, (d) => byId(d, 't').text === `X${shortLines(28)}`)
+  expect(errors).toEqual([])
+})
+
+for (const zoom of [0.5, 1, 2]) {
+  for (const angle of [0, 25]) {
+    test(`a press in any margin of an edited paper text puts a bare caret at the nearest place on the line beside it; Shift extends (zoom ${zoom}, ${angle}°)`, async ({ page }) => {
+      const N = 10
+      const W = 256 // the words 220 wide inside 18 px margins
+      const approxH = N * 22.5 + 27
+      const a = (angle * Math.PI) / 180
+      const cx = 200 + (W / 2) * Math.cos(a) - (approxH / 2) * Math.sin(a)
+      const cy = 150 + (W / 2) * Math.sin(a) + (approxH / 2) * Math.cos(a)
+      const rec = textRec('t', 200, 150, { surface: 'card', text: shortLines(N), width: W, angle })
+      const { errors } = await open(page, [rec], { view: { zoom, panX: Math.round(640 - zoom * cx), panY: Math.round(400 - zoom * cy) } })
+      const lh = await lineHeight(page, 't', N)
+      const H = 27 + N * lh
+      const press = async (x: number, y: number, expected: { start: number; end: number }, what: string, shift = false) => {
+        const at = await local(page, rec, x, y)
+        if (shift) await page.keyboard.down('Shift')
+        await page.mouse.click(at.x, at.y)
+        if (shift) await page.keyboard.up('Shift')
+        await expect.poll(() => editedText(page), { message: what }).toMatchObject({ ...expected, focused: true })
+        expect((await probe(page)).editing, what).toBe(true)
+        await page.waitForTimeout(NOT_A_DOUBLE_CLICK_MS)
+      }
+      const into = await local(page, rec, 18 + 12, 13.5 + lh * 2.5)
+      await page.mouse.dblclick(into.x, into.y)
+      await expect.poll(async () => (await editedText(page))?.focused).toBe(true)
+      await page.waitForTimeout(NOT_A_DOUBLE_CLICK_MS)
+      // With a selection: the left margin beside line 1 (its start), the right margin beside line 2 (its end).
+      await selectLine5Word(page)
+      await press(9, 13.5 + lh * 0.5, { start: 0, end: 0 }, 'left margin, a selection')
+      await selectLine5Word(page)
+      await press(W - 9, 13.5 + lh * 1.5, { start: lineEnd(1), end: lineEnd(1) }, 'right margin, a selection')
+      // With a caret: the top margin, over the right of the first line (its end); the bottom margin, under the start of the last.
+      await press(W - 18 - 3, 6.75, { start: lineEnd(0), end: lineEnd(0) }, 'top margin, a caret')
+      await press(18 + 2, H - 6.75, { start: lineStart(N - 1), end: lineStart(N - 1) }, 'bottom margin, a caret')
+      // Shift: from there to the start of line 3, beside it in the left margin.
+      await press(9, 13.5 + lh * 2.5, { start: lineStart(2), end: lineStart(N - 1) }, 'left margin with Shift', true)
+      await page.keyboard.type('X')
+      await storedWhen(page, (d) => byId(d, 't').text === `${shortLines(N).slice(0, lineStart(2))}X${shortLines(N).slice(lineStart(N - 1))}`)
+      expect(errors).toEqual([])
+    })
+  }
+}
+
+/** A card's drawn height (its body and any paper padding), its body's, the proxy's and the selection box's (scene units). */
+async function heights(page: Page, id: string) {
+  const drawn = await page.evaluate((id) => {
+    const card = document.querySelector<HTMLElement>(`.scene-text[data-id="${id}"]`)!
+    const body = parseFloat(getComputedStyle(card.firstElementChild as HTMLElement).height)
+    const cs = getComputedStyle(card)
+    return { card: body + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom), body }
+  }, id)
+  const proxy = (await page.evaluate((id) => window.__paper.proxy(id), id))!
+  const zoom = (await probe(page)).viewport.zoom
+  const c = await page.evaluate(() => window.__paper.controls())
+  const selection = c ? Math.hypot(c.mb!.x - c.mt!.x, c.mb!.y - c.mt!.y) / zoom : null
+  return { ...drawn, proxy: proxy.height, selection }
+}
+
+for (const surface of ['card', undefined] as const) {
+  test(`a larger font size raises a fixed height below the least one for it, in the same step, and everything agrees (${surface ?? 'bare'})`, async ({ page }) => {
+    const rec = textRec('t', 100, 100, { text: shortLines(6), fontSize: 24, height: 72, ...(surface && { surface }) })
+    const { errors } = await open(page, [rec])
+    const least = surface ? 192 : 96 // 1.5 × 64, and on paper the 48 px margins above and below
+    // The selection box is the proxy plus Fabric's own padding round it.
+    await selectById(page, 't')
+    const start = await heights(page, 't')
+    const around = start.selection! - start.proxy
+    const agree = async (what: string) => {
+      const h = await heights(page, 't')
+      expect(byId(await storedDoc(page), 't').height, what).toBe(least)
+      expect(h.proxy, what).toBeCloseTo(least, 2)
+      expect(h.card, what).toBeCloseTo(least, 2)
+      expect(h.body, what).toBeCloseTo(96, 2) // a line and a half of words, never a sliver
+      expect(Math.abs(h.selection! - around - least), what).toBeLessThanOrEqual(0.5)
+    }
+    // Outside an edit.
+    await page.getByLabel('Font size').fill('64')
+    await storedWhen(page, (d) => byId(d, 't').fontSize === 64)
+    await agree('font size 64')
+    if (surface) {
+      // Off and on again: exactly as it was.
+      await paperButton(page).click()
+      await storedWhen(page, (d) => byId(d, 't').surface === undefined)
+      expect(byId(await storedDoc(page), 't').height).toBe(96)
+      await paperButton(page).click()
+      await storedWhen(page, (d) => byId(d, 't').surface === 'card')
+      await agree('off and on')
+      await page.getByRole('button', { name: 'Undo', exact: true }).click() // not Ctrl+Z: the Font size field has the keyboard
+      await page.getByRole('button', { name: 'Undo', exact: true }).click() // not Ctrl+Z: the Font size field has the keyboard
+    }
+    await page.getByRole('button', { name: 'Undo', exact: true }).click() // not Ctrl+Z: the Font size field has the keyboard
+    await storedWhen(page, (d) => byId(d, 't').fontSize === 24)
+    expect(byId(await storedDoc(page), 't')).toEqual(rec) // the size and the height come back together
+    // While the text is edited.
+    const into = await pt(page, 100 + (surface ? 24 : 0) + 20, 100 + (surface ? 18 : 0) + 12)
+    await page.mouse.dblclick(into.x, into.y)
+    await expect.poll(async () => (await editedText(page))?.focused).toBe(true)
+    await page.getByLabel('Font size').fill('64')
+    await storedWhen(page, (d) => byId(d, 't').fontSize === 64)
+    expect(byId(await storedDoc(page), 't').height).toBe(least)
+    expect((await heights(page, 't')).body).toBeCloseTo(96, 2)
+    const away = await pt(page, 900, 600)
+    await page.mouse.click(away.x, away.y)
+    await expect.poll(async () => (await probe(page)).editing).toBe(false)
+    await page.getByRole('button', { name: 'Undo', exact: true }).click() // not Ctrl+Z: the Font size field has the keyboard
+    await storedWhen(page, (d) => byId(d, 't').fontSize === 24)
+    expect(byId(await storedDoc(page), 't')).toEqual(rec)
+    expect(errors).toEqual([])
+  })
+}
+
+test('a stored fixed height below the least one (an older build) opens as it is, drawn at the least one', async ({ page }) => {
+  const rec = textRec('t', 100, 100, { text: shortLines(6), fontSize: 64, height: 72 })
+  const { errors } = await open(page, [rec])
+  const before = await snapshotIdb(page)
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  expect(await snapshotIdb(page)).toEqual(before)
+  const h = await heights(page, 't')
+  expect(h.body).toBeCloseTo(96, 2)
+  expect(h.proxy).toBeCloseTo(96, 2)
+  expect(byId(await storedDoc(page), 't')).toEqual(rec)
+  expect(errors).toEqual([])
+})
+
+test('the reviewer’s case: paper off and on for a corner-scaled, scrolled, fixed-height text keeps it where it was scrolled, and ten offs and ons give back the record exactly', async ({ page }) => {
+  const rec = textRec('t', 140, 90, { fontSize: 24, width: 320, height: 138.33, minHeight: 60.17, text: lines(29), surface: 'card' })
+  const { errors } = await open(page, [rec])
+  await selectById(page, 't')
+  const br = await handle(page, 'br')
+  await drag(page, br, { x: br.x + 57, y: br.y + 23 }, { steps: 10 })
+  const scaled = byId(await storedWhen(page, (d) => byId(d, 't').fontSize !== 24), 't')
+  expect(Number.isInteger((scaled.fontSize as number) * 4)).toBe(false) // a fractional size: the case that drifted
+  const inside = await pt(page, (scaled.left as number) + 100, (scaled.top as number) + 85)
+  await page.mouse.move(inside.x, inside.y)
+  await page.mouse.wheel(0, 235)
+  await page.waitForTimeout(300)
+  const shownTop = () => page.evaluate(() => document.querySelector<HTMLElement>('.scene-text[data-id="t"] > .scene-text-body')!.scrollTop)
+  const scrolled = await shownTop()
+  expect(scrolled).toBeGreaterThan(100)
+  const g0 = await glyphs(page, 't')
+  for (const surface of [undefined, 'card']) {
+    await paperButton(page).click()
+    await storedWhen(page, (d) => byId(d, 't').surface === surface)
+    await page.waitForTimeout(100)
+    expect(await shownTop()).toBe(scrolled)
+    expectSameGlyphs(await glyphs(page, 't'), g0)
+  }
+  expect(byId(await storedDoc(page), 't')).toEqual(scaled)
+  for (let i = 0; i < 9; i++) {
+    await paperButton(page).click()
+    await paperButton(page).click()
+  }
+  await expect(paperButton(page)).toHaveAttribute('aria-pressed', 'true')
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS + 200)
+  expect(JSON.stringify(byId(await storedDoc(page), 't'))).toBe(JSON.stringify(scaled))
+  expect(await shownTop()).toBe(scrolled)
+  expect(errors).toEqual([])
+})
+
+test('the Paper button on a new box before anything is typed shows what the box has and toggles every time; the box keeps that choice', async ({ page }) => {
+  const { errors } = await open(page, [textRec('old', 100, 500, { text: 'old' })])
+  const before = await snapshotIdb(page)
+  await page.keyboard.press('t')
+  const at = await pt(page, 300, 200)
+  await page.mouse.click(at.x, at.y)
+  await expect.poll(async () => (await editedText(page))?.focused).toBe(true)
+  const showing = async () => ({ pressed: await paperButton(page).getAttribute('aria-pressed'), paper: await page.locator('.scene-text.is-editing').evaluate((el) => el.classList.contains('has-paper')) })
+  expect(await showing()).toEqual({ pressed: 'true', paper: true })
+  for (const on of [false, true, false]) {
+    await paperButton(page).click()
+    await expect.poll(showing).toEqual({ pressed: String(on), paper: on })
+  }
+  // Left blank: discarded, nothing written.
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS + 300)
+  expect(await snapshotIdb(page)).toEqual(before)
+  // Again, and typed into: stored as chosen, the words where the press put them.
+  await page.keyboard.press('t')
+  await page.mouse.click(at.x, at.y)
+  await expect.poll(async () => (await editedText(page))?.focused).toBe(true)
+  await paperButton(page).click()
+  await expect.poll(showing).toEqual({ pressed: 'false', paper: false })
+  await page.keyboard.type('bare by choice')
+  const doc = await storedWhen(page, (d) => texts(d).some((t) => t.text === 'bare by choice'))
+  const made = texts(doc).find((t) => t.text === 'bare by choice')!
+  expect(made).not.toHaveProperty('surface')
+  expect(made).toMatchObject({ left: 300, top: 200, width: 10 * (made.fontSize as number) })
+  expect(errors).toEqual([])
+})
+
+test('an attached caption’s sheet stays against its image when paper is toggled, so its words move by the margin', async ({ page }) => {
+  const image = { type: 'image', id: 'img', assetId: 'a1', left: 480, top: 80, angle: 0, scaleX: 1, scaleY: 1 }
+  const caption = textRec('cap', 500, 207, { text: 'At a point on the edge', width: 160, captionOf: 'img', captionPosition: 0.5 })
+  const { errors } = await open(page, [image, caption], { assets: [{ id: 'a1', name: 'a.png', width: 200, height: 120 }] })
+  const edges = () =>
+    page.evaluate(() => {
+      const img = document.querySelector('.scene-image[data-id="img"]')!.getBoundingClientRect()
+      const cap = document.querySelector('.scene-text[data-id="cap"]')!.getBoundingClientRect()
+      return { gap: cap.top - img.bottom, centre: (cap.left + cap.right) / 2 - (img.left + img.right) / 2 }
+    })
+  const e0 = await edges()
+  const g0 = await glyphs(page, 'cap')
+  await selectById(page, 'cap')
+  await paperButton(page).click()
+  await storedWhen(page, (d) => byId(d, 'cap').surface === 'card')
+  const e1 = await edges()
+  // The sheet (the box) is placed against the image as the bare caption was: the same gap, the same place along the edge.
+  expect(Math.abs(e1.gap - e0.gap)).toBeLessThanOrEqual(0.5)
+  expect(Math.abs(e1.centre - e0.centre)).toBeLessThanOrEqual(0.5)
+  // So its words move down by the top margin (0.75 em of 18 px).
+  const g1 = await glyphs(page, 'cap')
+  expect(Math.abs(g1[0]![1]! - g0[0]![1]! - PAD_Y_EM * 18)).toBeLessThanOrEqual(0.5)
+  expect(byId(await storedDoc(page), 'cap')).toMatchObject({ captionOf: 'img', captionPosition: 0.5 })
   expect(errors).toEqual([])
 })

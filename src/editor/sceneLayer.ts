@@ -1451,14 +1451,41 @@ export class SceneLayer {
   }
 
   /**
+   * The point of the page nearest to (clientX, clientY) inside the words' own box of a text card, as
+   * shown now (inside a paper's padding, and the visible part of a fixed-height text), a little in
+   * from its edges: a press beside the words maps to the start of the line it is level with (left),
+   * its end (right), or the first or last line shown (above, below). Worked out in the card's own
+   * coordinates, so a turned or zoomed card is handled the same. Null when there is no such card.
+   */
+  nearestInWords(id: string, clientX: number, clientY: number): { clientX: number; clientY: number } | null {
+    const item = this.items.get(id)
+    const body = item && this.textBody(item)
+    const local = body ? this.toCard(id, clientX, clientY) : null
+    if (!item || !body || !local) return null
+    const pad = item.pad ?? { x: 0, y: 0 }
+    const z = this.view.zoom || 1
+    const inset = Math.min(1 / z, body.clientWidth / 2, body.clientHeight / 2) // about a screen pixel in
+    const x = Math.min(Math.max(local.x, pad.x + inset), pad.x + body.clientWidth - inset)
+    const y = Math.min(Math.max(local.y, pad.y + inset), pad.y + body.clientHeight - inset)
+    const r = this.root.getBoundingClientRect()
+    const [a, b, c, d, e, f] = item.matrix
+    return { clientX: r.left + this.view.panX + z * (a * x + c * y + e), clientY: r.top + this.view.panY + z * (b * x + d * y + f) }
+  }
+
+  /**
    * Scrolls a fixed-height card just enough to show the span from `top` to `bottom` (its own
-   * coordinates, as shown now: see `toCard`), with `CARET_MARGIN` of room above or below it.
+   * coordinates, as shown now: see `toCard`), with `CARET_MARGIN` of room above or below it in the
+   * words' own viewport (inside a paper's padding).
    */
   revealSpan(id: string, top: number, bottom: number) {
     const item = this.items.get(id)
     const body = item && this.textBody(item)
     if (!item || !body || item.fixed === undefined || item.culled) return
     this.adopt(item)
+    // In the words' own viewport: below the paper's top padding, if any.
+    const inset = item.pad?.y ?? 0
+    top -= inset
+    bottom -= inset
     const view = body.clientHeight
     const margin = Math.min(CARET_MARGIN, Math.max(0, (view - (bottom - top)) / 2))
     // The span was measured on the page, which shows the rounded position.
@@ -1899,6 +1926,8 @@ export class SceneLayer {
     const onCard = fixed !== undefined || rec.surface === 'card'
     item.el.style.backgroundColor = onCard ? (rec.captionBackground ?? '') : ''
     body.style.backgroundColor = onCard ? '' : (rec.captionBackground ?? '')
+    // The words' own viewport (`innerText` rounds it as records are): turning paper on or off leaves it
+    // exactly as it was, and so the text where it was scrolled.
     if (item.fixed !== fixed) {
       item.fixed = fixed
       this.scrollTops.delete(id)

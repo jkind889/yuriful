@@ -22,7 +22,7 @@ import { boxOf, contentFromDoc, docFromText, plainTextOfDoc, textOffsetAt, textb
 import { createEditSession } from './textSession.ts'
 import type { EditSession } from './textSession.ts'
 import { isBlankTextDoc } from '../model/textDoc.ts'
-import { innerText, paperPad, paperToggle } from '../model/paper.ts'
+import { heldFixedHeight, innerText, paperPad, paperToggle } from '../model/paper.ts'
 import type { TextContent } from '../model/textDoc.ts'
 
 const NO_FRAMES: ReadonlySet<string> = new Set()
@@ -357,12 +357,14 @@ export class DomTextAdapter implements TextAdapter {
     const sy = Math.abs(obj.scaleY)
     if (Math.abs(sx - 1) < 0.001 && Math.abs(sy - 1) < 0.001) return false
     const s = (sx + sy) / 2
+    const fontSize = roundPositive(td.fontSize * s, 2)
     setTextData(obj, {
       ...td,
-      fontSize: roundPositive(td.fontSize * s, 2),
+      fontSize,
       width: roundPositive(td.width * sx, 2),
       ...(td.minHeight !== undefined && { minHeight: round(td.minHeight * sy) }),
-      ...(td.height !== undefined && { height: roundPositive(td.height * sy) }),
+      // Rounding can take a scaled fixed height just under the least one for the scaled size: held to it.
+      ...(td.height !== undefined && { height: heldFixedHeight(roundPositive(td.height * sy), fontSize, td.surface) }),
     })
     obj.set({ scaleX: 1, scaleY: 1 })
     // A larger size can make a word wider than the box: it widens, as a text box does, from its left edge.
@@ -691,8 +693,9 @@ export class DomTextAdapter implements TextAdapter {
   }
 
   /**
-   * The text offset under a page point, or under the point moved a little toward the box's centre
-   * when it falls just outside the text (its edge, its padding). Read beneath the items in front of
+   * The text offset under a page point, or under the nearest point in the words' own box when it
+   * falls outside them (the box's edge, a paper's padding); failing that, under the point moved a
+   * little toward the box's centre. Read beneath the items in front of
    * the card, which otherwise take the point.
    */
   private offsetNear(edit: LiveEdit, view: EditorView, at: ClientPoint): number | null {
@@ -705,6 +708,11 @@ export class DomTextAdapter implements TextAdapter {
   }
 
   private offsetNearShown(edit: LiveEdit, view: EditorView, at: ClientPoint): number | null {
+    // The nearest point in the words' own box: beside a line, its start or end; above or below the
+    // words, the first or last line shown.
+    const near = this.scene.layer.nearestInWords(edit.id, at.clientX, at.clientY)
+    const pos = near && posAt(view, near)
+    if (pos !== null && pos !== undefined) return textOffsetAt(edit.session.state.doc, pos, -1)
     const ctr = edit.target.getCenterPoint()
     const v = this.host.canvas.viewportTransform
     const r = this.host.canvas.upperCanvasEl.getBoundingClientRect()
@@ -1006,11 +1014,17 @@ export class DomTextAdapter implements TextAdapter {
     if (!active || !td || isLocked(active) || !Number.isFinite(size)) return
     const fontSize = clamp(size, MIN_FONT_SIZE, MAX_FONT_SIZE)
     if (fontSize === td.fontSize) return
-    setTextData(active, { ...td, fontSize }) // headings keep their ratio (CSS em)
+    // Headings keep their ratio (CSS em). A fixed height a larger size would be below its least one
+    // is raised to it, in the same step (undo gives back both).
+    setTextData(active, { ...td, fontSize, ...(td.height !== undefined && { height: heldFixedHeight(td.height, fontSize, td.surface) }) })
     this.syncCard(active, { widen: 'left' })
     this.host.canvas.requestRenderAll()
-    // A text that is blank right now (emptied in the middle of an edit) is not in the scene.
-    if (isBlankTextDoc(td)) return
+    if (isBlankTextDoc(td)) {
+      // A text that is blank right now (new, or emptied in the middle of an edit) is not in the scene:
+      // nothing is saved, but the panel shows what it has.
+      this.host.syncState()
+      return
+    }
     if (this.isEditing(active) && captionOf(active)) {
       this.host.syncCaptions(active)
       this.host.markDirty()
@@ -1120,7 +1134,11 @@ export class DomTextAdapter implements TextAdapter {
       this.host.commit()
       return
     }
-    if (isBlankTextDoc(td)) return // a text that is blank right now is not in the scene
+    if (isBlankTextDoc(td)) {
+      // A text that is blank right now is not in the scene: nothing is saved, but the panel shows what it has.
+      this.host.syncState()
+      return
+    }
     if (captionOf(obj)) this.host.syncCaptions(obj)
     this.host.markDirty()
     this.host.syncState()
@@ -1154,7 +1172,11 @@ export class DomTextAdapter implements TextAdapter {
       this.host.commit()
       return
     }
-    if (isBlankTextDoc(td)) return // a text that is blank right now is not in the scene
+    if (isBlankTextDoc(td)) {
+      // A text that is blank right now is not in the scene: nothing is saved, but the panel shows what it has.
+      this.host.syncState()
+      return
+    }
     if (captionOf(obj)) this.host.syncCaptions(obj)
     this.host.markDirty()
     this.host.syncState()

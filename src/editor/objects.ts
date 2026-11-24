@@ -3,7 +3,7 @@ import type { FabricObject, TransformActionHandler } from 'fabric'
 import { clampCrop, storedCrop } from '../model/crop.ts'
 import { round, roundPositive } from '../model/doc.ts'
 import { canonicalTextFormatting } from '../model/richText.ts'
-import { minFixedHeight } from '../model/textDoc.ts'
+import { heldFixedHeight, minFixedHeight } from '../model/paper.ts'
 import type { CaptionSide, CropRect, FrameRecord, ImageRecord, ObjectRecord, TextRecord } from '../model/types.ts'
 import type { Point, Size } from '../model/viewport.ts'
 
@@ -289,14 +289,18 @@ export function createFrameProxy(rec: FrameRecord): FabricObject {
 function proxyTextRecord(td: TextData, m: Meta, base: { id: string; left: number; top: number; angle: number }, owner: { frameId?: string; locked?: true }, sx: number, sy: number): TextRecord {
   const s = (sx + sy) / 2
   const { font, align, color, spans, headings, blocks } = td
+  const fontSize = roundPositive(td.fontSize * s, 2)
+  // A scaled fixed height stays at least the least one for the scaled size (rounding can take it
+  // just under); an unscaled one is the record's as it is, even below it (`innerText` draws it there).
+  const height = td.height === undefined ? undefined : sx === 1 && sy === 1 ? td.height : heldFixedHeight(roundPositive(td.height * sy), fontSize, td.surface)
   return {
     ...base,
     type: 'text',
     text: td.text,
-    fontSize: roundPositive(td.fontSize * s, 2),
+    fontSize,
     width: roundPositive(td.width * sx),
     ...(td.minHeight !== undefined && { minHeight: round(td.minHeight * sy) }),
-    ...(td.height !== undefined && { height: roundPositive(td.height * sy) }),
+    ...(height !== undefined && { height }),
     ...(font !== undefined && { font }),
     ...(align !== undefined && { align }),
     ...(color !== undefined && { color }),

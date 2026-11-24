@@ -37,6 +37,20 @@ const lines = (n: number, from = 1) =>
 
 const textRec = (id: string, left: number, top: number, extra: Record<string, unknown> = {}) => ({ type: 'text', id, left, top, angle: 0, text: lines(30), fontSize: 18, width: 360, ...extra })
 
+/**
+ * The same text on paper (Slice 5), its words exactly where they were: the sheet round them, the
+ * words' own viewport the same size. `PAPER_PAD_X_EM` and `PAPER_PAD_Y_EM` in `src/model/paper.ts`,
+ * rounded as records are.
+ */
+function onPaper<T extends { left: number; top: number; width: number; fontSize: number; height?: number }>(rec: T): T & { surface: 'card' } {
+  const r2 = (n: number) => Math.round(n * 100) / 100
+  const px = r2(rec.fontSize * 1)
+  const py = r2(rec.fontSize * 0.75)
+  return { ...rec, surface: 'card', left: r2(rec.left - px), top: r2(rec.top - py), width: r2(rec.width + 2 * px), ...(rec.height !== undefined && { height: r2(rec.height + 2 * py) }) }
+}
+const SURFACES = ['bare', 'paper'] as const
+const asSurface = <T extends { left: number; top: number; width: number; fontSize: number; height?: number }>(rec: T, surface: (typeof SURFACES)[number]) => (surface === 'paper' ? onPaper(rec) : rec)
+
 type Block = Record<string, unknown>
 const p = (text?: string): Block => (text ? { type: 'paragraph', content: [{ text }] } : { type: 'paragraph' })
 
@@ -586,10 +600,11 @@ test('scrolling-is-view-state-only', async ({ page }) => {
 
 // ---- editing in a fixed-height text -----------------------------------------------------------------
 
-for (const zoom of [1, 2]) {
-  test(`the caret stays in view in a fixed-height text, and nothing else scrolls (zoom ${zoom})`, async ({ page }) => {
+for (const zoom of [1, 2]) for (const surface of SURFACES) {
+  test(`the caret stays in view in a fixed-height text, and nothing else scrolls (zoom ${zoom}, ${surface})`, async ({ page }) => {
     const view = { zoom, panX: 300 - 200 * zoom, panY: 100 - 100 * zoom }
-    const { errors } = await open(page, [textRec('c', 200, 100, { text: lines(20), height: 120 })], { view })
+    // On paper the caret keeps the same room from the fades, in the words' own viewport.
+    const { errors } = await open(page, [asSurface(textRec('c', 200, 100, { text: lines(20), height: 120 }), surface)], { view })
     await page.evaluate(() => navigator.clipboard.writeText('pasted one\npasted two\npasted three'))
     const fixedView = (await probe(page)).viewport
     // After every key: the caret is shown, and clear of a fade wherever there is one (CARET_CLEAR scene px).
@@ -636,8 +651,9 @@ for (const zoom of [1, 2]) {
   })
 }
 
-test('entering and leaving an edit while scrolled moves nothing on screen, and the caret lands on the word pressed', async ({ page }) => {
-  const { errors } = await open(page, [textRec('c', 200, 100, { height: 200 })])
+for (const surface of SURFACES)
+test(`entering and leaving an edit while scrolled moves nothing on screen, and the caret lands on the word pressed (${surface})`, async ({ page }) => {
+  const { errors } = await open(page, [asSurface(textRec('c', 200, 100, { height: 200 }), surface)])
   await wheel(page, at(await pt(page, 300, 150), 70, 3))
   expect((await scrollOf(page, 'c')).top).toBe(210)
   const idle = await characterBoxes(page, 'c')
@@ -1321,9 +1337,9 @@ for (const angle of [30, -45]) {
 /** The page's own position of a card's text (what it shows, rounded as it rounds). */
 const shownTop = (page: Page, id: string) => page.evaluate((id) => document.querySelector<HTMLElement>(`.scene-text[data-id="${id}"] > .scene-text-body`)!.scrollTop, id)
 
-for (const height of [133.23, 130, 140.27, 160]) {
-test(`after the browser follows the caret, the next one-pixel wheel step moves the text one pixel (the reviewer's sequence, height ${height})`, async ({ page }) => {
-  const { errors } = await open(page, [textRec('c', 300, 180, { width: 250, height, text: lines(75) })])
+for (const height of [133.23, 130, 140.27, 160]) for (const surface of SURFACES) {
+test(`after the browser follows the caret, the next one-pixel wheel step moves the text one pixel (the reviewer's sequence, height ${height}, ${surface})`, async ({ page }) => {
+  const { errors } = await open(page, [asSurface(textRec('c', 300, 180, { width: 250, height, text: lines(75) }), surface)])
   const at45 = await pt(page, 345, 200)
   await editAt(page, at45)
   await page.keyboard.press('Control+End')
@@ -1343,9 +1359,9 @@ test(`after the browser follows the caret, the next one-pixel wheel step moves t
 })
 }
 
-for (const height of [133.23, 160]) {
-test(`after every caret action the next one-pixel wheel step moves the text exactly one pixel on the page (height ${height})`, async ({ page }) => {
-  const { errors } = await open(page, [textRec('c', 300, 180, { width: 250, height, text: lines(75) })])
+for (const height of [133.23, 160]) for (const surface of SURFACES) {
+test(`after every caret action the next one-pixel wheel step moves the text exactly one pixel on the page (height ${height}, ${surface})`, async ({ page }) => {
+  const { errors } = await open(page, [asSurface(textRec('c', 300, 180, { width: 250, height, text: lines(75) }), surface)])
   await page.evaluate(() => navigator.clipboard.writeText('pasted one\npasted two'))
   const inside = await pt(page, 345, 200)
   await editAt(page, inside)

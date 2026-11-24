@@ -21,23 +21,50 @@ export interface PaperPad {
 
 const NO_PAD: PaperPad = { x: 0, y: 0 }
 
-/** The padding (scene units) of a text of base size `fontSize` with or without paper. */
+/**
+ * The padding (scene units) of a text of base size `fontSize` with or without paper, rounded as
+ * records are (two decimals): each margin is one stored-precision number, so the Paper toggle adds
+ * and takes away exactly the same amount and on then off gives back the record it started from.
+ */
 export function paperPad(rec: Pick<TextRecord, 'fontSize' | 'surface'>): PaperPad {
-  return rec.surface === 'card' ? { x: rec.fontSize * PAPER_PAD_X_EM, y: rec.fontSize * PAPER_PAD_Y_EM } : NO_PAD
+  return rec.surface === 'card' ? { x: round(rec.fontSize * PAPER_PAD_X_EM), y: round(rec.fontSize * PAPER_PAD_Y_EM) } : NO_PAD
 }
 
 /**
- * The words' own box inside a paper text: the record with its width, drawn minimum height and fixed
- * height less the padding (never below zero, a fixed height never below one). A text without paper
- * is returned as it is. Everything that lays the words out (wrapping, the words' floor, the no-wrap
- * pieces of a drawn box, the measured height) works on this; the sheet adds the padding back.
+ * The least fixed height of a text of base size `fontSize` (scene units): one and a half font sizes,
+ * rounded, so a line of body text always shows whole (a text's last line is 1.13 font sizes tall);
+ * on paper, the padding above and below on top of that, so the words' own viewport has the same
+ * least height either way. A stored fixed height is never below it: whatever raises it above a
+ * text's height (a font size, paper turned on) raises the height with it, and a stored height below
+ * it (from an older build) is drawn at it, the record left as it is (`innerText`).
+ */
+export function minFixedHeight(fontSize: number, surface?: 'card'): number {
+  return round(Math.max(1, Math.round(fontSize * 1.5)) + 2 * paperPad({ fontSize, surface }).y)
+}
+
+/** A fixed height held to the least one for the text's size and paper (`minFixedHeight`). */
+export function heldFixedHeight(height: number, fontSize: number, surface?: 'card'): number {
+  return Math.max(height, minFixedHeight(fontSize, surface))
+}
+
+/**
+ * The words' own box inside a text, as it is drawn: the record with its width, drawn minimum height
+ * and fixed height less the padding (never below zero, a fixed height never below one), rounded as
+ * records are, and a fixed height first held to `minFixedHeight`. A bare text whose height (if any)
+ * is not below its least one is returned as it is. Everything that lays the words out (wrapping, the
+ * words' floor, the no-wrap pieces of a drawn box, the measured height) works on this; the sheet adds
+ * the padding back.
  */
 export function innerText<T extends Pick<TextRecord, 'fontSize' | 'width' | 'minHeight' | 'height' | 'surface'>>(rec: T): T {
   const pad = paperPad(rec)
-  if (pad === NO_PAD) return rec
-  const out: T = { ...rec, width: Math.max(0, rec.width - 2 * pad.x) }
-  if (rec.minHeight !== undefined) out.minHeight = Math.max(0, rec.minHeight - 2 * pad.y)
-  if (rec.height !== undefined) out.height = Math.max(1, rec.height - 2 * pad.y)
+  const height = rec.height === undefined ? undefined : heldFixedHeight(rec.height, rec.fontSize, rec.surface)
+  if (pad === NO_PAD && height === rec.height) return rec
+  const out: T = { ...rec }
+  if (pad !== NO_PAD) {
+    out.width = Math.max(0, round(rec.width - 2 * pad.x))
+    if (rec.minHeight !== undefined) out.minHeight = Math.max(0, round(rec.minHeight - 2 * pad.y))
+  }
+  if (height !== undefined) out.height = Math.max(1, round(height - 2 * pad.y))
   return out
 }
 
@@ -57,6 +84,11 @@ export interface PaperToggle {
  * they do not move or re-wrap. The box's height (fixed, or the height its words give it) changes by
  * `2 × padY` too, so its centre stays where it was; `angle` turns the box about its top-left corner,
  * as records do, so the corner moves along the turned axes.
+ *
+ * Every amount is worked out once as a stored-precision number (the margins, and the corner's shift
+ * along the turned axes) and added or taken away as it is, so off then on, or on then off, gives back
+ * the box exactly, however many times. A fixed height ends no lower than `minFixedHeight` for the
+ * new surface (it only bites on a height already below the least one before the toggle).
  */
 export function paperToggle(
   box: { left: number; top: number; angle: number; width: number; minHeight?: number; height?: number; fontSize: number },
@@ -64,18 +96,18 @@ export function paperToggle(
 ): PaperToggle {
   const pad = paperPad({ fontSize: box.fontSize, surface: 'card' })
   const sign = on ? 1 : -1
-  const dw = sign * 2 * pad.x
-  const dh = sign * 2 * pad.y
   const r = (box.angle * Math.PI) / 180
   const cos = box.angle === 0 ? 1 : Math.cos(r)
   const sin = box.angle === 0 ? 0 : Math.sin(r)
-  // The centre is the corner plus the turned half-size: keep it while the half-size changes by (dw/2, dh/2).
+  // The centre is the corner plus the turned half-size: keep it while the half-size grows by the margins.
+  const shiftX = round(cos * pad.x - sin * pad.y)
+  const shiftY = round(sin * pad.x + cos * pad.y)
   const out: PaperToggle = {
-    left: round(box.left - (cos * dw) / 2 + (sin * dh) / 2),
-    top: round(box.top - (sin * dw) / 2 - (cos * dh) / 2),
-    width: roundPositive(Math.max(1, box.width + dw)),
+    left: round(box.left - sign * shiftX),
+    top: round(box.top - sign * shiftY),
+    width: roundPositive(Math.max(1, box.width + sign * 2 * pad.x)),
   }
-  if (box.minHeight !== undefined) out.minHeight = round(Math.max(0, box.minHeight + dh))
-  if (box.height !== undefined) out.height = roundPositive(Math.max(1, box.height + dh))
+  if (box.minHeight !== undefined) out.minHeight = round(Math.max(0, box.minHeight + sign * 2 * pad.y))
+  if (box.height !== undefined) out.height = heldFixedHeight(roundPositive(Math.max(1, box.height + sign * 2 * pad.y)), box.fontSize, on ? 'card' : undefined)
   return out
 }

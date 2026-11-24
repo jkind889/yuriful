@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createEmptyDoc } from '../model/doc.ts'
-import { PAPER_PAD_X_EM, PAPER_PAD_Y_EM } from '../model/paper.ts'
+import { PAPER_PAD_X_EM, PAPER_PAD_Y_EM, minFixedHeight } from '../model/paper.ts'
 import type { BoardDoc, FrameRecord, TextRecord } from '../model/types.ts'
 import { BARE_NEW_TEXT_KEY, Editor } from './Editor.ts'
 import { ProxyRect, textDataOf } from './objects.ts'
@@ -102,6 +102,23 @@ describe('who gets paper', () => {
     expect(rec).toMatchObject({ left: 300, top: 200, width: 10 * rec.fontSize })
     expect(rec).not.toHaveProperty('surface')
   })
+
+  it('a production build never reads that switch: the same click there makes paper', async () => {
+    localStorage.setItem(BARE_NEW_TEXT_KEY, '1')
+    vi.stubEnv('DEV', false) // what `import.meta.env.DEV` is in `npm run build` (Vite then drops the branch)
+    try {
+      const { editor, canvas, scene } = await setup()
+      editor.setTool('text')
+      pressCanvas(canvas, 300, 200)
+      releaseCanvas(canvas, 300, 200)
+      await tick()
+      insertText(editor, 'made in production')
+      textAdapterOf(editor).finishEditing()
+      expect(scene()[0]).toMatchObject({ surface: 'card' })
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
 })
 
 describe('the floors add the padding', () => {
@@ -171,5 +188,105 @@ describe('the Paper command', () => {
     textAdapterOf(editor).normalizeScale(tb as never)
     expect(scene()[0]).toMatchObject({ surface: 'card', fontSize: 30, width: 510 })
     expect(Object.keys(scene()[0]!).sort()).toEqual(Object.keys(note({ surface: 'card' })).sort())
+  })
+})
+
+describe('a stored fixed height is never below the least one for the text’s size and paper', () => {
+  for (const surface of ['card', undefined] as const) {
+    it(`a larger font size from the panel raises it in the same step; undo gives back both (${surface ?? 'bare'})`, async () => {
+      const rec = note({ fontSize: 24, height: 72, ...(surface && { surface }) })
+      const { editor, canvas, scene } = await setup([rec])
+      const tb = canvas.objects[0]!
+      canvas.setActiveObject(tb)
+      editor.setFontSize(64)
+      await flush()
+      const least = minFixedHeight(64, surface)
+      expect(least).toBe(surface ? 192 : 96)
+      expect(scene()[0]).toMatchObject({ fontSize: 64, height: least })
+      expect(tb.height).toBe(least) // the proxy (and so the selection box) agrees with the record
+      editor.setFontSize(30) // a smaller size never lowers it
+      await flush()
+      expect(scene()[0]).toMatchObject({ fontSize: 30, height: least })
+      editor.undo()
+      editor.undo()
+      await flush()
+      expect(scene()[0]).toEqual(rec)
+      expect(canvas.objects[0]!.height).toBe(72) // undo builds the proxy afresh
+    })
+  }
+
+  it('while the text is edited too: part of the edit’s step', async () => {
+    const rec = note({ fontSize: 24, height: 72, surface: 'card' })
+    const { editor, store, canvas, scene } = await setup([rec])
+    const tb = canvas.objects[0]!
+    canvas.setActiveObject(tb)
+    startEditing(editor, tb)
+    editor.setFontSize(64)
+    await flush()
+    expect(store.saves.at(-1)!.doc.objects[0]).toMatchObject({ fontSize: 64, height: 192 })
+    expect(tb.height).toBe(192)
+    textAdapterOf(editor).finishEditing()
+    editor.undo()
+    await flush()
+    expect(scene()[0]).toEqual(rec)
+  })
+
+  it('a stored height below it (an older build) loads as it is and is drawn at it', async () => {
+    const rec = note({ fontSize: 64, height: 72 })
+    const { canvas, scene, store } = await setup([rec, note({ id: 'p', top: 400, fontSize: 64, height: 72, surface: 'card' })])
+    await flush()
+    expect(scene()[0]).toEqual(rec)
+    expect(store.saves).toHaveLength(0)
+    expect(canvas.objects.map((o) => o.height)).toEqual([96, 192])
+  })
+
+  it('turning paper on raises a height below it; a corner scale that rounds under it is held to it', async () => {
+    const { editor, canvas, scene } = await setup([note({ fontSize: 64, height: 72 }), note({ id: 's', top: 400, fontSize: 24, height: 36 })])
+    canvas.setActiveObject(canvas.objects[0] as never)
+    editor.setTextPaper(true)
+    expect(scene()[0]).toMatchObject({ surface: 'card', height: 192 })
+    const tb = canvas.objects[1]!
+    Object.assign(tb, { scaleX: 1.0167, scaleY: 1.0167 }) // 24.4 px: 36.6 high, least 37
+    textAdapterOf(editor).normalizeScale(tb as never)
+    expect(scene()[1]).toMatchObject({ fontSize: 24.4, height: 37 })
+  })
+})
+
+describe('the Paper button on a new box before anything is typed', () => {
+  it('shows what the box has and toggles each time; the box is stored as chosen once it has words; discarded, nothing is written', async () => {
+    const { editor, store, canvas, scene } = await setup()
+    editor.setTool('text')
+    pressCanvas(canvas, 300, 200)
+    releaseCanvas(canvas, 300, 200)
+    await tick()
+    const paper = () => editor.getState().selection?.textPaper
+    expect(paper()).toBe(true)
+    editor.setTextPaper(false)
+    expect(paper()).toBe(false)
+    editor.setTextPaper(true)
+    expect(paper()).toBe(true)
+    editor.setTextPaper(false)
+    expect(paper()).toBe(false)
+    await flush()
+    expect(store.saves).toHaveLength(0)
+    insertText(editor, 'bare now')
+    textAdapterOf(editor).finishEditing()
+    await flush()
+    const rec = scene()[0]!
+    expect(rec).not.toHaveProperty('surface')
+    // The words stayed at the press point: the sheet went from round them.
+    expect(rec).toMatchObject({ left: 300, top: 200, width: 10 * rec.fontSize })
+
+    // And one left blank after a toggle writes nothing.
+    const before = store.saves.length
+    editor.setTool('text')
+    pressCanvas(canvas, 300, 500)
+    releaseCanvas(canvas, 300, 500)
+    await tick()
+    editor.setTextPaper(false)
+    textAdapterOf(editor).finishEditing()
+    await flush()
+    expect(store.saves).toHaveLength(before)
+    expect(scene()).toHaveLength(1)
   })
 })

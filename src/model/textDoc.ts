@@ -1,6 +1,5 @@
 import { DEFAULT_FONT, FONT_IDS, MARKS, canonicalHeadings, canonicalSpans, canonicalTextFormatting, isHeadingLevel, paragraphsOf } from './richText.ts'
 import type { TextFormatting } from './richText.ts'
-import { PAPER_PAD_Y_EM } from './paper.ts'
 import type { BlockNode, FontId, InlineRun, ListItemNode, ObjectRecord, TaskItemNode, TextMark, TextRecord, TextSpan } from './types.ts'
 
 /**
@@ -359,15 +358,8 @@ export function canonicalTextContent(raw: Record<string, unknown>): TextContent 
   return { text: plainTextOf(blocks), ...box, blocks }
 }
 
-/**
- * The least fixed height a bottom-handle drag gives a text of base size `fontSize` (scene units):
- * one and a half font sizes, so a line of body text always shows whole (a text's last line is 1.13
- * font sizes tall). Only the drag is held to it; a stored height is read as it is.
- */
-export function minFixedHeight(fontSize: number, surface?: 'card'): number {
-  // On paper, the line is inside the padding: the sheet is that much taller.
-  return Math.max(1, Math.round(fontSize * (1.5 + (surface === 'card' ? 2 * PAPER_PAD_Y_EM : 0))))
-}
+/** The least fixed height of a text (see `paper.ts`, where it sits beside the paper padding it adds). */
+export { minFixedHeight } from './paper.ts'
 
 /** A fixed height, kept only when it is a finite number above zero. */
 export function canonicalHeight(raw: unknown): { height?: number } {
