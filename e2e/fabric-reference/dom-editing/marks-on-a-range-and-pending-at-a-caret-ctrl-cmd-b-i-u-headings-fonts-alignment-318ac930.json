@@ -1,0 +1,4993 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "text edited on the DOM renderer saves and records what the Fabric renderer does (paired) > marks on a range and pending at a caret, Ctrl/Cmd+B, I, U, headings, fonts, alignment, colour and font size while editing; then the whole box",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/dom-editing.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "fb10579cc012b786",
+   "value": {
+    "records": [
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.04,0.1]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five",
+         "fontSize": 24,
+         "width": 420
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five",
+       "anchor": 0,
+       "head": 3,
+       "focused": true
+      },
+      "boxes": {
+       "T": 61.02
+      }
+     },
+     {
+      "step": "{\"button\":\"Bold\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five",
+       "anchor": 0,
+       "head": 3,
+       "focused": true
+      },
+      "boxes": {
+       "T": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+a\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "mixed",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five",
+       "anchor": 0,
+       "head": 23,
+       "focused": true
+      },
+      "boxes": {
+       "T": 61.02
+      }
+     },
+     {
+      "step": "{\"button\":\"Italic\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 23,
+           "italic": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "mixed",
+         "italic": "on",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five",
+       "anchor": 0,
+       "head": 23,
+       "focused": true
+      },
+      "boxes": {
+       "T": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowRight\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 23,
+           "italic": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "on",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five",
+       "anchor": 23,
+       "head": 23,
+       "focused": true
+      },
+      "boxes": {
+       "T": 61.02
+      }
+     },
+     {
+      "step": "{\"button\":\"Underline\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 23,
+           "italic": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "on",
+         "underline": "on",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five",
+       "anchor": 23,
+       "head": 23,
+       "focused": true
+      },
+      "boxes": {
+       "T": 61.02
+      }
+     },
+     {
+      "step": "{\"type\":\" u\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five u",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 23,
+           "italic": true
+          },
+          {
+           "start": 23,
+           "end": 25,
+           "italic": true,
+           "underline": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five u*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "on",
+         "underline": "on",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five u",
+       "anchor": 25,
+       "head": 25,
+       "focused": true
+      },
+      "boxes": {
+       "T": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+b\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five u",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 23,
+           "italic": true
+          },
+          {
+           "start": 23,
+           "end": 25,
+           "italic": true,
+           "underline": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five u*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "on",
+         "underline": "on",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five u",
+       "anchor": 25,
+       "head": 25,
+       "focused": true
+      },
+      "boxes": {
+       "T": 61.02
+      }
+     },
+     {
+      "step": "{\"type\":\"b\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five ub",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 23,
+           "italic": true
+          },
+          {
+           "start": 23,
+           "end": 25,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 25,
+           "end": 26,
+           "bold": true,
+           "italic": true,
+           "underline": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five ub*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "on",
+         "underline": "on",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five ub",
+       "anchor": 26,
+       "head": 26,
+       "focused": true
+      },
+      "boxes": {
+       "T": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowLeft\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five ub",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 23,
+           "italic": true
+          },
+          {
+           "start": 23,
+           "end": 25,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 25,
+           "end": 26,
+           "bold": true,
+           "italic": true,
+           "underline": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five ub*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "on",
+         "underline": "on",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five ub",
+       "anchor": 25,
+       "head": 25,
+       "focused": true
+      },
+      "boxes": {
+       "T": 61.02
+      }
+     },
+     {
+      "step": "{\"type\":\"p\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 23,
+           "italic": true
+          },
+          {
+           "start": 23,
+           "end": 26,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 26,
+           "end": 27,
+           "bold": true,
+           "italic": true,
+           "underline": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "on",
+         "underline": "on",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five upb",
+       "anchor": 26,
+       "head": 26,
+       "focused": true
+      },
+      "boxes": {
+       "T": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"Shift+Home\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 23,
+           "italic": true
+          },
+          {
+           "start": 23,
+           "end": 26,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 26,
+           "end": 27,
+           "bold": true,
+           "italic": true,
+           "underline": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "on",
+         "underline": "mixed",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five upb",
+       "anchor": 26,
+       "head": 14,
+       "focused": true
+      },
+      "boxes": {
+       "T": 61.02
+      }
+     },
+     {
+      "step": "{\"button\":\"H2 (Heading 2)\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 23,
+           "italic": true
+          },
+          {
+           "start": 23,
+           "end": 27,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "on",
+         "underline": "mixed",
+         "strike": "off"
+        },
+        "heading": 2,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five upb",
+       "anchor": 26,
+       "head": 14,
+       "focused": true
+      },
+      "boxes": {
+       "T": 74.58
+      }
+     },
+     {
+      "step": "{\"button\":\"Serif\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 14,
+           "italic": true
+          },
+          {
+           "start": 14,
+           "end": 23,
+           "italic": true,
+           "font": "serif"
+          },
+          {
+           "start": 23,
+           "end": 26,
+           "italic": true,
+           "underline": true,
+           "font": "serif"
+          },
+          {
+           "start": 26,
+           "end": 27,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "serif",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "on",
+         "underline": "mixed",
+         "strike": "off"
+        },
+        "heading": 2,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five upb",
+       "anchor": 26,
+       "head": 14,
+       "focused": true
+      },
+      "boxes": {
+       "T": 74.58
+      }
+     },
+     {
+      "step": "{\"key\":\"Shift+ArrowLeft\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 14,
+           "italic": true
+          },
+          {
+           "start": 14,
+           "end": 23,
+           "italic": true,
+           "font": "serif"
+          },
+          {
+           "start": 23,
+           "end": 26,
+           "italic": true,
+           "underline": true,
+           "font": "serif"
+          },
+          {
+           "start": 26,
+           "end": 27,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "serif",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "on",
+         "underline": "mixed",
+         "strike": "off"
+        },
+        "heading": "mixed",
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five upb",
+       "anchor": 26,
+       "head": 13,
+       "focused": true
+      },
+      "boxes": {
+       "T": 74.58
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+u\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 14,
+           "italic": true
+          },
+          {
+           "start": 14,
+           "end": 26,
+           "italic": true,
+           "underline": true,
+           "font": "serif"
+          },
+          {
+           "start": 26,
+           "end": 27,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "serif",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "on",
+         "underline": "on",
+         "strike": "off"
+        },
+        "heading": "mixed",
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five upb",
+       "anchor": 26,
+       "head": 13,
+       "focused": true
+      },
+      "boxes": {
+       "T": 74.58
+      }
+     },
+     {
+      "step": "{\"button\":\"Strikethrough\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 14,
+           "italic": true
+          },
+          {
+           "start": 14,
+           "end": 26,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 26,
+           "end": 27,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "serif",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "on",
+         "underline": "on",
+         "strike": "on"
+        },
+        "heading": "mixed",
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five upb",
+       "anchor": 26,
+       "head": 13,
+       "focused": true
+      },
+      "boxes": {
+       "T": 74.58
+      }
+     },
+     {
+      "step": "{\"button\":\"Align centre\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 24,
+         "width": 420,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 14,
+           "italic": true
+          },
+          {
+           "start": 14,
+           "end": 26,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 26,
+           "end": 27,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "serif",
+        "align": "center",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "on",
+         "underline": "on",
+         "strike": "on"
+        },
+        "heading": "mixed",
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five upb",
+       "anchor": 26,
+       "head": 13,
+       "focused": true
+      },
+      "boxes": {
+       "T": 74.58
+      }
+     },
+     {
+      "step": "{\"button\":\"Red\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 24,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 14,
+           "italic": true
+          },
+          {
+           "start": 14,
+           "end": 26,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 26,
+           "end": 27,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five",
+          "fontSize": 24,
+          "width": 420
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "serif",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "on",
+         "italic": "on",
+         "underline": "on",
+         "strike": "on"
+        },
+        "heading": "mixed",
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five upb",
+       "anchor": 26,
+       "head": 13,
+       "focused": true
+      },
+      "boxes": {
+       "T": 74.58
+      }
+     },
+     {
+      "step": "{\"fontSize\":40}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 14,
+           "italic": true
+          },
+          {
+           "start": 14,
+           "end": 26,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 26,
+           "end": 27,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 3,
+            "bold": true,
+            "italic": true
+           },
+           {
+            "start": 3,
+            "end": 14,
+            "italic": true
+           },
+           {
+            "start": 14,
+            "end": 26,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 26,
+            "end": 27,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "serif",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "on",
+         "italic": "on",
+         "underline": "on",
+         "strike": "on"
+        },
+        "heading": "mixed",
+        "boldFromHeading": true
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five upb",
+       "anchor": 26,
+       "head": 13,
+       "focused": false
+      },
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"click\":\"T\",\"at\":[0.5,0.06]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 14,
+           "italic": true
+          },
+          {
+           "start": 14,
+           "end": 26,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 26,
+           "end": 27,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 3,
+            "bold": true,
+            "italic": true
+           },
+           {
+            "start": 3,
+            "end": 14,
+            "italic": true
+           },
+           {
+            "start": 14,
+            "end": 26,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 26,
+            "end": 27,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "off",
+         "italic": "on",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five upb",
+       "anchor": 6,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+a\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 14,
+           "italic": true
+          },
+          {
+           "start": 14,
+           "end": 26,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 26,
+           "end": 27,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 3,
+            "bold": true,
+            "italic": true
+           },
+           {
+            "start": 3,
+            "end": 14,
+            "italic": true
+           },
+           {
+            "start": 14,
+            "end": 26,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 26,
+            "end": 27,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "mixed",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "mixed",
+         "italic": "on",
+         "underline": "mixed",
+         "strike": "mixed"
+        },
+        "heading": "mixed",
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five upb",
+       "anchor": 27,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowLeft\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 14,
+           "italic": true
+          },
+          {
+           "start": 14,
+           "end": 26,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 26,
+           "end": 27,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 3,
+            "bold": true,
+            "italic": true
+           },
+           {
+            "start": 3,
+            "end": 14,
+            "italic": true
+           },
+           {
+            "start": 14,
+            "end": 26,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 26,
+            "end": 27,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "on",
+         "italic": "on",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five upb",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"button\":\"Mono\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 14,
+           "italic": true
+          },
+          {
+           "start": 14,
+           "end": 26,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 26,
+           "end": 27,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 3,
+            "bold": true,
+            "italic": true
+           },
+           {
+            "start": 3,
+            "end": 14,
+            "italic": true
+           },
+           {
+            "start": 14,
+            "end": 26,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 26,
+            "end": 27,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "mono",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "on",
+         "italic": "on",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "one two three\nfour five upb",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"type\":\"Z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Zone two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 1,
+           "bold": true,
+           "italic": true,
+           "font": "mono"
+          },
+          {
+           "start": 1,
+           "end": 4,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 4,
+           "end": 15,
+           "italic": true
+          },
+          {
+           "start": 15,
+           "end": 27,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 27,
+           "end": 28,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 3,
+            "bold": true,
+            "italic": true
+           },
+           {
+            "start": 3,
+            "end": 14,
+            "italic": true
+           },
+           {
+            "start": 14,
+            "end": 26,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 26,
+            "end": 27,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:Zone two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "mono",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "on",
+         "italic": "on",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Zone two three\nfour five upb",
+       "anchor": 1,
+       "head": 1,
+       "focused": true
+      },
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+i\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Zone two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 1,
+           "bold": true,
+           "italic": true,
+           "font": "mono"
+          },
+          {
+           "start": 1,
+           "end": 4,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 4,
+           "end": 15,
+           "italic": true
+          },
+          {
+           "start": 15,
+           "end": 27,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 27,
+           "end": 28,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 3,
+            "bold": true,
+            "italic": true
+           },
+           {
+            "start": 3,
+            "end": 14,
+            "italic": true
+           },
+           {
+            "start": 14,
+            "end": 26,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 26,
+            "end": 27,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:Zone two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "mono",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Zone two three\nfour five upb",
+       "anchor": 1,
+       "head": 1,
+       "focused": true
+      },
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"type\":\"y\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Zyone two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 1,
+           "bold": true,
+           "italic": true,
+           "font": "mono"
+          },
+          {
+           "start": 1,
+           "end": 2,
+           "bold": true,
+           "font": "mono"
+          },
+          {
+           "start": 2,
+           "end": 5,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 5,
+           "end": 16,
+           "italic": true
+          },
+          {
+           "start": 16,
+           "end": 28,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 28,
+           "end": 29,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 3,
+            "bold": true,
+            "italic": true
+           },
+           {
+            "start": 3,
+            "end": 14,
+            "italic": true
+           },
+           {
+            "start": 14,
+            "end": 26,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 26,
+            "end": 27,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:Zyone two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "mono",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Zyone two three\nfour five upb",
+       "anchor": 2,
+       "head": 2,
+       "focused": true
+      },
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Zyone two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 1,
+           "bold": true,
+           "italic": true,
+           "font": "mono"
+          },
+          {
+           "start": 1,
+           "end": 2,
+           "bold": true,
+           "font": "mono"
+          },
+          {
+           "start": 2,
+           "end": 5,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 5,
+           "end": 16,
+           "italic": true
+          },
+          {
+           "start": 16,
+           "end": 28,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 28,
+           "end": 29,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Zyone two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 1,
+            "bold": true,
+            "italic": true,
+            "font": "mono"
+           },
+           {
+            "start": 1,
+            "end": 2,
+            "bold": true,
+            "font": "mono"
+           },
+           {
+            "start": 2,
+            "end": 5,
+            "bold": true,
+            "italic": true
+           },
+           {
+            "start": 5,
+            "end": 16,
+            "italic": true
+           },
+           {
+            "start": 16,
+            "end": 28,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 28,
+            "end": 29,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:Zyone two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "mixed",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "mixed",
+         "italic": "mixed",
+         "underline": "mixed",
+         "strike": "mixed"
+        },
+        "heading": "mixed",
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"button\":\"Bold\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Zyone two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 1,
+           "bold": true,
+           "italic": true,
+           "font": "mono"
+          },
+          {
+           "start": 1,
+           "end": 2,
+           "bold": true,
+           "font": "mono"
+          },
+          {
+           "start": 2,
+           "end": 15,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 15,
+           "end": 16,
+           "italic": true
+          },
+          {
+           "start": 16,
+           "end": 28,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 28,
+           "end": 29,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Zyone two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 1,
+            "bold": true,
+            "italic": true,
+            "font": "mono"
+           },
+           {
+            "start": 1,
+            "end": 2,
+            "bold": true,
+            "font": "mono"
+           },
+           {
+            "start": 2,
+            "end": 15,
+            "bold": true,
+            "italic": true
+           },
+           {
+            "start": 15,
+            "end": 16,
+            "italic": true
+           },
+           {
+            "start": 16,
+            "end": 28,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 28,
+            "end": 29,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 3,
+       "length": 4
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:Zyone two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "mixed",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "on",
+         "italic": "mixed",
+         "underline": "mixed",
+         "strike": "mixed"
+        },
+        "heading": "mixed",
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+u\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Zyone two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 1,
+           "bold": true,
+           "italic": true,
+           "underline": true,
+           "font": "mono"
+          },
+          {
+           "start": 1,
+           "end": 2,
+           "bold": true,
+           "underline": true,
+           "font": "mono"
+          },
+          {
+           "start": 2,
+           "end": 15,
+           "bold": true,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 15,
+           "end": 16,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 16,
+           "end": 28,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 28,
+           "end": 29,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Zyone two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 1,
+            "bold": true,
+            "italic": true,
+            "underline": true,
+            "font": "mono"
+           },
+           {
+            "start": 1,
+            "end": 2,
+            "bold": true,
+            "underline": true,
+            "font": "mono"
+           },
+           {
+            "start": 2,
+            "end": 15,
+            "bold": true,
+            "italic": true,
+            "underline": true
+           },
+           {
+            "start": 15,
+            "end": 16,
+            "italic": true,
+            "underline": true
+           },
+           {
+            "start": 16,
+            "end": 28,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 28,
+            "end": 29,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 4,
+       "length": 5
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:Zyone two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "mixed",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "on",
+         "italic": "mixed",
+         "underline": "on",
+         "strike": "mixed"
+        },
+        "heading": "mixed",
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"button\":\"Body\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Zyone two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 1,
+           "bold": true,
+           "italic": true,
+           "underline": true,
+           "font": "mono"
+          },
+          {
+           "start": 1,
+           "end": 2,
+           "bold": true,
+           "underline": true,
+           "font": "mono"
+          },
+          {
+           "start": 2,
+           "end": 15,
+           "bold": true,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 15,
+           "end": 16,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 16,
+           "end": 28,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 28,
+           "end": 29,
+           "italic": true,
+           "underline": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Zyone two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 1,
+            "bold": true,
+            "italic": true,
+            "underline": true,
+            "font": "mono"
+           },
+           {
+            "start": 1,
+            "end": 2,
+            "bold": true,
+            "underline": true,
+            "font": "mono"
+           },
+           {
+            "start": 2,
+            "end": 15,
+            "bold": true,
+            "italic": true,
+            "underline": true
+           },
+           {
+            "start": 15,
+            "end": 16,
+            "italic": true,
+            "underline": true
+           },
+           {
+            "start": 16,
+            "end": 28,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 28,
+            "end": 29,
+            "italic": true,
+            "underline": true
+           }
+          ]
+         }
+        ]
+       },
+       "index": 5,
+       "length": 6
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:Zyone two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "mixed",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "mixed",
+         "italic": "mixed",
+         "underline": "on",
+         "strike": "mixed"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 101.7
+      }
+     },
+     {
+      "step": "{\"button\":\"Display\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Zyone two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "font": "display",
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 1,
+           "bold": true,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 1,
+           "end": 2,
+           "bold": true,
+           "underline": true
+          },
+          {
+           "start": 2,
+           "end": 15,
+           "bold": true,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 15,
+           "end": 16,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 16,
+           "end": 28,
+           "italic": true,
+           "underline": true,
+           "strike": true
+          },
+          {
+           "start": 28,
+           "end": 29,
+           "italic": true,
+           "underline": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Zyone two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "font": "display",
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 1,
+            "bold": true,
+            "italic": true,
+            "underline": true
+           },
+           {
+            "start": 1,
+            "end": 2,
+            "bold": true,
+            "underline": true
+           },
+           {
+            "start": 2,
+            "end": 15,
+            "bold": true,
+            "italic": true,
+            "underline": true
+           },
+           {
+            "start": 15,
+            "end": 16,
+            "italic": true,
+            "underline": true
+           },
+           {
+            "start": 16,
+            "end": 28,
+            "italic": true,
+            "underline": true,
+            "strike": true
+           },
+           {
+            "start": 28,
+            "end": 29,
+            "italic": true,
+            "underline": true
+           }
+          ]
+         }
+        ]
+       },
+       "index": 6,
+       "length": 7
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:Zyone two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "display",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "mixed",
+         "italic": "mixed",
+         "underline": "on",
+         "strike": "mixed"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 101.7
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Zyone two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 1,
+           "bold": true,
+           "italic": true,
+           "underline": true,
+           "font": "mono"
+          },
+          {
+           "start": 1,
+           "end": 2,
+           "bold": true,
+           "underline": true,
+           "font": "mono"
+          },
+          {
+           "start": 2,
+           "end": 15,
+           "bold": true,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 15,
+           "end": 16,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 16,
+           "end": 28,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 28,
+           "end": 29,
+           "italic": true,
+           "underline": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Zyone two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 1,
+            "bold": true,
+            "italic": true,
+            "underline": true,
+            "font": "mono"
+           },
+           {
+            "start": 1,
+            "end": 2,
+            "bold": true,
+            "underline": true,
+            "font": "mono"
+           },
+           {
+            "start": 2,
+            "end": 15,
+            "bold": true,
+            "italic": true,
+            "underline": true
+           },
+           {
+            "start": 15,
+            "end": 16,
+            "italic": true,
+            "underline": true
+           },
+           {
+            "start": 16,
+            "end": 28,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 28,
+            "end": 29,
+            "italic": true,
+            "underline": true
+           }
+          ]
+         }
+        ]
+       },
+       "index": 5,
+       "length": 7
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "T:Zyone two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "mixed",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "mixed",
+         "italic": "mixed",
+         "underline": "on",
+         "strike": "mixed"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 101.7
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Zyone two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 1,
+           "bold": true,
+           "italic": true,
+           "underline": true,
+           "font": "mono"
+          },
+          {
+           "start": 1,
+           "end": 2,
+           "bold": true,
+           "underline": true,
+           "font": "mono"
+          },
+          {
+           "start": 2,
+           "end": 15,
+           "bold": true,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 15,
+           "end": 16,
+           "italic": true,
+           "underline": true
+          },
+          {
+           "start": 16,
+           "end": 28,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 28,
+           "end": 29,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Zyone two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 1,
+            "bold": true,
+            "italic": true,
+            "underline": true,
+            "font": "mono"
+           },
+           {
+            "start": 1,
+            "end": 2,
+            "bold": true,
+            "underline": true,
+            "font": "mono"
+           },
+           {
+            "start": 2,
+            "end": 15,
+            "bold": true,
+            "italic": true,
+            "underline": true
+           },
+           {
+            "start": 15,
+            "end": 16,
+            "italic": true,
+            "underline": true
+           },
+           {
+            "start": 16,
+            "end": 28,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 28,
+            "end": 29,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 4,
+       "length": 7
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "T:Zyone two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "mixed",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "on",
+         "italic": "mixed",
+         "underline": "on",
+         "strike": "mixed"
+        },
+        "heading": "mixed",
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Zyone two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 1,
+           "bold": true,
+           "italic": true,
+           "font": "mono"
+          },
+          {
+           "start": 1,
+           "end": 2,
+           "bold": true,
+           "font": "mono"
+          },
+          {
+           "start": 2,
+           "end": 15,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 15,
+           "end": 16,
+           "italic": true
+          },
+          {
+           "start": 16,
+           "end": 28,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 28,
+           "end": 29,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Zyone two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 1,
+            "bold": true,
+            "italic": true,
+            "font": "mono"
+           },
+           {
+            "start": 1,
+            "end": 2,
+            "bold": true,
+            "font": "mono"
+           },
+           {
+            "start": 2,
+            "end": 15,
+            "bold": true,
+            "italic": true
+           },
+           {
+            "start": 15,
+            "end": 16,
+            "italic": true
+           },
+           {
+            "start": 16,
+            "end": 28,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 28,
+            "end": 29,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 3,
+       "length": 7
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "T:Zyone two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "mixed",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "on",
+         "italic": "mixed",
+         "underline": "mixed",
+         "strike": "mixed"
+        },
+        "heading": "mixed",
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Zyone two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 1,
+           "bold": true,
+           "italic": true,
+           "font": "mono"
+          },
+          {
+           "start": 1,
+           "end": 2,
+           "bold": true,
+           "font": "mono"
+          },
+          {
+           "start": 2,
+           "end": 5,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 5,
+           "end": 16,
+           "italic": true
+          },
+          {
+           "start": 16,
+           "end": 28,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 28,
+           "end": 29,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Zyone two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 1,
+            "bold": true,
+            "italic": true,
+            "font": "mono"
+           },
+           {
+            "start": 1,
+            "end": 2,
+            "bold": true,
+            "font": "mono"
+           },
+           {
+            "start": 2,
+            "end": 5,
+            "bold": true,
+            "italic": true
+           },
+           {
+            "start": 5,
+            "end": 16,
+            "italic": true
+           },
+           {
+            "start": 16,
+            "end": 28,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 28,
+            "end": 29,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 2,
+       "length": 7
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "T:Zyone two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "mixed",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "mixed",
+         "italic": "mixed",
+         "underline": "mixed",
+         "strike": "mixed"
+        },
+        "heading": "mixed",
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "one two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 3,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 3,
+           "end": 14,
+           "italic": true
+          },
+          {
+           "start": 14,
+           "end": 26,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 26,
+           "end": 27,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "one two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 3,
+            "bold": true,
+            "italic": true
+           },
+           {
+            "start": 3,
+            "end": 14,
+            "italic": true
+           },
+           {
+            "start": 14,
+            "end": 26,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 26,
+            "end": 27,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 1,
+       "length": 7
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "T:one two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "mixed",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "mixed",
+         "italic": "on",
+         "underline": "mixed",
+         "strike": "mixed"
+        },
+        "heading": "mixed",
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 124.3
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+Shift+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Zyone two three\nfour five upb",
+         "fontSize": 40,
+         "width": 420,
+         "align": "center",
+         "color": "#d92d20",
+         "spans": [
+          {
+           "start": 0,
+           "end": 1,
+           "bold": true,
+           "italic": true,
+           "font": "mono"
+          },
+          {
+           "start": 1,
+           "end": 2,
+           "bold": true,
+           "font": "mono"
+          },
+          {
+           "start": 2,
+           "end": 5,
+           "bold": true,
+           "italic": true
+          },
+          {
+           "start": 5,
+           "end": 16,
+           "italic": true
+          },
+          {
+           "start": 16,
+           "end": 28,
+           "italic": true,
+           "underline": true,
+           "strike": true,
+           "font": "serif"
+          },
+          {
+           "start": 28,
+           "end": 29,
+           "italic": true,
+           "underline": true
+          }
+         ],
+         "headings": [
+          0,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Zyone two three\nfour five upb",
+          "fontSize": 40,
+          "width": 420,
+          "align": "center",
+          "color": "#d92d20",
+          "spans": [
+           {
+            "start": 0,
+            "end": 1,
+            "bold": true,
+            "italic": true,
+            "font": "mono"
+           },
+           {
+            "start": 1,
+            "end": 2,
+            "bold": true,
+            "font": "mono"
+           },
+           {
+            "start": 2,
+            "end": 5,
+            "bold": true,
+            "italic": true
+           },
+           {
+            "start": 5,
+            "end": 16,
+            "italic": true
+           },
+           {
+            "start": 16,
+            "end": 28,
+            "italic": true,
+            "underline": true,
+            "strike": true,
+            "font": "serif"
+           },
+           {
+            "start": 28,
+            "end": 29,
+            "italic": true,
+            "underline": true
+           }
+          ],
+          "headings": [
+           0,
+           2
+          ]
+         }
+        ]
+       },
+       "index": 2,
+       "length": 7
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "T:Zyone two three four five upb*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "mixed",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "mixed",
+         "italic": "mixed",
+         "underline": "mixed",
+         "strike": "mixed"
+        },
+        "heading": "mixed",
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 124.3
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Editing",
+     "objects": [
+      {
+       "id": "T",
+       "left": 100,
+       "top": 100,
+       "angle": 0,
+       "type": "text",
+       "text": "Zyone two three\nfour five upb",
+       "fontSize": 40,
+       "width": 420,
+       "align": "center",
+       "color": "#d92d20",
+       "spans": [
+        {
+         "start": 0,
+         "end": 1,
+         "bold": true,
+         "italic": true,
+         "font": "mono"
+        },
+        {
+         "start": 1,
+         "end": 2,
+         "bold": true,
+         "font": "mono"
+        },
+        {
+         "start": 2,
+         "end": 5,
+         "bold": true,
+         "italic": true
+        },
+        {
+         "start": 5,
+         "end": 16,
+         "italic": true
+        },
+        {
+         "start": 16,
+         "end": 28,
+         "italic": true,
+         "underline": true,
+         "strike": true,
+         "font": "serif"
+        },
+        {
+         "start": 28,
+         "end": 29,
+         "italic": true,
+         "underline": true
+        }
+       ],
+       "headings": [
+        0,
+        2
+       ]
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

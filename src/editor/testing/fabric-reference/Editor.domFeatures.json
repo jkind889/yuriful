@@ -1,0 +1,4512 @@
+{
+ "about": "Frozen references: what the editor on the Fabric renderer gave for these tests (fake Fabric and the same fakes), recorded by running it (FABRIC_REFERENCE=record). Never edit them by hand, and never record them from the DOM renderer. See docs/engineering-reference.md.",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, package files) as committed",
+  "command": "FABRIC_REFERENCE=record npx vitest run <file>",
+  "runtime": "Node v24.19.0, Vitest with jsdom",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "crop mode on an image proxy > gives the same records, saves, history and state after every step as the Fabric renderer > script": {
+   "inputs": "9559a9daf94d078b",
+   "value": {
+    "out": [
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 100,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 20,
+          "y": 10,
+          "width": 100,
+          "height": 60
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 100,
+        "top": 50,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 20,
+         "y": 10,
+         "width": 100,
+         "height": 60
+        }
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 100,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 20,
+          "y": 10,
+          "width": 100,
+          "height": 60
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": false,
+      "selected": [
+       "P"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 80,
+         "top": 40,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 100,
+        "top": 50,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 20,
+         "y": 10,
+         "width": 100,
+         "height": 60
+        }
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 100,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 20,
+          "y": 10,
+          "width": 100,
+          "height": 60
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": true,
+      "canUndo": false,
+      "selected": [
+       "P"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 80,
+         "top": 40,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 100,
+        "top": 50,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 20,
+         "y": 10,
+         "width": 100,
+         "height": 60
+        }
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 100,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 20,
+          "y": 10,
+          "width": 100,
+          "height": 60
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": true,
+      "canUndo": true,
+      "selected": [
+       "P"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 100,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 20,
+          "y": 10,
+          "width": 70,
+          "height": 40
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 100,
+        "top": 50,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 20,
+         "y": 10,
+         "width": 70,
+         "height": 40
+        }
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 100,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 20,
+          "y": 10,
+          "width": 70,
+          "height": 40
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": [
+       "P"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 80,
+         "top": 40,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 100,
+        "top": 50,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 20,
+         "y": 10,
+         "width": 70,
+         "height": 40
+        }
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 100,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 20,
+          "y": 10,
+          "width": 70,
+          "height": 40
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": true,
+      "canUndo": true,
+      "selected": [
+       "P"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 80,
+         "top": 40,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 100,
+        "top": 50,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 20,
+         "y": 10,
+         "width": 70,
+         "height": 40
+        }
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 100,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 20,
+          "y": 10,
+          "width": 70,
+          "height": 40
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": true,
+      "canUndo": true,
+      "selected": [
+       "P"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 100,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 20,
+          "y": 10,
+          "width": 70,
+          "height": 40
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 100,
+        "top": 50,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 20,
+         "y": 10,
+         "width": 70,
+         "height": 40
+        }
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 100,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 20,
+          "y": 10,
+          "width": 70,
+          "height": 40
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": [
+       "P"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 80,
+         "top": 40,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 100,
+        "top": 50,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 20,
+         "y": 10,
+         "width": 70,
+         "height": 40
+        }
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 100,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 20,
+          "y": 10,
+          "width": 70,
+          "height": 40
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": true,
+      "canUndo": true,
+      "selected": [
+       "P"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 80,
+         "top": 40,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 100,
+        "top": 50,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 20,
+         "y": 10,
+         "width": 70,
+         "height": 40
+        }
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 100,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 20,
+          "y": 10,
+          "width": 70,
+          "height": 40
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": true,
+      "canUndo": true,
+      "selected": [
+       "P"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 50,
+          "y": 10,
+          "width": 40,
+          "height": 40
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 130,
+        "top": 50,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 50,
+         "y": 10,
+         "width": 40,
+         "height": 40
+        }
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 50,
+          "y": 10,
+          "width": 40,
+          "height": 40
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": [
+       "P"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 100,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 20,
+          "y": 10,
+          "width": 70,
+          "height": 40
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 100,
+        "top": 50,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 20,
+         "y": 10,
+         "width": 70,
+         "height": 40
+        }
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 100,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 20,
+          "y": 10,
+          "width": 70,
+          "height": 40
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": [
+       "P"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 50,
+          "y": 10,
+          "width": 40,
+          "height": 40
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 130,
+        "top": 50,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 50,
+         "y": 10,
+         "width": 40,
+         "height": 40
+        }
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 50,
+          "y": 10,
+          "width": 40,
+          "height": 40
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": [
+       "P"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 0.4,
+         "scaleY": 0.4,
+         "crop": {
+          "x": 50,
+          "y": 0,
+          "width": 100,
+          "height": 100
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 130,
+        "top": 50,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 0.4,
+        "scaleY": 0.4,
+        "crop": {
+         "x": 50,
+         "y": 0,
+         "width": 100,
+         "height": 100
+        }
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 50,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 0.4,
+         "scaleY": 0.4,
+         "crop": {
+          "x": 50,
+          "y": 0,
+          "width": 100,
+          "height": 100
+         }
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": [
+       "P"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 60,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 0.2,
+         "scaleY": 0.2
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 130,
+        "top": 60,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 0.2,
+        "scaleY": 0.2
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 60,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 0.2,
+         "scaleY": 0.2
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": [
+       "P"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 60,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 0.2,
+         "scaleY": 0.2
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 130,
+        "top": 60,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 0.2,
+        "scaleY": 0.2
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 60,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 0.2,
+         "scaleY": 0.2
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": [
+       "Q"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 60,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 0.2,
+         "scaleY": 0.2
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 130,
+        "top": 60,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 0.2,
+        "scaleY": 0.2
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 60,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 0.2,
+         "scaleY": 0.2
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": true,
+      "canUndo": true,
+      "selected": [
+       "Q"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 60,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 0.2,
+         "scaleY": 0.2
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 130,
+        "top": 60,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 0.2,
+        "scaleY": 0.2
+       },
+       {
+        "id": "Q",
+        "left": 560,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "G"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 60,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 0.2,
+         "scaleY": 0.2
+        },
+        {
+         "id": "Q",
+         "left": 560,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "G"
+        }
+       ]
+      },
+      "cropping": true,
+      "canUndo": true,
+      "selected": [
+       "Q"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 60,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 0.2,
+         "scaleY": 0.2
+        },
+        {
+         "id": "Q",
+         "left": 700,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 140,
+          "y": 0,
+          "width": 60,
+          "height": 100
+         }
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "P",
+        "left": 130,
+        "top": 60,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 0.2,
+        "scaleY": 0.2
+       },
+       {
+        "id": "Q",
+        "left": 700,
+        "top": 300,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 140,
+         "y": 0,
+         "width": 60,
+         "height": 100
+        }
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "G",
+         "name": "Frame G",
+         "left": 400,
+         "top": 200,
+         "width": 300,
+         "height": 250
+        }
+       ],
+       "objects": [
+        {
+         "id": "P",
+         "left": 130,
+         "top": 60,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 0.2,
+         "scaleY": 0.2
+        },
+        {
+         "id": "Q",
+         "left": 700,
+         "top": 300,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 140,
+          "y": 0,
+          "width": 60,
+          "height": 100
+         }
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": [
+       "Q"
+      ]
+     }
+    ]
+   }
+  },
+  "duplicate on the DOM renderer > gives the same images, frames, ownership, captions, selection and history as the Fabric renderer > script": {
+   "inputs": "fae0b8a8b730b149",
+   "value": {
+    "out": [
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "A",
+        "left": 150,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 10,
+         "y": 5,
+         "width": 120,
+         "height": 60
+        },
+        "frameId": "F"
+       },
+       {
+        "id": "L",
+        "left": 300,
+        "top": 200,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F",
+        "locked": true
+       },
+       {
+        "id": "B",
+        "left": 600,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1
+       },
+       {
+        "id": "C",
+        "left": 470,
+        "top": 380,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": false,
+      "selected": [
+       "F"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        },
+        {
+         "id": "~1",
+         "name": "Frame F copy",
+         "left": 124,
+         "top": 124,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 174,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "~1"
+        },
+        {
+         "id": "~3",
+         "left": 324,
+         "top": 224,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~4",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "A",
+        "left": 150,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 10,
+         "y": 5,
+         "width": 120,
+         "height": 60
+        },
+        "frameId": "F"
+       },
+       {
+        "id": "L",
+        "left": 300,
+        "top": 200,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F",
+        "locked": true
+       },
+       {
+        "id": "B",
+        "left": 600,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1
+       },
+       {
+        "id": "C",
+        "left": 470,
+        "top": 380,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F"
+       },
+       {
+        "id": "~2",
+        "left": 174,
+        "top": 174,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 10,
+         "y": 5,
+         "width": 120,
+         "height": 60
+        },
+        "frameId": "~1"
+       },
+       {
+        "id": "~3",
+        "left": 324,
+        "top": 224,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "~1"
+       },
+       {
+        "id": "~4",
+        "left": 494,
+        "top": 404,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "~1"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        },
+        {
+         "id": "~1",
+         "name": "Frame F copy",
+         "left": 124,
+         "top": 124,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 174,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "~1"
+        },
+        {
+         "id": "~3",
+         "left": 324,
+         "top": 224,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~4",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": [
+       "~1"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "A",
+        "left": 150,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 10,
+         "y": 5,
+         "width": 120,
+         "height": 60
+        },
+        "frameId": "F"
+       },
+       {
+        "id": "L",
+        "left": 300,
+        "top": 200,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F",
+        "locked": true
+       },
+       {
+        "id": "B",
+        "left": 600,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1
+       },
+       {
+        "id": "C",
+        "left": 470,
+        "top": 380,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": false,
+      "selected": []
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        },
+        {
+         "id": "~1",
+         "name": "Frame F copy",
+         "left": 124,
+         "top": 124,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 174,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "~1"
+        },
+        {
+         "id": "~3",
+         "left": 324,
+         "top": 224,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~4",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "A",
+        "left": 150,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 10,
+         "y": 5,
+         "width": 120,
+         "height": 60
+        },
+        "frameId": "F"
+       },
+       {
+        "id": "L",
+        "left": 300,
+        "top": 200,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F",
+        "locked": true
+       },
+       {
+        "id": "B",
+        "left": 600,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1
+       },
+       {
+        "id": "C",
+        "left": 470,
+        "top": 380,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F"
+       },
+       {
+        "id": "~2",
+        "left": 174,
+        "top": 174,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 10,
+         "y": 5,
+         "width": 120,
+         "height": 60
+        },
+        "frameId": "~1"
+       },
+       {
+        "id": "~3",
+        "left": 324,
+        "top": 224,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "~1"
+       },
+       {
+        "id": "~4",
+        "left": 494,
+        "top": 404,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "~1"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        },
+        {
+         "id": "~1",
+         "name": "Frame F copy",
+         "left": 124,
+         "top": 124,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 174,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "~1"
+        },
+        {
+         "id": "~3",
+         "left": 324,
+         "top": 224,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~4",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": []
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        },
+        {
+         "id": "~1",
+         "name": "Frame F copy",
+         "left": 124,
+         "top": 124,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 174,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "~1"
+        },
+        {
+         "id": "~3",
+         "left": 324,
+         "top": 224,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~4",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "A",
+        "left": 150,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 10,
+         "y": 5,
+         "width": 120,
+         "height": 60
+        },
+        "frameId": "F"
+       },
+       {
+        "id": "L",
+        "left": 300,
+        "top": 200,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F",
+        "locked": true
+       },
+       {
+        "id": "B",
+        "left": 600,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1
+       },
+       {
+        "id": "C",
+        "left": 470,
+        "top": 380,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F"
+       },
+       {
+        "id": "~2",
+        "left": 174,
+        "top": 174,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 10,
+         "y": 5,
+         "width": 120,
+         "height": 60
+        },
+        "frameId": "~1"
+       },
+       {
+        "id": "~3",
+        "left": 324,
+        "top": 224,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "~1"
+       },
+       {
+        "id": "~4",
+        "left": 494,
+        "top": 404,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "~1"
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        },
+        {
+         "id": "~1",
+         "name": "Frame F copy",
+         "left": 124,
+         "top": 124,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 174,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "~1"
+        },
+        {
+         "id": "~3",
+         "left": 324,
+         "top": 224,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~4",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": [
+       "B",
+       "C"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        },
+        {
+         "id": "~1",
+         "name": "Frame F copy",
+         "left": 124,
+         "top": 124,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 174,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "~1"
+        },
+        {
+         "id": "~3",
+         "left": 324,
+         "top": 224,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~4",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~5",
+         "left": 624,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~6",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "A",
+        "left": 150,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 10,
+         "y": 5,
+         "width": 120,
+         "height": 60
+        },
+        "frameId": "F"
+       },
+       {
+        "id": "L",
+        "left": 300,
+        "top": 200,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F",
+        "locked": true
+       },
+       {
+        "id": "B",
+        "left": 600,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1
+       },
+       {
+        "id": "C",
+        "left": 470,
+        "top": 380,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F"
+       },
+       {
+        "id": "~2",
+        "left": 174,
+        "top": 174,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 10,
+         "y": 5,
+         "width": 120,
+         "height": 60
+        },
+        "frameId": "~1"
+       },
+       {
+        "id": "~3",
+        "left": 324,
+        "top": 224,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "~1"
+       },
+       {
+        "id": "~4",
+        "left": 494,
+        "top": 404,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "~1"
+       },
+       {
+        "id": "~5",
+        "left": 624,
+        "top": 174,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1
+       },
+       {
+        "id": "~6",
+        "left": 494,
+        "top": 404,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        },
+        {
+         "id": "~1",
+         "name": "Frame F copy",
+         "left": 124,
+         "top": 124,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 174,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "~1"
+        },
+        {
+         "id": "~3",
+         "left": 324,
+         "top": 224,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~4",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~5",
+         "left": 624,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~6",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": [
+       "~5",
+       "~6"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        },
+        {
+         "id": "~1",
+         "name": "Frame F copy",
+         "left": 124,
+         "top": 124,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 174,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "~1"
+        },
+        {
+         "id": "~3",
+         "left": 324,
+         "top": 224,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~4",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~5",
+         "left": 624,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~6",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "A",
+        "left": 150,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 10,
+         "y": 5,
+         "width": 120,
+         "height": 60
+        },
+        "frameId": "F"
+       },
+       {
+        "id": "L",
+        "left": 300,
+        "top": 200,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F",
+        "locked": true
+       },
+       {
+        "id": "B",
+        "left": 600,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1
+       },
+       {
+        "id": "C",
+        "left": 470,
+        "top": 380,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F"
+       },
+       {
+        "id": "~2",
+        "left": 174,
+        "top": 174,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 10,
+         "y": 5,
+         "width": 120,
+         "height": 60
+        },
+        "frameId": "~1"
+       },
+       {
+        "id": "~3",
+        "left": 324,
+        "top": 224,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "~1"
+       },
+       {
+        "id": "~4",
+        "left": 494,
+        "top": 404,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "~1"
+       },
+       {
+        "id": "~5",
+        "left": 624,
+        "top": 174,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1
+       },
+       {
+        "id": "~6",
+        "left": 494,
+        "top": 404,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        },
+        {
+         "id": "~1",
+         "name": "Frame F copy",
+         "left": 124,
+         "top": 124,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 174,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "~1"
+        },
+        {
+         "id": "~3",
+         "left": 324,
+         "top": 224,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~4",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~5",
+         "left": 624,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~6",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": [
+       "L"
+      ]
+     },
+     {
+      "live": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        },
+        {
+         "id": "~1",
+         "name": "Frame F copy",
+         "left": 124,
+         "top": 124,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 174,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "~1"
+        },
+        {
+         "id": "~3",
+         "left": 324,
+         "top": 224,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~4",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~5",
+         "left": 624,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~6",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "saved": [
+       {
+        "id": "A",
+        "left": 150,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 10,
+         "y": 5,
+         "width": 120,
+         "height": 60
+        },
+        "frameId": "F"
+       },
+       {
+        "id": "L",
+        "left": 300,
+        "top": 200,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F",
+        "locked": true
+       },
+       {
+        "id": "B",
+        "left": 600,
+        "top": 150,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1
+       },
+       {
+        "id": "C",
+        "left": 470,
+        "top": 380,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "F"
+       },
+       {
+        "id": "~2",
+        "left": 174,
+        "top": 174,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "crop": {
+         "x": 10,
+         "y": 5,
+         "width": 120,
+         "height": 60
+        },
+        "frameId": "~1"
+       },
+       {
+        "id": "~3",
+        "left": 324,
+        "top": 224,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "~1"
+       },
+       {
+        "id": "~4",
+        "left": 494,
+        "top": 404,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1,
+        "frameId": "~1"
+       },
+       {
+        "id": "~5",
+        "left": 624,
+        "top": 174,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1
+       },
+       {
+        "id": "~6",
+        "left": 494,
+        "top": 404,
+        "angle": 0,
+        "type": "image",
+        "assetId": "a1",
+        "scaleX": 1,
+        "scaleY": 1
+       }
+      ],
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Frame F",
+         "left": 100,
+         "top": 100,
+         "width": 400,
+         "height": 300
+        },
+        {
+         "id": "~1",
+         "name": "Frame F copy",
+         "left": 124,
+         "top": 124,
+         "width": 400,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 150,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "F"
+        },
+        {
+         "id": "L",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "B",
+         "left": 600,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "C",
+         "left": 470,
+         "top": 380,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 174,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "crop": {
+          "x": 10,
+          "y": 5,
+          "width": 120,
+          "height": 60
+         },
+         "frameId": "~1"
+        },
+        {
+         "id": "~3",
+         "left": 324,
+         "top": 224,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~4",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "~1"
+        },
+        {
+         "id": "~5",
+         "left": 624,
+         "top": 174,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~6",
+         "left": 494,
+         "top": 404,
+         "angle": 0,
+         "type": "image",
+         "assetId": "a1",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "cropping": false,
+      "canUndo": true,
+      "selected": [
+       "L"
+      ]
+     }
+    ]
+   }
+  }
+ }
+}

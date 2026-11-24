@@ -1,0 +1,1255 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "typography matches the canvas with alignment, marks, span fonts, drawn boxes and caption backgrounds",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/scene-layer.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "center": {
+   "inputs": "1412725235679372",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 175
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     38.137499999999996,
+     63.56249999999999,
+     88.98749999999998,
+     114.41249999999998
+    ],
+    "pitches": [
+     38.137499999999996,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 134.75249999999997,
+    "width": 260,
+    "lines": [
+     "Centred title",
+     "The quick brown fox jumps over",
+     "the lazy dog while",
+     "Hamburgefonts wraps again and",
+     "again."
+    ],
+    "wrapped": [
+     "Centred title",
+     "The quick brown fox jumps over",
+     "the lazy dog while",
+     "Hamburgefonts wraps again and",
+     "again."
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23.5,
+       "bottom": 44,
+       "left": 71.5,
+       "right": 228.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 60.5,
+       "bottom": 78,
+       "left": 23.5,
+       "right": 277
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 86,
+       "bottom": 103.5,
+       "left": 78.5,
+       "right": 221
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 111.5,
+       "bottom": 129,
+       "left": 22,
+       "right": 278.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 136.5,
+       "bottom": 154,
+       "left": 127,
+       "right": 172.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "right": {
+   "inputs": "22f57edc33866a69",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 188
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     50.849999999999994,
+     76.27499999999999,
+     101.69999999999999,
+     127.12499999999999
+    ],
+    "pitches": [
+     50.849999999999994,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 147.46499999999997,
+    "width": 260,
+    "lines": [
+     "Right title",
+     "The quick brown fox jumps over",
+     "the lazy dog while",
+     "Hamburgefonts wraps again and",
+     "again."
+    ],
+    "wrapped": [
+     "Right title",
+     "The quick brown fox jumps over",
+     "the lazy dog while",
+     "Hamburgefonts wraps again and",
+     "again."
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 25,
+       "bottom": 60.5,
+       "left": 113.5,
+       "right": 279
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 26,
+       "right": 280
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 116,
+       "left": 136.5,
+       "right": 279.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 124,
+       "bottom": 141.5,
+       "left": 22.5,
+       "right": 278.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 149.5,
+       "bottom": 167,
+       "left": 233.5,
+       "right": 279
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "marks": {
+   "inputs": "a1c12827c3dde56b",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 137
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 96.61499999999998,
+    "width": 260,
+    "lines": [
+     "The quick brown fox jumps over",
+     "the lazy dog while",
+     "Hamburgefonts wraps again and",
+     "again."
+    ],
+    "wrapped": [
+     "The quick brown fox jumps over",
+     "the lazy dog while",
+     "Hamburgefonts wraps again and",
+     "again."
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 40,
+       "left": 20.5,
+       "right": 275.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 20.5,
+       "right": 168
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21.5,
+       "right": 278
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 116,
+       "left": 21,
+       "right": 66.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "span-fonts": {
+   "inputs": "1c6361153dcbe539",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 137
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 96.61499999999998,
+    "width": 260,
+    "lines": [
+     "The quick brown fox jumps over",
+     "the lazy dog while",
+     "Hamburgefonts wraps again",
+     "and again."
+    ],
+    "wrapped": [
+     "The quick brown fox jumps over",
+     "the lazy dog while",
+     "Hamburgefonts wraps again",
+     "and again."
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22,
+       "bottom": 40,
+       "left": 20.5,
+       "right": 271.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 46,
+       "bottom": 66.5,
+       "left": 20.5,
+       "right": 174
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 245
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 116,
+       "left": 21,
+       "right": 101.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "serif-span-sans": {
+   "inputs": "f7a34500b81d49b6",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 137
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 96.61499999999998,
+    "width": 260,
+    "lines": [
+     "The quick brown fox jumps over",
+     "the lazy dog while",
+     "Hamburgefonts wraps again and",
+     "again."
+    ],
+    "wrapped": [
+     "The quick brown fox jumps over",
+     "the lazy dog while",
+     "Hamburgefonts wraps again and",
+     "again."
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 40,
+       "left": 20.5,
+       "right": 274
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 20,
+       "right": 161
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 279.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 99,
+       "bottom": 116,
+       "left": 20.5,
+       "right": 67
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "colour-caption": {
+   "inputs": "88472a9b1c6f784f",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 137
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 96.61499999999998,
+    "width": 260,
+    "lines": [
+     "The quick brown fox jumps over",
+     "the lazy dog while",
+     "Hamburgefonts wraps again and",
+     "again."
+    ],
+    "wrapped": [
+     "The quick brown fox jumps over",
+     "the lazy dog while",
+     "Hamburgefonts wraps again and",
+     "again."
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 40,
+       "left": 20.5,
+       "right": 274
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 20.5,
+       "right": 163
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 22,
+       "right": 278
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 116,
+       "left": 21,
+       "right": 66.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "drawn": {
+   "inputs": "2c3fa8bbb443bf39",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 260,
+    "lines": [
+     "Drawn box with an ",
+     "extraordinarilylongwordthatmus",
+     "tsplit and more words."
+    ],
+    "wrapped": [
+     "Drawn box with an",
+     "extraordinarilylongwordthatmus",
+     "tsplit and more words."
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 21.5,
+       "right": 167
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 274
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 20.5,
+       "right": 196.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "drawn-tall": {
+   "inputs": "bdf594fb973d33e0",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 260
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0
+    ],
+    "pitches": [
+     25.424999999999997
+    ],
+    "height": 220,
+    "width": 260,
+    "lines": [
+     "Short text in a tall drawn box."
+    ],
+    "wrapped": [
+     "Short text in a tall drawn box."
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 21,
+       "right": 251.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "drawn-center": {
+   "inputs": "e1f93fadb3c54764",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 137
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 96.61499999999998,
+    "width": 260,
+    "lines": [
+     "The quick brown fox jumps over ",
+     "the lazy dog while ",
+     "Hamburgefonts wraps again ",
+     "and again."
+    ],
+    "wrapped": [
+     "The quick brown fox jumps over",
+     "the lazy dog while",
+     "Hamburgefonts wraps again",
+     "and again."
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 40,
+       "left": 21,
+       "right": 274.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 76,
+       "right": 219
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 37,
+       "right": 258.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 116,
+       "left": 109.5,
+       "right": 190
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "emoji": {
+   "inputs": "9ce784540bec4144",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 260,
+    "lines": [
+     "Emoji 😀 and 👩‍💻 with flags 🇯🇵",
+     "on a line that wraps around."
+    ],
+    "wrapped": [
+     "Emoji 😀 and 👩‍💻 with flags 🇯🇵",
+     "on a line that wraps around."
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 40,
+       "left": 21.5,
+       "right": 256.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 241
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "empty-lines": {
+   "inputs": "8f71b9d9b6a2d08f",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 201
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     76.27499999999999,
+     101.69999999999999,
+     139.83749999999998
+    ],
+    "pitches": [
+     25.424999999999997,
+     50.849999999999994,
+     25.424999999999997,
+     38.137499999999996,
+     25.424999999999997
+    ],
+    "height": 160.17749999999998,
+    "width": 260,
+    "lines": [
+     "",
+     "",
+     "Middle",
+     "",
+     ""
+    ],
+    "wrapped": [
+     "Middle"
+    ],
+    "ink": [
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 112,
+       "left": 21.5,
+       "right": 75
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": null,
+      "present": false
+     }
+    ]
+   }
+  },
+  "spaces": {
+   "inputs": "cada72192ae0d8c5",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 260,
+    "lines": [
+     "Triple   spaces   and trailing   ",
+     "  leading spaces"
+    ],
+    "wrapped": [
+     "Triple   spaces   and trailing",
+     "  leading spaces"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 40,
+       "left": 20.5,
+       "right": 234
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 31.5,
+       "right": 145.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "drawn-spaces": {
+   "inputs": "8ce8dc196b43425d",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 260,
+    "lines": [
+     "Triple   spaces   and trailing   ",
+     "  leading spaces"
+    ],
+    "wrapped": [
+     "Triple   spaces   and trailing",
+     "  leading spaces"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 40,
+       "left": 20.5,
+       "right": 234
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 31.5,
+       "right": 145.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "tokens": {
+   "inputs": "14895cee615ef310",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 137
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 96.61499999999998,
+    "width": 300,
+    "lines": [
+     "A state-of-the-art build, 2012—2014,",
+     "and/or",
+     "https://example.com/a-b/c?d=e and",
+     "日本語のテキストです in one line."
+    ],
+    "wrapped": [
+     "A state-of-the-art build, 2012—2014,",
+     "and/or",
+     "https://example.com/a-b/c?d=e and",
+     "日本語のテキストです in one line."
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 38.5,
+       "left": 20.5,
+       "right": 312
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 63,
+       "left": 21,
+       "right": 73.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21.5,
+       "right": 306.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 97,
+       "bottom": 114.5,
+       "left": 23,
+       "right": 290.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "tokens-narrow": {
+   "inputs": "6e2ed3a26023f479",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 220,
+     "height": 163
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999,
+     101.69999999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 122.03999999999999,
+    "width": 180,
+    "lines": [
+     "Ab state-of-the-art cd",
+     "2012—2014 ef and/or",
+     "gh",
+     "日本語のテキストです",
+     "ij"
+    ],
+    "wrapped": [
+     "Ab state-of-the-art cd",
+     "2012—2014 ef and/or",
+     "gh",
+     "日本語のテキストです",
+     "ij"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 193
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 63,
+       "left": 21,
+       "right": 194
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 39.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 97,
+       "bottom": 114.5,
+       "left": 23,
+       "right": 198.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 124,
+       "bottom": 141.5,
+       "left": 21.5,
+       "right": 27.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "tokens-marked": {
+   "inputs": "ed8659280b8fc514",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 220,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 180,
+    "lines": [
+     "Ab state-of-the-art cd",
+     "2012—2014 ef"
+    ],
+    "wrapped": [
+     "Ab state-of-the-art cd",
+     "2012—2014 ef"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 196
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 21,
+       "right": 138.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "drawn-tokens": {
+   "inputs": "9bd90516148a1a27",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 270,
+     "height": 188
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999,
+     101.69999999999999,
+     127.12499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 147.46499999999997,
+    "width": 230,
+    "lines": [
+     "A state-of-the-art build, ",
+     "2012—2014, and/or ",
+     "https://example.com/a-b/c?",
+     "d=e and ",
+     "日本語のテキストです in ",
+     "one line."
+    ],
+    "wrapped": [
+     "A state-of-the-art build,",
+     "2012—2014, and/or",
+     "https://example.com/a-b/c?",
+     "d=e and",
+     "日本語のテキストです in",
+     "one line."
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 38.5,
+       "left": 20.5,
+       "right": 207.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 63.5,
+       "left": 21,
+       "right": 178
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21.5,
+       "right": 240
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 112,
+       "left": 21,
+       "right": 86
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 122.5,
+       "bottom": 140,
+       "left": 23,
+       "right": 218
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 149.5,
+       "bottom": 163,
+       "left": 21,
+       "right": 86.5
+      },
+      "present": true
+     }
+    ]
+   }
+  }
+ }
+}

@@ -1,0 +1,1993 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "typography matches the canvas: box height, wrap points and where each line is drawn, per font and heading level",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/scene-layer.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "sans-20": {
+   "inputs": "c27b1fd46186f228",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 310
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     56.49999999999999,
+     98.875,
+     134.1875,
+     162.4375,
+     190.6875,
+     218.9375,
+     247.1875
+    ],
+    "pitches": [
+     56.49999999999999,
+     42.375,
+     35.31249999999999,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 269.7875,
+    "width": 300,
+    "lines": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a",
+     "couple of lines in this box,",
+     "Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a",
+     "couple of lines in this box,",
+     "Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 25.5,
+       "bottom": 64.5,
+       "left": 23.5,
+       "right": 265
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 81,
+       "bottom": 110.5,
+       "left": 22.5,
+       "right": 204.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 122,
+       "bottom": 147,
+       "left": 22,
+       "right": 192
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 157,
+       "bottom": 176.5,
+       "left": 22,
+       "right": 259.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 185,
+       "bottom": 204.5,
+       "left": 21,
+       "right": 248
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 213.5,
+       "bottom": 233,
+       "left": 22,
+       "right": 161.5
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 270.5,
+       "bottom": 285,
+       "left": 22,
+       "right": 95.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "sans-13": {
+   "inputs": "b43e17c322111170",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 197
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     36.724999999999994,
+     64.26874999999998,
+     87.22187499999998,
+     105.58437499999998,
+     123.94687499999998,
+     142.309375
+    ],
+    "pitches": [
+     36.724999999999994,
+     27.543749999999996,
+     22.953124999999996,
+     18.362499999999997,
+     18.362499999999997,
+     18.362499999999997,
+     18.362499999999997
+    ],
+    "height": 156.999375,
+    "width": 300,
+    "lines": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a couple of lines in this",
+     "box, Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a couple of lines in this",
+     "box, Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23.5,
+       "bottom": 49.5,
+       "left": 22,
+       "right": 179
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 59.5,
+       "bottom": 78.5,
+       "left": 21.5,
+       "right": 140
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 86,
+       "bottom": 102.5,
+       "left": 21.5,
+       "right": 132
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 109,
+       "bottom": 121.5,
+       "left": 21,
+       "right": 301
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 127.5,
+       "bottom": 140,
+       "left": 21,
+       "right": 140
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 164,
+       "bottom": 173.5,
+       "left": 21,
+       "right": 69
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "sans-31": {
+   "inputs": "7a79b8ac8835594b",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 590
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     87.57499999999999,
+     175.14999999999998,
+     240.83124999999995,
+     295.56562499999995,
+     339.353125,
+     383.140625,
+     426.928125,
+     470.71562500000005,
+     514.5031250000001
+    ],
+    "pitches": [
+     87.57499999999999,
+     87.57499999999999,
+     65.68124999999999,
+     54.73437499999999,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994
+    ],
+    "height": 549.533125,
+    "width": 300,
+    "lines": [
+     "Heading",
+     "One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps",
+     "over a couple of lines",
+     "in this box,",
+     "Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading",
+     "One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps",
+     "over a couple of lines",
+     "in this box,",
+     "Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 28.5,
+       "bottom": 89.5,
+       "left": 25,
+       "right": 262.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 117.5,
+       "bottom": 163,
+       "left": 22.5,
+       "right": 136.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 201.5,
+       "bottom": 247,
+       "left": 24,
+       "right": 306.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 266,
+       "bottom": 304.5,
+       "left": 23,
+       "right": 287
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 320,
+       "bottom": 350.5,
+       "left": 23,
+       "right": 299.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 363,
+       "bottom": 393.5,
+       "left": 21.5,
+       "right": 310
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 407.5,
+       "bottom": 434.5,
+       "left": 22,
+       "right": 166
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 450.5,
+       "bottom": 481.5,
+       "left": 23,
+       "right": 239.5
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 539.5,
+       "bottom": 562.5,
+       "left": 23,
+       "right": 137
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "serif-20": {
+   "inputs": "6c4ffcf6c0e38734",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 310
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     56.49999999999999,
+     98.875,
+     134.1875,
+     162.4375,
+     190.6875,
+     218.9375,
+     247.1875
+    ],
+    "pitches": [
+     56.49999999999999,
+     42.375,
+     35.31249999999999,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 269.7875,
+    "width": 300,
+    "lines": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a",
+     "couple of lines in this box,",
+     "Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a",
+     "couple of lines in this box,",
+     "Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 25,
+       "bottom": 63.5,
+       "left": 21.5,
+       "right": 287
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 80.5,
+       "bottom": 109.5,
+       "left": 21,
+       "right": 223
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 122,
+       "bottom": 146.5,
+       "left": 21,
+       "right": 210.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 157,
+       "bottom": 176.5,
+       "left": 21,
+       "right": 260
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 185,
+       "bottom": 204.5,
+       "left": 20.5,
+       "right": 248.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 213.5,
+       "bottom": 233,
+       "left": 21,
+       "right": 163.5
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 270.5,
+       "bottom": 285,
+       "left": 21,
+       "right": 101.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "serif-13": {
+   "inputs": "862931f26ebbf9e3",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 197
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     36.724999999999994,
+     64.26874999999998,
+     87.22187499999998,
+     105.58437499999998,
+     123.94687499999998,
+     142.309375
+    ],
+    "pitches": [
+     36.724999999999994,
+     27.543749999999996,
+     22.953124999999996,
+     18.362499999999997,
+     18.362499999999997,
+     18.362499999999997,
+     18.362499999999997
+    ],
+    "height": 156.999375,
+    "width": 300,
+    "lines": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a couple of lines in this",
+     "box, Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a couple of lines in this",
+     "box, Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23.5,
+       "bottom": 48.5,
+       "left": 21,
+       "right": 193.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 59.5,
+       "bottom": 78,
+       "left": 20.5,
+       "right": 152
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 86,
+       "bottom": 102,
+       "left": 20.5,
+       "right": 144
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 108.5,
+       "bottom": 121.5,
+       "left": 20.5,
+       "right": 300.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 127,
+       "bottom": 140,
+       "left": 20,
+       "right": 141
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 164,
+       "bottom": 173.5,
+       "left": 20.5,
+       "right": 73
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "serif-31": {
+   "inputs": "b74352e5abd60a47",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 656
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     87.57499999999999,
+     175.14999999999998,
+     240.83124999999995,
+     306.51249999999993,
+     361.24687499999993,
+     405.03437499999995,
+     448.821875,
+     492.609375,
+     536.396875,
+     580.184375
+    ],
+    "pitches": [
+     87.57499999999999,
+     87.57499999999999,
+     65.68124999999999,
+     65.68124999999999,
+     54.73437499999999,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994
+    ],
+    "height": 615.214375,
+    "width": 300,
+    "lines": [
+     "Heading",
+     "One",
+     "Heading",
+     "Two",
+     "Heading Three",
+     "Body text that wraps",
+     "over a couple of lines",
+     "in this box,",
+     "Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading",
+     "One",
+     "Heading",
+     "Two",
+     "Heading Three",
+     "Body text that wraps",
+     "over a couple of lines",
+     "in this box,",
+     "Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 27.5,
+       "bottom": 88,
+       "left": 22,
+       "right": 290.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 118,
+       "bottom": 163,
+       "left": 22,
+       "right": 148
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 201,
+       "bottom": 246,
+       "left": 21.5,
+       "right": 223
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 269.5,
+       "bottom": 302,
+       "left": 20.5,
+       "right": 120
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 331,
+       "bottom": 369,
+       "left": 21.5,
+       "right": 315.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 385,
+       "bottom": 415,
+       "left": 21.5,
+       "right": 300.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 429,
+       "bottom": 459,
+       "left": 21,
+       "right": 305.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 472.5,
+       "bottom": 501.5,
+       "left": 20.5,
+       "right": 169.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 516.5,
+       "bottom": 546.5,
+       "left": 21.5,
+       "right": 242
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 604.5,
+       "bottom": 628,
+       "left": 21.5,
+       "right": 146
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "mono-20": {
+   "inputs": "ba829b0ce6c16eb0",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 310
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     56.49999999999999,
+     98.875,
+     134.1875,
+     162.4375,
+     190.6875,
+     218.9375,
+     247.1875
+    ],
+    "pitches": [
+     56.49999999999999,
+     42.375,
+     35.31249999999999,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 269.7875,
+    "width": 300,
+    "lines": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a",
+     "couple of lines in this",
+     "box, Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a",
+     "couple of lines in this",
+     "box, Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 26.5,
+       "bottom": 63.5,
+       "left": 22,
+       "right": 260
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 82,
+       "bottom": 109.5,
+       "left": 21.5,
+       "right": 200.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 123,
+       "bottom": 146.5,
+       "left": 21,
+       "right": 197.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 158,
+       "bottom": 176,
+       "left": 21.5,
+       "right": 315.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 186,
+       "bottom": 204,
+       "left": 21.5,
+       "right": 271
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 214.5,
+       "bottom": 232.5,
+       "left": 21.5,
+       "right": 225
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 271,
+       "bottom": 285,
+       "left": 22.5,
+       "right": 118
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "mono-13": {
+   "inputs": "b1e150d4f7e296c3",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 197
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     36.724999999999994,
+     64.26874999999998,
+     87.22187499999998,
+     105.58437499999998,
+     123.94687499999998,
+     142.309375
+    ],
+    "pitches": [
+     36.724999999999994,
+     27.543749999999996,
+     22.953124999999996,
+     18.362499999999997,
+     18.362499999999997,
+     18.362499999999997,
+     18.362499999999997
+    ],
+    "height": 156.999375,
+    "width": 300,
+    "lines": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a couple of",
+     "lines in this box, Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a couple of",
+     "lines in this box, Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 24.5,
+       "bottom": 48.5,
+       "left": 21.5,
+       "right": 176
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 60.5,
+       "bottom": 78,
+       "left": 21,
+       "right": 137.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 87.5,
+       "bottom": 101.5,
+       "left": 21,
+       "right": 135.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 109.5,
+       "bottom": 121,
+       "left": 21,
+       "right": 284
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 128,
+       "bottom": 139.5,
+       "left": 21,
+       "right": 253.5
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 164.5,
+       "bottom": 173.5,
+       "left": 21.5,
+       "right": 83.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "mono-31": {
+   "inputs": "6052837bf92b9838",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 634
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     87.57499999999999,
+     175.14999999999998,
+     240.83124999999995,
+     295.56562499999995,
+     339.353125,
+     383.140625,
+     426.928125,
+     470.71562500000005,
+     514.5031250000001,
+     558.2906250000001
+    ],
+    "pitches": [
+     87.57499999999999,
+     87.57499999999999,
+     65.68124999999999,
+     54.73437499999999,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994
+    ],
+    "height": 593.3206250000001,
+    "width": 300,
+    "lines": [
+     "Heading",
+     "One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that",
+     "wraps over a",
+     "couple of lines",
+     "in this box,",
+     "Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading",
+     "One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that",
+     "wraps over a",
+     "couple of lines",
+     "in this box,",
+     "Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 30.5,
+       "bottom": 87,
+       "left": 23,
+       "right": 256.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 122,
+       "bottom": 162.5,
+       "left": 21,
+       "right": 119
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 203.5,
+       "bottom": 245.5,
+       "left": 22,
+       "right": 299.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 267,
+       "bottom": 303,
+       "left": 22,
+       "right": 295
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 321.5,
+       "bottom": 349.5,
+       "left": 22.5,
+       "right": 256.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 371,
+       "bottom": 392.5,
+       "left": 20.5,
+       "right": 222
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 408.5,
+       "bottom": 436.5,
+       "left": 22.5,
+       "right": 273
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 452.5,
+       "bottom": 479,
+       "left": 22.5,
+       "right": 218.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 496,
+       "bottom": 524.5,
+       "left": 21.5,
+       "right": 252.5
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 584.5,
+       "bottom": 606,
+       "left": 23.5,
+       "right": 171.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "hand-20": {
+   "inputs": "4cdcafcf8bb257e8",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 310
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     56.49999999999999,
+     98.875,
+     134.1875,
+     162.4375,
+     190.6875,
+     218.9375,
+     247.1875
+    ],
+    "pitches": [
+     56.49999999999999,
+     42.375,
+     35.31249999999999,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 269.7875,
+    "width": 300,
+    "lines": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a",
+     "couple of lines in this box,",
+     "Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a",
+     "couple of lines in this box,",
+     "Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22,
+       "bottom": 67.5,
+       "left": 23,
+       "right": 277.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 78.5,
+       "bottom": 112.5,
+       "left": 22,
+       "right": 216.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 120.5,
+       "bottom": 148.5,
+       "left": 22,
+       "right": 202.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 155.5,
+       "bottom": 178.5,
+       "left": 22,
+       "right": 308.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 183,
+       "bottom": 206.5,
+       "left": 21,
+       "right": 280
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 211.5,
+       "bottom": 234.5,
+       "left": 21.5,
+       "right": 177.5
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 269,
+       "bottom": 285.5,
+       "left": 21.5,
+       "right": 112
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "hand-13": {
+   "inputs": "ee4d546605d73ec6",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 197
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     36.724999999999994,
+     64.26874999999998,
+     87.22187499999998,
+     105.58437499999998,
+     123.94687499999998,
+     142.309375
+    ],
+    "pitches": [
+     36.724999999999994,
+     27.543749999999996,
+     22.953124999999996,
+     18.362499999999997,
+     18.362499999999997,
+     18.362499999999997,
+     18.362499999999997
+    ],
+    "height": 156.999375,
+    "width": 300,
+    "lines": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a couple of lines",
+     "in this box, Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a couple of lines",
+     "in this box, Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22,
+       "bottom": 51.5,
+       "left": 22,
+       "right": 187.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 58,
+       "bottom": 80,
+       "left": 21.5,
+       "right": 147.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 84.5,
+       "bottom": 104,
+       "left": 21,
+       "right": 139
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 107.5,
+       "bottom": 123,
+       "left": 21,
+       "right": 304.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 125.5,
+       "bottom": 141,
+       "left": 21,
+       "right": 200.5
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 163,
+       "bottom": 174,
+       "left": 21,
+       "right": 80
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "hand-31": {
+   "inputs": "802ba88ea09c39cc",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 700
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     87.57499999999999,
+     175.14999999999998,
+     240.83124999999995,
+     306.51249999999993,
+     361.24687499999993,
+     405.03437499999995,
+     448.821875,
+     492.609375,
+     536.396875,
+     580.184375,
+     623.9718750000001
+    ],
+    "pitches": [
+     87.57499999999999,
+     87.57499999999999,
+     65.68124999999999,
+     65.68124999999999,
+     54.73437499999999,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994
+    ],
+    "height": 659.001875,
+    "width": 300,
+    "lines": [
+     "Heading",
+     "One",
+     "Heading",
+     "Two",
+     "Heading Three",
+     "Body text that",
+     "wraps over a",
+     "couple of lines in",
+     "this box,",
+     "Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading",
+     "One",
+     "Heading",
+     "Two",
+     "Heading Three",
+     "Body text that",
+     "wraps over a",
+     "couple of lines in",
+     "this box,",
+     "Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23.5,
+       "bottom": 93.5,
+       "left": 24.5,
+       "right": 272
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 117.5,
+       "bottom": 163.5,
+       "left": 23,
+       "right": 141
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 198,
+       "bottom": 250.5,
+       "left": 23.5,
+       "right": 209
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 269,
+       "bottom": 303.5,
+       "left": 20.5,
+       "right": 115.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 328,
+       "bottom": 372.5,
+       "left": 23,
+       "right": 303
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 382.5,
+       "bottom": 418,
+       "left": 23,
+       "right": 253
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 435,
+       "bottom": 463,
+       "left": 22,
+       "right": 222.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 469.5,
+       "bottom": 506.5,
+       "left": 21.5,
+       "right": 280.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 513.5,
+       "bottom": 544,
+       "left": 20.5,
+       "right": 150
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 557,
+       "bottom": 593.5,
+       "left": 22.5,
+       "right": 264.5
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 646,
+       "bottom": 672,
+       "left": 22,
+       "right": 162.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "display-20": {
+   "inputs": "58761e11b6d41d5e",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 282
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     56.49999999999999,
+     98.875,
+     134.1875,
+     162.4375,
+     190.6875,
+     218.9375
+    ],
+    "pitches": [
+     56.49999999999999,
+     42.375,
+     35.31249999999999,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 241.5375,
+    "width": 300,
+    "lines": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a couple of",
+     "lines in this box, Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a couple of",
+     "lines in this box, Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22,
+       "bottom": 60,
+       "left": 21,
+       "right": 226
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 79,
+       "bottom": 107,
+       "left": 20.5,
+       "right": 177
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 121,
+       "bottom": 144,
+       "left": 20.5,
+       "right": 168.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 156,
+       "bottom": 174,
+       "left": 21,
+       "right": 318.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 184,
+       "bottom": 202.5,
+       "left": 21,
+       "right": 286
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 240.5,
+       "bottom": 256.5,
+       "left": 21,
+       "right": 90
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "display-13": {
+   "inputs": "92857f82053b4ac1",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 197
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     36.724999999999994,
+     64.26874999999998,
+     87.22187499999998,
+     105.58437499999998,
+     123.94687499999998,
+     142.309375
+    ],
+    "pitches": [
+     36.724999999999994,
+     27.543749999999996,
+     22.953124999999996,
+     18.362499999999997,
+     18.362499999999997,
+     18.362499999999997,
+     18.362499999999997
+    ],
+    "height": 156.999375,
+    "width": 300,
+    "lines": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a couple of lines in this box,",
+     "Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps over a couple of lines in this box,",
+     "Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 21.5,
+       "bottom": 46.5,
+       "left": 20.5,
+       "right": 154
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 58.5,
+       "bottom": 76.5,
+       "left": 20.5,
+       "right": 122
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 85.5,
+       "bottom": 100.5,
+       "left": 20.5,
+       "right": 116.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 108,
+       "bottom": 120,
+       "left": 20.5,
+       "right": 302
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 126.5,
+       "bottom": 138,
+       "left": 20.5,
+       "right": 105
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 163,
+       "bottom": 173.5,
+       "left": 20.5,
+       "right": 65.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "display-31": {
+   "inputs": "06cc9783005eb128",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 590
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     87.57499999999999,
+     175.14999999999998,
+     240.83124999999995,
+     295.56562499999995,
+     339.353125,
+     383.140625,
+     426.928125,
+     470.71562500000005,
+     514.5031250000001
+    ],
+    "pitches": [
+     87.57499999999999,
+     87.57499999999999,
+     65.68124999999999,
+     54.73437499999999,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994,
+     43.787499999999994
+    ],
+    "height": 549.533125,
+    "width": 300,
+    "lines": [
+     "Heading",
+     "One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps",
+     "over a couple of lines",
+     "in this box,",
+     "Hamburgefonts.",
+     "",
+     "Last Line"
+    ],
+    "wrapped": [
+     "Heading",
+     "One",
+     "Heading Two",
+     "Heading Three",
+     "Body text that wraps",
+     "over a couple of lines",
+     "in this box,",
+     "Hamburgefonts.",
+     "Last Line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 24.5,
+       "bottom": 82.5,
+       "left": 21.5,
+       "right": 230
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 111,
+       "bottom": 164,
+       "left": 21,
+       "right": 117
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 198.5,
+       "bottom": 242,
+       "left": 21,
+       "right": 263
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 264,
+       "bottom": 300,
+       "left": 21,
+       "right": 250
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 318.5,
+       "bottom": 346,
+       "left": 21.5,
+       "right": 276
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 362,
+       "bottom": 389.5,
+       "left": 21,
+       "right": 289.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 406,
+       "bottom": 433.5,
+       "left": 21,
+       "right": 155
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 449.5,
+       "bottom": 477.5,
+       "left": 21.5,
+       "right": 222.5
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 537.5,
+       "bottom": 562,
+       "left": 21.5,
+       "right": 128.5
+      },
+      "present": true
+     }
+    ]
+   }
+  }
+ }
+}

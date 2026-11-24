@@ -1,0 +1,84 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the DOM renderer saves what the Fabric renderer saves (paired) > Make caption gives the same caption as on Fabric",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/interleaving.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "876eca09383ccc99",
+   "value": {
+    "scenes": [
+     {
+      "step": "{\"run\":\"makeCaption\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "pic",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "note",
+         "left": 300,
+         "top": 330,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "pic"
+        }
+       ]
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Interleaving",
+     "objects": [
+      {
+       "id": "pic",
+       "left": 300,
+       "top": 200,
+       "angle": 0,
+       "type": "image",
+       "assetId": "quad",
+       "scaleX": 1,
+       "scaleY": 1
+      },
+      {
+       "id": "note",
+       "left": 300,
+       "top": 330,
+       "angle": 0,
+       "type": "text",
+       "text": "A caption for the picture",
+       "fontSize": 24,
+       "width": 160,
+       "minHeight": 0,
+       "captionOf": "pic"
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

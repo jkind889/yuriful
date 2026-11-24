@@ -1,0 +1,235 @@
+{
+ "about": "Frozen references: what the editor on the Fabric renderer gave for these tests (fake Fabric and the same fakes), recorded by running it (FABRIC_REFERENCE=record). Never edit them by hand, and never record them from the DOM renderer. See docs/engineering-reference.md.",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, package files) as committed",
+  "command": "FABRIC_REFERENCE=record npx vitest run <file>",
+  "runtime": "Node v24.19.0, Vitest with jsdom",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "the typing shortcut matcher (one line, no view) > is the same rule as the canvas matcher (`matchTypingShortcut`, a frozen reference) on every case, line by line > matcher": {
+   "inputs": "5fe40135bc14cf0e",
+   "value": [
+    {
+     "kind": "heading",
+     "line": {
+      "start": 0,
+      "end": 2
+     },
+     "level": 1,
+     "remove": [
+      {
+       "start": 0,
+       "end": 2
+      }
+     ],
+     "content": {
+      "start": 2,
+      "end": 2
+     }
+    },
+    null,
+    {
+     "kind": "heading",
+     "line": {
+      "start": 0,
+      "end": 8
+     },
+     "level": 2,
+     "remove": [
+      {
+       "start": 0,
+       "end": 3
+      }
+     ],
+     "content": {
+      "start": 3,
+      "end": 8
+     }
+    },
+    null,
+    {
+     "kind": "heading",
+     "line": {
+      "start": 0,
+      "end": 4
+     },
+     "level": 3,
+     "remove": [
+      {
+       "start": 0,
+       "end": 4
+      }
+     ],
+     "content": {
+      "start": 4,
+      "end": 4
+     }
+    },
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    {
+     "kind": "bold",
+     "line": {
+      "start": 0,
+      "end": 8
+     },
+     "remove": [
+      {
+       "start": 0,
+       "end": 2
+      },
+      {
+       "start": 6,
+       "end": 8
+      }
+     ],
+     "content": {
+      "start": 2,
+      "end": 6
+     }
+    },
+    null,
+    {
+     "kind": "italic",
+     "line": {
+      "start": 0,
+      "end": 4
+     },
+     "remove": [
+      {
+       "start": 0,
+       "end": 1
+      },
+      {
+       "start": 3,
+       "end": 4
+      }
+     ],
+     "content": {
+      "start": 1,
+      "end": 3
+     }
+    },
+    null,
+    {
+     "kind": "bold",
+     "line": {
+      "start": 0,
+      "end": 9
+     },
+     "remove": [
+      {
+       "start": 2,
+       "end": 4
+      },
+      {
+       "start": 5,
+       "end": 7
+      }
+     ],
+     "content": {
+      "start": 4,
+      "end": 5
+     }
+    },
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    {
+     "kind": "bold",
+     "line": {
+      "start": 0,
+      "end": 6
+     },
+     "remove": [
+      {
+       "start": 1,
+       "end": 3
+      },
+      {
+       "start": 4,
+       "end": 6
+      }
+     ],
+     "content": {
+      "start": 3,
+      "end": 4
+     }
+    },
+    null,
+    {
+     "kind": "italic",
+     "line": {
+      "start": 0,
+      "end": 6
+     },
+     "remove": [
+      {
+       "start": 3,
+       "end": 4
+      },
+      {
+       "start": 5,
+       "end": 6
+      }
+     ],
+     "content": {
+      "start": 4,
+      "end": 5
+     }
+    },
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    {
+     "kind": "italic",
+     "line": {
+      "start": 0,
+      "end": 4
+     },
+     "remove": [
+      {
+       "start": 1,
+       "end": 2
+      },
+      {
+       "start": 3,
+       "end": 4
+      }
+     ],
+     "content": {
+      "start": 2,
+      "end": 3
+     }
+    },
+    null,
+    null
+   ]
+  }
+ }
+}

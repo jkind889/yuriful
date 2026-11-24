@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EditorState, TextSelection } from 'prosemirror-state'
-import { headingsAfterEdit, matchTypingShortcut } from '../model/richText.ts'
+import { headingsAfterEdit } from '../model/richText.ts'
+import { fabricReference } from './testing/fabricReference.ts'
 import { isBlankTextDoc } from '../model/textDoc.ts'
 import type { EditSession } from './textSession.ts'
 import { docFromText, posAtTextOffset, textSchema } from './textSchema.ts'
@@ -57,18 +58,26 @@ describe('the typing shortcut matcher (one line, no view)', () => {
     expect(matchShortcut('# ', 1, ' ')).toBeNull()
   })
 
-  it('is the same rule as the canvas matcher (`matchTypingShortcut`) on every case, line by line', () => {
+  it('is the same rule as the canvas matcher (`matchTypingShortcut`, a frozen reference) on every case, line by line', async () => {
     const cases = ['#', '##|Title', '###', '####', 'a #', '#tag', '**bold*', '*it', 'a **b*| c', '2 * 3 ', '* item', 'snake*case', '***x*', '** x*', '*x ', '**a*|*', '"**x*', '\u{1F600} *x', '\u{1F600}*x', '**x*|⃣', '*́x', '(*x', '#|́x']
-    for (const before of cases) {
-      for (const typed of [' ', '*']) {
+    const inputs = cases.flatMap((before) =>
+      [' ', '*'].map((typed) => {
         const at = before.includes('|') ? before.indexOf('|') : before.length
         const plain = before.replace('|', '')
-        const text = plain.slice(0, at) + typed + plain.slice(at)
-        const canvas = matchTypingShortcut(text, at + typed.length, typed)
-        const ours = matchShortcut(text, at + typed.length, typed)
-        expect(ours === null ? null : ours.kind, JSON.stringify(text)).toBe(canvas === null ? null : canvas.kind)
-        if (ours && canvas) expect({ remove: ours.remove, content: ours.content, level: ours.level }).toStrictEqual({ remove: canvas.remove, content: canvas.content, level: canvas.level })
-      }
+        return { text: plain.slice(0, at) + typed + plain.slice(at), caret: at + typed.length, typed }
+      }),
+    )
+    // What the Fabric renderer's matcher (`matchTypingShortcut` in `src/model/richText.ts` before it was deleted) gave for each.
+    type Match = { kind: string; remove: unknown; content: unknown; level?: number } | null
+    const matched = await fabricReference('matcher', inputs, async () => {
+      const { matchTypingShortcut } = (await import(/* @vite-ignore */ '../model/richText.ts' as string)) as { matchTypingShortcut: (text: string, caret: number, typed: string) => Match }
+      return inputs.map(({ text, caret, typed }) => matchTypingShortcut(text, caret, typed))
+    })
+    for (const [i, { text, caret, typed }] of inputs.entries()) {
+      const canvas = matched[i]!
+      const ours = matchShortcut(text, caret, typed)
+      expect(ours === null ? null : ours.kind, JSON.stringify(text)).toBe(canvas === null ? null : canvas.kind)
+      if (ours && canvas) expect({ remove: ours.remove, content: ours.content, level: ours.level }).toStrictEqual({ remove: canvas.remove, content: canvas.content, level: canvas.level })
     }
   })
 })

@@ -1,0 +1,4852 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the review follow-ups, paired with the Fabric renderer > a press that ends an edit never acts on a handle of the text it leaves: corners, sides and the rotation handle, inside, on and just outside the box, at two zooms",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/dom-editing.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "7599cb14b957f16e",
+   "value": {
+    "records": [
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"br\",\"offset\":[-2,-2],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 14,
+       "head": 14,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"br\",\"offset\":[0,0],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 14,
+       "head": 14,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"br\",\"offset\":[2,2],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"tl\",\"offset\":[2,2],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"tl\",\"offset\":[-2,-2],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"mr\",\"offset\":[-2,0],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 14,
+       "head": 14,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"mr\",\"offset\":[0,0],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 14,
+       "head": 14,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"mr\",\"offset\":[2,0],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"ml\",\"offset\":[2,0],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"ml\",\"offset\":[-2,0],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"mtr\",\"offset\":[0,0],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1.7,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Editing",
+     "objects": [
+      {
+       "type": "text",
+       "id": "T",
+       "left": 120,
+       "top": 100,
+       "angle": 0,
+       "text": "hidden handles",
+       "fontSize": 24,
+       "width": 240
+      }
+     ],
+     "viewport": {
+      "zoom": 1.7,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  },
+  "script (2)": {
+   "inputs": "cfef971155e4593f",
+   "value": {
+    "records": [
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"br\",\"offset\":[-2,-2],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 14,
+       "head": 14,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"br\",\"offset\":[0,0],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 14,
+       "head": 14,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"br\",\"offset\":[2,2],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"tl\",\"offset\":[2,2],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"tl\",\"offset\":[-2,-2],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"mr\",\"offset\":[-2,0],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 14,
+       "head": 14,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"mr\",\"offset\":[0,0],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 14,
+       "head": 14,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"mr\",\"offset\":[2,0],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"ml\",\"offset\":[2,0],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"ml\",\"offset\":[-2,0],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.2,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "hidden handles",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"handlePress\":\"T\",\"handle\":\"mtr\",\"offset\":[0,0],\"by\":[30,20]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 120,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "hidden handles",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 120,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "hidden handles",
+          "fontSize": 24,
+          "width": 240
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:hidden handles"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 0.8,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Editing",
+     "objects": [
+      {
+       "type": "text",
+       "id": "T",
+       "left": 120,
+       "top": 100,
+       "angle": 0,
+       "text": "hidden handles",
+       "fontSize": 24,
+       "width": 240
+      }
+     ],
+     "viewport": {
+      "zoom": 0.8,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

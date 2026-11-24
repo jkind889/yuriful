@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import type { Browser, BrowserContext, Page } from '@playwright/test'
 import type { FeedbackSnapshot } from '../src/editor/feedbackLayer.ts'
 import type { Scene } from '../src/model/types.ts'
+import { fabricReference } from './fabricReference.ts'
 import { AUTOSAVE_QUIET_MS, chooseRenderer, dropImage, openApp, openBlank, pngBuffer, sceneToPage, seedRaw, snapshotIdb, status, storedDoc, tamperIdb } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredFrame, StoredObject, View } from './helpers.ts'
 
@@ -493,32 +494,41 @@ test.describe('the DOM renderer, static (Slice 2c-i)', () => {
     expect(domSaved.objects.filter((o) => 'blocks' in o || 'height' in o || 'surface' in o)).toEqual([])
     const domBounds = await page.evaluate((ids) => ids.map((id) => window.__dom.bounds(id)), ['F', 'img', 'note', 'loose'])
 
-    // The same board in a page on the Fabric renderer: nothing in it changes on load or on the next save.
-    const fabric = await context.newPage()
-    const fabricErrors = errorsOf(fabric)
-    await chooseRenderer(fabric, 'fabric')
-    await installProbe(fabric)
-    await openApp(fabric)
-    expect(await fabric.evaluate(() => window.__dom.renderer())).toBe('fabric')
-    const fabricScene = (await fabric.evaluate(() => window.__dom.scene())) as Scene
-    expect(fabricScene.frames).toEqual(domSaved.frames)
-    expect(fabricScene.objects).toEqual(domSaved.objects)
-    await fabric.mouse.move(640, 400)
-    await fabric.mouse.wheel(0, 120)
-    await expect(status(fabric)).toContainText('Saved on this device')
-    await fabric.waitForTimeout(700)
-    const fabricSaved = await stored(fabric)
-    expect(fabricSaved.version).toBe(2)
-    expect(fabricSaved.frames).toEqual(domSaved.frames)
-    expect(fabricSaved.objects).toEqual(domSaved.objects)
+    // The same board in a page on the Fabric renderer: nothing in it changes on load or on the next
+    // save. The reference holds the board it was given (what the DOM renderer saved when it was
+    // recorded), what Fabric loaded and saved from it, and where Fabric put every box.
+    const reopened = await fabricReference(context.browser()!, 'reopened', { doc, edits: 'move img, scale loose, bold and centre note' }, async () => {
+      const fabric = await context.newPage()
+      const fabricErrors = errorsOf(fabric)
+      await chooseRenderer(fabric, 'fabric')
+      await installProbe(fabric)
+      await openApp(fabric)
+      expect(await fabric.evaluate(() => window.__dom.renderer())).toBe('fabric')
+      const fabricScene = (await fabric.evaluate(() => window.__dom.scene())) as Scene
+      await fabric.mouse.move(640, 400)
+      await fabric.mouse.wheel(0, 120)
+      await expect(status(fabric)).toContainText('Saved on this device')
+      await fabric.waitForTimeout(700)
+      const fabricSaved = await stored(fabric)
+      const fabricBounds = await fabric.evaluate((ids) => ids.map((id) => window.__dom.bounds(id)!), ['F', 'img', 'note', 'loose'])
+      expect(fabricErrors).toEqual([])
+      return { given: domSaved, scene: fabricScene, saved: fabricSaved, bounds: fabricBounds }
+    })
+    // Fabric changed nothing in the board it was given, on load or on its next save.
+    expect(reopened.scene.frames).toEqual(reopened.given.frames)
+    expect(reopened.scene.objects).toEqual(reopened.given.objects)
+    expect(reopened.saved.version).toBe(2)
+    expect(reopened.saved.frames).toEqual(reopened.given.frames)
+    expect(reopened.saved.objects).toEqual(reopened.given.objects)
+    // What the DOM renderer saves is what Fabric keeps (a text's measured geometry within the tolerance).
+    expect(domSaved.frames).toEqual(reopened.saved.frames)
+    expectSameRecords(domSaved.objects as never, reopened.saved.objects as never, 'saved on the DOM renderer, kept by Fabric')
     // It looks the same: every box where the DOM renderer had it (text boxes within a pixel of each other's layout).
-    const fabricBounds = await fabric.evaluate((ids) => ids.map((id) => window.__dom.bounds(id)), ['F', 'img', 'note', 'loose'])
-    fabricBounds.forEach((b, i) => {
+    reopened.bounds.forEach((b, i) => {
       const d = domBounds[i]!
-      for (const k of ['left', 'top', 'right', 'bottom'] as const) expect(Math.abs(b![k] - d[k]), `${i} ${k}`).toBeLessThanOrEqual(1)
+      for (const k of ['left', 'top', 'right', 'bottom'] as const) expect(Math.abs(b[k] - d![k]), `${i} ${k}`).toBeLessThanOrEqual(1)
     })
     expect(errors).toEqual([])
-    expect(fabricErrors).toEqual([])
   })
 
   test('items stay exactly under their proxies while a text, a cropped image, a multi-selection and a frame are moved, scaled and turned, at zoom and pan', async ({ page }) => {
@@ -684,7 +694,7 @@ test.describe('the DOM renderer, static (Slice 2c-i)', () => {
       return out
     }
     const dom = await runAll('dom')
-    const fabric = await runAll('fabric')
+    const fabric = await fabricReference(browser, 'commands', { doc, steps }, () => runAll('fabric'))
     expect(dom).toEqual(fabric)
   })
 })
@@ -782,7 +792,7 @@ function expectSameRecords(dom: readonly Record<string, unknown>[], fabric: read
 }
 
 async function expectPaired(browser: Browser, doc: StoredBoard, steps: readonly Step[]) {
-  const fabric = await runScript(browser, 'fabric', doc, steps)
+  const fabric = await fabricReference(browser, 'script', { doc, steps }, () => runScript(browser, 'fabric', doc, steps))
   const dom = await runScript(browser, 'dom', doc, steps)
   let worst = 0
   fabric.scenes.forEach((f, i) => {
@@ -1236,7 +1246,7 @@ function expectSameFeedback(dom: FeedbackSnapshot, fabric: FeedbackSnapshot, whe
 }
 
 async function expectFeaturePaired(browser: Browser, doc: StoredBoard, steps: readonly FeatureStep[], assets: SeedAsset[] = ASSETS) {
-  const fabric = await runFeatureScript(browser, 'fabric', doc, steps, assets)
+  const fabric = await fabricReference(browser, 'script', { doc, steps, assets }, () => runFeatureScript(browser, 'fabric', doc, steps, assets))
   const dom = await runFeatureScript(browser, 'dom', doc, steps, assets)
   let worst = 0
   fabric.records.forEach((f, i) => {
@@ -1916,11 +1926,12 @@ test.describe('a frame preview draws only what overlaps the frame (Slice 2c-iii 
   }
 
   test('an image outside the frame cannot break its preview; an image inside it that taints a canvas fails the preview on both renderers alike', async ({ browser }) => {
-    const outside = { fabric: await previewAfterReplacing(browser, 'fabric', 'OUT'), dom: await previewAfterReplacing(browser, 'dom', 'OUT') }
+    const fabricPreview = (target: string) => fabricReference(browser, target, { target, svg: TAINTING_SVG }, () => previewAfterReplacing(browser, 'fabric', target))
+    const outside = { fabric: await fabricPreview('OUT'), dom: await previewAfterReplacing(browser, 'dom', 'OUT') }
     expect(outside.fabric).toEqual({ drawn: true, error: null })
     expect(outside.dom).toEqual(outside.fabric)
     // Inside the frame both renderers draw it, as they must, and the browser refuses the tainted bitmap.
-    const inside = { fabric: await previewAfterReplacing(browser, 'fabric', 'IN'), dom: await previewAfterReplacing(browser, 'dom', 'IN') }
+    const inside = { fabric: await fabricPreview('IN'), dom: await previewAfterReplacing(browser, 'dom', 'IN') }
     expect(inside.fabric).toEqual({ drawn: false, error: 'SecurityError' })
     expect(inside.dom).toEqual(inside.fabric)
   })
@@ -2060,7 +2071,10 @@ test.describe('the lifted look casts the canvas\'s shadow (Slice 2c-iii follow-u
       { name: 'turned 30° at 0.6, 150%', doc: board([big], [image('I', 260, 160, { frameId: 'F', angle: 30, scaleX: 0.6, scaleY: 0.6 })], { zoom: 1.5, panX: -60, panY: -40 }), dx: 30, dy: 20 },
     ]
     for (const c of cases) {
-      const fabric = await liftedShot(browser, 'fabric', c.doc, c.dx, c.dy)
+      const fabric = await fabricReference(browser, c.name, c, async () => {
+        const { png, clip, corners } = await liftedShot(browser, 'fabric', c.doc, c.dx, c.dy)
+        return { png, clip, corners }
+      })
       const dom = await liftedShot(browser, 'dom', c.doc, c.dx, c.dy, fabric.clip)
       expect(dom.lifted).toEqual(['I'])
       const r = await compareShadows(page, fabric.png, dom.png, fabric.corners)

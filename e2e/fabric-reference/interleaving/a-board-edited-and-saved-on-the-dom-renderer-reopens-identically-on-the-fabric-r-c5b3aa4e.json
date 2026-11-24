@@ -1,0 +1,269 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the DOM renderer, static (Slice 2c-i) > a board edited and saved on the DOM renderer reopens identically on the Fabric renderer",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/interleaving.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "reopened": {
+   "inputs": "f5829cb6a1334ed9",
+   "value": {
+    "given": {
+     "version": 2,
+     "title": "Interleaving",
+     "frames": [
+      {
+       "id": "F",
+       "name": "Spread",
+       "left": 200,
+       "top": 120,
+       "width": 520,
+       "height": 420
+      }
+     ],
+     "objects": [
+      {
+       "id": "img",
+       "left": 300,
+       "top": 160,
+       "angle": 0,
+       "type": "image",
+       "assetId": "quad",
+       "scaleX": 1,
+       "scaleY": 1,
+       "crop": {
+        "x": 10,
+        "y": 10,
+        "width": 120,
+        "height": 90
+       },
+       "frameId": "F"
+      },
+      {
+       "id": "note",
+       "left": 250,
+       "top": 340,
+       "angle": 0,
+       "type": "text",
+       "text": "Front sleeve notes\nsecond line",
+       "fontSize": 24,
+       "width": 260,
+       "align": "center",
+       "spans": [
+        {
+         "start": 19,
+         "end": 25,
+         "bold": true,
+         "italic": true
+        },
+        {
+         "start": 25,
+         "end": 30,
+         "bold": true
+        }
+       ],
+       "headings": [
+        1
+       ],
+       "frameId": "F"
+      },
+      {
+       "id": "loose",
+       "left": 760,
+       "top": 380,
+       "angle": 0,
+       "type": "text",
+       "text": "Loose words here",
+       "fontSize": 30,
+       "width": 250,
+       "minHeight": 50
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    },
+    "scene": {
+     "frames": [
+      {
+       "id": "F",
+       "name": "Spread",
+       "left": 200,
+       "top": 120,
+       "width": 520,
+       "height": 420
+      }
+     ],
+     "objects": [
+      {
+       "id": "img",
+       "left": 300,
+       "top": 160,
+       "angle": 0,
+       "type": "image",
+       "assetId": "quad",
+       "scaleX": 1,
+       "scaleY": 1,
+       "crop": {
+        "x": 10,
+        "y": 10,
+        "width": 120,
+        "height": 90
+       },
+       "frameId": "F"
+      },
+      {
+       "id": "note",
+       "left": 250,
+       "top": 340,
+       "angle": 0,
+       "type": "text",
+       "text": "Front sleeve notes\nsecond line",
+       "fontSize": 24,
+       "width": 260,
+       "align": "center",
+       "spans": [
+        {
+         "start": 19,
+         "end": 25,
+         "bold": true,
+         "italic": true
+        },
+        {
+         "start": 25,
+         "end": 30,
+         "bold": true
+        }
+       ],
+       "headings": [
+        1
+       ],
+       "frameId": "F"
+      },
+      {
+       "id": "loose",
+       "left": 760,
+       "top": 380,
+       "angle": 0,
+       "type": "text",
+       "text": "Loose words here",
+       "fontSize": 30,
+       "width": 250,
+       "minHeight": 50
+      }
+     ]
+    },
+    "saved": {
+     "version": 2,
+     "title": "Interleaving",
+     "frames": [
+      {
+       "id": "F",
+       "name": "Spread",
+       "left": 200,
+       "top": 120,
+       "width": 520,
+       "height": 420
+      }
+     ],
+     "objects": [
+      {
+       "id": "img",
+       "left": 300,
+       "top": 160,
+       "angle": 0,
+       "type": "image",
+       "assetId": "quad",
+       "scaleX": 1,
+       "scaleY": 1,
+       "crop": {
+        "x": 10,
+        "y": 10,
+        "width": 120,
+        "height": 90
+       },
+       "frameId": "F"
+      },
+      {
+       "id": "note",
+       "left": 250,
+       "top": 340,
+       "angle": 0,
+       "type": "text",
+       "text": "Front sleeve notes\nsecond line",
+       "fontSize": 24,
+       "width": 260,
+       "align": "center",
+       "spans": [
+        {
+         "start": 19,
+         "end": 25,
+         "bold": true,
+         "italic": true
+        },
+        {
+         "start": 25,
+         "end": 30,
+         "bold": true
+        }
+       ],
+       "headings": [
+        1
+       ],
+       "frameId": "F"
+      },
+      {
+       "id": "loose",
+       "left": 760,
+       "top": 380,
+       "angle": 0,
+       "type": "text",
+       "text": "Loose words here",
+       "fontSize": 30,
+       "width": 250,
+       "minHeight": 50
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": -120
+     }
+    },
+    "bounds": [
+     {
+      "left": 200,
+      "top": 120,
+      "right": 720,
+      "bottom": 540
+     },
+     {
+      "left": 300,
+      "top": 160,
+      "right": 420,
+      "bottom": 250
+     },
+     {
+      "left": 250,
+      "top": 340,
+      "right": 510,
+      "bottom": 570.52
+     },
+     {
+      "left": 760,
+      "top": 380,
+      "right": 1010,
+      "bottom": 430
+     }
+    ]
+   }
+  }
+ }
+}

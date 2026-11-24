@@ -1,0 +1,248 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the live width floor is the text as formatted, not the plain-sans width a box is built with (paired) > undo and redo rebuild a narrowed box from its record, as Fabric builds it (plain sans counts again)",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/interleaving.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "35b14540aaae6bdb",
+   "value": {
+    "scenes": [
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":-250,\"dy\":0}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono"
+        },
+        {
+         "id": "head",
+         "left": 300,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"undo\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "font": "mono"
+        },
+        {
+         "id": "head",
+         "left": 300,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"redo\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 151.76,
+         "font": "mono"
+        },
+        {
+         "id": "head",
+         "left": 300,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":250,\"dy\":0}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 151.76,
+         "font": "mono"
+        },
+        {
+         "id": "head",
+         "left": 316.77,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 323.23,
+         "headings": [
+          1
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"undo\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 151.76,
+         "font": "mono"
+        },
+        {
+         "id": "head",
+         "left": 300,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"redo\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 151.76,
+         "font": "mono"
+        },
+        {
+         "id": "head",
+         "left": 316.77,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 323.23,
+         "headings": [
+          1
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Interleaving",
+     "objects": [
+      {
+       "id": "mono",
+       "left": 300,
+       "top": 300,
+       "angle": 0,
+       "type": "text",
+       "text": "SOUNDTRACK",
+       "fontSize": 24,
+       "width": 151.76,
+       "font": "mono"
+      },
+      {
+       "id": "head",
+       "left": 316.77,
+       "top": 420,
+       "angle": 0,
+       "type": "text",
+       "text": "SOUNDTRACK",
+       "fontSize": 24,
+       "width": 323.23,
+       "headings": [
+        1
+       ]
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

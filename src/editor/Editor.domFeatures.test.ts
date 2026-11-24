@@ -8,6 +8,7 @@ import { ProxyRect, createObject, createProxy, idOf, imageDataOf } from './objec
 import { canvasOf } from './testing/drive.ts'
 import type { Canvas, FakeObject } from './testing/fakeFabric.ts'
 import { FABRIC, FakeAssets, FakeCardMeasurer, SpyStore } from './testing/fakes.ts'
+import { fabricReference } from './testing/fabricReference.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -145,7 +146,7 @@ describe('crop mode on an image proxy', () => {
   ]
 
   it('gives the same records, saves, history and state after every step as the Fabric renderer', async () => {
-    const fabric = await run(FABRIC, frames(), objects(), script)
+    const fabric = await fabricReference('script', { frames: frames(), objects: objects(), script }, async () => ({ out: (await run(FABRIC, frames(), objects(), script)).out }))
     const domRun = await run(dom(), frames(), objects(), script)
     expect(domRun.b.obj('P')).toBeInstanceOf(ProxyRect)
     expect(domRun.out).toEqual(fabric.out)
@@ -194,9 +195,9 @@ describe('duplicate on the DOM renderer', () => {
         return seen.get(id)!
       })) as unknown
     }
-    const fabric = await run(FABRIC, frames, objects, script)
+    const fabric = await fabricReference('script', { frames, objects, script }, async () => ({ out: norm((await run(FABRIC, frames, objects, script)).out) as unknown[] }))
     const domRun = await run(dom(), frames, objects, script)
-    expect(norm(domRun.out)).toEqual(norm(fabric.out))
+    expect(norm(domRun.out)).toEqual(fabric.out)
     expect((fabric.out[1] as { live: Scene }).live.frames).toHaveLength(2)
   })
 

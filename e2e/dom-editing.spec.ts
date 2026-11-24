@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import type { Browser, CDPSession, Page } from '@playwright/test'
 import type { Scene } from '../src/model/types.ts'
+import { fabricReference } from './fabricReference.ts'
 import { chooseRenderer, openApp, openBlank, redoButton, seedRaw, status, storedDoc, undoButton } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredFrame, StoredObject, View } from './helpers.ts'
 
@@ -463,7 +464,7 @@ const BOX_TOLERANCE = 1
 
 async function expectPaired(browser: Browser, doc: StoredBoard, steps: readonly Step[], opts: { assets?: SeedAsset[]; clipboard?: boolean; omit?: Omitted } = {}) {
   const omit = opts.omit ?? new Set<string>()
-  const fabric = await runScript(browser, 'fabric', doc, steps, opts.assets, opts.clipboard)
+  const fabric = await fabricReference(browser, 'script', { doc, steps, assets: opts.assets, clipboard: opts.clipboard }, () => runScript(browser, 'fabric', doc, steps, opts.assets, opts.clipboard))
   const dom = await runScript(browser, 'dom', doc, steps, opts.assets, opts.clipboard)
   let worst = 0
   if (process.env.DEBUG_STEPS) {
@@ -1394,7 +1395,7 @@ test.describe('the caret where a person clicks, in the real card (Slice 2c-ii)',
     let total = 0
     const report: string[] = []
     for (const id of ['Z', 'R', 'D']) {
-      const fabric = await caretsAt(browser, 'fabric', doc, id, points)
+      const fabric = await fabricReference(browser, id, { doc, id, points }, () => caretsAt(browser, 'fabric', doc, id, points))
       const dom = await caretsAt(browser, 'dom', doc, id, points)
       fabric.forEach((f, i) => {
         total++

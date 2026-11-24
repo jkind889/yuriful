@@ -1,0 +1,1792 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the base branch features on the DOM renderer save what the Fabric renderer saves (paired, Slice 2c-iii) > the ownership preview while dragging and scaling: frames that may gain or lose items, carried members, and a text whose folded size leaves its frame",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/interleaving.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "e16975f570754766",
+   "value": {
+    "records": [
+     {
+      "step": "{\"drag\":\"I\",\"dx\":470,\"dy\":40,\"hold\":true}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 560,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 610,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "F"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 18,
+         "width": 140,
+         "frameId": "F"
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 560,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 140,
+         "top": 150,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "F"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 18,
+         "width": 140,
+         "frameId": "F"
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "I"
+       ],
+       "layers": [
+        {
+         "id": "W",
+         "kind": "text",
+         "label": "loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "a note near the edge",
+         "selected": false,
+         "frameName": "Edge",
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": "Edge",
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Other",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": false,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      },
+      "feedback": {
+       "gaining": [
+        "G"
+       ],
+       "losing": [
+        "F"
+       ],
+       "carried": [],
+       "lifted": [
+        "I"
+       ],
+       "drop": null,
+       "snap": null
+      }
+     },
+     {
+      "step": "{\"release\":true}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 560,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 610,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 18,
+         "width": 140,
+         "frameId": "F"
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 560,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 610,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 18,
+         "width": 140,
+         "frameId": "F"
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "I"
+       ],
+       "layers": [
+        {
+         "id": "W",
+         "kind": "text",
+         "label": "loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "a note near the edge",
+         "selected": false,
+         "frameName": "Edge",
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": "Other",
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Other",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"select\":\"T\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 560,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 610,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 18,
+         "width": 140,
+         "frameId": "F"
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 560,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 610,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 18,
+         "width": 140,
+         "frameId": "F"
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "layers": [
+        {
+         "id": "W",
+         "kind": "text",
+         "label": "loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "a note near the edge",
+         "selected": true,
+         "frameName": "Edge",
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Other",
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Other",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"handle\":\"br\",\"dx\":260,\"dy\":130,\"hold\":true}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 560,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 610,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 55.72,
+         "width": 433.34,
+         "frameId": "F"
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 560,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 610,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 18,
+         "width": 140,
+         "frameId": "F"
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "layers": [
+        {
+         "id": "W",
+         "kind": "text",
+         "label": "loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "a note near the edge",
+         "selected": true,
+         "frameName": "Edge",
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Other",
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Other",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      },
+      "feedback": {
+       "gaining": [],
+       "losing": [
+        "F"
+       ],
+       "carried": [],
+       "lifted": [],
+       "drop": null,
+       "snap": null
+      }
+     },
+     {
+      "step": "{\"release\":true}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 560,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 610,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 55.72,
+         "width": 433.34
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 560,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 610,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 55.72,
+         "width": 433.34
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "layers": [
+        {
+         "id": "W",
+         "kind": "text",
+         "label": "loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "a note near the edge",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Other",
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Other",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"label\":\"G\",\"dx\":-60,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 500,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 550,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 55.72,
+         "width": 433.34
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 500,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 550,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 55.72,
+         "width": 433.34
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "G"
+       ],
+       "layers": [
+        {
+         "id": "W",
+         "kind": "text",
+         "label": "loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "a note near the edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Other",
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Other",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"select\":\"W\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 500,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 550,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 55.72,
+         "width": 433.34
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 500,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 550,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 55.72,
+         "width": 433.34
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "layers": [
+        {
+         "id": "W",
+         "kind": "text",
+         "label": "loose words",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "a note near the edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Other",
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Other",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"handle\":\"tl\",\"dx\":-40,\"dy\":-30,\"hold\":true}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 500,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 550,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 55.72,
+         "width": 433.34
+        },
+        {
+         "id": "W",
+         "left": 540.15,
+         "top": 409.85,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 26.98,
+         "width": 179.85,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 500,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 550,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 55.72,
+         "width": 433.34
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "layers": [
+        {
+         "id": "W",
+         "kind": "text",
+         "label": "loose words",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "a note near the edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Other",
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Other",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      },
+      "feedback": {
+       "gaining": [],
+       "losing": [],
+       "carried": [],
+       "lifted": [],
+       "drop": null,
+       "snap": null
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 500,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 550,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 55.72,
+         "width": 433.34
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 500,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 550,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 55.72,
+         "width": 433.34
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "layers": [
+        {
+         "id": "W",
+         "kind": "text",
+         "label": "loose words",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "a note near the edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Other",
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Other",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"release\":true}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 500,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 550,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 55.72,
+         "width": 433.34
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 100,
+         "width": 360,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Other",
+         "left": 500,
+         "top": 100,
+         "width": 300,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "I",
+         "left": 550,
+         "top": 190,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.5,
+         "scaleY": 0.5,
+         "frameId": "G"
+        },
+        {
+         "id": "T",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "a note near the edge",
+         "fontSize": 55.72,
+         "width": 433.34
+        },
+        {
+         "id": "W",
+         "left": 600,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "loose words",
+         "fontSize": 18,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "layers": [
+        {
+         "id": "W",
+         "kind": "text",
+         "label": "loose words",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "a note near the edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Other",
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Other",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Edge",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     }
+    ],
+    "saved": {
+     "version": 2,
+     "title": "Interleaving",
+     "frames": [
+      {
+       "id": "F",
+       "name": "Edge",
+       "left": 100,
+       "top": 100,
+       "width": 360,
+       "height": 260
+      },
+      {
+       "id": "G",
+       "name": "Other",
+       "left": 500,
+       "top": 100,
+       "width": 300,
+       "height": 300
+      }
+     ],
+     "objects": [
+      {
+       "id": "I",
+       "left": 550,
+       "top": 190,
+       "angle": 0,
+       "type": "image",
+       "assetId": "quad",
+       "scaleX": 0.5,
+       "scaleY": 0.5,
+       "frameId": "G"
+      },
+      {
+       "id": "T",
+       "left": 300,
+       "top": 300,
+       "angle": 0,
+       "type": "text",
+       "text": "a note near the edge",
+       "fontSize": 55.72,
+       "width": 433.34
+      },
+      {
+       "id": "W",
+       "left": 600,
+       "top": 420,
+       "angle": 0,
+       "type": "text",
+       "text": "loose words",
+       "fontSize": 18,
+       "width": 120,
+       "minHeight": 0
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

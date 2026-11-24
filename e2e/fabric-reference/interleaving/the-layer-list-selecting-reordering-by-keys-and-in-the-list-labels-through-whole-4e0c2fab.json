@@ -1,0 +1,3232 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the base branch features on the DOM renderer save what the Fabric renderer saves (paired, Slice 2c-iii) > the layer list: selecting, reordering by keys and in the list, labels through whole-box changes and Make caption",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/interleaving.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "a7cb6e5afd8a7488",
+   "value": {
+    "records": [
+     {
+      "step": "{\"select\":\"A\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": false,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"key\":\"]\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"key\":\"[\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+]\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+[\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"moveLayer\",\"args\":[\"T\",\"A\",\"before\"]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"moveLayer\",\"args\":[\"U\",\"B\",\"after\"]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"moveLayer\",\"args\":[\"G\",\"F\",\"before\"]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"select\":\"T\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "layers": [
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"setHeading\",\"args\":[1]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "layers": [
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"toggleMark\",\"args\":[\"bold\"]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "layers": [
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"select\":\"U\",\"also\":[\"A\"]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A",
+        "U"
+       ],
+       "layers": [
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"selectLayer\",\"args\":[\"B\",{\"toggle\":true}]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A",
+        "U",
+        "B"
+       ],
+       "layers": [
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"select\":\"A\",\"also\":[\"U\"]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A",
+        "U"
+       ],
+       "layers": [
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"makeCaption\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "U",
+         "left": 120,
+         "top": 250,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "A"
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "U",
+         "left": 120,
+         "top": 250,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "A"
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A",
+        "U"
+       ],
+       "layers": [
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"undo\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Back",
+         "left": 80,
+         "top": 80,
+         "width": 300,
+         "height": 260
+        },
+        {
+         "id": "G",
+         "name": "Frame",
+         "left": 400,
+         "top": 300,
+         "width": 300,
+         "height": 260
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 120,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "T",
+         "left": 360,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "First words of a longer note that runs past the label limit",
+         "fontSize": 24,
+         "width": 220,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "U",
+         "left": 360,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "Second",
+         "fontSize": 24,
+         "width": 120,
+         "minHeight": 0
+        },
+        {
+         "id": "B",
+         "left": 120,
+         "top": 360,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 1,
+         "scaleY": 1
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A",
+        "U"
+       ],
+       "layers": [
+        {
+         "id": "B",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "U",
+         "kind": "text",
+         "label": "Second",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "First words of a longer note that runs…",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "G",
+         "kind": "frame",
+         "label": "Frame",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Back",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": true,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     }
+    ],
+    "saved": {
+     "version": 2,
+     "title": "Interleaving",
+     "frames": [
+      {
+       "id": "F",
+       "name": "Back",
+       "left": 80,
+       "top": 80,
+       "width": 300,
+       "height": 260
+      },
+      {
+       "id": "G",
+       "name": "Frame",
+       "left": 400,
+       "top": 300,
+       "width": 300,
+       "height": 260
+      }
+     ],
+     "objects": [
+      {
+       "id": "A",
+       "left": 120,
+       "top": 120,
+       "angle": 0,
+       "type": "image",
+       "assetId": "quad",
+       "scaleX": 1,
+       "scaleY": 1
+      },
+      {
+       "id": "T",
+       "left": 360,
+       "top": 140,
+       "angle": 0,
+       "type": "text",
+       "text": "First words of a longer note that runs past the label limit",
+       "fontSize": 24,
+       "width": 220,
+       "headings": [
+        1
+       ]
+      },
+      {
+       "id": "U",
+       "left": 360,
+       "top": 380,
+       "angle": 0,
+       "type": "text",
+       "text": "Second",
+       "fontSize": 24,
+       "width": 120,
+       "minHeight": 0
+      },
+      {
+       "id": "B",
+       "left": 120,
+       "top": 360,
+       "angle": 0,
+       "type": "image",
+       "assetId": "grad",
+       "scaleX": 1,
+       "scaleY": 1
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

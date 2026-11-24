@@ -1,0 +1,330 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the DOM renderer saves what the Fabric renderer saves (paired) > corner scale of a text and of a frame with its contents",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/interleaving.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "4a1338161253550f",
+   "value": {
+    "scenes": [
+     {
+      "step": "{\"handle\":\"br\",\"dx\":70,\"dy\":40}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Scaled",
+         "left": 420,
+         "top": 150,
+         "width": 360,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "s",
+         "left": 80,
+         "top": 120,
+         "angle": 0,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 32.52,
+         "width": 298.06,
+         "minHeight": 121.94
+        },
+        {
+         "id": "w",
+         "left": 80,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 240
+        },
+        {
+         "id": "i",
+         "left": 450,
+         "top": 180,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.75,
+         "scaleY": 0.75,
+         "frameId": "F"
+        },
+        {
+         "id": "m",
+         "left": 450,
+         "top": 330,
+         "angle": 0,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 200,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"br\",\"dx\":60,\"dy\":20}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Scaled",
+         "left": 420,
+         "top": 150,
+         "width": 360,
+         "height": 300
+        }
+       ],
+       "objects": [
+        {
+         "id": "s",
+         "left": 80,
+         "top": 120,
+         "angle": 0,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 32.52,
+         "width": 298.06,
+         "minHeight": 121.94
+        },
+        {
+         "id": "w",
+         "left": 80,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 30.38,
+         "width": 303.77
+        },
+        {
+         "id": "i",
+         "left": 450,
+         "top": 180,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.75,
+         "scaleY": 0.75,
+         "frameId": "F"
+        },
+        {
+         "id": "m",
+         "left": 450,
+         "top": 330,
+         "angle": 0,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 200,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"br\",\"dx\":90,\"dy\":60}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Scaled",
+         "left": 420,
+         "top": 150,
+         "width": 441.82,
+         "height": 368.18
+        }
+       ],
+       "objects": [
+        {
+         "id": "s",
+         "left": 80,
+         "top": 120,
+         "angle": 0,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 32.52,
+         "width": 298.06,
+         "minHeight": 121.94
+        },
+        {
+         "id": "w",
+         "left": 80,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 30.38,
+         "width": 303.77
+        },
+        {
+         "id": "i",
+         "left": 456.82,
+         "top": 186.82,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.92045,
+         "scaleY": 0.92045,
+         "frameId": "F"
+        },
+        {
+         "id": "m",
+         "left": 456.82,
+         "top": 370.91,
+         "angle": 0,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 29.45,
+         "width": 245.45,
+         "minHeight": 98.18,
+         "frameId": "F"
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"tl\",\"dx\":40,\"dy\":30}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Scaled",
+         "left": 458.18,
+         "top": 181.82,
+         "width": 403.64,
+         "height": 336.36
+        }
+       ],
+       "objects": [
+        {
+         "id": "s",
+         "left": 80,
+         "top": 120,
+         "angle": 0,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 32.52,
+         "width": 298.06,
+         "minHeight": 121.94
+        },
+        {
+         "id": "w",
+         "left": 80,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 30.38,
+         "width": 303.77
+        },
+        {
+         "id": "i",
+         "left": 491.82,
+         "top": 215.45,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.84091,
+         "scaleY": 0.84091,
+         "frameId": "F"
+        },
+        {
+         "id": "m",
+         "left": 491.82,
+         "top": 383.64,
+         "angle": 0,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 26.9,
+         "width": 224.24,
+         "minHeight": 89.7,
+         "frameId": "F"
+        }
+       ]
+      }
+     }
+    ],
+    "saved": {
+     "version": 2,
+     "title": "Interleaving",
+     "frames": [
+      {
+       "id": "F",
+       "name": "Scaled",
+       "left": 458.18,
+       "top": 181.82,
+       "width": 403.64,
+       "height": 336.36
+      }
+     ],
+     "objects": [
+      {
+       "id": "s",
+       "left": 80,
+       "top": 120,
+       "angle": 0,
+       "type": "text",
+       "text": "the blue chair by the red door",
+       "fontSize": 32.52,
+       "width": 298.06,
+       "minHeight": 121.94
+      },
+      {
+       "id": "w",
+       "left": 80,
+       "top": 360,
+       "angle": 0,
+       "type": "text",
+       "text": "the blue chair by the red door",
+       "fontSize": 30.38,
+       "width": 303.77
+      },
+      {
+       "id": "i",
+       "left": 491.82,
+       "top": 215.45,
+       "angle": 0,
+       "type": "image",
+       "assetId": "quad",
+       "scaleX": 0.84091,
+       "scaleY": 0.84091,
+       "frameId": "F"
+      },
+      {
+       "id": "m",
+       "left": 491.82,
+       "top": 383.64,
+       "angle": 0,
+       "type": "text",
+       "text": "the blue chair by the red door",
+       "fontSize": 26.9,
+       "width": 224.24,
+       "minHeight": 89.7,
+       "frameId": "F"
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,446 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the last review follow-ups > an Alt-drag over an image that covers the edited text selects in the text, as on Fabric (paired)",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/dom-editing.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "9cc3bf4b6b4a02f3",
+   "value": {
+    "records": [
+     {
+      "step": "{\"dblclick\":\"A\",\"at\":[0.05,0.3]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "A",
+         "left": 160,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "covered words of a long note under one picture",
+         "fontSize": 24,
+         "width": 360
+        },
+        {
+         "id": "I",
+         "left": 330,
+         "top": 170,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "A",
+          "left": 160,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "covered words of a long note under one picture",
+          "fontSize": 24,
+          "width": 360
+         },
+         {
+          "id": "I",
+          "left": 330,
+          "top": 170,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 0.6,
+          "scaleY": 0.6
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "I:quad.png",
+        "A:covered words of a long note under one…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "A",
+       "text": "covered words of a long note under one picture",
+       "anchor": 0,
+       "head": 7,
+       "focused": true
+      },
+      "boxes": {
+       "A": 61.02
+      }
+     },
+     {
+      "step": "{\"drag\":\"A\",\"at\":[0.6,0.3],\"dx\":48,\"dy\":6,\"alt\":true}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "A",
+         "left": 160,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "covered words of a long note under one picture",
+         "fontSize": 24,
+         "width": 360
+        },
+        {
+         "id": "I",
+         "left": 330,
+         "top": 170,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "A",
+          "left": 160,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "covered words of a long note under one picture",
+          "fontSize": 24,
+          "width": 360
+         },
+         {
+          "id": "I",
+          "left": 330,
+          "top": 170,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 0.6,
+          "scaleY": 0.6
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "I:quad.png",
+        "A:covered words of a long note under one…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "A",
+       "text": "covered words of a long note under one picture",
+       "anchor": 20,
+       "head": 24,
+       "focused": true
+      },
+      "boxes": {
+       "A": 61.02
+      }
+     },
+     {
+      "step": "{\"type\":\"Q\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "A",
+         "left": 160,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "covered words of a lQnote under one picture",
+         "fontSize": 24,
+         "width": 360
+        },
+        {
+         "id": "I",
+         "left": 330,
+         "top": 170,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "A",
+          "left": 160,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "covered words of a long note under one picture",
+          "fontSize": 24,
+          "width": 360
+         },
+         {
+          "id": "I",
+          "left": 330,
+          "top": 170,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 0.6,
+          "scaleY": 0.6
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "I:quad.png",
+        "A:covered words of a lQnote under one pic…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "A",
+       "text": "covered words of a lQnote under one picture",
+       "anchor": 21,
+       "head": 21,
+       "focused": true
+      },
+      "boxes": {
+       "A": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "A",
+         "left": 160,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "covered words of a lQnote under one picture",
+         "fontSize": 24,
+         "width": 360
+        },
+        {
+         "id": "I",
+         "left": 330,
+         "top": 170,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "A",
+          "left": 160,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "covered words of a lQnote under one picture",
+          "fontSize": 24,
+          "width": 360
+         },
+         {
+          "id": "I",
+          "left": 330,
+          "top": 170,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 0.6,
+          "scaleY": 0.6
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "I:quad.png",
+        "A:covered words of a lQnote under one pic…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "A": 61.02
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Editing",
+     "objects": [
+      {
+       "id": "A",
+       "left": 160,
+       "top": 200,
+       "angle": 0,
+       "type": "text",
+       "text": "covered words of a lQnote under one picture",
+       "fontSize": 24,
+       "width": 360
+      },
+      {
+       "id": "I",
+       "left": 330,
+       "top": 170,
+       "angle": 0,
+       "type": "image",
+       "assetId": "quad",
+       "scaleX": 0.6,
+       "scaleY": 0.6
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

@@ -12,10 +12,24 @@ import { openBlank } from './helpers.ts'
 test('typing, Enter and deletions over every caret and selection give the canvas’s record, marks included', async ({ page }) => {
   test.setTimeout(240_000)
   await openBlank(page)
-  const out = await page.evaluate(async () => {
+  const out = await page.evaluate(async (check) => {
     // Loaded from the dev server, as the other specs load app modules.
     const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
-    const { createObject, reconcileTextFormatting, toRecord } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
+    // The canvas fed the same input: the frozen copy of the Fabric text code (`fabricTextOracle.ts`).
+    // With FABRIC_REFERENCE=check, the live Fabric renderer is fed it too and must agree.
+    type Oracle = { create: (src: object) => unknown; reconcile: (obj: unknown, pending?: unknown) => unknown; content: (obj: unknown) => unknown }
+    const fo = (await load('/src/editor/testing/fabricTextOracle.ts')) as typeof import('../src/editor/testing/fabricTextOracle.ts')
+    const frozen: Oracle = {
+      create: (src) => fo.createFabricText({ left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...(src as { text: string }) }),
+      reconcile: (obj, pending) => fo.reconcileFabricText(obj as never, pending as never),
+      content: (obj) => fo.fabricTextContent(obj as never),
+    }
+    const lo = check ? ((await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')) : null
+    const liveOracle: Oracle | null = lo && {
+      create: (src) => lo.createObject({ type: 'text', id: 't', left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...(src as { text: string }) }, () => undefined),
+      reconcile: (obj, pending) => lo.reconcileTextFormatting(obj as never, pending as never),
+      content: (obj) => lo.toRecord(obj as never),
+    }
     const { canonicalTextContent } = (await load('/src/model/textDoc.ts')) as typeof import('../src/model/textDoc.ts')
     const { splitGraphemes } = (await load('/src/model/richText.ts')) as typeof import('../src/model/richText.ts')
     const { open, press, type } = (await load('/src/editor/testing/textHarness.ts')) as typeof import('../src/editor/testing/textHarness.ts')
@@ -25,6 +39,7 @@ test('typing, Enter and deletions over every caret and selection give the canvas
     let count = 0
     let fails = 0
     let live = 0
+    let oracleDiffs = 0
     const samples: unknown[] = []
     for (const text of texts) {
       for (const levels of [[0, 2, 1], [1, 0, 3]]) {
@@ -45,22 +60,26 @@ test('typing, Enter and deletions over every caret and selection give the canvas
                 // Backspace and Delete with only a caret depend on the browser's own deletion: covered elsewhere.
                 if (a === b && (op === 'Backspace' || op === 'Delete')) continue
                 const inserted = op === 'x' ? 'x' : op === 'Enter' ? '\n' : ''
-                const obj = createObject({ type: 'text', id: 't', left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...src }, () => undefined) as unknown as {
-                  isEditing: boolean
-                  hiddenTextarea: HTMLTextAreaElement
-                  selectionStart: number
-                  selectionEnd: number
-                  onInput(e: Event): void
+                const fed = (oracle: Oracle) => {
+                  const obj = oracle.create(src) as {
+                    isEditing: boolean
+                    hiddenTextarea: HTMLTextAreaElement
+                    selectionStart: number
+                    selectionEnd: number
+                    onInput(e: Event): void
+                  }
+                  obj.isEditing = true
+                  obj.hiddenTextarea = document.createElement('textarea')
+                  obj.selectionStart = i
+                  obj.selectionEnd = j
+                  obj.hiddenTextarea.value = flat.slice(0, a) + inserted + flat.slice(b)
+                  obj.hiddenTextarea.setSelectionRange(a + inserted.length, a + inserted.length)
+                  obj.onInput(new InputEvent('input', { inputType: op === 'x' ? 'insertText' : op === 'Enter' ? 'insertLineBreak' : 'deleteContentBackward' }))
+                  oracle.reconcile(obj)
+                  return canonicalTextContent(oracle.content(obj) as never)
                 }
-                obj.isEditing = true
-                obj.hiddenTextarea = document.createElement('textarea')
-                obj.selectionStart = i
-                obj.selectionEnd = j
-                obj.hiddenTextarea.value = flat.slice(0, a) + inserted + flat.slice(b)
-                obj.hiddenTextarea.setSelectionRange(a + inserted.length, a + inserted.length)
-                obj.onInput(new InputEvent('input', { inputType: op === 'x' ? 'insertText' : op === 'Enter' ? 'insertLineBreak' : 'deleteContentBackward' }))
-                reconcileTextFormatting(obj as never)
-                const expected = canonicalTextContent(toRecord(obj as never) as never)
+                const expected = fed(frozen)
+                if (liveOracle && JSON.stringify(fed(liveOracle)) !== JSON.stringify(expected)) oracleDiffs++
                 const s = open(src)
                 s.select(a, b)
                 if (op === 'x') type(s, 'x')
@@ -78,9 +97,10 @@ test('typing, Enter and deletions over every caret and selection give the canvas
         }
       }
     }
-    return { count, fails, live, samples }
-  })
-  console.log(`text engine parity: ${out.count} edits, ${out.fails} differ, ${out.live} live documents off their record`)
+    return { count, fails, live, samples, oracleDiffs }
+  }, process.env.FABRIC_REFERENCE === 'check')
+  console.log(`text engine parity: ${out.count} edits, ${out.fails} differ, ${out.live} live documents off their record, ${out.oracleDiffs} where the frozen oracle and the live Fabric renderer differ`)
+  expect(out.oracleDiffs, 'the frozen oracle against the live Fabric renderer').toBe(0)
   expect(out.samples).toEqual([])
   expect(out.fails).toBe(0)
   expect(out.live).toBe(0)
@@ -143,9 +163,23 @@ test('an IME composition or a keyless insertion over every selection gives the e
         await cdp.send('Input.insertText', { text: 'カ' })
       } else await cdp.send('Input.insertText', { text: 'カ' })
       await page.waitForTimeout(60)
-      const result = await page.evaluate(async ([src, a, b]) => {
+      const result = await page.evaluate(async ([src, a, b, check]) => {
         const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
-        const { createObject, reconcileTextFormatting, toRecord } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
+        // The canvas fed the same input: the frozen copy of the Fabric text code (`fabricTextOracle.ts`).
+        // With FABRIC_REFERENCE=check, the live Fabric renderer is fed it too and must agree.
+        type Oracle = { create: (src: object) => unknown; reconcile: (obj: unknown, pending?: unknown) => unknown; content: (obj: unknown) => unknown }
+        const fo = (await load('/src/editor/testing/fabricTextOracle.ts')) as typeof import('../src/editor/testing/fabricTextOracle.ts')
+        const frozen: Oracle = {
+          create: (src) => fo.createFabricText({ left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...(src as { text: string }) }),
+          reconcile: (obj, pending) => fo.reconcileFabricText(obj as never, pending as never),
+          content: (obj) => fo.fabricTextContent(obj as never),
+        }
+        const lo = check ? ((await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')) : null
+        const liveOracle: Oracle | null = lo && {
+          create: (src) => lo.createObject({ type: 'text', id: 't', left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...(src as { text: string }) }, () => undefined),
+          reconcile: (obj, pending) => lo.reconcileTextFormatting(obj as never, pending as never),
+          content: (obj) => lo.toRecord(obj as never),
+        }
         const { canonicalTextContent } = (await load('/src/model/textDoc.ts')) as typeof import('../src/model/textDoc.ts')
         const { docFromText } = (await load('/src/editor/textSchema.ts')) as typeof import('../src/editor/textSchema.ts')
         const { splitGraphemes, canonicalTextFormatting, headingsAfterEdit } = (await load('/src/model/richText.ts')) as typeof import('../src/model/richText.ts')
@@ -167,28 +201,32 @@ test('an IME composition or a keyless insertion over every selection gives the e
         }
         if (Object.keys(firstMarks).length > 0) r5Spans.push({ start: a, end: (a as number) + 1, ...firstMarks })
         const r5 = { text: newText, ...canonicalTextFormatting(newText, { spans: r5Spans, headings: headingsAfterEdit(text, source.headings, newText, (a as number) + 1) }) }
-        const obj = createObject({ type: 'text', id: 't', left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...(src as object) } as never, () => undefined) as unknown as {
-          isEditing: boolean
-          hiddenTextarea: HTMLTextAreaElement
-          selectionStart: number
-          selectionEnd: number
-          onInput(e: Event): void
+        const fed = (oracle: Oracle) => {
+          const obj = oracle.create(src as object) as {
+            isEditing: boolean
+            hiddenTextarea: HTMLTextAreaElement
+            selectionStart: number
+            selectionEnd: number
+            onInput(e: Event): void
+          }
+          obj.isEditing = true
+          obj.hiddenTextarea = document.createElement('textarea')
+          obj.selectionStart = g(a as number)
+          obj.selectionEnd = g(b as number)
+          obj.hiddenTextarea.value = text.slice(0, a as number) + 'カ' + text.slice(b as number)
+          obj.hiddenTextarea.setSelectionRange((a as number) + 1, (a as number) + 1)
+          obj.onInput(new InputEvent('input', { inputType: 'insertText' }))
+          oracle.reconcile(obj)
+          return canonicalTextContent(oracle.content(obj) as never)
         }
-        obj.isEditing = true
-        obj.hiddenTextarea = document.createElement('textarea')
-        obj.selectionStart = g(a as number)
-        obj.selectionEnd = g(b as number)
-        obj.hiddenTextarea.value = text.slice(0, a as number) + 'カ' + text.slice(b as number)
-        obj.hiddenTextarea.setSelectionRange((a as number) + 1, (a as number) + 1)
-        obj.onInput(new InputEvent('input', { inputType: 'insertText' }))
-        reconcileTextFormatting(obj as never)
-        const expected = canonicalTextContent(toRecord(obj as never) as never)
+        const expected = fed(frozen)
+        const oracleDiff = !!liveOracle && JSON.stringify(fed(liveOracle)) !== JSON.stringify(expected)
         const got = s.content()
-        return { expected, r5, got, live: docFromText(got)!.doc.eq(s.state.doc) }
-      }, [src, a, b] as const)
+        return { expected, r5, got, live: docFromText(got)!.doc.eq(s.state.doc), oracleDiff }
+      }, [src, a, b, process.env.FABRIC_REFERENCE === 'check'] as const)
       count++
       const want = how === 'ime' ? result.r5 : result.expected
-      if (JSON.stringify(want) !== JSON.stringify(result.got) || result.got.text !== result.expected?.text || !result.live) fails.push({ how, src, a, b, ...result })
+      if (JSON.stringify(want) !== JSON.stringify(result.got) || result.got.text !== result.expected?.text || !result.live || result.oracleDiff) fails.push({ how, src, a, b, ...result })
     }
   }
   console.log(`text engine parity (mounted, IME and keyless insertion): ${count} edits, ${fails.length} differ`)
@@ -416,17 +454,34 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
       }
       await Promise.all(sent.splice(0))
       await page.waitForTimeout(40)
-      const result = await page.evaluate(async ([src, a, b, steps, pending]) => {
+      const result = await page.evaluate(async ([src, a, b, steps, pending, check]) => {
         const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
-        const { createObject, reconcileTextFormatting, toRecord } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
+        // The canvas fed the same input: the frozen copy of the Fabric text code (`fabricTextOracle.ts`).
+        // With FABRIC_REFERENCE=check, the live Fabric renderer is fed it too and must agree.
+        type Oracle = { create: (src: object) => unknown; reconcile: (obj: unknown, pending?: unknown) => unknown; content: (obj: unknown) => unknown }
+        const fo = (await load('/src/editor/testing/fabricTextOracle.ts')) as typeof import('../src/editor/testing/fabricTextOracle.ts')
+        const frozen: Oracle = {
+          create: (src) => fo.createFabricText({ left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...(src as { text: string }) }),
+          reconcile: (obj, pending) => fo.reconcileFabricText(obj as never, pending as never),
+          content: (obj) => fo.fabricTextContent(obj as never),
+        }
+        const lo = check ? ((await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')) : null
+        const liveOracle: Oracle | null = lo && {
+          create: (src) => lo.createObject({ type: 'text', id: 't', left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...(src as { text: string }) }, () => undefined),
+          reconcile: (obj, pending) => lo.reconcileTextFormatting(obj as never, pending as never),
+          content: (obj) => lo.toRecord(obj as never),
+        }
         const { canonicalTextContent } = (await load('/src/model/textDoc.ts')) as typeof import('../src/model/textDoc.ts')
         const { docFromText, contentFromDoc, plainTextOfDoc } = (await load('/src/editor/textSchema.ts')) as typeof import('../src/editor/textSchema.ts')
         const { splitGraphemes, canonicalTextFormatting, headingsAfterEdit } = (await load('/src/model/richText.ts')) as typeof import('../src/model/richText.ts')
         const w = window as unknown as { ss: import('../src/editor/textSession.ts').EditSession; reported?: unknown; commands: Array<{ cmd: string; settling: boolean; ret: boolean; changed: boolean }>; times: { gaps: number[] } }
         const s = w.ss
         const source = src as { text: string; spans?: Array<Record<string, unknown>>; headings?: number[] }
+        const g = (t: string, o: number) => splitGraphemes(t.slice(0, o)).length
+        const off = (t: string, gi: number) => splitGraphemes(t).slice(0, gi).join('').length
         // ---- the canvas fed the same input
-        const obj = createObject({ type: 'text', id: 't', left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...source } as never, () => undefined) as unknown as {
+        const feed = (oracle: Oracle) => {
+        const obj = oracle.create(source) as {
           isEditing: boolean
           inCompositionMode: boolean
           hiddenTextarea: HTMLTextAreaElement
@@ -435,8 +490,6 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
           onInput(e: Event): void
         }
         let value = source.text
-        const g = (t: string, o: number) => splitGraphemes(t.slice(0, o)).length
-        const off = (t: string, gi: number) => splitGraphemes(t).slice(0, gi).join('').length
         obj.isEditing = true
         obj.hiddenTextarea = document.createElement('textarea')
         obj.selectionStart = g(value, a as number)
@@ -449,7 +502,7 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
           obj.hiddenTextarea.value = next
           obj.hiddenTextarea.setSelectionRange(caret, caret)
           obj.onInput(new InputEvent('input', { inputType: type }))
-          reconcileTextFormatting(obj as never, pend as never)
+          oracle.reconcile(obj, pend)
         }
         /** Replaces the selection (or inserts at the caret) as the textarea does. */
         const replace = (text: string, type: string) => {
@@ -519,8 +572,13 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
           const now: [string, number] = [value, off(value, obj.selectionEnd)]
           if (!records.some(([t, c]) => t === now[0] && c === now[1])) records.push(now)
         }
-        const canvas = canonicalTextContent(toRecord(obj as never) as never)!
+        const canvas = canonicalTextContent(oracle.content(obj) as never)!
         const canvasCaret = off(value, obj.selectionEnd)
+        return { canvas, canvasCaret, records, value, undos }
+        }
+        const fed = feed(frozen)
+        const oracleDiff = !!liveOracle && JSON.stringify(feed(liveOracle)) !== JSON.stringify(fed)
+        const { canvas, canvasCaret, records, value, undos } = fed
         // ---- rule R5 for a run of compositions over a selection
         const text = source.text
         const r5 = (() => {
@@ -576,8 +634,9 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
           offRecord,
           commands: w.commands,
           gaps: w.times.gaps,
+          oracleDiff,
         }
-      }, [scenario.src, scenario.a, scenario.b, scenario.steps, scenario.pending] as const)
+      }, [scenario.src, scenario.a, scenario.b, scenario.steps, scenario.pending, process.env.FABRIC_REFERENCE === 'check'] as const)
       runs++
       gaps.push(...result.gaps)
       const problems: string[] = []
@@ -597,6 +656,7 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
         } else if (c.ret !== true) problems.push(`${c.cmd} refused after the composition had ended`)
         else ran++
       }
+      if (result.oracleDiff) problems.push('the frozen oracle and the live Fabric renderer differ')
       if (result.composing || result.settling) problems.push('still composing')
       if (!result.canonical) problems.push('record not canonical')
       if (!result.live) problems.push('document is not the record')

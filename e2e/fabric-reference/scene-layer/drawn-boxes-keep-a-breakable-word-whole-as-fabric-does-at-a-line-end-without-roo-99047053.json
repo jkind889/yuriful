@@ -1,0 +1,4294 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "drawn boxes keep a breakable word whole as Fabric does: at a line end, without room for its space, exactly fitting, and too wide",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/scene-layer.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "records": {
+   "inputs": "113235cfea7945dd",
+   "value": [
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab K-pop cd ef gh",
+     "id": "K-pop line-end",
+     "width": 81.93
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab K-pop cd ef gh",
+     "id": "K-pop no-room-for-space",
+     "width": 78.96
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab K-pop cd ef gh",
+     "id": "K-pop exact",
+     "width": 49.36
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab K-pop cd ef gh",
+     "id": "K-pop too-wide",
+     "width": 48.36
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab K-pop cd ef gh",
+     "id": "K-pop much-too-wide",
+     "width": 19.75
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab lo-fi cd ef gh",
+     "id": "lo-fi line-end",
+     "width": 64.68
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab lo-fi cd ef gh",
+     "id": "lo-fi no-room-for-space",
+     "width": 61.71
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab lo-fi cd ef gh",
+     "id": "lo-fi exact",
+     "width": 32.11
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab lo-fi cd ef gh",
+     "id": "lo-fi too-wide",
+     "width": 31.11
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab lo-fi cd ef gh",
+     "id": "lo-fi much-too-wide",
+     "width": 12.85
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab hip-hop cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "hip-hop line-end",
+     "width": 97.63
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab hip-hop cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "hip-hop no-room-for-space",
+     "width": 94.66
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab hip-hop cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "hip-hop exact",
+     "width": 65.07
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab hip-hop cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "hip-hop too-wide",
+     "width": 64.07
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab hip-hop cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "hip-hop much-too-wide",
+     "width": 26.03
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab state-of-the-art cd ef gh",
+     "id": "state-of-the-art line-end",
+     "width": 155.97
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab state-of-the-art cd ef gh",
+     "id": "state-of-the-art no-room-for-space",
+     "width": 153
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab state-of-the-art cd ef gh",
+     "id": "state-of-the-art exact",
+     "width": 123.41
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab state-of-the-art cd ef gh",
+     "id": "state-of-the-art too-wide",
+     "width": 122.41
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab state-of-the-art cd ef gh",
+     "id": "state-of-the-art much-too-wide",
+     "width": 49.37
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 2012—2014 cd ef gh",
+     "id": "2012—2014 line-end",
+     "width": 128.19
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 2012—2014 cd ef gh",
+     "id": "2012—2014 no-room-for-space",
+     "width": 125.22
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 2012—2014 cd ef gh",
+     "id": "2012—2014 exact",
+     "width": 95.63
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 2012—2014 cd ef gh",
+     "id": "2012—2014 too-wide",
+     "width": 94.63
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 2012—2014 cd ef gh",
+     "id": "2012—2014 much-too-wide",
+     "width": 38.25
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab and/or cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "and/or line-end",
+     "width": 87.57
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab and/or cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "and/or no-room-for-space",
+     "width": 84.6
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab and/or cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "and/or exact",
+     "width": 55
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab and/or cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "and/or too-wide",
+     "width": 54
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab and/or cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "and/or much-too-wide",
+     "width": 22
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 日本語のテキストです cd ef gh",
+     "id": "日本語のテキストです line-end",
+     "width": 212.57
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 日本語のテキストです cd ef gh",
+     "id": "日本語のテキストです no-room-for-space",
+     "width": 209.6
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 日本語のテキストです cd ef gh",
+     "id": "日本語のテキストです exact",
+     "width": 180
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 日本語のテキストです cd ef gh",
+     "id": "日本語のテキストです too-wide",
+     "width": 179
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 日本語のテキストです cd ef gh",
+     "id": "日本語のテキストです much-too-wide",
+     "width": 72
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 😀🎧🎶 cd ef gh",
+     "id": "😀🎧🎶 line-end",
+     "width": 106.72
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 😀🎧🎶 cd ef gh",
+     "id": "😀🎧🎶 no-room-for-space",
+     "width": 103.75
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 😀🎧🎶 cd ef gh",
+     "id": "😀🎧🎶 exact",
+     "width": 74.16
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 😀🎧🎶 cd ef gh",
+     "id": "😀🎧🎶 too-wide",
+     "width": 73.16
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab 😀🎧🎶 cd ef gh",
+     "id": "😀🎧🎶 much-too-wide",
+     "width": 29.67
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab https://example.com/a-b/c?d=e cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "https://example.com/a-b/c?d=e line-end",
+     "width": 287.3
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab https://example.com/a-b/c?d=e cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "https://example.com/a-b/c?d=e no-room-for-space",
+     "width": 284.33
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab https://example.com/a-b/c?d=e cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "https://example.com/a-b/c?d=e exact",
+     "width": 254.74
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab https://example.com/a-b/c?d=e cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "https://example.com/a-b/c?d=e too-wide",
+     "width": 253.74
+    },
+    {
+     "type": "text",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "text": "Ab https://example.com/a-b/c?d=e cd ef gh",
+     "spans": [
+      {
+       "start": 3,
+       "end": 5,
+       "bold": true
+      }
+     ],
+     "id": "https://example.com/a-b/c?d=e much-too-wide",
+     "width": 101.9
+    },
+    {
+     "type": "text",
+     "id": "centred hip-hop",
+     "left": 0,
+     "top": 0,
+     "angle": 0,
+     "fontSize": 18,
+     "minHeight": 0,
+     "align": "center",
+     "width": 65.07,
+     "text": "Ab hip-hop cd ef gh"
+    }
+   ]
+  },
+  "K-pop line-end": {
+   "inputs": "3c6138c5c896661f",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 122,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 81.93,
+    "lines": [
+     "Ab K-pop ",
+     "cd ef gh"
+    ],
+    "wrapped": [
+     "Ab K-pop",
+     "cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 40,
+       "left": 20.5,
+       "right": 95.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 83.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "K-pop no-room-for-space": {
+   "inputs": "9e9067d666858c06",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 119,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 78.96,
+    "lines": [
+     "Ab ",
+     "K-pop cd ",
+     "ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "K-pop cd",
+     "ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21.5,
+       "right": 92
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 59.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "K-pop exact": {
+   "inputs": "0ec57c53e9e723e4",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 90,
+     "height": 137
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 96.61499999999998,
+    "width": 49.36,
+    "lines": [
+     "Ab ",
+     "K-pop",
+     " cd ef ",
+     "gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "K-pop",
+     " cd ef",
+     "gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 48,
+       "bottom": 65,
+       "left": 21.5,
+       "right": 68.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 86.5,
+       "left": 26,
+       "right": 64
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 116,
+       "left": 21,
+       "right": 39.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "K-pop too-wide": {
+   "inputs": "2b103abb9aa75699",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 89,
+     "height": 137
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 96.61499999999998,
+    "width": 48.36,
+    "lines": [
+     "Ab ",
+     "K-po",
+     "p cd ",
+     "ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "K-po",
+     "p cd",
+     "ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 48,
+       "bottom": 65,
+       "left": 21.5,
+       "right": 58
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21.5,
+       "right": 53
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 116,
+       "left": 21,
+       "right": 59.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "K-pop much-too-wide": {
+   "inputs": "9f78deb4975c4802",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 60,
+     "height": 341
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999,
+     101.69999999999999,
+     127.12499999999999,
+     152.54999999999998,
+     177.97499999999997,
+     203.39999999999998,
+     228.825,
+     254.25,
+     279.675
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 300.015,
+    "width": 19.75,
+    "lines": [
+     "A",
+     "b ",
+     "K-",
+     "p",
+     "o",
+     "p ",
+     "cd",
+     " ",
+     "ef",
+     " ",
+     "g",
+     "h"
+    ],
+    "wrapped": [
+     "A",
+     "b",
+     "K-",
+     "p",
+     "o",
+     "p",
+     "cd",
+     "ef",
+     "g",
+     "h"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 31.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 21.5,
+       "right": 29.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73.5,
+       "bottom": 86.5,
+       "left": 21.5,
+       "right": 36.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 103,
+       "bottom": 116,
+       "left": 21.5,
+       "right": 29.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 128.5,
+       "bottom": 137.5,
+       "left": 21,
+       "right": 29.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 154,
+       "bottom": 167,
+       "left": 21.5,
+       "right": 29.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 175,
+       "bottom": 188.5,
+       "left": 21,
+       "right": 37.5
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 225.5,
+       "bottom": 239,
+       "left": 21,
+       "right": 35.5
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 281,
+       "bottom": 294,
+       "left": 21,
+       "right": 29
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 302,
+       "bottom": 315.5,
+       "left": 21.5,
+       "right": 29
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "lo-fi line-end": {
+   "inputs": "b7958dfe6a1670f3",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 105,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 64.68,
+    "lines": [
+     "Ab lo-fi ",
+     "cd ef gh"
+    ],
+    "wrapped": [
+     "Ab lo-fi",
+     "cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 78
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 83.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "lo-fi no-room-for-space": {
+   "inputs": "d19260f25258bd1e",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 102,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 61.71,
+    "lines": [
+     "Ab ",
+     "lo-fi cd ",
+     "ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "lo-fi cd",
+     "ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 21.5,
+       "right": 74.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 59.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "lo-fi exact": {
+   "inputs": "7e6ede210f1ca441",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 73,
+     "height": 163
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999,
+     101.69999999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 122.03999999999999,
+    "width": 32.11,
+    "lines": [
+     "Ab ",
+     "lo-fi",
+     " cd ",
+     "ef ",
+     "gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "lo-fi",
+     " cd",
+     "ef",
+     "gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 21.5,
+       "right": 51
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 86.5,
+       "left": 26,
+       "right": 42.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 112,
+       "left": 21,
+       "right": 35.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 124,
+       "bottom": 141.5,
+       "left": 21,
+       "right": 39.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "lo-fi too-wide": {
+   "inputs": "f68744050373cd72",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 72,
+     "height": 188
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999,
+     101.69999999999999,
+     127.12499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 147.46499999999997,
+    "width": 31.11,
+    "lines": [
+     "Ab ",
+     "lo-f",
+     "i ",
+     "cd ",
+     "ef ",
+     "gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "lo-f",
+     "i",
+     "cd",
+     "ef",
+     "gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 21.5,
+       "right": 48
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 86.5,
+       "left": 21.5,
+       "right": 23
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 112,
+       "left": 21,
+       "right": 37.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 124,
+       "bottom": 137.5,
+       "left": 21,
+       "right": 35.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 149.5,
+       "bottom": 167,
+       "left": 21,
+       "right": 39.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "lo-fi much-too-wide": {
+   "inputs": "d9dbaeb553d4b86c",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 53,
+     "height": 391
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999,
+     101.69999999999999,
+     127.12499999999999,
+     152.54999999999998,
+     177.97499999999997,
+     203.39999999999998,
+     228.825,
+     254.25,
+     279.675,
+     305.1,
+     330.52500000000003
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 350.865,
+    "width": 12.85,
+    "lines": [
+     "A",
+     "b",
+     " ",
+     "l",
+     "o",
+     "-f",
+     "i ",
+     "c",
+     "d",
+     " ",
+     "e",
+     "f ",
+     "g",
+     "h"
+    ],
+    "wrapped": [
+     "A",
+     "b",
+     "l",
+     "o",
+     "-f",
+     "i",
+     "c",
+     "d",
+     "e",
+     "f",
+     "g",
+     "h"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 31.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 21.5,
+       "right": 29.5
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 112,
+       "left": 21.5,
+       "right": 23
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 128.5,
+       "bottom": 137.5,
+       "left": 21,
+       "right": 29.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 149.5,
+       "bottom": 163,
+       "left": 21.5,
+       "right": 33
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 175,
+       "bottom": 188.5,
+       "left": 21.5,
+       "right": 23
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 205,
+       "bottom": 214,
+       "left": 21,
+       "right": 27.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 225.5,
+       "bottom": 239,
+       "left": 21,
+       "right": 29
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 281,
+       "bottom": 290,
+       "left": 21,
+       "right": 28.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 302,
+       "bottom": 315.5,
+       "left": 20.5,
+       "right": 26
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 332,
+       "bottom": 345,
+       "left": 21,
+       "right": 29
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 353,
+       "bottom": 366.5,
+       "left": 21.5,
+       "right": 29
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "hip-hop line-end": {
+   "inputs": "8d83b5ad25007c2d",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 138,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 97.63,
+    "lines": [
+     "Ab hip-hop ",
+     "cd ef gh"
+    ],
+    "wrapped": [
+     "Ab hip-hop",
+     "cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 40,
+       "left": 20.5,
+       "right": 111.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 83.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "hip-hop no-room-for-space": {
+   "inputs": "9c40b9932314ec45",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 135,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 94.66,
+    "lines": [
+     "Ab ",
+     "hip-hop cd ",
+     "ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "hip-hop cd",
+     "ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 107.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 59.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "hip-hop exact": {
+   "inputs": "9304ae0be12d6a28",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 106,
+     "height": 137
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 96.61499999999998,
+    "width": 65.07,
+    "lines": [
+     "Ab ",
+     "hip-hop",
+     " cd ef ",
+     "gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "hip-hop",
+     " cd ef",
+     "gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 84
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 86.5,
+       "left": 26,
+       "right": 64
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 116,
+       "left": 21,
+       "right": 39.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "hip-hop too-wide": {
+   "inputs": "8c0cd4555bdc6f18",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 105,
+     "height": 137
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 96.61499999999998,
+    "width": 64.07,
+    "lines": [
+     "Ab ",
+     "hip-ho",
+     "p cd ef ",
+     "gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "hip-ho",
+     "p cd ef",
+     "gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 73.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21.5,
+       "right": 74.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 116,
+       "left": 21,
+       "right": 39.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "hip-hop much-too-wide": {
+   "inputs": "58c540707d4d3d2c",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 67,
+     "height": 264
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999,
+     101.69999999999999,
+     127.12499999999999,
+     152.54999999999998,
+     177.97499999999997,
+     203.39999999999998
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 223.73999999999998,
+    "width": 26.03,
+    "lines": [
+     "Ab",
+     " ",
+     "hi",
+     "p-",
+     "ho",
+     "p ",
+     "cd ",
+     "ef ",
+     "gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "hi",
+     "p-",
+     "ho",
+     "p",
+     "cd",
+     "ef",
+     "gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 86.5,
+       "left": 21,
+       "right": 35
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 103,
+       "bottom": 116,
+       "left": 21.5,
+       "right": 36.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 124,
+       "bottom": 137.5,
+       "left": 21.5,
+       "right": 40
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 154,
+       "bottom": 167,
+       "left": 21.5,
+       "right": 29.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 175,
+       "bottom": 188.5,
+       "left": 21,
+       "right": 37.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 200.5,
+       "bottom": 214,
+       "left": 21,
+       "right": 35.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 225.5,
+       "bottom": 243,
+       "left": 21,
+       "right": 39.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "state-of-the-art line-end": {
+   "inputs": "568f0f3553e7e81d",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 196,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 155.97,
+    "lines": [
+     "Ab state-of-the-art ",
+     "cd ef gh"
+    ],
+    "wrapped": [
+     "Ab state-of-the-art",
+     "cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 170
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 83.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "state-of-the-art no-room-for-space": {
+   "inputs": "b68147bb15131568",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 193,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 153,
+    "lines": [
+     "Ab ",
+     "state-of-the-art cd ",
+     "ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "state-of-the-art cd",
+     "ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 21,
+       "right": 166
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 59.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "state-of-the-art exact": {
+   "inputs": "129b9422c632f0d3",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 164,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 123.41,
+    "lines": [
+     "Ab ",
+     "state-of-the-art",
+     " cd ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "state-of-the-art",
+     " cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 21,
+       "right": 143
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 26,
+       "right": 88.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "state-of-the-art too-wide": {
+   "inputs": "e050a0da6e53bdb7",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 163,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 122.41,
+    "lines": [
+     "Ab ",
+     "state-of-the-ar",
+     "t cd ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "state-of-the-ar",
+     "t cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 21,
+       "right": 137
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 20.5,
+       "right": 94.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "state-of-the-art much-too-wide": {
+   "inputs": "596f94daced4e075",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 90,
+     "height": 188
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999,
+     101.69999999999999,
+     127.12499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 147.46499999999997,
+    "width": 49.37,
+    "lines": [
+     "Ab ",
+     "state-",
+     "of-the",
+     "-art ",
+     "cd ef ",
+     "gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "state-",
+     "of-the",
+     "-art",
+     "cd ef",
+     "gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 49.5,
+       "bottom": 61,
+       "left": 21,
+       "right": 64.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 86.5,
+       "left": 21,
+       "right": 68.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 100.5,
+       "bottom": 112,
+       "left": 21.5,
+       "right": 48.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 124,
+       "bottom": 137.5,
+       "left": 21,
+       "right": 59
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 149.5,
+       "bottom": 167,
+       "left": 21,
+       "right": 39.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "2012—2014 line-end": {
+   "inputs": "9469318c1d580144",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 169,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 128.19,
+    "lines": [
+     "Ab 2012—2014 ",
+     "cd ef gh"
+    ],
+    "wrapped": [
+     "Ab 2012—2014",
+     "cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 142
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 83.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "2012—2014 no-room-for-space": {
+   "inputs": "b509965844de4a97",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 166,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 125.22,
+    "lines": [
+     "Ab ",
+     "2012—2014 cd ",
+     "ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "2012—2014 cd",
+     "ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 21,
+       "right": 138
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 59.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "2012—2014 exact": {
+   "inputs": "c86d502ec0a935ec",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 136,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 95.63,
+    "lines": [
+     "Ab ",
+     "2012—2014",
+     " cd ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "2012—2014",
+     " cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 48,
+       "bottom": 61,
+       "left": 21,
+       "right": 115
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 26,
+       "right": 88.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "2012—2014 too-wide": {
+   "inputs": "eeb4528e30de81e2",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 135,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 94.63,
+    "lines": [
+     "Ab ",
+     "2012—201",
+     "4 cd ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "2012—201",
+     "4 cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 48,
+       "bottom": 61,
+       "left": 21,
+       "right": 102.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 20,
+       "right": 98
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "2012—2014 much-too-wide": {
+   "inputs": "c87fcf8e925bc5af",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 79,
+     "height": 213
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999,
+     101.69999999999999,
+     127.12499999999999,
+     152.54999999999998
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 172.89,
+    "width": 38.25,
+    "lines": [
+     "Ab ",
+     "201",
+     "2—2",
+     "014 ",
+     "cd ",
+     "ef ",
+     "gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "201",
+     "2—2",
+     "014",
+     "cd",
+     "ef",
+     "gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 48,
+       "bottom": 61,
+       "left": 21,
+       "right": 46
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73.5,
+       "bottom": 86.5,
+       "left": 21,
+       "right": 56.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 99,
+       "bottom": 112,
+       "left": 21,
+       "right": 48.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 124,
+       "bottom": 137.5,
+       "left": 21,
+       "right": 37.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 149.5,
+       "bottom": 163,
+       "left": 21,
+       "right": 35.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 175,
+       "bottom": 192.5,
+       "left": 21,
+       "right": 39.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "and/or line-end": {
+   "inputs": "a0097652238faeee",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 128,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 87.57,
+    "lines": [
+     "Ab and/or ",
+     "cd ef gh"
+    ],
+    "wrapped": [
+     "Ab and/or",
+     "cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 38,
+       "left": 20.5,
+       "right": 102
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 83.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "and/or no-room-for-space": {
+   "inputs": "b298726ee7db96ea",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 125,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 84.6,
+    "lines": [
+     "Ab ",
+     "and/or cd ",
+     "ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "and/or cd",
+     "ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 63,
+       "left": 20.5,
+       "right": 97.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 59.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "and/or exact": {
+   "inputs": "1ecce8b982db3172",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 95,
+     "height": 137
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 96.61499999999998,
+    "width": 55,
+    "lines": [
+     "Ab ",
+     "and/or",
+     " cd ef ",
+     "gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "and/or",
+     " cd ef",
+     "gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 63,
+       "left": 20.5,
+       "right": 75
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 86.5,
+       "left": 26,
+       "right": 64
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 116,
+       "left": 21,
+       "right": 39.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "and/or too-wide": {
+   "inputs": "1a0c69b38f5c9a7b",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 94,
+     "height": 137
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 96.61499999999998,
+    "width": 54,
+    "lines": [
+     "Ab ",
+     "and/o",
+     "r cd ",
+     "ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "and/o",
+     "r cd",
+     "ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 63,
+       "left": 20.5,
+       "right": 68
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 86.5,
+       "left": 21.5,
+       "right": 48.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 116,
+       "left": 21,
+       "right": 59.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "and/or much-too-wide": {
+   "inputs": "29de13753eb0897a",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 62,
+     "height": 264
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999,
+     101.69999999999999,
+     127.12499999999999,
+     152.54999999999998,
+     177.97499999999997,
+     203.39999999999998
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 223.73999999999998,
+    "width": 22,
+    "lines": [
+     "A",
+     "b ",
+     "an",
+     "d/",
+     "or ",
+     "cd",
+     " ",
+     "ef ",
+     "gh"
+    ],
+    "wrapped": [
+     "A",
+     "b",
+     "an",
+     "d/",
+     "or",
+     "cd",
+     "ef",
+     "gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 31.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 21.5,
+       "right": 29.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 77.5,
+       "bottom": 86.5,
+       "left": 20.5,
+       "right": 39.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 114,
+       "left": 21,
+       "right": 37.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 128.5,
+       "bottom": 137.5,
+       "left": 21,
+       "right": 36.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 149.5,
+       "bottom": 163,
+       "left": 21,
+       "right": 37.5
+      },
+      "present": true
+     },
+     {
+      "ink": null,
+      "present": false
+     },
+     {
+      "ink": {
+       "top": 200.5,
+       "bottom": 214,
+       "left": 21,
+       "right": 35.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 225.5,
+       "bottom": 243,
+       "left": 21,
+       "right": 39.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "日本語のテキストです line-end": {
+   "inputs": "e1e537debdb9ed17",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 253,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 212.57,
+    "lines": [
+     "Ab 日本語のテキストです ",
+     "cd ef gh"
+    ],
+    "wrapped": [
+     "Ab 日本語のテキストです",
+     "cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 21,
+       "bottom": 38.5,
+       "left": 20.5,
+       "right": 225.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 83.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "日本語のテキストです no-room-for-space": {
+   "inputs": "c2731d0ea5ed009f",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 250,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 209.6,
+    "lines": [
+     "Ab ",
+     "日本語のテキストです cd ",
+     "ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "日本語のテキストです cd",
+     "ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 46,
+       "bottom": 63.5,
+       "left": 23,
+       "right": 222.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 59.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "日本語のテキストです exact": {
+   "inputs": "bc790d0c7342cbe0",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 220,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 180,
+    "lines": [
+     "Ab ",
+     "日本語のテキストです",
+     " cd ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "日本語のテキストです",
+     " cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 46,
+       "bottom": 63.5,
+       "left": 23,
+       "right": 198.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 26,
+       "right": 88.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "日本語のテキストです too-wide": {
+   "inputs": "9922773db2f093cd",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 219,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 179,
+    "lines": [
+     "Ab ",
+     "日本語のテキストで",
+     "す cd ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "日本語のテキストで",
+     "す cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 46,
+       "bottom": 63.5,
+       "left": 23,
+       "right": 181
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 72.5,
+       "bottom": 90.5,
+       "left": 21.5,
+       "right": 106.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "日本語のテキストです much-too-wide": {
+   "inputs": "9e746d33830ff533",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 112,
+     "height": 163
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999,
+     101.69999999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 122.03999999999999,
+    "width": 72,
+    "lines": [
+     "Ab ",
+     "日本語の",
+     "テキスト",
+     "です cd ",
+     "ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "日本語の",
+     "テキスト",
+     "です cd",
+     "ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 46,
+       "bottom": 63.5,
+       "left": 23,
+       "right": 90
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 72.5,
+       "bottom": 87,
+       "left": 22,
+       "right": 88
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98,
+       "bottom": 113,
+       "left": 22,
+       "right": 78.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 124,
+       "bottom": 141.5,
+       "left": 21,
+       "right": 59.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "😀🎧🎶 line-end": {
+   "inputs": "3f5272064db5222e",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 147,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 106.72,
+    "lines": [
+     "Ab 😀🎧🎶 ",
+     "cd ef gh"
+    ],
+    "wrapped": [
+     "Ab 😀🎧🎶",
+     "cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 21.5,
+       "bottom": 38.5,
+       "left": 20.5,
+       "right": 117.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 83.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "😀🎧🎶 no-room-for-space": {
+   "inputs": "0f87862be773801a",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 144,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 103.75,
+    "lines": [
+     "Ab ",
+     "😀🎧🎶 cd ",
+     "ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "😀🎧🎶 cd",
+     "ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47,
+       "bottom": 63.5,
+       "left": 24,
+       "right": 116.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 59.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "😀🎧🎶 exact": {
+   "inputs": "6efeb6f81a93fe81",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 115,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 74.16,
+    "lines": [
+     "Ab ",
+     "😀🎧🎶",
+     " cd ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "😀🎧🎶",
+     " cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47,
+       "bottom": 63.5,
+       "left": 24,
+       "right": 90.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 26,
+       "right": 88.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "😀🎧🎶 too-wide": {
+   "inputs": "f9de4419e0f60c1c",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 114,
+     "height": 137
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 96.61499999999998,
+    "width": 73.16,
+    "lines": [
+     "Ab ",
+     "😀🎧",
+     "🎶 cd ",
+     "ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "😀🎧",
+     "🎶 cd",
+     "ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 49.5,
+       "bottom": 60.5,
+       "left": 24,
+       "right": 51
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 72,
+       "bottom": 89,
+       "left": 23.5,
+       "right": 67
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 116,
+       "left": 21,
+       "right": 59.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "😀🎧🎶 much-too-wide": {
+   "inputs": "fcf7214b217f4dea",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 70,
+     "height": 213
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999,
+     101.69999999999999,
+     127.12499999999999,
+     152.54999999999998
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 172.89,
+    "width": 29.67,
+    "lines": [
+     "Ab ",
+     "😀",
+     "🎧",
+     "🎶 ",
+     "cd ",
+     "ef ",
+     "gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "😀",
+     "🎧",
+     "🎶",
+     "cd",
+     "ef",
+     "gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 49.5,
+       "bottom": 60.5,
+       "left": 24,
+       "right": 38
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 83,
+       "bottom": 84.5,
+       "left": 24.5,
+       "right": 26.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 97.5,
+       "bottom": 114.5,
+       "left": 23.5,
+       "right": 41
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 124,
+       "bottom": 137.5,
+       "left": 21,
+       "right": 37.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 149.5,
+       "bottom": 163,
+       "left": 21,
+       "right": 35.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 175,
+       "bottom": 192.5,
+       "left": 21,
+       "right": 39.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "https://example.com/a-b/c?d=e line-end": {
+   "inputs": "9e84cf55e1b7d245",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 328,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 287.3,
+    "lines": [
+     "Ab https://example.com/a-b/c?d=e ",
+     "cd ef gh"
+    ],
+    "wrapped": [
+     "Ab https://example.com/a-b/c?d=e",
+     "cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 40,
+       "left": 20.5,
+       "right": 301
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 83.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "https://example.com/a-b/c?d=e no-room-for-space": {
+   "inputs": "0e9c17999c3d1b4c",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 325,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 284.33,
+    "lines": [
+     "Ab ",
+     "https://example.com/a-b/c?d=e cd ",
+     "ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "https://example.com/a-b/c?d=e cd",
+     "ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 297
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 59.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "https://example.com/a-b/c?d=e exact": {
+   "inputs": "6e9859452f63ae27",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 295,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 254.74,
+    "lines": [
+     "Ab ",
+     "https://example.com/a-b/c?d=e",
+     " cd ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "https://example.com/a-b/c?d=e",
+     " cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 274
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 26,
+       "right": 88.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "https://example.com/a-b/c?d=e too-wide": {
+   "inputs": "28ff389c6f5dd890",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 294,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 253.74,
+    "lines": [
+     "Ab ",
+     "https://example.com/a-b/c?d=",
+     "e cd ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "https://example.com/a-b/c?d=",
+     "e cd ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 263.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 97.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "https://example.com/a-b/c?d=e much-too-wide": {
+   "inputs": "e45b5c764e3f3786",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 142,
+     "height": 163
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999,
+     101.69999999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 122.03999999999999,
+    "width": 101.9,
+    "lines": [
+     "Ab ",
+     "https://exa",
+     "mple.com/a-",
+     "b/c?d=e cd ",
+     "ef gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "https://exa",
+     "mple.com/a-",
+     "b/c?d=e cd",
+     "ef gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 20.5,
+       "right": 41.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 21,
+       "right": 105.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21.5,
+       "right": 120.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 114,
+       "left": 21.5,
+       "right": 108.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 124,
+       "bottom": 141.5,
+       "left": 21,
+       "right": 59.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "centred hip-hop": {
+   "inputs": "de4c145b003fcbc5",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 106,
+     "height": 137
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994,
+     76.27499999999999
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 96.61499999999998,
+    "width": 65.07,
+    "lines": [
+     "Ab ",
+     "hip-hop",
+     " cd ef ",
+     "gh"
+    ],
+    "wrapped": [
+     "Ab",
+     "hip-hop",
+     " cd ef",
+     "gh"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 39.5,
+       "right": 60.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 22.5,
+       "right": 83.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 86.5,
+       "left": 34,
+       "right": 72.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 98.5,
+       "bottom": 116,
+       "left": 43,
+       "right": 61.5
+      },
+      "present": true
+     }
+    ]
+   }
+  }
+ }
+}

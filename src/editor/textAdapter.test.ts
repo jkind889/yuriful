@@ -9,6 +9,7 @@ import { DomTextAdapter, FabricTextAdapter } from './textAdapter.ts'
 import { canvasOf, dragBy, press, release, scaleBy, tick } from './testing/drive.ts'
 import type { FakeObject } from './testing/fakeFabric.ts'
 import { FABRIC, FakeAssets, FakeCardMeasurer, SpyStore } from './testing/fakes.ts'
+import { fabricReference } from './testing/fabricReference.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -207,7 +208,7 @@ describe('the DOM renderer, static (Slice 2c-i)', () => {
       out.push(store.saves.at(-1)?.doc.objects, store.saves.length)
       return out
     }
-    expect(await run(dom())).toEqual(await run(FABRIC))
+    expect(await run(dom())).toEqual(await fabricReference('script', { records, steps }, () => run(FABRIC)))
   })
 
   it('a whole-box command that changes nothing records and saves nothing; a locked text or a read-only board takes none', async () => {
@@ -320,16 +321,19 @@ describe('the DOM renderer, static (Slice 2c-i)', () => {
     const saved = a.store.saves.at(-1)!.doc
     expect(needsRichFence(saved)).toBe(false)
     expect(saved.objects.filter((o) => 'blocks' in o || 'height' in o || 'surface' in o)).toEqual([])
-    // Reopened on the Fabric renderer: the same scene, and its next save writes the same records.
-    const b = await open([], [], FABRIC)
-    b.editor.dispose()
-    const store = new SpyStore({ doc: saved, assets: new Map([['a1', asset('a1')]]) })
-    store.holdLoad = false
-    const fabric = new Editor(host, store, new FakeAssets(), undefined, FABRIC)
-    editors.push(fabric)
-    await fabric.init()
-    const reopened = (fabric as unknown as { snapshot: () => Scene }).snapshot()
-    expect(reopened.frames).toEqual(saved.frames)
-    expect(reopened.objects).toEqual(saved.objects)
+    // Reopened on the Fabric renderer: the same scene. The reference holds the board Fabric was
+    // given (what the DOM renderer saved when it was recorded) and the scene Fabric opened from it.
+    const fabric = await fabricReference('reopened', { records }, async () => {
+      const store = new SpyStore({ doc: saved, assets: new Map([['a1', asset('a1')]]) })
+      store.holdLoad = false
+      const editor = new Editor(host, store, new FakeAssets(), undefined, FABRIC)
+      editors.push(editor)
+      await editor.init()
+      return { given: saved, reopened: (editor as unknown as { snapshot: () => Scene }).snapshot() }
+    })
+    expect(fabric.reopened.frames).toEqual(fabric.given.frames)
+    expect(fabric.reopened.objects).toEqual(fabric.given.objects)
+    expect(saved.frames).toEqual(fabric.given.frames)
+    expect(saved.objects).toEqual(fabric.given.objects)
   })
 })

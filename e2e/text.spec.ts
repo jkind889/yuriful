@@ -12,6 +12,7 @@ import {
   drag,
   openApp,
   openBlank,
+  pagePixels,
   redoButton,
   sceneToPage,
   screenPixels,
@@ -48,6 +49,29 @@ async function strokeColour(page: Page, left: number, top: number, width: number
   const core = dark.slice(0, Math.max(20, Math.floor(dark.length / 6)))
   expect(core.length).toBeGreaterThanOrEqual(20)
   return [1, 2, 3].map((k) => Math.round(core.reduce((s, p) => s + p[k]!, 0) / core.length))
+}
+
+/**
+ * How many pixels of a rectangle of the board (canvas CSS pixels) change when every card's
+ * lettering is forced to the ink colour: none where all the text there is painted in ink, and
+ * one for each off-colour pixel wherever any part of it, a single word or letter, is painted in
+ * another colour. Both screenshots are drawn alike, subpixel fringes included, so only the
+ * colour can make them differ.
+ */
+async function offInkPixels(page: Page, left: number, top: number, width: number, height: number): Promise<number> {
+  const box = await page.locator('.canvas-host').boundingBox()
+  if (!box) throw new Error('canvas host not found')
+  const ink = `rgb(${INK.join(',')})`
+  const shown = await pagePixels(page, box.x + left, box.y + top, width, height)
+  const forced = await pagePixels(page, box.x + left, box.y + top, width, height, {
+    style: `.scene-layer .scene-text-body, .scene-layer .scene-text-body * { color: ${ink} !important; -webkit-text-fill-color: ${ink} !important; text-decoration-color: ${ink} !important; }`,
+  })
+  let off = 0
+  for (let i = 0; i < shown.data.length; i += 4) {
+    const diff = Math.max(...[0, 1, 2].map((k) => Math.abs(shown.data[i + k]! - forced.data[i + k]!)))
+    if (diff > 24) off++
+  }
+  return off
 }
 
 type Seed = StoredObject & { type: 'text'; text: string; fontSize: number; width: number }
@@ -198,6 +222,8 @@ test.describe('a stored formatted text', () => {
     // Plain words are painted in the ink colour itself.
     const stroke = await strokeColour(page, 35, 390, 380, 60)
     stroke.forEach((c, i) => expect(Math.abs(c - INK[i]!), `plain text colour ${stroke.join(',')}`).toBeLessThanOrEqual(24))
+    // And every part of them: not one word or letter is painted in another colour.
+    expect(await offInkPixels(page, 35, 390, 380, 60), 'pixels of the plain words not in the ink colour').toBe(0)
     expect(s.red).toBeGreaterThan(w.count) // red, and bold: more ink than the plain words
     expect(errors).toEqual([])
   })

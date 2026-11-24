@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import type { Browser, Page } from '@playwright/test'
 import type { FeedbackSnapshot } from '../src/editor/feedbackLayer.ts'
+import { fabricReference } from './fabricReference.ts'
 import { chooseRenderer, openApp, openBlank, seedRaw } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredFrame, StoredObject } from './helpers.ts'
 
@@ -194,7 +195,7 @@ test.describe('a text narrowed with a side handle stays in its frame\'s preview 
   for (const c of cases) {
     test(`${c.name}: the preview shows its ink in the frame as the Fabric preview does`, async ({ browser }) => {
       test.slow() // two boards, one per renderer
-      const fabric = await narrowedInk(browser, 'fabric', c.doc, c.frameId)
+      const fabric = await fabricReference(browser, 'ink', c, () => narrowedInk(browser, 'fabric', c.doc, c.frameId))
       const dom = await narrowedInk(browser, 'dom', c.doc, c.frameId)
       console.log(`narrowed text, ${c.name}: ink pixels in the frame's preview fabric ${fabric}, dom ${dom}`)
       expect(fabric, 'the Fabric preview shows the text in the frame').toBeGreaterThan(500)
@@ -296,7 +297,11 @@ test.describe('the lifted look casts the canvas\'s shadow at every scale', () =>
       test(`scale ${scale} at ${zoom * 100}%: uncropped and cropped, upright and turned`, async ({ browser }) => {
         test.slow() // two boards, four drags each
         const doc = board([PAPER], imagesAt(scale), { zoom, panX: 0, panY: 0 })
-        const fabric = await shots(browser, 'fabric', doc)
+        const fabric = await fabricReference(browser, 'shots', { doc, assets: ASSETS }, async () => {
+          const run = await shots(browser, 'fabric', doc)
+          await run.close()
+          return { out: run.out.map(({ png, clip, corners }) => ({ png, clip, corners })) }
+        })
         const dom = await shots(browser, 'dom', doc, fabric.out.map((s) => s.clip))
         const report: string[] = []
         for (const [i, rec] of doc.objects.entries()) {
@@ -307,7 +312,6 @@ test.describe('the lifted look casts the canvas\'s shadow at every scale', () =>
           expect(r.worst, `${rec.id}: largest per-channel difference outside the image`).toBeLessThanOrEqual(3)
         }
         console.log(`lift shadow, scale ${scale} at ${zoom * 100}% (fabric/dom): ${report.join('; ')}`)
-        await fabric.close()
         await dom.close()
       })
     }

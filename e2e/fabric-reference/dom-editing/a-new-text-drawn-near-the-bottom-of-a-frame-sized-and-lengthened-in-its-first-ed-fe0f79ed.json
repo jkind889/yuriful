@@ -1,0 +1,1486 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the review follow-ups, paired with the Fabric renderer > a new text drawn near the bottom of a frame, sized and lengthened in its first edit, has its owner decided again when that edit ends (a named difference)",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/dom-editing.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "7b314380ec0590ce",
+   "value": {
+    "records": [
+     {
+      "step": "{\"button\":\"Text\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": []
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": []
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "F:Spread"
+       ],
+       "tool": "text",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {}
+     },
+     {
+      "step": "{\"dragAt\":[240,225],\"to\":[460,255]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": []
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": []
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {}
+     },
+     {
+      "step": "{\"type\":\"a line\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 240,
+         "top": 225,
+         "angle": 0,
+         "type": "text",
+         "text": "a line",
+         "fontSize": 24,
+         "width": 220,
+         "minHeight": 30,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": []
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "~1:a line*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "a line",
+       "anchor": 6,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 30
+      }
+     },
+     {
+      "step": "{\"fontSize\":40}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 240,
+         "top": 225,
+         "angle": 0,
+         "type": "text",
+         "text": "a line",
+         "fontSize": 40,
+         "width": 220,
+         "minHeight": 30,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": [
+         {
+          "id": "~1",
+          "left": 240,
+          "top": 225,
+          "angle": 0,
+          "type": "text",
+          "text": "a line",
+          "fontSize": 40,
+          "width": 220,
+          "minHeight": 30,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:a line*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "a line",
+       "anchor": 6,
+       "head": 6,
+       "focused": false
+      },
+      "boxes": {
+       "~1": 45.2
+      }
+     },
+     {
+      "step": "{\"clickAt\":[246,240]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 240,
+         "top": 225,
+         "angle": 0,
+         "type": "text",
+         "text": "a line",
+         "fontSize": 40,
+         "width": 220,
+         "minHeight": 30,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": [
+         {
+          "id": "~1",
+          "left": 240,
+          "top": 225,
+          "angle": 0,
+          "type": "text",
+          "text": "a line",
+          "fontSize": 40,
+          "width": 220,
+          "minHeight": 30,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:a line*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "a line",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 45.2
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+a\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 240,
+         "top": 225,
+         "angle": 0,
+         "type": "text",
+         "text": "a line",
+         "fontSize": 40,
+         "width": 220,
+         "minHeight": 30,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": [
+         {
+          "id": "~1",
+          "left": 240,
+          "top": 225,
+          "angle": 0,
+          "type": "text",
+          "text": "a line",
+          "fontSize": 40,
+          "width": 220,
+          "minHeight": 30,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:a line*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "a line",
+       "anchor": 0,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 45.2
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowRight\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 240,
+         "top": 225,
+         "angle": 0,
+         "type": "text",
+         "text": "a line",
+         "fontSize": 40,
+         "width": 220,
+         "minHeight": 30,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": [
+         {
+          "id": "~1",
+          "left": 240,
+          "top": 225,
+          "angle": 0,
+          "type": "text",
+          "text": "a line",
+          "fontSize": 40,
+          "width": 220,
+          "minHeight": 30,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:a line*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "a line",
+       "anchor": 6,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 45.2
+      }
+     },
+     {
+      "step": "{\"type\":\"\\nline 2\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 240,
+         "top": 225,
+         "angle": 0,
+         "type": "text",
+         "text": "a line\nline 2",
+         "fontSize": 40,
+         "width": 220,
+         "minHeight": 30,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": [
+         {
+          "id": "~1",
+          "left": 240,
+          "top": 225,
+          "angle": 0,
+          "type": "text",
+          "text": "a line",
+          "fontSize": 40,
+          "width": 220,
+          "minHeight": 30,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:a line line 2*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "a line\nline 2",
+       "anchor": 13,
+       "head": 13,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 101.7
+      }
+     },
+     {
+      "step": "{\"type\":\"\\nline 3\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 240,
+         "top": 225,
+         "angle": 0,
+         "type": "text",
+         "text": "a line\nline 2\nline 3",
+         "fontSize": 40,
+         "width": 220,
+         "minHeight": 30,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": [
+         {
+          "id": "~1",
+          "left": 240,
+          "top": 225,
+          "angle": 0,
+          "type": "text",
+          "text": "a line",
+          "fontSize": 40,
+          "width": 220,
+          "minHeight": 30,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:a line line 2 line 3*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "a line\nline 2\nline 3",
+       "anchor": 20,
+       "head": 20,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 158.2
+      }
+     },
+     {
+      "step": "{\"type\":\"\\nline 4\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 240,
+         "top": 225,
+         "angle": 0,
+         "type": "text",
+         "text": "a line\nline 2\nline 3\nline 4",
+         "fontSize": 40,
+         "width": 220,
+         "minHeight": 30,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": [
+         {
+          "id": "~1",
+          "left": 240,
+          "top": 225,
+          "angle": 0,
+          "type": "text",
+          "text": "a line",
+          "fontSize": 40,
+          "width": 220,
+          "minHeight": 30,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:a line line 2 line 3 line 4*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "a line\nline 2\nline 3\nline 4",
+       "anchor": 27,
+       "head": 27,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 214.7
+      }
+     },
+     {
+      "step": "{\"type\":\"\\nline 5\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 240,
+         "top": 225,
+         "angle": 0,
+         "type": "text",
+         "text": "a line\nline 2\nline 3\nline 4\nline 5",
+         "fontSize": 40,
+         "width": 220,
+         "minHeight": 30,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": [
+         {
+          "id": "~1",
+          "left": 240,
+          "top": 225,
+          "angle": 0,
+          "type": "text",
+          "text": "a line",
+          "fontSize": 40,
+          "width": 220,
+          "minHeight": 30,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:a line line 2 line 3 line 4 line 5*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "a line\nline 2\nline 3\nline 4\nline 5",
+       "anchor": 34,
+       "head": 34,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 271.2
+      }
+     },
+     {
+      "step": "{\"type\":\"\\nline 6\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 240,
+         "top": 225,
+         "angle": 0,
+         "type": "text",
+         "text": "a line\nline 2\nline 3\nline 4\nline 5\nline 6",
+         "fontSize": 40,
+         "width": 220,
+         "minHeight": 30,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": [
+         {
+          "id": "~1",
+          "left": 240,
+          "top": 225,
+          "angle": 0,
+          "type": "text",
+          "text": "a line",
+          "fontSize": 40,
+          "width": 220,
+          "minHeight": 30,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:a line line 2 line 3 line 4 line 5 line…*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "a line\nline 2\nline 3\nline 4\nline 5\nline 6",
+       "anchor": 41,
+       "head": 41,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 327.7
+      }
+     },
+     {
+      "step": "{\"type\":\"\\nline 7\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 240,
+         "top": 225,
+         "angle": 0,
+         "type": "text",
+         "text": "a line\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7",
+         "fontSize": 40,
+         "width": 220,
+         "minHeight": 30,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": [
+         {
+          "id": "~1",
+          "left": 240,
+          "top": 225,
+          "angle": 0,
+          "type": "text",
+          "text": "a line",
+          "fontSize": 40,
+          "width": 220,
+          "minHeight": 30,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:a line line 2 line 3 line 4 line 5 line…*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "a line\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7",
+       "anchor": 48,
+       "head": 48,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 384.2
+      }
+     },
+     {
+      "step": "{\"type\":\"\\nline 8\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 240,
+         "top": 225,
+         "angle": 0,
+         "type": "text",
+         "text": "a line\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8",
+         "fontSize": 40,
+         "width": 220,
+         "minHeight": 30,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": [
+         {
+          "id": "~1",
+          "left": 240,
+          "top": 225,
+          "angle": 0,
+          "type": "text",
+          "text": "a line",
+          "fontSize": 40,
+          "width": 220,
+          "minHeight": 30,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:a line line 2 line 3 line 4 line 5 line…*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "a line\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8",
+       "anchor": 55,
+       "head": 55,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 440.7
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 420,
+         "height": 150
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 240,
+         "top": 225,
+         "angle": 0,
+         "type": "text",
+         "text": "a line\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8",
+         "fontSize": 40,
+         "width": 220,
+         "minHeight": 30,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 420,
+          "height": 150
+         }
+        ],
+        "objects": [
+         {
+          "id": "~1",
+          "left": 240,
+          "top": 225,
+          "angle": 0,
+          "type": "text",
+          "text": "a line\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8",
+          "fontSize": 40,
+          "width": 220,
+          "minHeight": 30,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:a line line 2 line 3 line 4 line 5 line…*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "~1": 440.7
+      }
+     }
+    ],
+    "saved": {
+     "version": 2,
+     "title": "Editing",
+     "frames": [
+      {
+       "id": "F",
+       "name": "Spread",
+       "left": 200,
+       "top": 120,
+       "width": 420,
+       "height": 150
+      }
+     ],
+     "objects": [
+      {
+       "id": "~1",
+       "left": 240,
+       "top": 225,
+       "angle": 0,
+       "type": "text",
+       "text": "a line\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8",
+       "fontSize": 40,
+       "width": 220,
+       "minHeight": 30,
+       "frameId": "F"
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

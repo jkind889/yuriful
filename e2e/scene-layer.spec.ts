@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
+import { fabricReference } from './fabricReference.ts'
 import { openBlank } from './helpers.ts'
 
 /**
@@ -74,41 +75,143 @@ interface TypographyCase {
   lines: LineReport[]
 }
 
+/** Where a box's lines lie in a bitmap of it (scene units from the box's top) and how it is placed there. */
+interface LineBands {
+  /** The box's frame in the bitmap (`margin` scene units around it) and the bitmap's scale. */
+  frame: { id: string; name: string; left: number; top: number; width: number; height: number }
+  scale: number
+  margin: number
+  lineTops: number[]
+  pitches: number[]
+}
+
+/** Per line band of a bitmap: where the dark ink is, and whether anything at all is drawn in the box there. */
+function lineInk(page: Page, src: string, bands: LineBands, width: number, height: number): Promise<Array<{ ink: Ink; present: boolean }>> {
+  return page.evaluate(
+    async ({ src, bands, width, height }) => {
+      const img = new Image()
+      img.src = src
+      await img.decode()
+      const c = document.createElement('canvas')
+      c.width = img.naturalWidth
+      c.height = img.naturalHeight
+      const ctx = c.getContext('2d')!
+      ctx.drawImage(img, 0, 0)
+      const data = ctx.getImageData(0, 0, c.width, c.height)
+      const s = bands.scale
+      const inkIn = (y0: number, y1: number): { top: number; bottom: number; left: number; right: number } | null => {
+        let top = -1
+        let bottom = -1
+        let left = Infinity
+        let right = -1
+        for (let y = Math.max(0, y0); y < Math.min(data.height, y1); y++) {
+          for (let x = 0; x < data.width; x++) {
+            const i = (y * data.width + x) * 4
+            const lum = 0.299 * data.data[i]! + 0.587 * data.data[i + 1]! + 0.114 * data.data[i + 2]!
+            if (lum >= 140) continue
+            if (top < 0) top = y
+            bottom = y
+            left = Math.min(left, x)
+            right = Math.max(right, x)
+          }
+        }
+        return top < 0 ? null : { top: top / s, bottom: (bottom + 1) / s, left: left / s, right: (right + 1) / s }
+      }
+      // Something drawn on a line: a pixel inside the card that differs from the line's own paper
+      // (the commonest colour there: white, or a caption background).
+      // Only inside the card's own box: a last line's band runs on below it, onto other paper.
+      const present = (y0: number, band1: number): boolean => {
+        const x0 = Math.round(bands.margin * s)
+        const x1 = Math.min(data.width, Math.round((bands.margin + width) * s))
+        const y1 = Math.min(band1, Math.floor((bands.margin + height) * s))
+        const counts = new Map<number, number>()
+        for (let y = Math.max(0, y0); y < Math.min(data.height, y1); y++) {
+          for (let x = x0; x < x1; x++) {
+            const i = (y * data.width + x) * 4
+            const key = ((data.data[i]! >> 3) << 10) | ((data.data[i + 1]! >> 3) << 5) | (data.data[i + 2]! >> 3)
+            counts.set(key, (counts.get(key) ?? 0) + 1)
+          }
+        }
+        let paper = 0
+        let most = -1
+        for (const [key, n] of counts) if (n > most) [paper, most] = [key, n]
+        const pr = (paper >> 10) << 3
+        const pg = ((paper >> 5) & 31) << 3
+        const pb = (paper & 31) << 3
+        for (let y = Math.max(0, y0); y < Math.min(data.height, y1); y++) {
+          for (let x = x0; x < x1; x++) {
+            const i = (y * data.width + x) * 4
+            if (Math.abs(data.data[i]! - pr) + Math.abs(data.data[i + 1]! - pg) + Math.abs(data.data[i + 2]! - pb) > 60) return true
+          }
+        }
+        return false
+      }
+      return bands.lineTops.map((t, i) => {
+        const y0 = Math.round((t + bands.margin) * s)
+        const y1 = Math.round((t + bands.pitches[i]! + bands.margin) * s)
+        return { ink: inkIn(y0, y1), present: present(y0, y1) }
+      })
+    },
+    { src, bands, width, height },
+  )
+}
+
+/** How Fabric lays a text out: its box, its wrapped lines, and per line where its ink lies in the shipped frame preview (`framePreview.ts`, at scale 2). */
+interface FabricLayout extends LineBands {
+  height: number
+  width: number
+  /** The lines as Fabric holds them, and as compared (tabs as spaces, trailing spaces and lines of spaces alone left out). */
+  lines: string[]
+  wrapped: string[]
+  ink: Array<{ ink: Ink; present: boolean }>
+}
+
+async function fabricLayout(page: Page, rec: Record<string, unknown>): Promise<FabricLayout> {
+  const prepared = await page.evaluate(async (rec) => {
+    const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
+    const { createObject } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
+    const { renderFramePreview } = (await load('/src/editor/framePreview.ts')) as typeof import('../src/editor/framePreview.ts')
+    const text = rec as unknown as import('../src/model/types.ts').TextRecord
+    const tb = createObject(text, () => undefined) as unknown as {
+      width: number
+      height: number
+      _textLines: string[][]
+      getHeightOfLine(i: number): number
+    }
+    const margin = 20
+    // Fabric's own box: a click-created box is at least as wide as its widest word.
+    const frame = { id: 'f', name: '', left: -margin, top: -margin, width: Math.ceil(Math.max(text.width, tb.width)) + 2 * margin, height: Math.ceil(tb.height) + 2 * margin }
+    const lineTops: number[] = []
+    const pitches: number[] = []
+    let y = 0
+    tb._textLines.forEach((_, i) => {
+      lineTops.push(y)
+      pitches.push(tb.getHeightOfLine(i))
+      y += tb.getHeightOfLine(i)
+    })
+    const png = await renderFramePreview({ frames: [frame], objects: [text] }, 'f', () => undefined)
+    // A tab is compared as the space it is drawn as (Fabric's click-created box even stores it as one in its lines).
+    const wrapped = tb._textLines.map((l) => l.join('').replace(/\t/g, ' ').replace(/ +$/, '')).filter((l) => l !== '')
+    return { png, frame, scale: 2, margin, lineTops, pitches, height: tb.height, width: tb.width, lines: tb._textLines.map((l) => l.join('')), wrapped }
+  }, rec)
+  const { png, ...layout } = prepared
+  return { ...layout, ink: await lineInk(page, png, layout, layout.width, layout.height) }
+}
+
 /**
- * Lays each record out with Fabric (the shipped frame preview, `framePreview.ts`, at scale 2)
- * and with the scene layer (zoom 2, then a screenshot), and reports per line where the ink is
- * in both, the wrapped lines and the box heights.
+ * Lays each record out with the scene layer (zoom 2, then a screenshot) and reports per line where
+ * the ink is, the wrapped lines and the box height, next to Fabric's (`fabricLayout`, a frozen
+ * reference) in the same line bands.
  */
 async function compareTypography(page: Page, recs: Array<Record<string, unknown>>): Promise<TypographyCase[]> {
   await page.setViewportSize({ width: 1280, height: 1800 })
   const out: TypographyCase[] = []
   for (const rec of recs) {
-    const prepared = await page.evaluate(async (rec) => {
+    const fabric = await fabricReference(page.context().browser()!, String(rec.id), rec, () => fabricLayout(page, rec))
+    const dom = await page.evaluate(async ({ rec, frame, scale, margin }) => {
       const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
-      const { createObject } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
-      const { renderFramePreview } = (await load('/src/editor/framePreview.ts')) as typeof import('../src/editor/framePreview.ts')
       const { SceneLayer } = (await load('/src/editor/sceneLayer.ts')) as typeof import('../src/editor/sceneLayer.ts')
       const text = rec as unknown as import('../src/model/types.ts').TextRecord
-      const tb = createObject(text, () => undefined) as unknown as {
-        width: number
-        height: number
-        _textLines: string[][]
-        getHeightOfLine(i: number): number
-      }
-      const margin = 20
-      // Fabric's own box: a click-created box is at least as wide as its widest word.
-      const frame = { id: 'f', name: '', left: -margin, top: -margin, width: Math.ceil(Math.max(text.width, tb.width)) + 2 * margin, height: Math.ceil(tb.height) + 2 * margin }
-      const scale = 2
-      const lineTops: number[] = []
-      const pitches: number[] = []
-      let y = 0
-      tb._textLines.forEach((_, i) => {
-        lineTops.push(y)
-        pitches.push(tb.getHeightOfLine(i))
-        y += tb.getHeightOfLine(i)
-      })
-      const png = await renderFramePreview({ frames: [frame], objects: [text] }, 'f', () => undefined)
-
       document.querySelector('#harness')?.remove()
       const host = document.createElement('div')
       host.id = 'harness'
@@ -119,7 +222,7 @@ async function compareTypography(page: Page, recs: Array<Record<string, unknown>
       layer.setRecords({ frames: [frame], objects: [text] })
       layer.setViewport({ zoom: scale, panX: margin * scale, panY: margin * scale })
       const body = layer.bodyOf(text.id)!
-      const domHeight = layer.measureCard(text.id)!.height
+      const height = layer.measureCard(text.id)!.height
       // The wrapped lines as laid out: characters grouped by the top of their box.
       const rows = new Map<number, string>()
       const spans: Array<{ top: number; bottom: number; key: number }> = []
@@ -144,84 +247,13 @@ async function compareTypography(page: Page, recs: Array<Record<string, unknown>
       }
       // A line of spaces alone is left out on both sides (a drawn box can start a line with the
       // space that did not fit after a word); the box heights still count every line.
-      // A tab is compared as the space it is drawn as (Fabric's click-created box even stores it as one in its lines).
-      const domLines = [...rows.entries()].sort((a, b) => a[0] - b[0]).map(([, s]) => s.replace(/\t/g, ' ').replace(/ +$/, '')).filter((l) => l !== '')
-      const fabricLines = tb._textLines.map((l) => l.join('').replace(/\t/g, ' ').replace(/ +$/, '')).filter((l) => l !== '')
-      return { png, frame, scale, margin, lineTops, pitches, fabricHeight: tb.height, fabricWidth: tb.width, domHeight, domWidth: layer.widthOf(text.id)!, domLines, fabricLines, lines: tb._textLines.map((l) => l.join('')) }
-    }, rec)
-    const shot = await page.screenshot({ clip: { x: 0, y: 0, width: prepared.frame.width * prepared.scale, height: prepared.frame.height * prepared.scale } })
-    const lines = await page.evaluate(
-      async ({ prepared, shot }) => {
-        const pixels = async (src: string) => {
-          const img = new Image()
-          img.src = src
-          await img.decode()
-          const c = document.createElement('canvas')
-          c.width = img.naturalWidth
-          c.height = img.naturalHeight
-          const ctx = c.getContext('2d')!
-          ctx.drawImage(img, 0, 0)
-          return ctx.getImageData(0, 0, c.width, c.height)
-        }
-        const s = prepared.scale
-        const fab = await pixels(prepared.png)
-        const dom = await pixels(`data:image/png;base64,${shot}`)
-        const inkIn = (data: ImageData, y0: number, y1: number): { top: number; bottom: number; left: number; right: number } | null => {
-          let top = -1
-          let bottom = -1
-          let left = Infinity
-          let right = -1
-          for (let y = Math.max(0, y0); y < Math.min(data.height, y1); y++) {
-            for (let x = 0; x < data.width; x++) {
-              const i = (y * data.width + x) * 4
-              const lum = 0.299 * data.data[i]! + 0.587 * data.data[i + 1]! + 0.114 * data.data[i + 2]!
-              if (lum >= 140) continue
-              if (top < 0) top = y
-              bottom = y
-              left = Math.min(left, x)
-              right = Math.max(right, x)
-            }
-          }
-          return top < 0 ? null : { top: top / prepared.scale, bottom: (bottom + 1) / prepared.scale, left: left / prepared.scale, right: (right + 1) / prepared.scale }
-        }
-        // Something drawn on a line: a pixel inside the card that differs from the line's own paper
-        // (the commonest colour there: white, or a caption background).
-        // Only inside the card's own box: a last line's band runs on below it, onto other paper.
-        const present = (data: ImageData, y0: number, band1: number, width: number, height: number): boolean => {
-          const x0 = Math.round(prepared.margin * s)
-          const x1 = Math.min(data.width, Math.round((prepared.margin + width) * s))
-          const y1 = Math.min(band1, Math.floor((prepared.margin + height) * s))
-          const counts = new Map<number, number>()
-          for (let y = Math.max(0, y0); y < Math.min(data.height, y1); y++) {
-            for (let x = x0; x < x1; x++) {
-              const i = (y * data.width + x) * 4
-              const key = ((data.data[i]! >> 3) << 10) | ((data.data[i + 1]! >> 3) << 5) | (data.data[i + 2]! >> 3)
-              counts.set(key, (counts.get(key) ?? 0) + 1)
-            }
-          }
-          let paper = 0
-          let most = -1
-          for (const [key, n] of counts) if (n > most) [paper, most] = [key, n]
-          const pr = (paper >> 10) << 3
-          const pg = ((paper >> 5) & 31) << 3
-          const pb = (paper & 31) << 3
-          for (let y = Math.max(0, y0); y < Math.min(data.height, y1); y++) {
-            for (let x = x0; x < x1; x++) {
-              const i = (y * data.width + x) * 4
-              if (Math.abs(data.data[i]! - pr) + Math.abs(data.data[i + 1]! - pg) + Math.abs(data.data[i + 2]! - pb) > 60) return true
-            }
-          }
-          return false
-        }
-        return prepared.lineTops.map((t, i) => {
-          const y0 = Math.round((t + prepared.margin) * s)
-          const y1 = Math.round((t + prepared.pitches[i]! + prepared.margin) * s)
-          return { line: i, text: prepared.lines[i]!, fabric: inkIn(fab, y0, y1), dom: inkIn(dom, y0, y1), fabricPresent: present(fab, y0, y1, prepared.fabricWidth, prepared.fabricHeight), domPresent: present(dom, y0, y1, prepared.domWidth, prepared.domHeight) }
-        })
-      },
-      { prepared, shot: shot.toString('base64') },
-    )
-    out.push({ name: String(rec.id), fabricHeight: prepared.fabricHeight, domHeight: prepared.domHeight, fabricWidth: prepared.fabricWidth, domWidth: prepared.domWidth, fabricLines: prepared.fabricLines, domLines: prepared.domLines, lines })
+      const wrapped = [...rows.entries()].sort((a, b) => a[0] - b[0]).map(([, s]) => s.replace(/\t/g, ' ').replace(/ +$/, '')).filter((l) => l !== '')
+      return { height, width: layer.widthOf(text.id)!, wrapped }
+    }, { rec, frame: fabric.frame, scale: fabric.scale, margin: fabric.margin })
+    const shot = await page.screenshot({ clip: { x: 0, y: 0, width: fabric.frame.width * fabric.scale, height: fabric.frame.height * fabric.scale } })
+    const domInk = await lineInk(page, `data:image/png;base64,${shot.toString('base64')}`, fabric, dom.width, dom.height)
+    const lines = fabric.lineTops.map((_, i) => ({ line: i, text: fabric.lines[i]!, fabric: fabric.ink[i]!.ink, dom: domInk[i]!.ink, fabricPresent: fabric.ink[i]!.present, domPresent: domInk[i]!.present }))
+    out.push({ name: String(rec.id), fabricHeight: fabric.height, domHeight: dom.height, fabricWidth: fabric.width, domWidth: dom.width, fabricLines: fabric.wrapped, domLines: dom.wrapped, lines })
   }
   return out
 }
@@ -348,7 +380,9 @@ const BREAKABLE_WORDS = ['K-pop', 'lo-fi', 'hip-hop', 'state-of-the-art', '2012�
 test('drawn boxes keep a breakable word whole as Fabric does: at a line end, without room for its space, exactly fitting, and too wide', async ({ page }) => {
   test.setTimeout(240_000)
   await openHarness(page)
-  // Widths measured as the scene layer lays the line out: "Ab W", "Ab W " and W alone.
+  // The records: widths measured as the scene layer lays the line out ("Ab W", "Ab W " and W alone)
+  // when the reference was recorded. The reference is Fabric's layout of exactly these records.
+  const recs = await fabricReference(page.context().browser()!, 'records', BREAKABLE_WORDS, async () => {
   const measured = await page.evaluate(async (words) => {
     const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
     const { SceneLayer } = (await load('/src/editor/sceneLayer.ts')) as typeof import('../src/editor/sceneLayer.ts')
@@ -389,7 +423,7 @@ test('drawn boxes keep a breakable word whole as Fabric does: at a line end, wit
     return out
   }, BREAKABLE_WORDS)
   const up = (n: number) => Math.ceil(n * 100 - 1e-6) / 100
-  const recs: Array<Record<string, unknown>> = []
+  const built: Array<Record<string, unknown>> = []
   for (const m of measured) {
     const base = { type: 'text', left: 0, top: 0, angle: 0, fontSize: 18, minHeight: 0, text: m.text, ...(m.spans && { spans: m.spans }) }
     const widths: Array<[string, number]> = [
@@ -404,9 +438,11 @@ test('drawn boxes keep a breakable word whole as Fabric does: at a line end, wit
       // Cut into three or more pieces.
       ['much-too-wide', up(m.alone * 0.4)],
     ]
-    for (const [kind, width] of widths) recs.push({ ...base, id: `${m.word} ${kind}`, width })
+    for (const [kind, width] of widths) built.push({ ...base, id: `${m.word} ${kind}`, width })
   }
-  recs.push({ type: 'text', id: 'centred hip-hop', left: 0, top: 0, angle: 0, fontSize: 18, minHeight: 0, align: 'center', width: up(measured[2]!.alone), text: measured[2]!.text })
+  built.push({ type: 'text', id: 'centred hip-hop', left: 0, top: 0, angle: 0, fontSize: 18, minHeight: 0, align: 'center', width: up(measured[2]!.alone), text: measured[2]!.text })
+  return built
+  })
   const cases = await compareTypography(page, recs)
   const rs = residuals(cases)
   report(rs, cases)
@@ -530,65 +566,87 @@ test('a word gets a no-wrap span exactly when Chromium could break inside it (me
 
 test('click-created boxes wrap only between words: state-of-the-art, 2012—2014, and/or, a URL and a CJK run stay whole', async ({ page }) => {
   await openHarness(page)
-  const out = await page.evaluate(async () => {
-    const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
-    const { createObject } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
-    const { SceneLayer } = (await load('/src/editor/sceneLayer.ts')) as typeof import('../src/editor/sceneLayer.ts')
-    type TextRecord = import('../src/model/types.ts').TextRecord
-    const host = document.createElement('div')
-    host.style.cssText = 'position:fixed;left:0;top:0;width:1200px;height:800px'
-    document.body.append(host)
-    const layer = new SceneLayer({ getImage: () => undefined })
-    layer.mount(host)
-    const preWidth = (body: HTMLElement, token: string) => {
-      const s = document.createElement('span')
-      s.style.whiteSpace = 'pre'
-      s.textContent = token
-      const p = body.firstElementChild!
-      p.append(s)
-      const w = s.getBoundingClientRect().width
-      s.remove()
-      return w
-    }
-    const linesOf = (body: HTMLElement) => {
-      const rows = new Map<number, string>()
-      const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT)
-      const range = document.createRange()
-      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-        const t = n as Text
-        for (let i = 0; i < t.data.length; i++) {
-          range.setStart(t, i)
-          range.setEnd(t, i + 1)
-          const r = range.getClientRects()[0]
-          if (!r) continue
-          const key = [...rows.keys()].find((k) => Math.abs(k - r.top) < 3) ?? r.top
-          rows.set(key, (rows.get(key) ?? '') + t.data[i])
-        }
+  const tokens = ['state-of-the-art', '2012—2014', 'and/or', 'https://example.com/a-b/c?d=e', '日本語のテキストです']
+  const recordOf = (token: string, marked: boolean, width: number) => {
+    const text = `Ab ${token} cd`
+    // Marks inside the token (a bold piece, then an italic one) put element boundaries inside it.
+    const spans = marked ? [{ start: 3, end: 5, bold: true as const }, { start: 5, end: 6, italic: true as const }] : undefined
+    return { type: 'text' as const, id: 't', left: 20, top: 20, angle: 0, width, fontSize: 18, text, ...(spans && { spans }) }
+  }
+  const cases = [false, true].flatMap((marked) => tokens.map((token) => ({ token, marked, wide: recordOf(token, marked, 1000) })))
+  // The scene layer: each box's minimum width, its token's own width, and (at a given width) its lines.
+  const dom = (widths: number[] | null) =>
+    page.evaluate(async ({ cases, widths }) => {
+      const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
+      const { SceneLayer } = (await load('/src/editor/sceneLayer.ts')) as typeof import('../src/editor/sceneLayer.ts')
+      document.querySelector('#harness')?.remove()
+      const host = document.createElement('div')
+      host.id = 'harness'
+      host.style.cssText = 'position:fixed;left:0;top:0;width:1200px;height:800px'
+      document.body.append(host)
+      const layer = new SceneLayer({ getImage: () => undefined })
+      layer.mount(host)
+      const preWidth = (body: HTMLElement, token: string) => {
+        const s = document.createElement('span')
+        s.style.whiteSpace = 'pre'
+        s.textContent = token
+        const p = body.firstElementChild!
+        p.append(s)
+        const w = s.getBoundingClientRect().width
+        s.remove()
+        return w
       }
-      return [...rows.entries()].sort((a, b) => a[0] - b[0]).map(([, s]) => s.trimEnd())
-    }
-    const tokens = ['state-of-the-art', '2012—2014', 'and/or', 'https://example.com/a-b/c?d=e', '日本語のテキストです']
-    const results = []
-    for (const marked of [false, true]) {
-      for (const token of tokens) {
-        const text = `Ab ${token} cd`
-        // Marks inside the token (a bold piece, then an italic one) put element boundaries inside it.
-        const spans = marked ? [{ start: 3, end: 5, bold: true as const }, { start: 5, end: 6, italic: true as const }] : undefined
-        const rec: TextRecord = { type: 'text', id: 't', left: 20, top: 20, angle: 0, width: 1000, fontSize: 18, text, ...(spans && { spans }) }
-        layer.setRecords({ frames: [], objects: [rec] })
-        const wide = layer.measureCard('t')!
+      const linesOf = (body: HTMLElement) => {
+        const rows = new Map<number, string>()
+        const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT)
+        const range = document.createRange()
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          const t = n as Text
+          for (let i = 0; i < t.data.length; i++) {
+            range.setStart(t, i)
+            range.setEnd(t, i + 1)
+            const r = range.getClientRects()[0]
+            if (!r) continue
+            const key = [...rows.keys()].find((k) => Math.abs(k - r.top) < 3) ?? r.top
+            rows.set(key, (rows.get(key) ?? '') + t.data[i])
+          }
+        }
+        return [...rows.entries()].sort((a, b) => a[0] - b[0]).map(([, s]) => s.trimEnd())
+      }
+      return cases.map(({ token, wide }, i) => {
+        layer.setRecords({ frames: [], objects: [wide] })
+        const measured = layer.measureCard('t')!
         const longest = preWidth(layer.bodyOf('t')!, token)
         // As narrow as the box may be: the token fits alone, and "Ab " plus the token does not.
-        const narrow = { ...rec, width: wide.minWidth }
-        layer.setRecords({ frames: [], objects: [narrow] })
-        const dom = linesOf(layer.bodyOf('t')!)
-        const tb = createObject(narrow, () => undefined) as unknown as { width: number; dynamicMinWidth: number; _textLines: string[][] }
-        const fabric = tb._textLines.map((l) => l.join('').trimEnd())
-        results.push({ token, marked, minWidth: wide.minWidth, longest, fabricWidth: tb.width, fabricLongest: tb.dynamicMinWidth, dom, fabric, nowrapSpans: layer.bodyOf('t')!.querySelectorAll('.yp-nowrap').length })
-      }
-    }
-    return results
+        layer.setRecords({ frames: [], objects: [{ ...wide, width: widths ? widths[i]! : measured.minWidth }] })
+        return { minWidth: measured.minWidth, longest, lines: linesOf(layer.bodyOf('t')!), nowrapSpans: layer.bodyOf('t')!.querySelectorAll('.yp-nowrap').length }
+      })
+    }, { cases, widths })
+  // Fabric at the narrowest width (the scene layer's minimum width when it was recorded): its own width, its longest word, its lines.
+  const fabric = await fabricReference(page.context().browser()!, 'fabric', cases, async () => {
+    const widths = (await dom(null)).map((d) => d.minWidth)
+    return page.evaluate(async ({ cases, widths }) => {
+      const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
+      const { createObject } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
+      return cases.map(({ wide }, i) => {
+        const tb = createObject({ ...wide, width: widths[i]! }, () => undefined) as unknown as { width: number; dynamicMinWidth: number; _textLines: string[][] }
+        return { given: widths[i]!, width: tb.width, longest: tb.dynamicMinWidth, lines: tb._textLines.map((l) => l.join('').trimEnd()) }
+      })
+    }, { cases, widths })
   })
+  const measured = await dom(null)
+  const atFabricWidth = await dom(fabric.map((f) => f.given))
+  const out = cases.map(({ token, marked }, i) => ({
+    token,
+    marked,
+    minWidth: measured[i]!.minWidth,
+    longest: measured[i]!.longest,
+    fabricWidth: fabric[i]!.width,
+    fabricLongest: fabric[i]!.longest,
+    dom: atFabricWidth[i]!.lines,
+    fabric: fabric[i]!.lines,
+    nowrapSpans: atFabricWidth[i]!.nowrapSpans,
+  }))
   console.log(out.map((r) => `${r.token} marked=${r.marked}: min width ${r.minWidth}, Fabric's longest word ${r.fabricLongest.toFixed(3)}`).join(String.fromCharCode(10)))
   for (const r of out) {
     // The measured minimum width is the token's own width, rounded up to 0.01 (unmarked: as
@@ -718,26 +776,34 @@ test('cropped-image-wrapper-clips-and-crop-mode-reveals-original', async ({ page
 
 test('dom-card-measurer-ignores-zoom-and-rotation', async ({ page }) => {
   await openHarness(page)
-  const out = await page.evaluate(async () => {
+  const recs: Array<import('../src/model/types.ts').TextRecord> = [
+    { type: 'text', id: 'click', left: 100, top: 80, angle: 0, width: 233, fontSize: 17, text: 'Fractional heights\nA paragraph of 17 px text gives lines of a fractional height, so the card is a fractional height too.', headings: [2] },
+    { type: 'text', id: 'drawn', left: 400, top: 80, angle: 0, width: 150, fontSize: 21, minHeight: 30, text: 'Drawn 👩‍👩‍👧‍👦 box with an overlongunbreakableword inside' },
+  ]
+  // Fabric's height and minimum width of each box.
+  const fabric = await fabricReference(page.context().browser()!, 'boxes', recs, () =>
+    page.evaluate(async (recs) => {
+      const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
+      const { createObject } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
+      return recs.map((rec) => {
+        const tb = createObject(rec, () => undefined) as unknown as { height: number; dynamicMinWidth: number }
+        return { height: tb.height, minWidth: tb.dynamicMinWidth }
+      })
+    }, recs),
+  )
+  const measured = await page.evaluate(async (recs) => {
     const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
     const { SceneLayer } = (await load('/src/editor/sceneLayer.ts')) as typeof import('../src/editor/sceneLayer.ts')
-    const { createObject } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
-    type TextRecord = import('../src/model/types.ts').TextRecord
     const host = document.createElement('div')
     host.style.cssText = 'position:fixed;left:0;top:0;width:1000px;height:700px'
     document.body.append(host)
     const layer = new SceneLayer({ getImage: () => undefined })
     layer.mount(host)
-    const recs: TextRecord[] = [
-      { type: 'text', id: 'click', left: 100, top: 80, angle: 0, width: 233, fontSize: 17, text: 'Fractional heights\nA paragraph of 17 px text gives lines of a fractional height, so the card is a fractional height too.', headings: [2] },
-      { type: 'text', id: 'drawn', left: 400, top: 80, angle: 0, width: 150, fontSize: 21, minHeight: 30, text: 'Drawn 👩‍👩‍👧‍👦 box with an overlongunbreakableword inside' },
-    ]
     const results = []
     for (const rec of recs) {
       layer.setRecords({ frames: [], objects: [rec] })
       layer.setViewport({ zoom: 1, panX: 0, panY: 0 })
       const base = layer.measureCard(rec.id)!
-      const fabric = createObject(rec, () => undefined) as unknown as { height: number; dynamicMinWidth: number }
       const runs = []
       for (const [zoom, angle] of [[0.5, 45], [2, 45], [0.5, 0], [2, -30], [1.37, 17]] as const) {
         layer.updateItem({ ...rec, angle })
@@ -751,10 +817,11 @@ test('dom-card-measurer-ignores-zoom-and-rotation', async ({ page }) => {
       layer.cull({ width: 1000, height: 700 })
       const culled = layer.isCulled(rec.id)
       const whileCulled = layer.measureCard(rec.id)!
-      results.push({ id: rec.id, base, fabricHeight: fabric.height, fabricMinWidth: fabric.dynamicMinWidth, runs, culled, whileCulled, stillCulled: layer.isCulled(rec.id) })
+      results.push({ id: rec.id, base, runs, culled, whileCulled, stillCulled: layer.isCulled(rec.id) })
     }
     return results
-  })
+  }, recs)
+  const out = measured.map((r, i) => ({ ...r, fabricHeight: fabric[i]!.height, fabricMinWidth: fabric[i]!.minWidth }))
   for (const r of out) {
     console.log(`${r.id}: height ${r.base.height} (Fabric ${r.fabricHeight.toFixed(3)}), min width ${r.base.minWidth} (Fabric ${r.fabricMinWidth.toFixed(3)})`)
     expect(r.base.height).toBeGreaterThan(30)
@@ -777,10 +844,45 @@ test('dom-card-measurer-ignores-zoom-and-rotation', async ({ page }) => {
 test('bitmap-compositor-preserves-text-image-text-z-order-and-crop', async ({ page }) => {
   await openHarness(page)
   await page.addScriptTag({ content: QUADRANTS })
-  const out = await page.evaluate(async () => {
+  // Texts C and D, alone on the paper below the others.
+  const CD: Array<import('../src/model/types.ts').TextRecord> = [
+    { type: 'text', id: 'C', left: 40, top: 195, angle: 0, width: 350, fontSize: 24, text: 'Hamburgefonts', headings: [1] },
+    // A word wider than its box, as on a board saved before the box was widened: not clipped.
+    { type: 'text', id: 'D', left: 40, top: 262, angle: 0, width: 100, fontSize: 20, text: 'Hamburgefonts' },
+  ]
+  // Where their ink lies in the shipped preview (Fabric) of texts C and D alone.
+  const fabric = await fabricReference(page.context().browser()!, 'ink of C and D', CD, () =>
+    page.evaluate(async (CD) => {
+      const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
+      const { renderFramePreview } = (await load('/src/editor/framePreview.ts')) as typeof import('../src/editor/framePreview.ts')
+      const fabricPng = await renderFramePreview({ frames: [{ id: 'f', name: 'F', left: 0, top: 0, width: 400, height: 300 }], objects: CD }, 'f', () => undefined)
+      const fabricImg = new Image()
+      fabricImg.src = fabricPng
+      await fabricImg.decode()
+      const fc = document.createElement('canvas')
+      fc.width = fabricImg.naturalWidth
+      fc.height = fabricImg.naturalHeight
+      fc.getContext('2d')!.drawImage(fabricImg, 0, 0)
+      const data = fc.getContext('2d')!.getImageData(0, 0, fc.width, fc.height)
+      const s = fc.width / 400
+      const inkBox = (x0: number, y0: number, x1: number, y1: number) => {
+        let top = Infinity, bottom = -1, left = Infinity, right = -1, n = 0
+        for (let y = Math.round(y0 * s); y < Math.round(y1 * s); y++) {
+          for (let x = Math.round(x0 * s); x < Math.round(x1 * s); x++) {
+            const i = (y * data.width + x) * 4
+            if (data.data[i]! > 90 || data.data[i + 1]! > 90 || data.data[i + 2]! > 90) continue
+            n++
+            top = Math.min(top, y); bottom = Math.max(bottom, y); left = Math.min(left, x); right = Math.max(right, x)
+          }
+        }
+        return { n, top: top / s, bottom: (bottom + 1) / s, left: left / s, right: (right + 1) / s }
+      }
+      return { size: [fc.width, fc.height], inkC: inkBox(30, 190, 399, 258), inkD: inkBox(30, 258, 399, 299) }
+    }, CD),
+  )
+  const out = await page.evaluate(async (CD) => {
     const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
     const { renderFrameToCanvas } = (await load('/src/editor/renderFrameBitmap.ts')) as typeof import('../src/editor/renderFrameBitmap.ts')
-    const { renderFramePreview } = (await load('/src/editor/framePreview.ts')) as typeof import('../src/editor/framePreview.ts')
     type Scene = import('../src/model/types.ts').Scene
     const img = await (window as unknown as { __quadrants: (w: number, h: number) => Promise<HTMLImageElement> }).__quadrants(200, 160)
     const getImage = (id: string) => (id === 'q' ? img : undefined)
@@ -793,9 +895,7 @@ test('bitmap-compositor-preserves-text-image-text-z-order-and-crop', async ({ pa
         { type: 'image', id: 'I', assetId: 'q', left: 150, top: 60, angle: 0, scaleX: 1, scaleY: 1, crop: { x: 100, y: 0, width: 100, height: 80 } },
         { type: 'image', id: 'M', assetId: 'missing', left: 0, top: 0, angle: 0, scaleX: 1, scaleY: 1 },
         { type: 'text', id: 'B', left: 220, top: 100, angle: 0, width: 150, fontSize: 24, minHeight: 80, text: 'Bg', captionBackground: '#0000ff' },
-        { type: 'text', id: 'C', left: 40, top: 195, angle: 0, width: 350, fontSize: 24, text: 'Hamburgefonts', headings: [1] },
-        // A word wider than its box, as on a board saved before the box was widened: not clipped.
-        { type: 'text', id: 'D', left: 40, top: 262, angle: 0, width: 100, fontSize: 20, text: 'Hamburgefonts' },
+        ...CD,
       ],
     }
     const canvas = await renderFrameToCanvas(scene, 'f', { getImage })
@@ -816,16 +916,6 @@ test('bitmap-compositor-preserves-text-image-text-z-order-and-crop', async ({ pa
     }
     const blob: Blob | null = await new Promise((r) => canvas.toBlob(r, 'image/png'))
     const all = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    // The shipped preview (Fabric) of texts C and D alone, for where their ink lies.
-    const fabricPng = await renderFramePreview({ frames: scene.frames, objects: scene.objects.slice(4) }, 'f', getImage)
-    const fabricImg = new Image()
-    fabricImg.src = fabricPng
-    await fabricImg.decode()
-    const fc = document.createElement('canvas')
-    fc.width = fabricImg.naturalWidth
-    fc.height = fabricImg.naturalHeight
-    fc.getContext('2d')!.drawImage(fabricImg, 0, 0)
-    const fabricData = fc.getContext('2d')!.getImageData(0, 0, fc.width, fc.height)
     return {
       size: [canvas.width, canvas.height],
       blob: blob ? { size: blob.size, type: blob.type } : null,
@@ -840,11 +930,10 @@ test('bitmap-compositor-preserves-text-image-text-z-order-and-crop', async ({ pa
       inkA: inkBox(all, 20, 40, 120, 100).n,
       inkBOverI: inkBox(all, 220, 100, 250, 140).n,
       inkC: inkBox(all, 30, 190, 399, 258),
-      fabricInkC: inkBox(fabricData, 30, 190, 399, 258),
       inkD: inkBox(all, 30, 258, 399, 299),
-      fabricInkD: inkBox(fabricData, 30, 258, 399, 299),
     }
-  })
+  }, CD)
+  expect(fabric.size, 'the Fabric preview is drawn at the same scale').toEqual(out.size)
   expect(out.size).toEqual([800, 600])
   // Not tainted: it encodes and reads back.
   expect(out.blob?.type).toBe('image/png')
@@ -862,11 +951,11 @@ test('bitmap-compositor-preserves-text-image-text-z-order-and-crop', async ({ pa
   expect(out.inkA).toBeGreaterThan(50)
   expect(out.inkBOverI).toBeGreaterThan(20)
   // Texts C and D: their ink where Fabric draws it, within a device pixel.
-  console.log('ink of C, compositor', JSON.stringify(out.inkC), 'Fabric', JSON.stringify(out.fabricInkC))
-  console.log('ink of D, compositor', JSON.stringify(out.inkD), 'Fabric', JSON.stringify(out.fabricInkD))
-  for (const [ours, fabric] of [[out.inkC, out.fabricInkC], [out.inkD, out.fabricInkD]] as const) {
+  console.log('ink of C, compositor', JSON.stringify(out.inkC), 'Fabric', JSON.stringify(fabric.inkC))
+  console.log('ink of D, compositor', JSON.stringify(out.inkD), 'Fabric', JSON.stringify(fabric.inkD))
+  for (const [ours, theirs] of [[out.inkC, fabric.inkC], [out.inkD, fabric.inkD]] as const) {
     expect(ours.n).toBeGreaterThan(100)
-    for (const side of ['top', 'bottom', 'left', 'right'] as const) expect(Math.abs(ours[side] - fabric[side]), side).toBeLessThanOrEqual(0.5)
+    for (const side of ['top', 'bottom', 'left', 'right'] as const) expect(Math.abs(ours[side] - theirs[side]), side).toBeLessThanOrEqual(0.5)
   }
 })
 
@@ -990,81 +1079,102 @@ test('underline and strikethrough sit where Fabric draws them, in every font, on
   test.setTimeout(180_000)
   await openHarness(page)
   await page.setViewportSize({ width: 1280, height: 1000 })
+  /** The rows of a bitmap darker than mid-grey, in one column, between two rows. */
+  const darkRows = (src: string, bands: Array<[number, number]>, columns: number[][]) =>
+    page.evaluate(
+      async ({ src, bands, columns }) => {
+        const img = new Image()
+        img.src = src
+        await img.decode()
+        const c = document.createElement('canvas')
+        c.width = img.naturalWidth
+        c.height = img.naturalHeight
+        c.getContext('2d')!.drawImage(img, 0, 0)
+        const data = c.getContext('2d')!.getImageData(0, 0, c.width, c.height)
+        const dark = (x: number, y0: number, y1: number) => {
+          const out: number[] = []
+          for (let y = y0; y < y1; y++) {
+            const i = (y * data.width + x) * 4
+            if (0.299 * data.data[i]! + 0.587 * data.data[i + 1]! + 0.114 * data.data[i + 2]! < 128) out.push(y)
+          }
+          return out
+        }
+        return bands.map(([y0, y1], i) => columns[i]!.map((x) => dark(x, y0, y1)))
+      },
+      { src, bands, columns },
+    )
+  /** The scene layer at scale 2 in a frame: per line, the middle of its first space (only the decoration is drawn there). */
+  const domColumns = (rec: Record<string, unknown>, frame: { width: number; height: number }) =>
+    page.evaluate(async ({ rec, frame }) => {
+      const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
+      const { SceneLayer } = (await load('/src/editor/sceneLayer.ts')) as typeof import('../src/editor/sceneLayer.ts')
+      const text = rec as unknown as import('../src/model/types.ts').TextRecord
+      const margin = 20
+      const scale = 2
+      document.querySelector('#harness')?.remove()
+      const host = document.createElement('div')
+      host.id = 'harness'
+      host.style.cssText = `position:fixed;left:0;top:0;width:${frame.width * scale}px;height:${frame.height * scale}px;background:#fff;overflow:hidden`
+      document.body.append(host)
+      const layer = new SceneLayer({ getImage: () => undefined })
+      layer.mount(host)
+      layer.setRecords({ frames: [{ id: 'f', name: '', left: -margin, top: -margin, ...frame }], objects: [text] })
+      layer.setViewport({ zoom: scale, panX: margin * scale, panY: margin * scale })
+      return Array.from(layer.bodyOf(text.id)!.children).map((block) => {
+        const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          const i = (n as Text).data.indexOf(' ')
+          if (i < 0) continue
+          const r = document.createRange()
+          r.setStart(n, i)
+          r.setEnd(n, i + 1)
+          const box = r.getBoundingClientRect()
+          return Math.round((box.left + box.right) / 2)
+        }
+        return 0
+      })
+    }, { rec, frame })
+  /** Columns either side of a line's first space recorded from Fabric: its decoration is drawn across all of them. */
+  const WINDOW = 10
   const results: Array<{ name: string; line: number; fabric: number[]; dom: number[] }> = []
   for (const font of FONTS) {
     for (const mark of ['underline', 'strike'] as const) {
       const text = 'x x x\nx x x'
       const rec = { type: 'text', id: `${font} ${mark}`, left: 0, top: 0, angle: 0, width: 300, fontSize: 32, text, headings: [0, 2], spans: [{ start: 0, end: text.length, [mark]: true }], ...(font === 'sans' ? {} : { font }) }
-      const prepared = await page.evaluate(async (rec) => {
-        const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
-        const { createObject } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
-        const { renderFramePreview } = (await load('/src/editor/framePreview.ts')) as typeof import('../src/editor/framePreview.ts')
-        const { SceneLayer } = (await load('/src/editor/sceneLayer.ts')) as typeof import('../src/editor/sceneLayer.ts')
-        const text = rec as unknown as import('../src/model/types.ts').TextRecord
-        const tb = createObject(text, () => undefined) as unknown as { height: number; _textLines: string[][]; getHeightOfLine(i: number): number }
-        const margin = 20
-        const scale = 2
-        const frame = { id: 'f', name: '', left: -margin, top: -margin, width: text.width + 2 * margin, height: Math.ceil(tb.height) + 2 * margin }
-        const bands: Array<[number, number]> = []
-        let y = 0
-        tb._textLines.forEach((_, i) => {
-          bands.push([Math.round((y + margin) * scale), Math.round((y + tb.getHeightOfLine(i) + margin) * scale)])
-          y += tb.getHeightOfLine(i)
-        })
-        const png = await renderFramePreview({ frames: [frame], objects: [text] }, 'f', () => undefined)
-        document.querySelector('#harness')?.remove()
-        const host = document.createElement('div')
-        host.id = 'harness'
-        host.style.cssText = `position:fixed;left:0;top:0;width:${frame.width * scale}px;height:${frame.height * scale}px;background:#fff;overflow:hidden`
-        document.body.append(host)
-        const layer = new SceneLayer({ getImage: () => undefined })
-        layer.mount(host)
-        layer.setRecords({ frames: [frame], objects: [text] })
-        layer.setViewport({ zoom: scale, panX: margin * scale, panY: margin * scale })
-        // The middle of the first space of each line: only the decoration is drawn there.
-        const columns = Array.from(layer.bodyOf(text.id)!.children).map((block) => {
-          const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
-          for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-            const i = (n as Text).data.indexOf(' ')
-            if (i < 0) continue
-            const r = document.createRange()
-            r.setStart(n, i)
-            r.setEnd(n, i + 1)
-            const box = r.getBoundingClientRect()
-            return Math.round((box.left + box.right) / 2)
-          }
-          return 0
-        })
-        return { png, bands, columns, size: [frame.width * scale, frame.height * scale] }
-      }, rec)
-      const shot = await page.screenshot({ clip: { x: 0, y: 0, width: prepared.size[0]!, height: prepared.size[1]! } })
-      const rows = await page.evaluate(
-        async ({ prepared, shot }) => {
-          const pixels = async (src: string) => {
-            const img = new Image()
-            img.src = src
-            await img.decode()
-            const c = document.createElement('canvas')
-            c.width = img.naturalWidth
-            c.height = img.naturalHeight
-            c.getContext('2d')!.drawImage(img, 0, 0)
-            return c.getContext('2d')!.getImageData(0, 0, c.width, c.height)
-          }
-          const dark = (data: ImageData, x: number, y0: number, y1: number) => {
-            const out: number[] = []
-            for (let y = y0; y < y1; y++) {
-              const i = (y * data.width + x) * 4
-              if (0.299 * data.data[i]! + 0.587 * data.data[i + 1]! + 0.114 * data.data[i + 2]! < 128) out.push(y)
-            }
-            return out
-          }
-          const fab = await pixels(prepared.png)
-          const dom = await pixels(`data:image/png;base64,${shot}`)
-          return prepared.bands.map(([y0, y1], i) => ({ fabric: dark(fab, prepared.columns[i]!, y0, y1), dom: dark(dom, prepared.columns[i]!, y0, y1) }))
-        },
-        { prepared, shot: shot.toString('base64') },
-      )
-      rows.forEach((r, line) => results.push({ name: rec.id, line, ...r }))
+      // Fabric's box and line bands (device pixels at scale 2), and its dark rows in the columns around each line's first space.
+      const fabric = await fabricReference(page.context().browser()!, rec.id, rec, async () => {
+        const prepared = await page.evaluate(async (rec) => {
+          const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
+          const { createObject } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
+          const { renderFramePreview } = (await load('/src/editor/framePreview.ts')) as typeof import('../src/editor/framePreview.ts')
+          const text = rec as unknown as import('../src/model/types.ts').TextRecord
+          const tb = createObject(text, () => undefined) as unknown as { height: number; _textLines: string[][]; getHeightOfLine(i: number): number }
+          const margin = 20
+          const scale = 2
+          const frame = { id: 'f', name: '', left: -margin, top: -margin, width: text.width + 2 * margin, height: Math.ceil(tb.height) + 2 * margin }
+          const bands: Array<[number, number]> = []
+          let y = 0
+          tb._textLines.forEach((_, i) => {
+            bands.push([Math.round((y + margin) * scale), Math.round((y + tb.getHeightOfLine(i) + margin) * scale)])
+            y += tb.getHeightOfLine(i)
+          })
+          const png = await renderFramePreview({ frames: [frame], objects: [text] }, 'f', () => undefined)
+          return { png, bands, frame: { width: frame.width, height: frame.height } }
+        }, rec)
+        const centres = await domColumns(rec, prepared.frame)
+        const columns = centres.map((c) => Array.from({ length: 2 * WINDOW + 1 }, (_, k) => c - WINDOW + k))
+        const rows = await darkRows(prepared.png, prepared.bands, columns)
+        return { frame: prepared.frame, bands: prepared.bands, lines: rows.map((perColumn, i) => Object.fromEntries(columns[i]!.map((x, k) => [x, perColumn[k]!]))) }
+      })
+      const columns = await domColumns(rec, fabric.frame)
+      const size = [fabric.frame.width * 2, fabric.frame.height * 2]
+      const shot = await page.screenshot({ clip: { x: 0, y: 0, width: size[0]!, height: size[1]! } })
+      const dom = await darkRows(`data:image/png;base64,${shot.toString('base64')}`, fabric.bands, columns.map((c) => [c]))
+      fabric.lines.forEach((rows, line) => {
+        const at = rows[columns[line]!]
+        expect(at, `${rec.id} line ${line}: the first space at column ${columns[line]}, within the columns recorded from Fabric`).toBeDefined()
+        results.push({ name: rec.id, line, fabric: at!, dom: dom[line]![0]! })
+      })
     }
   }
   for (const r of results) console.log(`${r.name.padEnd(18)} line ${r.line}: Fabric rows ${r.fabric[0]}–${r.fabric.at(-1)}, DOM rows ${r.dom[0]}–${r.dom.at(-1)} (device px at 2x)`)
@@ -1077,7 +1187,6 @@ test('underline and strikethrough sit where Fabric draws them, in every font, on
     expect(Math.abs(r.dom.at(-1)! - r.fabric.at(-1)!), `${r.name} line ${r.line}: bottom`).toBeLessThanOrEqual(2)
   }
 })
-
 test('updating the edited card leaves the live editor alone: its text, its selection, and where the next key goes', async ({ page }) => {
   await openHarness(page)
   const before = await page.evaluate(async () => {
@@ -1354,14 +1463,22 @@ test('a card with characters XML cannot hold still draws, and one card that cann
 
 test('mixed-direction text gets the minimum width Fabric gives it: bidi reordering does not widen a word', async ({ page }) => {
   await openHarness(page)
-  const out = await page.evaluate(async () => {
+  const texts = ['mix חדש 123 סוף!', 'abc שלום-עולם def', 'עברית English עברית']
+  const recordOf = (text: string) => ({ type: 'text' as const, id: 't', left: 0, top: 0, angle: 0, width: 1000, fontSize: 24, text })
+  // Fabric's minimum width of each.
+  const fabric = await fabricReference(page.context().browser()!, 'minimum widths', texts, () =>
+    page.evaluate(async (recs) => {
+      const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
+      const { createObject } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
+      return recs.map((rec) => (createObject(rec, () => undefined) as unknown as { dynamicMinWidth: number }).dynamicMinWidth)
+    }, texts.map(recordOf)),
+  )
+  const measured = await page.evaluate(async (recs) => {
     const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
     const { minCardWidth } = (await load('/src/editor/sceneLayer.ts')) as typeof import('../src/editor/sceneLayer.ts')
-    const { createObject } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
     const results = []
-    for (const text of ['mix חדש 123 סוף!', 'abc שלום-עולם def', 'עברית English עברית']) {
-      const rec = { type: 'text' as const, id: 't', left: 0, top: 0, angle: 0, width: 1000, fontSize: 24, text }
-      const tb = createObject(rec, () => undefined) as unknown as { dynamicMinWidth: number }
+    for (const rec of recs) {
+      const text = rec.text
       // What a bounding rectangle over each logical word gives (spanning the runs between its ends).
       const p = document.createElement('p')
       p.className = 'yuriful-prose'
@@ -1379,10 +1496,11 @@ test('mixed-direction text gets the minimum width Fabric gives it: bidi reorderi
         start += word.length + 1
       }
       p.remove()
-      results.push({ text, ours: minCardWidth(rec), fabric: tb.dynamicMinWidth, union })
+      results.push({ text, ours: minCardWidth(rec), union })
     }
     return results
-  })
+  }, texts.map(recordOf))
+  const out = measured.map((r, i) => ({ ...r, fabric: fabric[i]! }))
   for (const r of out) {
     console.log(`${r.text}: min width ${r.ours}, Fabric ${r.fabric.toFixed(2)}, bounding rectangles ${r.union.toFixed(2)}`)
     expect(Math.abs(r.ours - r.fabric), r.text).toBeLessThan(0.5)
@@ -1393,46 +1511,55 @@ test('mixed-direction text gets the minimum width Fabric gives it: bidi reorderi
 
 test('the bitmap draws a click-created card at its effective width: a caption wider than stored keeps all its background', async ({ page }) => {
   await openHarness(page)
-  const out = await page.evaluate(async () => {
+  const scene: import('../src/model/types.ts').Scene = {
+    frames: [{ id: 'f', name: 'F', left: 0, top: 0, width: 700, height: 120 }],
+    objects: [
+      { type: 'text', id: 'c', left: 20, top: 20, angle: 0, width: 110, fontSize: 18, captionBackground: '#00ff00', text: 'M'.repeat(30) },
+      { type: 'text', id: 'r', left: 20, top: 60, angle: 0, width: 110, fontSize: 18, align: 'right', text: `${'M'.repeat(30)} short` },
+    ],
+  }
+  /** How far right the green background reaches on the caption's first line, and the right edge of "short", in a bitmap of the frame. */
+  const reach = (src: string) =>
+    page.evaluate(async (src) => {
+      const img = new Image()
+      img.src = src
+      await img.decode()
+      const c = document.createElement('canvas')
+      c.width = img.naturalWidth
+      c.height = img.naturalHeight
+      c.getContext('2d')!.drawImage(img, 0, 0)
+      const s = c.width / 700
+      const greenRight = () => {
+        const d = c.getContext('2d')!.getImageData(0, Math.round(30 * s), c.width, 1).data
+        let right = -1
+        for (let x = 0; x < c.width; x++) if (d[x * 4]! < 60 && d[x * 4 + 1]! > 200 && d[x * 4 + 2]! < 60) right = x
+        return (right + 1) / s
+      }
+      const inkRight = (y0: number, y1: number) => {
+        const d = c.getContext('2d')!.getImageData(0, Math.round(y0 * s), c.width, Math.round((y1 - y0) * s)).data
+        let right = -1
+        for (let i = 0; i < d.length; i += 4) if (d[i]! < 100 && d[i + 1]! < 100 && d[i + 2]! < 100) right = Math.max(right, (i / 4) % c.width)
+        return (right + 1) / s
+      }
+      return { size: [c.width, c.height], green: greenRight(), short: inkRight(82, 105) }
+    }, src)
+  // The same in the shipped preview (Fabric).
+  const fabric = await fabricReference(page.context().browser()!, 'reach', scene, async () => {
+    const png = await page.evaluate(async (scene) => {
+      const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
+      const { renderFramePreview } = (await load('/src/editor/framePreview.ts')) as typeof import('../src/editor/framePreview.ts')
+      return renderFramePreview(scene, 'f', () => undefined)
+    }, scene)
+    return reach(png)
+  })
+  const oursPng = await page.evaluate(async (scene) => {
     const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
     const { renderFrameToCanvas } = (await load('/src/editor/renderFrameBitmap.ts')) as typeof import('../src/editor/renderFrameBitmap.ts')
-    const { renderFramePreview } = (await load('/src/editor/framePreview.ts')) as typeof import('../src/editor/framePreview.ts')
-    type Scene = import('../src/model/types.ts').Scene
-    const scene: Scene = {
-      frames: [{ id: 'f', name: 'F', left: 0, top: 0, width: 700, height: 120 }],
-      objects: [
-        { type: 'text', id: 'c', left: 20, top: 20, angle: 0, width: 110, fontSize: 18, captionBackground: '#00ff00', text: 'M'.repeat(30) },
-        { type: 'text', id: 'r', left: 20, top: 60, angle: 0, width: 110, fontSize: 18, align: 'right', text: `${'M'.repeat(30)} short` },
-      ],
-    }
-    const ours = await renderFrameToCanvas(scene, 'f', { getImage: () => undefined })
-    const fabricImg = new Image()
-    fabricImg.src = await renderFramePreview(scene, 'f', () => undefined)
-    await fabricImg.decode()
-    const fabric = document.createElement('canvas')
-    fabric.width = fabricImg.naturalWidth
-    fabric.height = fabricImg.naturalHeight
-    fabric.getContext('2d')!.drawImage(fabricImg, 0, 0)
-    const s = ours.width / 700
-    // How far right the green background reaches on the caption's first line, and the right edge of "short".
-    const greenRight = (c: HTMLCanvasElement) => {
-      const d = c.getContext('2d')!.getImageData(0, Math.round(30 * s), c.width, 1).data
-      let right = -1
-      for (let x = 0; x < c.width; x++) if (d[x * 4]! < 60 && d[x * 4 + 1]! > 200 && d[x * 4 + 2]! < 60) right = x
-      return (right + 1) / s
-    }
-    const inkRight = (c: HTMLCanvasElement, y0: number, y1: number) => {
-      const d = c.getContext('2d')!.getImageData(0, Math.round(y0 * s), c.width, Math.round((y1 - y0) * s)).data
-      let right = -1
-      for (let i = 0; i < d.length; i += 4) if (d[i]! < 100 && d[i + 1]! < 100 && d[i + 2]! < 100) right = Math.max(right, (i / 4) % c.width)
-      return (right + 1) / s
-    }
-    return {
-      ours: { green: greenRight(ours), short: inkRight(ours, 82, 105) },
-      fabric: { green: greenRight(fabric), short: inkRight(fabric, 82, 105) },
-    }
-  })
+    return (await renderFrameToCanvas(scene, 'f', { getImage: () => undefined })).toDataURL('image/png')
+  }, scene)
+  const out = { ours: await reach(oursPng), fabric }
   console.log(JSON.stringify(out))
+  expect(out.ours.size, 'both bitmaps at the same scale').toEqual(out.fabric.size)
   expect(out.fabric.green).toBeGreaterThan(400)
   expect(Math.abs(out.ours.green - out.fabric.green)).toBeLessThanOrEqual(1)
   expect(out.fabric.short).toBeGreaterThan(400)

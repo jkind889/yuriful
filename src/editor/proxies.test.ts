@@ -1,11 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { FrameRecord, ImageRecord, ObjectRecord, TextRecord } from '../model/types.ts'
 import {
-  FRAME_FILL,
   ProxyRect,
-  createFrame,
   createFrameProxy,
-  createObject,
   createProxy,
   idOf,
   imageCropOf,
@@ -22,14 +19,15 @@ import {
   toRecord,
 } from './objects.ts'
 import type { FakeObject } from './testing/fakeFabric.ts'
+import { fabricReference } from './testing/fabricReference.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
 /**
- * The DOM renderer's proxies (`createProxy`, `createFrameProxy`): transparent Fabric objects that
- * stand in for what the scene layer draws. They must read back as exactly the records they were
- * made from (the storage-safety rule of Slice 2c-i), and exactly as a Fabric object made from the
- * same record reads back. The fake Fabric has no rotation, so rotated geometry is proven in the
+ * The proxies (`createProxy`, `createFrameProxy`): transparent Fabric objects that stand in for
+ * what the scene layer draws. They must read back as exactly the records they were made from (the
+ * storage-safety rule of Slice 2c-i), and exactly as a Fabric object made from the same record
+ * read back on the Fabric renderer (its frozen reference, `testing/fabricReference.ts`). The fake Fabric has no rotation, so rotated geometry is proven in the
  * browser (`e2e/interleaving.spec.ts`).
  */
 
@@ -70,10 +68,6 @@ describe('proxy identity', () => {
     expect([isText(i), isImage(i), isFrame(i)]).toEqual([false, true, false])
     expect([isText(f), isImage(f), isFrame(f)]).toEqual([false, false, true])
     expect([idOf(t), idOf(i), idOf(f)]).toEqual(['t1', 'i1', 'F'])
-    // A Fabric frame paints the paper; a proxy frame does not (the scene layer does).
-    expect((createFrame(frames[0]!) as unknown as { fill: string }).fill).toBe(FRAME_FILL)
-    expect(createFrame(frames[0]!)).not.toBeInstanceOf(ProxyRect)
-    expect(createObject(texts[0]!, getImage)).not.toBeInstanceOf(ProxyRect)
   })
 
   it('an image proxy is the size of its shown crop; an image whose picture is not decoded gives none', () => {
@@ -83,11 +77,15 @@ describe('proxy identity', () => {
     expect(createProxy(images[0]!, () => undefined)).toBeNull()
   })
 
-  it('locks set the same flags as on a Fabric object', () => {
+  it('locks set the same flags as on a Fabric object', async () => {
     const p = createProxy(texts[1]!, getImage) as unknown as FakeObject & { hasControls: boolean }
-    const f = createObject(texts[1]!, getImage) as unknown as FakeObject & { hasControls: boolean }
+    const f = await fabricReference<boolean[]>('flags', texts[1], async () => {
+      const { createObject } = (await import(/* @vite-ignore */ './objects.ts' as string)) as { createObject: (rec: ObjectRecord, get: typeof getImage) => FakeObject }
+      const f = createObject(texts[1]!, getImage) as FakeObject & { hasControls: boolean }
+      return [f.evented, f.selectable, f.hasControls]
+    })
     expect(isLocked(p as never)).toBe(true)
-    expect([p.evented, p.selectable, p.hasControls]).toEqual([f.evented, f.selectable, f.hasControls])
+    expect([p.evented, p.selectable, p.hasControls]).toEqual(f)
   })
 })
 
@@ -96,48 +94,60 @@ describe('records round-trip through a proxy exactly', () => {
     for (const rec of texts) expect(toRecord(createProxy(rec, getImage)!)).toStrictEqual(rec)
   })
 
-  it('every image field, crop and lock included; a crop that reaches outside the picture is clamped like a Fabric image', () => {
+  it('every image field, crop and lock included; a crop that reaches outside the picture is clamped like a Fabric image', async () => {
     for (const rec of images) expect(toRecord(createProxy(rec, getImage)!)).toStrictEqual(rec)
     const outside: ImageRecord = { ...images[0]!, crop: { x: 150, y: 0, width: 100, height: 100 } }
-    expect(toRecord(createProxy(outside, getImage)!)).toStrictEqual(toRecord(createObject(outside, getImage)!))
+    expect(toRecord(createProxy(outside, getImage)!)).toStrictEqual(await fabricReference('clamped', outside, async () => {
+      const { createObject } = (await import(/* @vite-ignore */ './objects.ts' as string)) as { createObject: (rec: ObjectRecord, get: typeof getImage) => FakeObject }
+      return toRecord(createObject(outside, getImage) as never)
+    }))
   })
 
   it('every frame field', () => {
     for (const rec of frames) expect(toFrameRecord(createFrameProxy(rec))).toStrictEqual(rec)
   })
 
-  it('reads back as a Fabric object made from the same record does, also for formatting that is not canonical', () => {
+  it('reads back as a Fabric object made from the same record does, also for formatting that is not canonical', async () => {
     const odd: ObjectRecord[] = [
       ...texts,
       ...images,
       // Bold inside a heading line, a span font equal to the box font, the default colour, left alignment spelled out.
       { id: 'n1', type: 'text', left: 0, top: 0, angle: 0, text: 'Head\nbody', fontSize: 20, width: 200, headings: [1, 0], font: 'serif', color: '#1d2230', spans: [{ start: 0, end: 4, bold: true }, { start: 5, end: 9, font: 'serif' }] },
     ]
-    for (const rec of odd) expect(toRecord(createProxy(rec, getImage)!), rec.id).toStrictEqual(toRecord(createObject(rec, getImage)!))
+    const fabric = await fabricReference<unknown[]>('records', odd, async () => {
+      const { createObject } = (await import(/* @vite-ignore */ './objects.ts' as string)) as { createObject: (rec: ObjectRecord, get: typeof getImage) => FakeObject }
+      return odd.map((rec) => toRecord(createObject(rec, getImage) as never))
+    })
+    odd.forEach((rec, i) => expect(toRecord(createProxy(rec, getImage)!), rec.id).toStrictEqual(fabric[i]))
   })
 
-  it('a scaled text folds its scale into font size, width and drawn height when read, as a Fabric text box does', () => {
+  it('a scaled text folds its scale into font size, width and drawn height when read, as a Fabric text box does', async () => {
     const rec = texts[2]!
     const p = createProxy(rec, getImage)!
-    const f = createObject(rec, getImage)!
-    for (const o of [p, f]) o.set({ scaleX: 1.5, scaleY: 1.5 })
+    p.set({ scaleX: 1.5, scaleY: 1.5 })
     const a = toRecord(p) as TextRecord
-    const b = toRecord(f) as TextRecord
+    const b = await fabricReference<TextRecord>('scaled', rec, async () => {
+      const { createObject } = (await import(/* @vite-ignore */ './objects.ts' as string)) as { createObject: (rec: ObjectRecord, get: typeof getImage) => FakeObject }
+      const f = createObject(rec, getImage)
+      f.set({ scaleX: 1.5, scaleY: 1.5 })
+      return toRecord(f as never) as TextRecord
+    })
     expect([a.fontSize, a.width, a.minHeight]).toEqual([18, 120, 96.38])
     expect([a.fontSize, a.width, a.minHeight]).toEqual([b.fontSize, b.width, b.minHeight])
   })
 })
 
 describe('changing what a proxy shows', () => {
-  it('replacing a text proxy`s data is what it reads back; a Fabric text box has no data to replace', () => {
+  it('replacing a text proxy`s data is what it reads back', () => {
     const p = createProxy(texts[0]!, getImage)!
     const before = textDataOf(p)!
     setTextData(p, { ...before, text: 'changed', fontSize: 30 })
     expect(toRecord(p)).toMatchObject({ text: 'changed', fontSize: 30 })
     expect(textDataOf(p)).not.toBe(before)
-    const f = createObject(texts[0]!, getImage)!
-    setTextData(f, before)
-    expect(textDataOf(f)).toBeUndefined()
+    // Any other object has no data to replace.
+    const i = createProxy(images[0]!, getImage)!
+    setTextData(i, before)
+    expect(textDataOf(i)).toBeUndefined()
   })
 
   it('crop and replace on an image proxy: a new data object each time, the crop read back as stored', () => {

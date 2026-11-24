@@ -1,0 +1,1387 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the DOM renderer, static (Slice 2c-i) > whole-box text commands give the same records on the DOM renderer as on the Fabric renderer",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/interleaving.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "commands": {
+   "inputs": "c7bfc3b5e8540278",
+   "value": [
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "bold": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "bold": true,
+        "italic": true,
+        "font": "mono"
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "bold": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "bold": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "bold": true,
+        "italic": true,
+        "font": "mono"
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "bold": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "bold": true,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "bold": true,
+        "italic": true,
+        "underline": true,
+        "font": "mono"
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "bold": true,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "bold": true,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "bold": true,
+        "italic": true,
+        "underline": true,
+        "font": "mono"
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "bold": true,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true,
+        "font": "mono"
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "headings": [
+       2,
+       2
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true,
+        "font": "mono"
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "headings": [
+       2,
+       2
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true,
+        "font": "mono"
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "headings": [
+       2,
+       2
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true,
+        "font": "mono"
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "headings": [
+       2,
+       2
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "font": "serif",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "headings": [
+       2,
+       2
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "font": "serif",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "headings": [
+       2,
+       2
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "headings": [
+       2,
+       2
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "headings": [
+       2,
+       2
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "headings": [
+       2,
+       2
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "headings": [
+       2,
+       2
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 24,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 30,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 30,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 30,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "spans": [
+       {
+        "start": 0,
+        "end": 10,
+        "strike": true
+       }
+      ],
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 30,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "spans": [
+       {
+        "start": 0,
+        "end": 10,
+        "strike": true
+       }
+      ],
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 30,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "spans": [
+       {
+        "start": 0,
+        "end": 10,
+        "strike": true
+       }
+      ],
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 30,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "spans": [
+       {
+        "start": 0,
+        "end": 10,
+        "strike": true
+       }
+      ],
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 30,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "spans": [
+       {
+        "start": 0,
+        "end": 10,
+        "strike": true
+       }
+      ],
+      "headings": [
+       3
+      ],
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 30,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "align": "right",
+      "spans": [
+       {
+        "start": 0,
+        "end": 10,
+        "strike": true
+       }
+      ],
+      "headings": [
+       3
+      ],
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 30,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "spans": [
+       {
+        "start": 0,
+        "end": 10,
+        "strike": true
+       }
+      ],
+      "headings": [
+       3
+      ],
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 30,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "spans": [
+       {
+        "start": 0,
+        "end": 10,
+        "strike": true
+       }
+      ],
+      "headings": [
+       3
+      ],
+      "frameId": "F"
+     }
+    ],
+    [
+     {
+      "id": "t",
+      "left": 240,
+      "top": 180,
+      "angle": 0,
+      "type": "text",
+      "text": "First line here\nsecond line",
+      "fontSize": 30,
+      "width": 280,
+      "font": "serif",
+      "align": "center",
+      "color": "#b33a3a",
+      "spans": [
+       {
+        "start": 0,
+        "end": 6,
+        "underline": true
+       },
+       {
+        "start": 6,
+        "end": 10,
+        "italic": true,
+        "underline": true
+       },
+       {
+        "start": 10,
+        "end": 27,
+        "underline": true
+       }
+      ],
+      "frameId": "F"
+     },
+     {
+      "id": "d",
+      "left": 260,
+      "top": 360,
+      "angle": 0,
+      "type": "text",
+      "text": "Drawn note",
+      "fontSize": 24,
+      "width": 220,
+      "minHeight": 50,
+      "spans": [
+       {
+        "start": 0,
+        "end": 10,
+        "strike": true
+       }
+      ],
+      "headings": [
+       3
+      ],
+      "frameId": "F"
+     }
+    ]
+   ]
+  }
+ }
+}

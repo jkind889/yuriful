@@ -1,0 +1,1525 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the review follow-ups, paired with the Fabric renderer > a size, alignment and colour changed while editing show in the live card and its box at once (a drawn box with a word wider than it)",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/dom-editing.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "7c30bef4231ee4ef",
+   "value": {
+    "records": [
+     {
+      "step": "{\"dblclick\":\"D\",\"at\":[0.1,0.05]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "D",
+         "left": 120,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+         "fontSize": 18,
+         "width": 155,
+         "minHeight": 0
+        },
+        {
+         "id": "C",
+         "left": 520,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "centred words here",
+         "fontSize": 24,
+         "width": 200
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "D",
+          "left": 120,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+          "fontSize": 18,
+          "width": 155,
+          "minHeight": 0
+         },
+         {
+          "id": "C",
+          "left": 520,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "centred words here",
+          "fontSize": 24,
+          "width": 200
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "D"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "C:centred words here",
+        "D:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 18,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "D",
+       "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+       "anchor": 0,
+       "head": 30,
+       "focused": true
+      },
+      "boxes": {
+       "D": 96.61,
+       "C": 61.02
+      }
+     },
+     {
+      "step": "{\"fontSize\":48}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "D",
+         "left": 120,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+         "fontSize": 48,
+         "width": 155,
+         "minHeight": 0
+        },
+        {
+         "id": "C",
+         "left": 520,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "centred words here",
+         "fontSize": 24,
+         "width": 200
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "D",
+          "left": 120,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+          "fontSize": 48,
+          "width": 155,
+          "minHeight": 0
+         },
+         {
+          "id": "C",
+          "left": 520,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "centred words here",
+          "fontSize": 24,
+          "width": 200
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "D"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "C:centred words here",
+        "D:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 48,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "D",
+       "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+       "anchor": 0,
+       "head": 30,
+       "focused": false
+      },
+      "boxes": {
+       "D": 800.04,
+       "C": 61.02
+      }
+     },
+     {
+      "step": "{\"fontSize\":30}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "D",
+         "left": 120,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+         "fontSize": 30,
+         "width": 155,
+         "minHeight": 0
+        },
+        {
+         "id": "C",
+         "left": 520,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "centred words here",
+         "fontSize": 24,
+         "width": 200
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "D",
+          "left": 120,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+          "fontSize": 30,
+          "width": 155,
+          "minHeight": 0
+         },
+         {
+          "id": "C",
+          "left": 520,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "centred words here",
+          "fontSize": 24,
+          "width": 200
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "D"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "C:centred words here",
+        "D:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 30,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "D",
+       "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+       "anchor": 0,
+       "head": 30,
+       "focused": false
+      },
+      "boxes": {
+       "D": 288.15,
+       "C": 61.02
+      }
+     },
+     {
+      "step": "{\"button\":\"Align centre\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "D",
+         "left": 120,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+         "fontSize": 30,
+         "width": 155,
+         "minHeight": 0,
+         "align": "center"
+        },
+        {
+         "id": "C",
+         "left": 520,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "centred words here",
+         "fontSize": 24,
+         "width": 200
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "D",
+          "left": 120,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+          "fontSize": 30,
+          "width": 155,
+          "minHeight": 0
+         },
+         {
+          "id": "C",
+          "left": 520,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "centred words here",
+          "fontSize": 24,
+          "width": 200
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "D"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "C:centred words here",
+        "D:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "center",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 30,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "D",
+       "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+       "anchor": 0,
+       "head": 30,
+       "focused": false
+      },
+      "boxes": {
+       "D": 288.15,
+       "C": 61.02
+      }
+     },
+     {
+      "step": "{\"button\":\"Red\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "D",
+         "left": 120,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+         "fontSize": 30,
+         "width": 155,
+         "minHeight": 0,
+         "align": "center",
+         "color": "#d92d20"
+        },
+        {
+         "id": "C",
+         "left": 520,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "centred words here",
+         "fontSize": 24,
+         "width": 200
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "D",
+          "left": 120,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+          "fontSize": 30,
+          "width": 155,
+          "minHeight": 0
+         },
+         {
+          "id": "C",
+          "left": 520,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "centred words here",
+          "fontSize": 24,
+          "width": 200
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "D"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "C:centred words here",
+        "D:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 30,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "D",
+       "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+       "anchor": 0,
+       "head": 30,
+       "focused": false
+      },
+      "boxes": {
+       "D": 288.15,
+       "C": 61.02
+      }
+     },
+     {
+      "step": "{\"click\":\"D\",\"at\":[0.05,0.02]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "D",
+         "left": 120,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+         "fontSize": 30,
+         "width": 155,
+         "minHeight": 0,
+         "align": "center",
+         "color": "#d92d20"
+        },
+        {
+         "id": "C",
+         "left": 520,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "centred words here",
+         "fontSize": 24,
+         "width": 200
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "D",
+          "left": 120,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+          "fontSize": 30,
+          "width": 155,
+          "minHeight": 0
+         },
+         {
+          "id": "C",
+          "left": 520,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "centred words here",
+          "fontSize": 24,
+          "width": 200
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "D"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "C:centred words here",
+        "D:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 30,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "D",
+       "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "D": 288.15,
+       "C": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+a\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "D",
+         "left": 120,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+         "fontSize": 30,
+         "width": 155,
+         "minHeight": 0,
+         "align": "center",
+         "color": "#d92d20"
+        },
+        {
+         "id": "C",
+         "left": 520,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "centred words here",
+         "fontSize": 24,
+         "width": 200
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "D",
+          "left": 120,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+          "fontSize": 30,
+          "width": 155,
+          "minHeight": 0
+         },
+         {
+          "id": "C",
+          "left": 520,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "centred words here",
+          "fontSize": 24,
+          "width": 200
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "D"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "C:centred words here",
+        "D:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 30,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "D",
+       "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+       "anchor": 0,
+       "head": 39,
+       "focused": true
+      },
+      "boxes": {
+       "D": 288.15,
+       "C": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowRight\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "D",
+         "left": 120,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+         "fontSize": 30,
+         "width": 155,
+         "minHeight": 0,
+         "align": "center",
+         "color": "#d92d20"
+        },
+        {
+         "id": "C",
+         "left": 520,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "centred words here",
+         "fontSize": 24,
+         "width": 200
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "D",
+          "left": 120,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+          "fontSize": 30,
+          "width": 155,
+          "minHeight": 0
+         },
+         {
+          "id": "C",
+          "left": 520,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "centred words here",
+          "fontSize": 24,
+          "width": 200
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "D"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "C:centred words here",
+        "D:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 30,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "D",
+       "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+       "anchor": 39,
+       "head": 39,
+       "focused": true
+      },
+      "boxes": {
+       "D": 288.15,
+       "C": 61.02
+      }
+     },
+     {
+      "step": "{\"type\":\" x\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "D",
+         "left": 120,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more x",
+         "fontSize": 30,
+         "width": 155,
+         "minHeight": 0,
+         "align": "center",
+         "color": "#d92d20"
+        },
+        {
+         "id": "C",
+         "left": 520,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "centred words here",
+         "fontSize": 24,
+         "width": 200
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "D",
+          "left": 120,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more",
+          "fontSize": 30,
+          "width": 155,
+          "minHeight": 0
+         },
+         {
+          "id": "C",
+          "left": 520,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "centred words here",
+          "fontSize": 24,
+          "width": 200
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "D"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "C:centred words here",
+        "D:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 30,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "D",
+       "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more x",
+       "anchor": 41,
+       "head": 41,
+       "focused": true
+      },
+      "boxes": {
+       "D": 288.15,
+       "C": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "D",
+         "left": 120,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more x",
+         "fontSize": 30,
+         "width": 155,
+         "minHeight": 0,
+         "align": "center",
+         "color": "#d92d20"
+        },
+        {
+         "id": "C",
+         "left": 520,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "centred words here",
+         "fontSize": 24,
+         "width": 200
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "D",
+          "left": 120,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more x",
+          "fontSize": 30,
+          "width": 155,
+          "minHeight": 0,
+          "align": "center",
+          "color": "#d92d20"
+         },
+         {
+          "id": "C",
+          "left": 520,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "centred words here",
+          "fontSize": 24,
+          "width": 200
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "D"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "C:centred words here",
+        "D:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "center",
+        "color": "#d92d20",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 30,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "D": 288.15,
+       "C": 61.02
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"C\",\"at\":[0.1,0.2]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "D",
+         "left": 120,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more x",
+         "fontSize": 30,
+         "width": 155,
+         "minHeight": 0,
+         "align": "center",
+         "color": "#d92d20"
+        },
+        {
+         "id": "C",
+         "left": 520,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "centred words here",
+         "fontSize": 24,
+         "width": 200
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "D",
+          "left": 120,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more x",
+          "fontSize": 30,
+          "width": 155,
+          "minHeight": 0,
+          "align": "center",
+          "color": "#d92d20"
+         },
+         {
+          "id": "C",
+          "left": 520,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "centred words here",
+          "fontSize": 24,
+          "width": 200
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "C"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "C:centred words here*",
+        "D:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more…"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "C",
+       "text": "centred words here",
+       "anchor": 0,
+       "head": 7,
+       "focused": true
+      },
+      "boxes": {
+       "D": 288.15,
+       "C": 61.02
+      }
+     },
+     {
+      "step": "{\"fontSize\":40}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "D",
+         "left": 120,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more x",
+         "fontSize": 30,
+         "width": 155,
+         "minHeight": 0,
+         "align": "center",
+         "color": "#d92d20"
+        },
+        {
+         "id": "C",
+         "left": 520,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "centred words here",
+         "fontSize": 40,
+         "width": 200
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "D",
+          "left": 120,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more x",
+          "fontSize": 30,
+          "width": 155,
+          "minHeight": 0,
+          "align": "center",
+          "color": "#d92d20"
+         },
+         {
+          "id": "C",
+          "left": 520,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "centred words here",
+          "fontSize": 40,
+          "width": 200
+         }
+        ]
+       },
+       "index": 3,
+       "length": 4
+      },
+      "state": {
+       "selected": [
+        "C"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "C:centred words here*",
+        "D:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more…"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "C",
+       "text": "centred words here",
+       "anchor": 0,
+       "head": 7,
+       "focused": false
+      },
+      "boxes": {
+       "D": 288.15,
+       "C": 101.7
+      }
+     },
+     {
+      "step": "{\"button\":\"Align right\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "D",
+         "left": 120,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more x",
+         "fontSize": 30,
+         "width": 155,
+         "minHeight": 0,
+         "align": "center",
+         "color": "#d92d20"
+        },
+        {
+         "id": "C",
+         "left": 520,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "centred words here",
+         "fontSize": 40,
+         "width": 200,
+         "align": "right"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "D",
+          "left": 120,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more x",
+          "fontSize": 30,
+          "width": 155,
+          "minHeight": 0,
+          "align": "center",
+          "color": "#d92d20"
+         },
+         {
+          "id": "C",
+          "left": 520,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "centred words here",
+          "fontSize": 40,
+          "width": 200
+         }
+        ]
+       },
+       "index": 3,
+       "length": 4
+      },
+      "state": {
+       "selected": [
+        "C"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "C:centred words here*",
+        "D:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more…"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "right",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "C",
+       "text": "centred words here",
+       "anchor": 0,
+       "head": 7,
+       "focused": false
+      },
+      "boxes": {
+       "D": 288.15,
+       "C": 101.7
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "D",
+         "left": 120,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more x",
+         "fontSize": 30,
+         "width": 155,
+         "minHeight": 0,
+         "align": "center",
+         "color": "#d92d20"
+        },
+        {
+         "id": "C",
+         "left": 520,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "centred words here",
+         "fontSize": 40,
+         "width": 200,
+         "align": "right"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "D",
+          "left": 120,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more x",
+          "fontSize": 30,
+          "width": 155,
+          "minHeight": 0,
+          "align": "center",
+          "color": "#d92d20"
+         },
+         {
+          "id": "C",
+          "left": 520,
+          "top": 80,
+          "angle": 0,
+          "type": "text",
+          "text": "centred words here",
+          "fontSize": 40,
+          "width": 200
+         }
+        ]
+       },
+       "index": 3,
+       "length": 4
+      },
+      "state": {
+       "selected": [
+        "C"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "C:centred words here*",
+        "D:WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more…"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "right",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 40,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "C",
+       "text": "centred words here",
+       "anchor": 0,
+       "head": 7,
+       "focused": false
+      },
+      "boxes": {
+       "D": 288.15,
+       "C": 101.7
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Editing",
+     "objects": [
+      {
+       "id": "D",
+       "left": 120,
+       "top": 80,
+       "angle": 0,
+       "type": "text",
+       "text": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more x",
+       "fontSize": 30,
+       "width": 155,
+       "minHeight": 0,
+       "align": "center",
+       "color": "#d92d20"
+      },
+      {
+       "id": "C",
+       "left": 520,
+       "top": 80,
+       "angle": 0,
+       "type": "text",
+       "text": "centred words here",
+       "fontSize": 40,
+       "width": 200,
+       "align": "right"
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}
