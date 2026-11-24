@@ -893,12 +893,12 @@ export class DomTextAdapter implements TextAdapter {
     if (edit && this.redecorateIfStale(edit, obj)) this.scene.syncCard(obj)
   }
 
-  /** What the live card's decorations depend on beyond its document. */
+  /** What the live card's decorations depend on beyond its document: the record fields `noWrapRanges` reads that the document does not hold. */
   private decorationBasis(td: TextData | undefined): string {
-    return td ? `${td.width}|${td.fontSize}|${td.minHeight ?? ''}` : ''
+    return td ? JSON.stringify([td.width, td.fontSize, td.minHeight, td.font]) : ''
   }
 
-  /** Works the live card's decorations out again when its width or size changed since they were; true when it did. */
+  /** Works the live card's decorations out again when what they depend on changed since they were; true when it did. */
   private redecorateIfStale(edit: LiveEdit, obj: FabricObject): boolean {
     if (this.decorationBasis(textDataOf(obj)) === this.decorated) return false
     edit.session.redecorate()
@@ -1063,22 +1063,28 @@ export class DomTextAdapter implements TextAdapter {
    * A press while a text is edited lands in the edited text exactly where Fabric would find that
    * text under it (so the decision agrees with the canvas to the pixel, on the box's edge and in its
    * selection padding too): not on a frame's label or outline, which wins over any content; not on an
-   * unlocked object in front of it (a locked one lets presses through); and within its area.
+   * unlocked object in front of it (a locked one lets presses through), unless Alt is held: Fabric
+   * then gives a press to the selected object, which the edited text is, even beneath other content
+   * (`altSelectionKey`, `FrameCanvas.findTarget`); and within its area.
    */
   pressInsideEdit(e: MouseEvent): boolean {
     const edit = this.edit
     if (!edit) return false
     const c = this.host.canvas
+    const objects = c.getObjects()
+    const p = c.getScenePoint(e)
+    if (e.altKey && !c.frameOverlayAt(objects, p) && c._checkTarget(edit.target, p)) return true
     // Fabric's own search: a frame's label or outline first, then the top-most object whose area
     // (its box and its selection padding) holds the point.
-    return c.searchPossibleTargets(c.getObjects(), c.getScenePoint(e)).target === edit.target
+    return c.searchPossibleTargets(objects, p).target === edit.target
   }
 
   /**
    * A primary press inside the edited text (`pressInsideEdit`) that the browser does not route into
-   * its card (its very edge, or where an item in front shows but Fabric does not count it): the
-   * caret goes to the nearest place in the text, as Fabric puts it there, and moving the pointer
-   * with the button held selects from there, as Fabric does. True when the press was such a one and
+   * its card (its very edge, or where an item in front shows but Fabric does not count it, or one
+   * covering it while Alt is held): the caret goes to the nearest place in the text, as Fabric puts
+   * it there (with Shift, the range grows from its anchor, as a press inside the text does), and
+   * moving the pointer with the button held selects from there, as Fabric does. True when the press was such a one and
    * is handled here; false when the browser and the view handle it.
    */
   strayPressInEdit(e: MouseEvent): boolean {
@@ -1086,8 +1092,9 @@ export class DomTextAdapter implements TextAdapter {
     const card = edit && this.scene.layer.elementOf(edit.id)
     const view = edit?.session.view
     if (!edit || !card || !view || (e.target instanceof Node && card.contains(e.target))) return false
-    const anchor = this.offsetNear(edit, view, e)
-    if (anchor !== null) edit.session.select(anchor)
+    const at = this.offsetNear(edit, view, e)
+    const anchor = e.shiftKey ? edit.session.selection().anchor : at
+    if (anchor !== null && at !== null) edit.session.select(anchor, at)
     view.focus()
     const win = card.ownerDocument.defaultView ?? window
     const move = (m: MouseEvent) => {
@@ -1104,8 +1111,21 @@ export class DomTextAdapter implements TextAdapter {
     return true
   }
 
-  /** The text offset under a page point, or under the point moved a little toward the box's centre when it falls just outside the text (its edge, its padding). */
+  /**
+   * The text offset under a page point, or under the point moved a little toward the box's centre
+   * when it falls just outside the text (its edge, its padding). Read beneath the items in front of
+   * the card, which otherwise take the point.
+   */
   private offsetNear(edit: LiveEdit, view: EditorView, at: ClientPoint): number | null {
+    for (const el of edit.covering) el.style.pointerEvents = 'none'
+    try {
+      return this.offsetNearShown(edit, view, at)
+    } finally {
+      for (const el of edit.covering) el.style.pointerEvents = ''
+    }
+  }
+
+  private offsetNearShown(edit: LiveEdit, view: EditorView, at: ClientPoint): number | null {
     const ctr = edit.target.getCenterPoint()
     const v = this.host.canvas.viewportTransform
     const r = this.host.canvas.upperCanvasEl.getBoundingClientRect()

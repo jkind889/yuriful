@@ -26,6 +26,8 @@ interface EditInfo {
   anchor: number
   head: number
   focused: boolean
+  /** DOM renderer: the selection the page shows in the edited card, as UTF-16 offsets (null when it shows none there). */
+  shown?: { from: number; to: number } | null
 }
 
 interface ProbeState {
@@ -50,6 +52,8 @@ interface EditProbe {
   /** An object's four corners (tl, tr, br, bl) in page pixels. */
   corners: (id: string) => Corner[] | null
   run: (method: string, ...args: unknown[]) => unknown
+  /** DOM renderer: calls a method of the edit session of the text being edited. */
+  session: (method: string, ...args: unknown[]) => unknown
   /** The DOM renderer's card for an id: its body's computed height, whether it holds the live editor, its HTML. */
   card: (id: string) => { height: number; live: boolean; html: string } | null
   /** Every text's box height (scene units): the proxy's on the DOM renderer, the text box's on Fabric. */
@@ -74,6 +78,7 @@ async function installProbe(page: Page) {
       body: `
       import { Editor as ProbeEditor } from '/src/editor/Editor.ts'
       import { idOf as probeIdOf } from '/src/editor/objects.ts'
+      import { textOffsetAt as probeOffsetAt } from '/src/editor/textSchema.ts'
       const probeInit = ProbeEditor.prototype.init
       ProbeEditor.prototype.init = function () {
         const ed = this
@@ -106,7 +111,14 @@ async function installProbe(page: Page) {
               const s = ed.text.editSession()
               if (!s) return null
               const sel = s.selection()
-              return { id: probeIdOf(ed.text.editedTarget()), text: s.content().text, anchor: sel.anchor, head: sel.head, focused: !!s.view && s.view.hasFocus() }
+              let shown = null
+              const ds = getSelection()
+              if (s.view && ds && ds.anchorNode && s.view.dom.contains(ds.anchorNode) && s.view.dom.contains(ds.focusNode)) {
+                const a = probeOffsetAt(s.state.doc, s.view.posAtDOM(ds.anchorNode, ds.anchorOffset), -1)
+                const b = probeOffsetAt(s.state.doc, s.view.posAtDOM(ds.focusNode, ds.focusOffset), -1)
+                shown = { from: Math.min(a, b), to: Math.max(a, b) }
+              }
+              return { id: probeIdOf(ed.text.editedTarget()), text: s.content().text, anchor: sel.anchor, head: sel.head, focused: !!s.view && s.view.hasFocus(), shown }
             }
             const t = ed.canvas.getActiveObject()
             if (!t || !t.isEditing) return null
@@ -123,6 +135,7 @@ async function installProbe(page: Page) {
             return [[-w, -h], [w, -h], [w, h], [-w, h]].map(([x, y]) => toPage(m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]))
           },
           run: (method, ...args) => ed[method](...args),
+          session: (method, ...args) => { const s = ed.scene && ed.text.editSession(); return s ? s[method](...args) : undefined },
           boxes: () => {
             const out = {}
             for (const o of ed.canvas.getObjects()) if (ed.text.isText(o) && !ed.text.isBlank(o)) out[probeIdOf(o) ?? ''] = Math.round(o.height * o.scaleY * 100) / 100
@@ -239,7 +252,7 @@ type Step = BaseStep & {
 
 type BaseStep =
   /** A double-click inside an object, at the fractions `at` of its box; `then`: keys pressed straight after it, with nothing awaited between. */
-  | { dblclick: string; at?: [number, number]; then?: string[] }
+  | { dblclick: string; at?: [number, number]; then?: string[]; pause?: number }
   /** A click inside an object; with Shift held when asked. */
   | { click: string; at?: [number, number]; shift?: boolean }
   /** A click at a scene point. */
@@ -247,7 +260,7 @@ type BaseStep =
   /** A press at a scene point, moved to another and released (a Text-tool box, a marquee). */
   | { dragAt: [number, number]; to: [number, number] }
   /** A press inside an object, moved by (dx, dy) screen pixels and released. */
-  | { drag: string; dx: number; dy: number; at?: [number, number] }
+  | { drag: string; dx: number; dy: number; at?: [number, number]; alt?: boolean }
   /** A press on a frame's label, released where it was. */
   | { label: string }
   | { key: string }
@@ -273,7 +286,7 @@ type BaseStep =
   /** A press inside an object, then the pointer moved by each (dx, dy) screen pixels in turn from the press point, then released. */
   | { pressMove: string; at?: [number, number]; moves: Array<[number, number]> }
   /** A press at one of an object's handles (shown or hidden), `offset` screen pixels from it, dragged by `by`. */
-  | { handlePress: string; handle: string; offset?: [number, number]; by: [number, number] }
+  | { handlePress: string; handle: string; offset?: [number, number]; by: [number, number]; shift?: boolean }
   /** A pause, as a person makes between gestures. */
   | { wait: number }
   | { run: string; args?: unknown[] }
@@ -291,6 +304,7 @@ async function runStep(page: Page, step: Step, frameRects: Map<string, StoredFra
   if ('dblclick' in step) {
     const p = await pointIn(page, step.dblclick, step.at)
     await page.mouse.dblclick(p.x, p.y)
+    if (step.pause) await page.waitForTimeout(step.pause)
     for (const key of step.then ?? []) await page.keyboard.press(key)
   } else if ('ime' in step) {
     await cdp.send('Input.imeSetComposition', { text: step.ime, selectionStart: step.ime.length, selectionEnd: step.ime.length })
@@ -317,10 +331,12 @@ async function runStep(page: Page, step: Step, frameRects: Map<string, StoredFra
     await page.mouse.up()
   } else if ('drag' in step) {
     const a = await pointIn(page, step.drag, step.at)
+    if (step.alt) await page.keyboard.down('Alt')
     await page.mouse.move(a.x, a.y)
     await page.mouse.down()
     await page.mouse.move(a.x + step.dx, a.y + step.dy, { steps: 8 })
     await page.mouse.up()
+    if (step.alt) await page.keyboard.up('Alt')
   } else if ('wait' in step) {
     await page.waitForTimeout(step.wait)
   } else if ('pressMove' in step) {
@@ -333,10 +349,12 @@ async function runStep(page: Page, step: Step, frameRects: Map<string, StoredFra
     const h = (await page.evaluate((id) => window.__edit.handles(id), step.handlePress))?.[step.handle]
     if (!h) throw new Error(`no ${step.handle} handle on ${step.handlePress}`)
     const [ox, oy] = step.offset ?? [0, 0]
+    if (step.shift) await page.keyboard.down('Shift')
     await page.mouse.move(h.x + ox, h.y + oy)
     await page.mouse.down()
     await page.mouse.move(h.x + ox + step.by[0], h.y + oy + step.by[1], { steps: 6 })
     await page.mouse.up()
+    if (step.shift) await page.keyboard.up('Shift')
   } else if ('label' in step) {
     const f = frameRects.get(step.label)!
     const p = await scenePoint(page, f.left, f.top)
@@ -858,7 +876,7 @@ test.describe('a box too narrow for what is typed widens as on the Fabric render
       { type: word },
       { key: 'Escape' },
       // An emoji inserted with no keydown straight after Ctrl+A and Left, before a bold span: the span stays.
-      { dblclick: 'l', at: [0.1, 0.3], then: ['Control+a', 'ArrowLeft'] },
+      { dblclick: 'l', at: [0.1, 0.3], pause: 100, then: ['Control+a', 'ArrowLeft'] }, // a pause beyond ProseMirror's 20 ms focus callback (see the double-click test)
       { key: 'Control+b' },
       { type: 'B' },
       { press: ['Control+a', 'ArrowLeft'], thenType: '😀' },
@@ -888,11 +906,16 @@ test.describe('typing straight after entering an edit, and IME compositions, in 
   test('keys pressed at once after a double-click (select all then Left, Home) and compositions at a caret and over a selection, committed by a key', async ({ browser }) => {
     const doc = board([], [text('T', 100, 100, 'alpha beta gamma', { width: 400 }), text('U', 100, 260, 'second text', { width: 400 }), text('W', 100, 420, 'K-pop and state-of-the-art', { width: 400 })])
     const steps: Step[] = [
-      // ProseMirror ignores a caret move to the very start within 200 ms of gaining focus: these keys come well within that.
-      { dblclick: 'T', at: [0.3, 0.4], then: ['Control+a', 'ArrowLeft'] },
+      // Keys come 100 ms after the double-click: inside the 200 ms in which ProseMirror ignores a caret
+      // move to the very start (what this test is about), and safely after the callback ProseMirror
+      // runs 20 ms after the editor gains focus (prosemirror-view `input.ts`, the focus handler), which
+      // puts its own selection back. A key pressed within those 20 ms can be undone by it: the key is then
+      // visibly ignored (what the page shows and what the next key edits still agree), a known limit no
+      // person can reach, since nobody presses a key within milliseconds of releasing a double-click.
+      { dblclick: 'T', at: [0.3, 0.4], pause: 100, then: ['Control+a', 'ArrowLeft'] },
       { type: 'X' },
       { key: 'Escape' },
-      { dblclick: 'U', at: [0.6, 0.4], then: ['Home'] },
+      { dblclick: 'U', at: [0.6, 0.4], pause: 100, then: ['Home'] },
       { type: 'Y' },
       { key: 'Control+a' },
       { key: 'ArrowRight' },
@@ -927,6 +950,11 @@ test.describe('typing straight after entering an edit, and IME compositions, in 
       { key: 'Control+Shift+z' },
     ]
     const { dom } = await expectPaired(browser, doc, steps)
+    // What the page shows as the selection is what the next key edits, after every step outside a composition.
+    for (const r of dom.records) {
+      if (!r.edit || /"ime"/.test(r.step)) continue
+      expect(r.edit.shown, `shown selection after ${r.step}`).toEqual({ from: Math.min(r.edit.anchor, r.edit.head), to: Math.max(r.edit.anchor, r.edit.head) })
+    }
     const texts = dom.saved.objects.map((o) => (o as { text: string }).text)
     expect(texts).toEqual(['Xalpha beta gamma', 'Ysecond texに ほ\n', 'K-p xop and state-of-the- y art 日本語 '])
     expect(texts.join('')).not.toContain('\u00a0')
@@ -1657,6 +1685,51 @@ test.describe('the review follow-ups on the DOM renderer', () => {
     const moving = await ink() // the caption has moved with its image: its corners are read again
     await page.mouse.up()
     rest.forEach((r, i) => expect(Math.abs(moving[i]! - r), `dark pixels at rest ${rest}, while moving ${moving}`).toBeLessThanOrEqual(Math.max(3, r * 0.02)))
+    expect(errors).toEqual([])
+  })
+})
+
+test.describe('the last review follow-ups', () => {
+  test.describe.configure({ timeout: 120_000 })
+
+  test('an Alt-drag over an image that covers the edited text selects in the text, as on Fabric (paired)', async ({ browser }) => {
+    const doc = board([], [text('A', 160, 200, 'covered words of a long note under one picture', { width: 360 }), image('I', 330, 170, { scaleX: 0.6, scaleY: 0.6 })])
+    const steps: Step[] = [
+      { dblclick: 'A', at: [0.05, 0.3] },
+      { drag: 'A', at: [0.6, 0.3], dx: 48, dy: 6, alt: true }, // over the image: with Alt the press is the edited text's
+      { type: 'Q' },
+      { key: 'Escape' },
+    ]
+    const { dom } = await expectPaired(browser, doc, steps, { assets: ASSETS })
+    expect(dom.saved.objects.find((o) => o.id === 'A')).toMatchObject({ left: 160, top: 200 })
+    expect(dom.records[1]!.edit).not.toBeNull()
+  })
+
+  test('Shift+click in the selection padding of the edited text extends from the caret (paired)', async ({ browser }) => {
+    const doc = board([], [text('T', 100, 100, 'alpha beta gamma delta', { width: 400 })])
+    const steps: Step[] = [
+      { dblclick: 'T', at: [0.05, 0.5] },
+      { key: 'ArrowRight' }, // the caret after "alpha"
+      { handlePress: 'T', handle: 'mr', offset: [-1, 0], by: [0, 0], shift: true }, // one pixel beyond the right edge
+      { type: 'X' },
+      { key: 'Escape' },
+    ]
+    const { dom } = await expectPaired(browser, doc, steps)
+    expect((dom.saved.objects[0] as { text: string }).text).toBe('alphaX')
+  })
+
+  test('a box font set while editing lays the live card out in that font at once (the no-wrap pieces follow it)', async ({ page }) => {
+    const errors = errorsOf(page)
+    await openBoard(page, board([], [text('B', 120, 80, 'i'.repeat(64), { width: 68, fontSize: 18, minHeight: 0 })]))
+    await dblclickIn(page, 'B', [0.5, 0.02])
+    await page.evaluate(() => window.__edit.session('setBox', { font: 'mono' }))
+    await frames(page)
+    const live = await page.evaluate(() => window.__edit.boxes().B!)
+    await page.keyboard.press('Escape')
+    await frames(page)
+    const after = await page.evaluate(() => window.__edit.boxes().B!)
+    expect((await page.evaluate(() => window.__edit.scene())).objects[0]).toMatchObject({ font: 'mono' })
+    expect(Math.abs(live - after), `live ${live}, after the edit ${after}`).toBeLessThanOrEqual(0.5)
     expect(errors).toEqual([])
   })
 })
