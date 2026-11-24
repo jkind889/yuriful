@@ -1109,10 +1109,10 @@ export class Editor {
    * The board is free when no mouse button is held, anywhere (the wheel event's own `buttons`, so no
    * remembered state can get stuck: a button released outside the window is not held any more): a
    * marquee, a move, a handle, a rotation, a frame or text box being drawn, a press that has not
-   * moved yet, the right or middle button, a layer row, a text's scroll thumb. One exception, decided
-   * from this event alone (nothing is remembered about where a press began): with only the primary
-   * button held and the pointer over the text being edited, whose thumb is not being dragged, the
-   * ordinary rule applies, so that text can scroll while words are selected in it. Nor may a gesture still be settling, a pan
+   * moved yet, the right or middle button, a layer row. One exception, decided from this event alone
+   * (nothing is remembered about where a press began, and nothing is read from the page): with only
+   * the primary button held and the pointer over the text being edited, the ordinary rule applies, so
+   * that text can scroll while words are selected in it (or while its scroll thumb is held). Nor may a gesture still be settling, a pan
    * (middle button, Space or the hand tool) or crop mode be open, or the hand tool or Space be in
    * effect (a read-only board, whose only tool is the hand, still lets a long text be read).
    *
@@ -1133,7 +1133,7 @@ export class Editor {
       }
     }
     const edited = this.text.editedTarget()
-    const selecting = e.buttons === 1 && edited !== null && front === edited && !document.querySelector('.scene-text-thumb.is-dragging')
+    const selecting = e.buttons === 1 && edited !== null && front === edited
     const held = e.buttons !== 0 && !selecting
     const free = !held && !this.gesture && !this.pan && !this.crop && !this.spaceHeld && !(this.editable && this.state.tool === 'hand')
     if (!free) return CANVAS_OWNER

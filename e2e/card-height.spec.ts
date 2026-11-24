@@ -1122,7 +1122,7 @@ test('anything pressed and held on the board gives the wheel to the board; a sel
   await page.waitForTimeout(NEW_GESTURE_MS)
   expect(byId(await storedDoc(page), 't')).toMatchObject({ left: 760, top: 420 })
   expect(byId(await storedDoc(page), 'c')).toMatchObject({ height: 160, angle: 0 })
-  // The thumb held while editing.
+  // The thumb of the edited text held: only the left button, over the edited text, so the wheel scrolls it (the exception's one rule).
   await editAt(page, await pt(page, 330, 140))
   await wheel(page, at(await cardPoint(), 30, 1))
   const thumb = page.locator('.scene-text[data-id="c"] .scene-text-thumb')
@@ -1132,10 +1132,9 @@ test('anything pressed and held on the board gives the wheel to the board; a sel
   await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2)
   await page.mouse.down()
   const held = (await exactOf(page, 'c')).top
-  await wheel(page, [{ x: tb.x + tb.width / 2, y: tb.y + tb.height / 2, dy: -40, buttons: 1 }])
-  panY += 40
-  await expect.poll(async () => (await probe(page)).viewport.panY).toBe(panY)
-  expect((await exactOf(page, 'c')).top).toBe(held)
+  await wheel(page, [{ x: tb.x + tb.width / 2, y: tb.y + tb.height / 2, dy: 20, buttons: 1 }])
+  await expect.poll(async () => (await exactOf(page, 'c')).top).toBe(held + 20)
+  expect((await probe(page)).viewport.panY).toBe(panY)
   await page.mouse.up()
   await page.waitForTimeout(NEW_GESTURE_MS)
   // A selection dragged inside the edited text is the text's own: the wheel scrolls the text.
