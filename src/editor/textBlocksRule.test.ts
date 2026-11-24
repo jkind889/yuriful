@@ -1,16 +1,22 @@
-import { describe, expect, it } from 'vitest'
-import type { Node as PMNode } from 'prosemirror-model'
+import { describe, expect, it, vi } from 'vitest'
+import { Fragment, Slice as SliceClass } from 'prosemirror-model'
+import type { Node as PMNode, Slice } from 'prosemirror-model'
 import { EditorState, NodeSelection, TextSelection } from 'prosemirror-state'
+import type { Transaction } from 'prosemirror-state'
 import type { MarkState } from '../model/richText.ts'
 import { canonicalTextContent, MAX_BLOCK_DEPTH, MAX_LIST_START, MAX_TEXT_LENGTH, parseBlocks } from '../model/textDoc.ts'
 import type { BlockNode, InlineRun } from '../model/types.ts'
 import type { TextContent } from '../model/textDoc.ts'
 import type { EditSession } from './textSession.ts'
-import { docFromText, isListType, nodes, plainTextOfDoc, textblocksOf } from './textSchema.ts'
+import { docFromText, exceedsBounds, isListType, nodes, plainTextOfDoc, posAtTextOffset, textSchema, textblocksOf } from './textSchema.ts'
 import type { TextSource } from './textSchema.ts'
-import { BLOCK_KINDS, boxBlocks, boxCommandContent, completesShortcut, linesOfSelection, shortcutTransaction, toggleBlockKind } from './textRules.ts'
-import type { BlockKind } from './textRules.ts'
+import { BLOCK_KINDS, META, boxBlocks, boxCommandContent, completesShortcut, linesOfSelection, settleReplacement, shortcutTransaction, toggleBlockKind } from './textRules.ts'
+import type { BlockKind, ReplacementInput } from './textRules.ts'
 import { insert, open, press, type } from './testing/textHarness.ts'
+
+// The randomised tests here take about two seconds each on an idle machine and several times that
+// while other work is running: they are never to fail for being slow.
+vi.setConfig({ testTimeout: 60_000 })
 
 /**
  * The rule of the block buttons (lists, quote, code block), pinned by fixed cases and a seeded
@@ -61,17 +67,25 @@ function lineFacts(doc: PMNode): LineFacts[] {
 }
 
 /** The lists of a document none of whose lines (by index) is in `selected`. */
-function untouchedLists(doc: PMNode, selected: ReadonlySet<number>): PMNode[] {
+function untouchedLists(doc: PMNode, selected: ReadonlySet<number>): Array<{ node: PMNode; line: number; level: number }> {
   const lineAt = new Map(textblocksOf(doc).map((t, i) => [t.pos, i]))
-  const out: PMNode[] = []
+  const out: Array<{ node: PMNode; line: number; level: number }> = []
   doc.descendants((n, pos) => {
     if (!isListType(n.type)) return true
     let any = false
+    let line = -1
     n.descendants((c, rel) => {
-      if (c.isTextblock && selected.has(lineAt.get(pos + 1 + rel)!)) any = true
+      if (!c.isTextblock) return true
+      const i = lineAt.get(pos + 1 + rel)!
+      if (line < 0) line = i
+      if (selected.has(i)) any = true
       return !any
     })
-    if (!any) out.push(n)
+    const $n = doc.resolve(pos)
+    let level = 0
+    for (let d = 1; d <= $n.depth; d++) if (isListType($n.node(d).type)) level++
+    // (A list of dividers only has no line to find it by.)
+    if (!any && line >= 0) out.push({ node: n, line, level })
     return true
   })
   return out
@@ -199,15 +213,19 @@ function judge(x: Press): string | null {
       if (kind === 'taskList' && on && tickOf(b) !== (tickOf(a) ?? 'unticked')) return `selected line ${first + i} has the tick ${tickOf(b)}, not ${tickOf(a) ?? 'unticked'}`
     }
   }
-  // A list none of whose lines is selected is left exactly as it is (nothing joins it).
+  // A list none of whose lines is selected is left exactly as it is (nothing joins it), where it was:
+  // the list around its first line, at the same level of nesting, after the press.
   const selectedLines = new Set(Array.from({ length: last - first + 1 }, (_, k) => first + k))
-  for (const node of untouchedLists(x.beforeDoc, selectedLines)) {
-    let found = false
-    x.afterDoc.descendants((n) => {
-      if (!found && n.eq(node)) found = true
-      return !found
-    })
-    if (!found) return `an unselected list changed: ${JSON.stringify(node.toJSON())}`
+  const afterLines = textblocksOf(x.afterDoc)
+  for (const { node, line, level } of untouchedLists(x.beforeDoc, selectedLines)) {
+    const j = line < first ? line : afterLines.length - (facts.length - line)
+    const at = afterLines[j]
+    const lists: PMNode[] = []
+    if (at) {
+      const $l = x.afterDoc.resolve(at.pos + 1)
+      for (let d = 1; d < $l.depth; d++) if (isListType($l.node(d).type)) lists.push($l.node(d))
+    }
+    if (!lists[level]?.eq(node)) return `an unselected list changed or moved: ${JSON.stringify(node.toJSON())} -> ${JSON.stringify(lists[level]?.toJSON() ?? null)}`
   }
   // Every line selected and already in a list, a list button on: at each level of nesting there are no more lists than before (a nested item never splits its parent's list).
   if (on && kind !== 'blockquote' && kind !== 'codeBlock' && first === 0 && last === facts.length - 1 && facts.every((f) => f.around.some((a) => (LIST_KINDS as readonly string[]).includes(a)))) {
@@ -602,13 +620,13 @@ function block(r: Rand, depth: number, lists: number): BlockNode {
   if (choice === 3) return line(r, 'heading')
   if (choice === 4) return { type: 'codeBlock', text: r.pick(['x', 'a\nb', '', 'let y']) }
   if (choice === 5) return { type: 'divider' }
-  if (choice === 6) return quote(...blocks(r, depth + 1, lists, 1 + r.int(2)))
+  if (choice === 6) return quote(...blocks(r, depth + 1, lists, 1 + r.int(2)), ...(r.int(4) === 0 ? [{ type: 'divider' } as BlockNode, line(r, 'paragraph')] : []))
   if (lists >= 3) return line(r, 'paragraph')
   const kind = r.pick(LIST_KINDS)
   const items = Array.from({ length: 1 + r.int(3) }, () => {
     const first = r.int(6) === 0 ? { type: 'codeBlock' as const, text: 'c' } : line(r, r.int(5) === 0 ? 'heading' : 'paragraph')
     // Sometimes several paragraphs in one item, sometimes a nested block.
-    const more = r.int(3) === 0 ? Array.from({ length: 1 + r.int(2) }, () => line(r, 'paragraph')) : []
+    const more = r.int(3) === 0 ? Array.from({ length: 1 + r.int(2) }, (): BlockNode => (r.int(3) === 0 ? { type: 'divider' } : line(r, 'paragraph'))) : []
     const rest = r.int(3) === 0 ? [block(r, depth + 1, lists + 1)] : []
     return [first, ...more, ...rest]
   })
@@ -634,11 +652,12 @@ function nestedList(r: Rand, depth: number): BlockNode {
     const extra = r.int(5)
     if (extra <= 1 && depth < 2) blocks.push(nestedList(r, depth + 1))
     else if (extra === 2) blocks.push(quote(p(`q${i}`)))
-    else if (extra === 3) blocks.push({ type: 'codeBlock', text: `c${i}` })
+    else if (extra === 3) blocks.push(r.int(2) === 0 ? { type: 'codeBlock', text: `c${i}` } : { type: 'divider' })
     return blocks
   })
   const out = list(kind, ...items)
   if (out.type === 'taskList') for (const it of out.items) it.checked = r.int(2) === 0
+  if (out.type === 'orderedList' && r.int(6) === 0) out.start = MAX_LIST_START - r.int(3)
   return out
 }
 
@@ -810,7 +829,15 @@ describe('T2: a list with nested items, all selected, another list kind: one lis
 
 /** A document from the generator: sometimes a code block next to a line with marks (the reviewer's shape). */
 function richSource(r: Rand): TextSource | null {
-  const doc = r.int(4) === 0 ? [p('alpha'), { type: 'codeBlock' as const, text: r.pick(['code', 'a\nb']) }, p('beta', { italic: true }), p('gamma')] : blocks(r, 1, 0, 1 + r.int(5))
+  const shapes: Array<() => BlockNode[]> = [
+    () => [p('alpha'), { type: 'codeBlock', text: r.pick(['code', 'a\nb']) }, p('beta', { italic: true }), p('gamma')],
+    // U2: a code block, then a quote holding an italic line and a second line.
+    () => [{ type: 'codeBlock', text: 'alpha' }, quote(p('beta', { italic: true }), p('Tail'))],
+    // U4: a code block, then a numbered list at the largest start.
+    () => [{ type: 'codeBlock', text: 'alpha' }, numbered(MAX_LIST_START, [p('beta', { italic: true })], [p('next')])],
+    () => [nestedList(r, 0)],
+  ]
+  const doc = r.int(3) === 0 ? r.pick(shapes)() : blocks(r, 1, 0, 1 + r.int(5))
   if (r.int(5) === 0) doc.push(p())
   const raw = parseBlocks(doc)
   return raw && { text: '', blocks: raw }
@@ -846,15 +873,47 @@ function apply(s: EditSession, input: Input): string[] {
   }
 }
 
+/** A line's kind and the blocks around it, outermost last: `paragraph/listItem/bulletList`. */
+function kindAt(doc: PMNode, offset: number): string {
+  if (textblocksOf(doc).length === 0) return '(no line left)'
+  const $p = doc.resolve(posAtTextOffset(doc, offset))
+  // A heading's level follows the line-level rule (`headingsAfterEdit`): heading and paragraph are one kind here.
+  return [$p.parent.type.spec.code ? 'code' : 'line', ...Array.from({ length: Math.max(0, $p.depth - 1) }, (_, d) => $p.node($p.depth - 1 - d).type.name)].join('/')
+}
+
+/** Whether a numbered list's numbers come near the largest start that can be stored (a replacement may then be refused). */
+function nearListLimit(doc: PMNode): boolean {
+  let near = false
+  doc.descendants((n) => {
+    if (n.type === nodes.orderedList && (n.attrs.start as number) + n.childCount > MAX_LIST_START - 50) near = true
+    return !near
+  })
+  return near
+}
+
+/** How many inputs the replacement test saw refused whole (a stored limit). */
+let replacementsRefused = 0
+
 /** Checks one input over the selection `s` has; a description of the first way it went wrong, or null. */
 function checkReplacement(s: EditSession, input: Input): string | null {
   const before = s.content()
-  const old = plainTextOfDoc(s.state.doc)
-  const { from, to } = s.selection()
+  const beforeDoc = s.state.doc
+  const rich = before.blocks !== undefined
+  const old = plainTextOfDoc(beforeDoc)
+  const { from, to, anchor, head } = s.selection()
+  const startKind = kindAt(beforeDoc, from)
   const meant = apply(s, input)
   const after = s.content()
   if (canonicalTextContent(after as unknown as Record<string, unknown>) === null || (after.blocks && parseBlocks(after.blocks) === null)) return 'the result does not load'
   const now = plainTextOfDoc(s.state.doc)
+  // Refused whole: allowed only where a stored limit explains it (a list start past 999,999,999).
+  const kept = s.selection()
+  if (JSON.stringify(after) === JSON.stringify(before) && kept.anchor === anchor && kept.head === head && kept.anchor !== kept.head) {
+    const sel = kept
+    replacementsRefused++
+    if (!nearListLimit(beforeDoc)) return `nothing changed, and no stored limit explains it (text ${JSON.stringify(now)})`
+    return sel.anchor === anchor && sel.head === head ? null : 'refused, but the selection moved'
+  }
   if (after.blocks && after.text !== now) return 'the stored text is not the text shown'
   const which = meant.find((text) => now === old.slice(0, from) + text + old.slice(to))
   if (which === undefined) return `the text is ${JSON.stringify(now)}, not ${meant.map((t) => JSON.stringify(old.slice(0, from) + t + old.slice(to))).join(' or ')}`
@@ -862,7 +921,12 @@ function checkReplacement(s: EditSession, input: Input): string | null {
   if (sel.anchor !== sel.head) return `the selection is ${sel.anchor} to ${sel.head}, not a caret`
   // Enter that takes an emptied nested item out of an item with no line of its own (ProseMirror then adds the line) leaves the caret before that line.
   if (sel.head !== from + which.length && !(input === 'Enter' && sel.head === from)) return `the caret is at ${sel.head}, not ${from + which.length}`
+  // In a text with blocks, the two ends become one line of the kind the selection started in, in its place.
+  // (Enter is judged on its deletion: after it, Enter's own rules at the caret may move that line.)
+  if (rich && input !== 'Enter' && kindAt(s.state.doc, from) !== startKind) return `the joined line is ${kindAt(s.state.doc, from)}, not ${startKind} where the selection started`
   s.undo()
+  // A composition over a selection in a text without blocks keeps ProseMirror's usual grouping: its deletion can be an undo step of its own.
+  if (!rich && input === 'composition' && JSON.stringify(s.content()) !== JSON.stringify(before)) s.undo()
   if (JSON.stringify(s.content()) !== JSON.stringify(before)) return `one undo did not give back the stored record: ${JSON.stringify(before)} -> ${JSON.stringify(s.content())}`
   return null
 }
@@ -938,9 +1002,204 @@ describe('T1: typing, pasting, Enter, Backspace, Delete and a composition over a
       }
     }
     if (failures.length > 0) console.log(failures.join('\n'))
-    console.log(`replacement rule: ${applied} inputs over random selections (seed ${SEED}), ${atLineStart} selections ending at the start of a line`)
+    console.log(`replacement rule: ${applied} inputs over random selections (seed ${SEED}), ${atLineStart} selections ending at the start of a line, ${replacementsRefused} refused whole at a stored limit`)
     expect(failures, failures[0]).toEqual([])
     expect(applied).toBeGreaterThan(2000)
+  })
+})
+
+// ---- U1 to U4 -------------------------------------------------------------------------------------------------
+
+describe('U1: in a text without blocks the settle step changes nothing at all', () => {
+  /** What the session settles a transaction as (as `EditSession.settleSelectionReplacement` reads it), or null when it does not settle it. */
+  const inputOf = (s: EditSession, tr: Transaction): ReplacementInput | null => {
+    const replaced = tr.getMeta(META.replaced) as { text: string } | undefined
+    if (replaced) return replaced.text === '' ? { kind: 'delete' } : replaced.text === '\n' ? { kind: 'enter' } : { kind: 'text', text: replaced.text }
+    const slice = (s as unknown as { pastedSlice: Slice | null }).pastedSlice
+    return tr.getMeta('paste') === true && slice ? { kind: 'slice', slice } : null
+  }
+
+  it('for thousands of random plain texts, selections and inputs, the transaction is the very one given (seeded)', () => {
+    const r = random(0x0101)
+    const words = ['AB', 'CD', 'EF', 'gh', 'ij k', '😀x', '']
+    let checked = 0
+    let compositions = 0
+    const failures: string[] = []
+    for (let d = 0; d < 400 && failures.length < 5; d++) {
+      const n = 1 + r.int(4)
+      const lines = Array.from({ length: n }, () => r.pick(words))
+      const text = lines.join('\n')
+      const spans = text.length > 1 && r.int(2) === 0 ? [{ start: 0, end: 1 + r.int(text.length - 1), ...r.pick([{ bold: true as const }, { italic: true as const }, { font: 'mono' as const }]) }] : undefined
+      const headings = r.int(2) === 0 ? lines.map(() => r.pick([0, 0, 1, 2, 3])) : undefined
+      const source = canonicalTextContent({ text, spans, headings } as unknown as Record<string, unknown>) as TextSource | null
+      if (!source || text.length < 2) continue
+      for (let k = 0; k < 4; k++) {
+        let a = r.int(text.length + 1)
+        let b = r.int(text.length + 1)
+        if (a === b) b = a === 0 ? 1 : a - 1
+        if (r.int(2) === 0) [a, b] = [b, a]
+        const input = r.pick(['type', 'paste', 'html empty', 'html br', 'html lines', 'html bold', 'view paste empty', 'view paste open', 'view paste lines', 'Enter', 'Backspace', 'Delete', 'composition'] as const)
+        const s = open(source)
+        s.select(a, b)
+        const dispatch = s.dispatch.bind(s)
+        s.dispatch = (tr: Transaction) => {
+          if (!s.state.selection.empty && tr.docChanged) {
+            const what = inputOf(s, tr)
+            if (what) {
+              checked++
+              const settled = settleReplacement(s.state, tr, what, (doc) => !exceedsBounds(doc, s.baseFont))
+              if (settled !== tr) failures.push(`${input} over [${a}, ${b}] in ${JSON.stringify(source)}: the step returned another transaction (or refused it)`)
+            }
+            if (s.composing || input === 'composition') {
+              compositions++
+              if (tr.getMeta('composition') !== undefined && !s.composing) failures.push(`${input} over [${a}, ${b}]: the deletion starting a composition carries a composition id in a text without blocks`)
+            }
+          }
+          dispatch(tr)
+        }
+        if (input === 'type') type(s, 'Z')
+        else if (input === 'paste') s.paste({ text: r.pick(['P', 'P1\nP2', '']) || 'P' })
+        else if (input === 'html empty') s.paste({ html: '<p></p>', text: '' })
+        else if (input === 'html br') s.paste({ html: '<p><br></p>', text: '\n' })
+        else if (input === 'html lines') s.paste({ html: '<p>H1</p><p>H2</p>', text: 'H1\nH2' })
+        else if (input === 'html bold') s.paste({ html: '<b>B</b>', text: 'B' })
+        else if (input.startsWith('view paste')) {
+          // As a mounted view pastes: ProseMirror's own replaceSelection of the slice it parsed (an empty paragraph, closed or open, or two paragraphs).
+          const slice =
+            input === 'view paste empty'
+              ? new SliceClass(Fragment.from(nodes.paragraph.create()), 0, 0)
+              : input === 'view paste open'
+                ? new SliceClass(Fragment.from(nodes.paragraph.create()), 1, 1)
+                : new SliceClass(Fragment.fromArray([nodes.paragraph.create(null, textSchema.text('H1')), nodes.paragraph.create(null, textSchema.text('H2'))]), 1, 1)
+          ;(s as unknown as { pastedSlice: Slice | null }).pastedSlice = slice
+          s.dispatch(s.state.tr.replaceSelection(slice).setMeta('paste', true).setMeta('uiEvent', 'paste'))
+        } else if (input === 'composition') {
+          s.compositionStart()
+          insert(s, 'か', true)
+          s.compositionEnd()
+        } else press(s, input)
+      }
+    }
+    if (failures.length > 0) console.log(failures.join('\n'))
+    console.log(`U1: ${checked} replacements of a selection in texts without blocks, every one left as given; ${compositions} composition steps`)
+    expect(failures, failures[0]).toEqual([])
+    expect(checked).toBeGreaterThan(1000)
+  })
+})
+
+describe('U2: the two ends become one line of the kind the selection started in', () => {
+  type Kind = 'paragraph' | 'heading' | 'bullet item' | 'checklist item' | 'quote' | 'code block'
+  const KINDS: readonly Kind[] = ['paragraph', 'heading', 'bullet item', 'checklist item', 'quote', 'code block']
+  const make = (kind: Kind, text: string, extra: Partial<InlineRun> = {}): BlockNode => {
+    switch (kind) {
+      case 'paragraph':
+        return p(text, extra)
+      case 'heading':
+        return { type: 'heading', level: 2, content: [{ text, ...extra }] }
+      case 'bullet item':
+        return list('bulletList', [p(text, extra)])
+      case 'checklist item':
+        return list('taskList', [p(text, extra)])
+      case 'quote':
+        return quote(p(text, extra), p('Tail'))
+      case 'code block':
+        return { type: 'codeBlock', text }
+    }
+  }
+  for (const a of KINDS) {
+    it(`starting in a ${a}, ending in each other kind, both directions, every input`, () => {
+      for (const b of KINDS) {
+        if (a === b) continue
+        for (const [from, to] of [
+          [0, 6],
+          [2, 8],
+        ] as const) {
+          for (const backward of [false, true]) {
+            for (const input of INPUTS) {
+              const s = open({ text: '', blocks: [make(a, 'alpha'), make(b, 'beta', { italic: true })] })
+              if (backward) s.select(to, from)
+              else s.select(from, to)
+              expect(checkReplacement(s, input), `${a} into ${b}, [${from}, ${to}]${backward ? ' backward' : ''}, ${input}`).toBeNull()
+            }
+          }
+        }
+      }
+    })
+  }
+
+  it('the reviewer\'s case: code `alpha`, a quote holding italic `beta` and `Tail`; Backspace or Delete, then Z: `Zbeta` in the code block, `Tail` still quoted', () => {
+    for (const key of ['Backspace', 'Delete']) {
+      for (const backward of [false, true]) {
+        const s = open({ text: '', blocks: [{ type: 'codeBlock', text: 'alpha' }, quote(p('beta', { italic: true }), p('Tail'))] })
+        if (backward) s.select(6, 0)
+        else s.select(0, 6)
+        press(s, key)
+        type(s, 'Z')
+        expect(content(s).blocks, `${key}${backward ? ' backward' : ''}`).toStrictEqual([{ type: 'codeBlock', text: 'Zbeta' }, quote(p('Tail'))])
+      }
+    }
+  })
+})
+
+describe('U3: a divider inside a list item or quote goes with its item', () => {
+  const albumCover = (k: 'bulletList' | 'orderedList' | 'taskList') => [list(k, [p('Album'), { type: 'divider' }], [p('Cover')])]
+  it('Album with a divider inside its item, then Cover: every list kind to every other, in an edit and on the box: one list, the divider still in Album\'s item', () => {
+    for (const from of LIST_KINDS) {
+      for (const to of LIST_KINDS) {
+        if (from === to) continue
+        const s = open({ text: '', blocks: albumCover(from) })
+        s.select(0, s.content().text.length)
+        expect(checkRule(s, to), `${from} to ${to}`).toBeNull()
+        s.select(0, s.content().text.length)
+        s.toggleBlock(to)
+        expect(content(s).blocks, `${from} to ${to}`).toStrictEqual(albumCover(to))
+        const box = boxCommandContent({ text: '', blocks: albumCover(from) }, { command: toggleBlockKind(to, { wholeBox: true }) })!
+        expect(box.blocks, `${from} to ${to}, on the box`).toStrictEqual(albumCover(to))
+      }
+    }
+  })
+
+  it('turning the list off takes the divider out with its item; Quote on and off over a divider inside the selection keeps one quote', () => {
+    const s = open({ text: '', blocks: albumCover('bulletList') })
+    s.select(0, s.content().text.length)
+    s.toggleBlock('bulletList')
+    expect(content(s).blocks).toStrictEqual([p('Album'), { type: 'divider' }, p('Cover')])
+    s.select(0, s.content().text.length)
+    expect(checkRule(s, 'blockquote')).toBeNull()
+    s.select(0, s.content().text.length)
+    s.toggleBlock('blockquote')
+    expect(content(s).blocks).toStrictEqual([quote(p('Album'), { type: 'divider' }, p('Cover'))])
+    s.select(0, s.content().text.length)
+    s.toggleBlock('blockquote')
+    expect(content(s).blocks).toStrictEqual([p('Album'), { type: 'divider' }, p('Cover')])
+    // A divider at the end of a quote whose lines are all selected leaves with them.
+    const t = open({ text: '', blocks: [quote(p('a'), { type: 'divider' }), p('b')] })
+    t.select(0, 1)
+    t.toggleBlock('blockquote')
+    expect(content(t).blocks).toStrictEqual([p('a'), { type: 'divider' }, p('b')])
+  })
+})
+
+describe('U4: a replacement that cannot be stored changes nothing', () => {
+  it('code `alpha`, then a numbered list at 999,999,999 holding italic `beta` and `next`: XYZ typed from the start of alpha to the start of beta changes nothing', () => {
+    const source = { text: '', blocks: [{ type: 'codeBlock', text: 'alpha' } as BlockNode, numbered(MAX_LIST_START, [p('beta', { italic: true })], [p('next')])] }
+    for (const backward of [false, true]) {
+      const s = open(source)
+      if (backward) s.select(6, 0)
+      else s.select(0, 6)
+      const before = s.content()
+      const sel = s.selection()
+      type(s, 'XYZ')
+      expect(s.content()).toStrictEqual(before)
+      expect(s.selection()).toStrictEqual(sel)
+      expect(s.canUndo).toBe(false)
+      for (const input of INPUTS) {
+        const t = open(source)
+        t.select(0, 6)
+        expect(checkReplacement(t, input), input).toBeNull()
+        expect(t.content(), input).toStrictEqual(before)
+      }
+    }
   })
 })
 

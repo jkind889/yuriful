@@ -1393,3 +1393,30 @@ test('T2: `Album`, a nested `Track`, then `Cover`, all selected, Numbered list: 
   await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify(bulleted))
   expect(errors).toEqual([])
 })
+
+test('U1: a text without blocks, a blank HTML paragraph pasted over CD, then Z: as before, ABZ and EF', async ({ page }) => {
+  await openBlank(page)
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  const results: string[] = []
+  for (const html of ['<p></p>', '<p><br></p>']) {
+    await page.evaluate(async (html) => {
+      const w = window as unknown as { s?: { finish(): void } }
+      w.s?.finish()
+      const el = document.createElement('div')
+      el.style.whiteSpace = 'pre-wrap'
+      document.body.replaceChildren(el)
+      const path = '/src/editor/textSession.ts'
+      const { createEditSession } = await import(/* @vite-ignore */ path)
+      const s = createEditSession({ text: 'AB\nCD\nEF', headings: [2, 0, 1] })
+      ;(window as unknown as { s: unknown }).s = s
+      s.mount(el).focus()
+      s.select(3, 6)
+      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob(['x'], { type: 'text/plain' }) })])
+    }, html)
+    await page.keyboard.press('Control+v')
+    await expect.poll(() => page.evaluate(() => (window as unknown as { s: { selection(): { head: number } } }).s.selection().head)).toBe(2)
+    await page.keyboard.type('Z')
+    results.push(await page.evaluate(() => (window as unknown as { s: { content(): { text: string } } }).s.content().text))
+  }
+  expect(results).toEqual(['ABZ\nEF', 'ABZ\nEF'])
+})

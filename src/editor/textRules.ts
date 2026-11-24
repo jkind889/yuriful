@@ -8,7 +8,7 @@ import type { Command, Transaction } from 'prosemirror-state'
 import { AddMarkStep, RemoveMarkStep, Transform, canJoin, findWrapping, liftTarget } from 'prosemirror-transform'
 import { DEFAULT_FONT, MARKS, canonicalTextFormatting, headingsAfterEdit, isHeadingLevel, markMask, spansFromCharStyles, splitGraphemes, textAfterEdit, withPendingMarks } from '../model/richText.ts'
 import type { CharStyle, HeadingLevel, Mark, MarkState, PendingTextStyle, RangeFormat, TextFormatting } from '../model/richText.ts'
-import { RUN_MARKS, blockOf, blockTypeFor, boxOf, contentFromDoc, docFromText, exceedsBounds, fontOf, isItemType, isListType, levelOf, marks, marksOfRun, nodes, plainTextOfDoc, posAtTextOffset, runKey, textOffsetAt, textSchema, textblocksOf } from './textSchema.ts'
+import { RUN_MARKS, blockOf, blockTypeFor, boxOf, contentFromDoc, docFromText, exceedsBounds, fontOf, isCompactDoc, isItemType, isListType, levelOf, marks, marksOfRun, nodes, plainTextOfDoc, posAtTextOffset, runKey, textOffsetAt, textSchema, textblocksOf } from './textSchema.ts'
 import type { TextSource } from './textSchema.ts'
 import type { TextContent } from '../model/textDoc.ts'
 import { blocksToLegacy, isListStart, legacyToBlocks, parseBlocks } from '../model/textDoc.ts'
@@ -1186,6 +1186,8 @@ interface Leaf {
   line: number | null
   /** It is a line the button acts on. */
   selected: boolean
+  /** A divider that goes with the lines the button acts on (`toggleBlockKind`). */
+  carried?: boolean
 }
 
 const frameKey = (f: Frame) => `${f.kind}:${f.id}:${f.item}`
@@ -1284,6 +1286,34 @@ function rebuild(leaves: readonly Leaf[]): PMNode[] {
   return build(leaves, 0)
 }
 
+/**
+ * Marks the dividers that go with the lines a list or quote button acts on (`Leaf.carried`): one
+ * inside the selected range, or one inside a list item (a quote, for Quote) whose lines are all
+ * selected. A list button moves a divider only with its list item: one in no list stays where it is.
+ */
+function carryDividers(leaves: Leaf[], kind: BlockKind) {
+  const chosen = leaves.flatMap((l, i) => (l.selected ? [i] : []))
+  if (chosen.length === 0) return
+  const first = chosen[0]!
+  const last = chosen[chosen.length - 1]!
+  leaves.forEach((l, idx) => {
+    if (l.line !== null || l.node.isTextblock) return
+    let depth = -1
+    if (kind === 'blockquote') {
+      for (let k = l.frames.length - 1; k >= 0 && depth < 0; k--) if (l.frames[k]!.kind === 'blockquote') depth = k
+    } else depth = lastListIndex(l.frames)
+    if (kind !== 'blockquote' && depth < 0) return
+    if (idx > first && idx < last) {
+      l.carried = true
+      return
+    }
+    if (depth < 0) return
+    const key = frameKey(l.frames[depth]!)
+    const lines = leaves.filter((m) => m.line !== null && m.frames[depth] !== undefined && frameKey(m.frames[depth]!) === key)
+    l.carried = lines.length > 0 && lines.every((m) => m.selected)
+  })
+}
+
 /** Whether a leaf has a kind of block, as the controls read it (`kindsOfLine`). */
 function leafHas(l: Leaf, kind: BlockKind): boolean {
   if (kind === 'codeBlock') return l.node.type === nodes.codeBlock
@@ -1318,7 +1348,7 @@ function listOn(leaves: readonly Leaf[], selected: (l: Leaf) => boolean, kind: C
   /** For each place (the blocks around a line's nearest list), the last selected line there: its index, its list now, and the item it was in. */
   const lastAt = new Map<string, { idx: number; list: number; item: string | null }>()
   out.forEach((l, idx) => {
-    if (!selected(l)) return
+    if (!selected(l) && !l.carried) return
     const i = lastListIndex(l.frames)
     const depth = i >= 0 ? i : l.frames.length
     const key = l.frames.slice(0, depth).map(frameKey).join('/')
@@ -1346,7 +1376,7 @@ function listOn(leaves: readonly Leaf[], selected: (l: Leaf) => boolean, kind: C
     }
     lastAt.set(key, { idx, list, item })
   })
-  const kept = out.map((l) => (selected(l) ? { ...l, frames: l.frames.map((f) => (f.kind !== 'blockquote' && replaced.get(frameKey(f))) || f) } : l))
+  const kept = out.map((l) => (selected(l) || l.carried ? { ...l, frames: l.frames.map((f) => (f.kind !== 'blockquote' && replaced.get(frameKey(f))) || f) } : l))
   if (joined.size === 0) return kept
   return kept.map((l) => ({ ...l, frames: l.frames.map((f) => (f.kind === kind && joined.has(f.id) ? { ...f, id: target(f.id) } : f)) }))
 }
@@ -1354,7 +1384,7 @@ function listOn(leaves: readonly Leaf[], selected: (l: Leaf) => boolean, kind: C
 /** A list kind off: each selected line leaves every list of this kind it is nearest to, one after another outward. */
 function listOff(leaves: readonly Leaf[], selected: (l: Leaf) => boolean, kind: ContainerKind): Leaf[] {
   return leaves.map((l) => {
-    if (!selected(l)) return l
+    if (!selected(l) && !l.carried) return l
     const frames = [...l.frames]
     for (let i = lastListIndex(frames); i >= 0 && frames[i]!.kind === kind; i = lastListIndex(frames)) frames.splice(i, 1)
     return { ...l, frames }
@@ -1370,12 +1400,12 @@ function quoteOn(leaves: readonly Leaf[], selected: (l: Leaf) => boolean, next: 
   const out = leaves.map(copyLeaf)
   let i = 0
   while (i < out.length) {
-    if (!selected(out[i]!) || leafHas(out[i]!, 'blockquote')) {
+    if (!(selected(out[i]!) || out[i]!.carried) || leafHas(out[i]!, 'blockquote')) {
       i++
       continue
     }
     let j = i + 1
-    while (j < out.length && selected(out[j]!) && !leafHas(out[j]!, 'blockquote')) j++
+    while (j < out.length && (selected(out[j]!) || out[j]!.carried) && !leafHas(out[j]!, 'blockquote')) j++
     const run = out.slice(i, j)
     let common = run[0]!.frames.length
     for (const l of run) {
@@ -1531,10 +1561,16 @@ function deleteAcrossLines(tr: Transaction, from: number, to: number): boolean {
  * (`deleteAcrossLines`), then the input at the caret. Returns `tr` when it was right (with its caret
  * collapsed), otherwise the new transaction, without the metadata `tr` carried (the caller adds it).
  */
-export function settleReplacement(state: EditorState, tr: Transaction, input: ReplacementInput, valid: (doc: PMNode) => boolean): Transaction {
+export function settleReplacement(state: EditorState, tr: Transaction, input: ReplacementInput, valid: (doc: PMNode) => boolean): Transaction | null {
   const sel = state.selection
-  if (sel.empty || !tr.docChanged) return tr
+  // A text without blocks (paragraphs and headings, no inline code) is left exactly as ProseMirror
+  // and the earlier canvas's rules leave it: transaction, selection and history.
+  if (sel.empty || !tr.docChanged || isCompactDoc(state.doc)) return tr
   const range = replacedRange(state, '')
+  // Where the selection started: its line's kind (a code block or not: a heading's level follows the
+  // line-level rule, `lineLevels`) and the blocks around it, which the line the two ends become keeps.
+  const kindAt = ($p: ResolvedPos) => [$p.parent.type.spec.code ? 'code' : 'line', ...Array.from({ length: Math.max(0, $p.depth - 1) }, (_, d) => $p.node(d + 1).type.name)].join('/')
+  const startKind = kindAt(sel.$from)
   const old = plainTextOfDoc(state.doc)
   const inserted = input.kind === 'text' ? input.text : input.kind === 'enter' ? '\n' : input.kind === 'slice' ? input.slice.content.textBetween(0, input.slice.content.size, '\n') : ''
   const meant = input.kind === 'enter' ? ['\n', ''] : [inserted]
@@ -1542,15 +1578,20 @@ export function settleReplacement(state: EditorState, tr: Transaction, input: Re
     const now = plainTextOfDoc(t.doc)
     const which = meant.find((m) => now === old.slice(0, range.from) + m + old.slice(range.to))
     if (which === undefined || !valid(t.doc) || breakOutsideCode(t.doc)) return false
+    // The line the two ends became is of the kind the selection started in, in its place (and is still
+    // there). Enter is judged on its deletion (`enterOverItems`): after it, Enter's own rules at the
+    // caret (an emptied item taken out a level) decide where that line sits.
+    if (input.kind !== 'enter' && (textblocksOf(t.doc).length === 0 || kindAt(t.doc.resolve(posAtTextOffset(t.doc, range.from))) !== startKind)) return false
     const caret = range.from + which.length
     if (!(t.selection.empty && textOffsetAt(t.doc, t.selection.head, -1) === caret) && textblocksOf(t.doc).length > 0) t.setSelection(TextSelection.create(t.doc, posAtTextOffset(t.doc, caret)))
     return true
   }
   if (settle(tr)) return tr
-  if (!(sel instanceof TextSelection)) return tr
+  // From here on `tr` is known to be wrong: the replacement is made again, or refused whole (null).
+  if (!(sel instanceof TextSelection)) return null
   const fresh = state.tr
   const marks = sel.$from.marksAcross(sel.$to) ?? []
-  if (!deleteAcrossLines(fresh, sel.from, sel.to)) return tr
+  if (!deleteAcrossLines(fresh, sel.from, sel.to)) return null
   const at = posAtTextOffset(fresh.doc, range.from)
   fresh.setSelection(TextSelection.create(fresh.doc, at))
   if (input.kind === 'text' && input.text) {
@@ -1563,7 +1604,7 @@ export function settleReplacement(state: EditorState, tr: Transaction, input: Re
       fresh.setSelection(TextSelection.create(fresh.doc, t.selection.anchor, t.selection.head))
     })
   }
-  return settle(fresh) ? fresh : tr
+  return settle(fresh) ? fresh : null
 }
 
 /**
@@ -1582,13 +1623,14 @@ export function toggleBlockKind(kind: BlockKind, opts: { wholeBox?: boolean } = 
     const next = () => ++ids
     const leaves = flatten(state.doc, next)
     for (const l of leaves) l.selected = l.line !== null && l.line >= range.first && l.line <= range.last
+    if (kind !== 'codeBlock') carryDividers(leaves, kind)
     const selected = (l: Leaf) => l.selected
     const lines = leaves.filter(selected)
     if (lines.length === 0) return false
     const on = !lines.every((l) => leafHas(l, kind))
     let result: Leaf[]
     if (kind === 'codeBlock') result = on ? codeOn(leaves, selected) : codeOff(leaves, selected)
-    else if (kind === 'blockquote') result = on ? quoteOn(leaves, selected, next) : leaves.map((l) => (selected(l) ? { ...l, frames: l.frames.filter((f) => f.kind !== 'blockquote') } : l))
+    else if (kind === 'blockquote') result = on ? quoteOn(leaves, selected, next) : leaves.map((l) => (selected(l) || l.carried ? { ...l, frames: l.frames.filter((f) => f.kind !== 'blockquote') } : l))
     else result = on ? listOn(leaves, selected, kind, next) : listOff(leaves, selected, kind)
     let content: Fragment
     try {
@@ -1868,9 +1910,11 @@ const enterAnywhere: Command = chainCommands(createParagraphNear, enterOverItems
  */
 function enterOverItems(state: EditorState, dispatch?: (tr: Transaction) => void): boolean {
   const { $from, $to, empty } = state.selection
-  if (empty || $from.sameParent($to) || (!itemAround($from) && !itemAround($to))) return false
+  // Over a selection across lines in a text with blocks (in a text without them, only from or into a list item, which it never has).
+  if (empty || $from.sameParent($to) || (!itemAround($from) && !itemAround($to) && isCompactDoc(state.doc))) return false
   if (!dispatch) return true
   const tr = settleReplacement(state, state.tr.deleteSelection(), { kind: 'delete' }, (doc) => !exceedsBounds(doc, DEFAULT_FONT))
+  if (!tr) return true // the deletion cannot be stored: Enter changes nothing
   const sub = EditorState.create({ doc: tr.doc, selection: tr.selection })
   enterAnywhere(sub, (t) => {
     for (const step of t.steps) tr.step(step)

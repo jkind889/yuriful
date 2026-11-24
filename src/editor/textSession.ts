@@ -283,6 +283,8 @@ export class EditSession {
    * at a bound puts it all back (`followUp`). Until that follow-up.
    */
   private imeStart: { state: EditorState; conversions: Map<number, Pending | null>; storedBreaks: string | null } | null = null
+  /** The deletion that starts the composition awaiting its follow-up was refused: the composition is taken back when it ends, and until then never reaches a record. */
+  private imeRefused = false
   /** Headless compositions are numbered like ProseMirror's (its `composition` transaction metadata), so that each one and its follow-up are one history step. */
   private headlessCompositions = 0
   /** The character a key is about to type (`typedCharacter`), from its keydown until it arrives or the key comes up. */
@@ -475,7 +477,7 @@ export class EditSession {
     // The one place the session hands its content out: a composition that has the text over a bound
     // the store enforces (open, or ended and not yet followed up) never reaches a record. Until it is
     // taken back, the content is what the session held just before it (`imeStart`).
-    if (start && exceedsBounds(doc, this.baseFont)) {
+    if (start && (this.imeRefused || exceedsBounds(doc, this.baseFont))) {
       doc = start.state.doc
       stored = start.storedBreaks
     }
@@ -510,6 +512,11 @@ export class EditSession {
       return
     }
     const tr = this.settleSelectionReplacement(given)
+    if (!tr) {
+      // A replacement of the selection that cannot be stored: refused whole, as the bounds refuse any change.
+      this.plainPaste = null
+      return
+    }
     if (this.composingHeadless && tr.getMeta('composition') === undefined) tr.setMeta('composition', `headless-${this.headlessCompositions}`)
     const before = this.current
     const { state, transactions } = this.current.applyTransaction(tr)
@@ -560,7 +567,7 @@ export class EditSession {
    * place of the selection and a collapsed caret after it, whatever blocks the selection crossed
    * (`settleReplacement`). An IME composition starts with such a deletion.
    */
-  private settleSelectionReplacement(tr: Transaction): Transaction {
+  private settleSelectionReplacement(tr: Transaction): Transaction | null {
     const slice = this.pastedSlice
     this.pastedSlice = null
     if (tr.doc === this.current.doc || tr.before !== this.current.doc || this.current.selection.empty) return tr
@@ -570,7 +577,7 @@ export class EditSession {
     else if (tr.getMeta('paste') === true && slice) input = { kind: 'slice', slice }
     else return tr
     const settled = settleReplacement(this.current, tr, input, (doc) => !exceedsBounds(doc, this.baseFont))
-    if (settled === tr) return tr
+    if (settled === tr || settled === null) return settled
     // Made again: with the metadata the replacement carried (what it replaced, a paste, a composition id...).
     for (const [key, value] of Object.entries((tr as unknown as { meta: Record<string, unknown> }).meta)) settled.setMeta(key, value)
     if (tr.storedMarks !== this.current.storedMarks) settled.setStoredMarks(tr.storedMarks)
@@ -811,8 +818,12 @@ export class EditSession {
         // It carries the composition's own `composition` id, so that what the composition puts in
         // joins its in-edit undo step (one undo gives the selection back) wherever the caret then is;
         // how the deletion itself joins what came before it is unchanged.
-        deleteSelected(state, (tr) => this.dispatch(tr.setStoredMarks(null).setMeta('composition', composition)))
+        // (Only in a text with blocks: a text without them keeps ProseMirror's usual grouping exactly.)
+        const id = isCompactDoc(state.doc) ? undefined : composition
+        deleteSelected(state, (tr) => this.dispatch(id === undefined ? tr.setStoredMarks(null) : tr.setStoredMarks(null).setMeta('composition', id)))
         if (this.current !== state) this.deletion = { before: state, after: this.current, delivered: false }
+        // The deletion was refused (its result could not be stored): so is the composition, taken back when it ends.
+        else this.imeRefused = true
       }
     }
     this.imeStart ??= { state, conversions: new Map(this.conversions), storedBreaks: this.storedBreaks }
@@ -892,10 +903,12 @@ export class EditSession {
   private followUp() {
     if (this.composing) return
     const start = this.imeStart
+    const refused = this.imeRefused
     this.imeStart = null
+    this.imeRefused = false
     if (this.composed.length === 0) return
     const tr = this.followUpTransaction(this.current)
-    if (exceedsBounds(tr.doc, this.baseFont)) {
+    if (refused || exceedsBounds(tr.doc, this.baseFont)) {
       // The composition took the text over a bound the store enforces (the bounds filter stands aside
       // while the browser owns the text). Everything it changed is taken back and nothing else: the
       // session is put back as it was just before it (`imeStart`: the text and the selection it
