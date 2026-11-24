@@ -342,10 +342,11 @@ describe('rich fields and the storage fence', () => {
     expect(needsRichFence({ objects: [{ ...text, surface: 'card' }] })).toBe(true)
   })
 
-  it('this build can edit none of them yet', () => {
-    expect([...EDITABLE_RICH_FIELDS]).toEqual([])
+  it('this build edits blocks; a fixed height and paper not yet', () => {
+    expect([...EDITABLE_RICH_FIELDS]).toEqual(['blocks'])
     expect(uneditableRichFields({ objects: [text] }).size).toBe(0)
+    expect(uneditableRichFields({ objects: [{ ...text, blocks: [{ type: 'divider' }] }] }).size).toBe(0)
     const all = uneditableRichFields({ objects: [{ ...text, height: 40 }, { ...text, id: 'b', blocks: [{ type: 'divider' }], surface: 'card' }] })
-    expect([...all].sort()).toEqual(['blocks', 'height', 'surface'])
+    expect([...all].sort()).toEqual(['height', 'surface'])
   })
 })

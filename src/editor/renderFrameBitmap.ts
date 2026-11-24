@@ -1,4 +1,5 @@
 import { clampCrop } from '../model/crop.ts'
+import { isBlankTextDoc } from '../model/textDoc.ts'
 import type { FrameRecord, ImageRecord, ObjectRecord, Scene, TextRecord } from '../model/types.ts'
 import type { Size } from '../model/viewport.ts'
 import { FRAME_FILL } from './objects.ts'
@@ -56,34 +57,187 @@ export const PROSE_CSS = `
 .yuriful-prose.is-right {
   text-align: right;
 }
-.yuriful-prose > p,
-.yuriful-prose > h1,
-.yuriful-prose > h2,
-.yuriful-prose > h3 {
+/* Lines at any depth (in a list item or a quote too) are laid out alike: every length below is in
+   em of the box's base size, so a corner scale scales the blocks with the text */
+.yuriful-prose p,
+.yuriful-prose h1,
+.yuriful-prose h2,
+.yuriful-prose h3 {
   position: relative;
   margin: 0;
   padding: 0;
 }
-.yuriful-prose > p {
+.yuriful-prose p {
   font-size: 1em;
   top: var(--yp-shift-0, 0px);
 }
-.yuriful-prose > h1 {
+.yuriful-prose h1 {
   font-size: 2em;
   font-weight: 700;
   top: var(--yp-shift-1, 0px);
 }
-.yuriful-prose > h2 {
+.yuriful-prose h2 {
   font-size: 1.5em;
   font-weight: 700;
   top: var(--yp-shift-2, 0px);
 }
-.yuriful-prose > h3 {
+.yuriful-prose h3 {
   font-size: 1.25em;
   font-weight: 700;
   top: var(--yp-shift-3, 0px);
 }
+/* Lists: each level moves its items in by one gutter (LIST_INDENT_EM), where the marker sits.
+   Markers are a little lighter than the words, so the words lead */
+.yuriful-prose ul,
+.yuriful-prose ol {
+  margin: 0;
+  padding: 0 0 0 1.5em;
+  list-style: none;
+}
+.yuriful-prose li {
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+.yuriful-prose ol {
+  counter-reset: yp-item;
+}
+.yuriful-prose ol > li {
+  counter-increment: yp-item;
+}
+/* A bullet is a dot on the first line, centred on its lower-case letters (the baseline is 0.879em
+   below the line's top); a list inside a list has rings, and a third level small squares */
+.yuriful-prose ul:not(.yp-tasks) > li::before {
+  content: "";
+  position: absolute;
+  left: -0.95em;
+  top: 0.47em;
+  width: 0.3em;
+  height: 0.3em;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 62%, transparent);
+}
+.yuriful-prose ul:not(.yp-tasks) ul:not(.yp-tasks) > li::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 0.075em color-mix(in srgb, currentColor 62%, transparent);
+}
+.yuriful-prose ul:not(.yp-tasks) ul:not(.yp-tasks) ul:not(.yp-tasks) > li::before {
+  left: -0.92em;
+  top: 0.5em;
+  width: 0.24em;
+  height: 0.24em;
+  border-radius: 0.03em;
+  background: color-mix(in srgb, currentColor 62%, transparent);
+  box-shadow: none;
+}
+/* A number sits in the gutter, ending a little before the words, on the first line's baseline */
+.yuriful-prose ol > li::before {
+  content: counter(yp-item) ".";
+  position: absolute;
+  right: 100%;
+  top: var(--yp-shift-0, 0px);
+  margin-right: 0.35em;
+  font-size: 1em;
+  font-style: normal;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: color-mix(in srgb, currentColor 62%, transparent);
+}
+/* A checkbox: a rounded square in the gutter; ticked, it holds a tick and its words step back */
+.yuriful-prose .yp-check {
+  position: absolute;
+  left: -1.35em;
+  top: 0.14em;
+  box-sizing: border-box;
+  width: 0.9em;
+  height: 0.9em;
+  border: 0.085em solid color-mix(in srgb, currentColor 62%, transparent);
+  border-radius: 0.2em;
+  user-select: none;
+}
+.yuriful-prose .yp-task[data-checked="true"] > .yp-check {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.yuriful-prose .yp-task[data-checked="true"] > .yp-check::after {
+  content: "";
+  position: absolute;
+  left: 0.235em;
+  top: 0.07em;
+  box-sizing: border-box;
+  width: 0.27em;
+  height: 0.47em;
+  border: solid currentColor;
+  border-width: 0 0.1em 0.1em 0;
+  transform: rotate(45deg);
+}
+.yuriful-prose .yp-task[data-checked="true"] > .yp-task-body {
+  opacity: 0.55;
+}
+/* A quote: a quiet rule, its lines moved in by QUOTE_INDENT_EM; a little room above and below.
+   Its own formatting context keeps the trim of a last line (below) inside its rule */
+.yuriful-prose blockquote {
+  display: flow-root;
+  margin: 0.4em 0;
+  padding: 0 0 0 0.875em;
+  border-left: 0.125em solid color-mix(in srgb, currentColor 28%, transparent);
+}
+/* A code block: a soft tinted panel, padded by CODE_PAD_X_EM at the sides; its lines wrap anywhere,
+   in every box. The panel keeps the box font as its line strut and the code itself is monospace,
+   as a font mark is, so its lines sit where a paragraph's do */
+.yuriful-prose pre {
+  position: relative;
+  top: var(--yp-shift-0, 0px);
+  margin: 0.4em 0;
+  padding: 0.5em 0.75em;
+  border-radius: 0.3em;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  font: inherit;
+  white-space: inherit;
+  overflow-wrap: anywhere;
+}
+.yuriful-prose :is(blockquote, pre):first-child {
+  margin-top: 0;
+}
+.yuriful-prose :is(blockquote, pre):last-child {
+  margin-bottom: 0;
+}
+/* Inline code: monospace on a tint that reaches a little past the letters without moving them */
+.yuriful-prose code {
+  font-family: Consolas, "Cascadia Mono", Menlo, Monaco, "Courier New", monospace;
+  line-height: 0;
+  border-radius: 0.2em;
+  background: color-mix(in srgb, currentColor 9%, transparent);
+  box-shadow: 0 0 0 0.12em color-mix(in srgb, currentColor 9%, transparent);
+}
+.yuriful-prose pre > code {
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+/* A divider takes one line, a quiet rule across its middle */
+.yuriful-prose hr {
+  position: relative;
+  height: 1.4125em;
+  margin: 0;
+  border: 0;
+  overflow: visible;
+  color: inherit;
+}
+.yuriful-prose hr::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 0.035em);
+  border-top: 0.07em solid color-mix(in srgb, currentColor 32%, transparent);
+}
 .yuriful-prose > :last-child {
+  margin-bottom: -0.2825em;
+}
+/* A text that ends with a quote trims the quote's last line instead, so its rule ends with the box;
+   one that ends with a code block keeps the panel's padding whole */
+.yuriful-prose > blockquote:last-child > :last-child {
   margin-bottom: -0.2825em;
 }
 .yuriful-prose strong {
@@ -231,7 +385,7 @@ async function decodeSvg(svg: string, doc: Document): Promise<HTMLImageElement> 
 }
 
 /** Nothing to draw: no visible character and no caption background. */
-const isBlank = (rec: TextRecord) => rec.text.trim() === '' && !rec.captionBackground
+const isBlank = (rec: TextRecord) => isBlankTextDoc(rec) && !rec.captionBackground
 
 export interface FrameBitmapOptions {
   /** The decoded image of an asset; a missing one is left out (a read-only board may lack image bytes). */

@@ -21,8 +21,12 @@ describe('creating a session', () => {
     expect(open().id).not.toBe(open().id)
   })
 
-  it('a text with rich blocks this build cannot edit gets no session', () => {
-    expect(createEditSession({ text: 'x', blocks: [{ type: 'divider' }] })).toBeNull()
+  it('a text with rich blocks gets a session; a text that cannot be read gets none', () => {
+    const s = createEditSession({ text: '', blocks: [{ type: 'divider' }] })!
+    expect(s).not.toBeNull()
+    // Only a divider: no line to put a caret in, and leaving changes nothing.
+    expect(s.content()).toStrictEqual({ text: '', blocks: [{ type: 'divider' }] })
+    expect(createEditSession({ text: 3 } as never)).toBeNull()
   })
 })
 

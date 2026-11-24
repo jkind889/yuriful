@@ -124,7 +124,7 @@ const lockMeta = (rec: { locked?: true }): { locked?: true } => (rec.locked === 
 // what it draws changes, so the editor can tell by identity which items the layer must draw again.
 
 /** What a text proxy's card shows: the record's text, size, wrap width and canonical formatting. */
-export type TextData = Pick<TextRecord, 'text' | 'fontSize' | 'width' | 'minHeight' | 'font' | 'align' | 'color' | 'spans' | 'headings' | 'captionBackground'>
+export type TextData = Pick<TextRecord, 'text' | 'fontSize' | 'width' | 'minHeight' | 'font' | 'align' | 'color' | 'spans' | 'headings' | 'blocks' | 'captionBackground'>
 
 /** What an image proxy shows: the picture's own size and the crop's top-left (its size is the proxy's). */
 export interface ImageData {
@@ -174,7 +174,10 @@ const naturalSizeOf = (el: HTMLImageElement): Size => ({ width: el.naturalWidth 
 
 /** A text record's card data, its formatting in canonical form. */
 export function textDataFrom(rec: TextRecord): TextData {
-  const fmt = canonicalTextFormatting(rec.text, { font: rec.font, align: rec.align, color: rec.color, spans: rec.spans, headings: rec.headings })
+  // Rich blocks are canonical already (as loading or the edit session left them), and replaced, never changed.
+  const fmt = rec.blocks
+    ? { ...canonicalTextFormatting('', { font: rec.font, align: rec.align, color: rec.color }), blocks: rec.blocks }
+    : canonicalTextFormatting(rec.text, { font: rec.font, align: rec.align, color: rec.color, spans: rec.spans, headings: rec.headings })
   return {
     text: rec.text,
     fontSize: rec.fontSize,
@@ -248,7 +251,7 @@ export function createFrameProxy(rec: FrameRecord): FabricObject {
 /** A text proxy's record, from its card data and its transform. */
 function proxyTextRecord(td: TextData, m: Meta, base: { id: string; left: number; top: number; angle: number }, owner: { frameId?: string; locked?: true }, sx: number, sy: number): TextRecord {
   const s = (sx + sy) / 2
-  const { font, align, color, spans, headings } = td
+  const { font, align, color, spans, headings, blocks } = td
   return {
     ...base,
     type: 'text',
@@ -261,6 +264,7 @@ function proxyTextRecord(td: TextData, m: Meta, base: { id: string; left: number
     ...(color !== undefined && { color }),
     ...(spans !== undefined && { spans }),
     ...(headings !== undefined && { headings }),
+    ...(blocks !== undefined && { blocks }),
     ...owner,
     ...(m.captionOf && {
       captionOf: m.captionOf,

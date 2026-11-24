@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
-import type { Editor, SelectionInfo, TextFormatInfo } from '../editor/Editor.ts'
+import type { BlockKind, Editor, SelectionInfo, TextBlockInfo, TextFormatInfo } from '../editor/Editor.ts'
 import { FONT_STACKS } from '../editor/fonts.ts'
 import { MAX_FONT_SIZE, MIN_FONT_SIZE } from '../model/doc.ts'
 import type { Align } from '../model/layout.ts'
@@ -13,6 +13,13 @@ import {
   AlignRightIcon,
   BackwardIcon,
   BoldIcon,
+  BulletListIcon,
+  ChecklistIcon,
+  CodeBlockIcon,
+  DividerIcon,
+  InlineCodeIcon,
+  NumberedListIcon,
+  QuoteIcon,
   ForwardIcon,
   ItalicIcon,
   LockIcon,
@@ -208,6 +215,15 @@ const HEADINGS: ReadonlyArray<{ level: 0 | 1 | 2 | 3; text: string; label: strin
   { level: 2, text: 'H2', label: 'Heading 2', name: 'H2 (Heading 2)' },
   { level: 3, text: 'H3', label: 'Heading 3', name: 'H3 (Heading 3)' },
 ]
+const LISTS: ReadonlyArray<{ kind: BlockKind; label: string; icon: () => ReactElement }> = [
+  { kind: 'bulletList', label: 'Bulleted list', icon: BulletListIcon },
+  { kind: 'orderedList', label: 'Numbered list', icon: NumberedListIcon },
+  { kind: 'taskList', label: 'Checklist', icon: ChecklistIcon },
+]
+const BLOCKS: ReadonlyArray<{ kind: BlockKind; label: string; icon: () => ReactElement }> = [
+  { kind: 'blockquote', label: 'Quote', icon: QuoteIcon },
+  { kind: 'codeBlock', label: 'Code block', icon: CodeBlockIcon },
+]
 const pressedOf = (s: MarkState): boolean | 'mixed' => (s === 'mixed' ? 'mixed' : s === 'on')
 
 /**
@@ -216,7 +232,7 @@ const pressedOf = (s: MarkState): boolean | 'mixed' => (s === 'mixed' ? 'mixed' 
  * edit, its caret and its selected range, and typing carries on in the text. Only the size
  * field takes focus, as before.
  */
-function TextPanel({ editor, selection, text, locked }: { editor: Editor; selection: SelectionInfo; text: TextFormatInfo; locked: boolean }) {
+function TextPanel({ editor, selection, text, blocks, locked }: { editor: Editor; selection: SelectionInfo; text: TextFormatInfo; blocks: TextBlockInfo; locked: boolean }) {
   const id = useId()
   const colourName = TEXT_PALETTE.find((p) => p.color === text.color)?.name ?? text.color
   return (
@@ -310,7 +326,38 @@ function TextPanel({ editor, selection, text, locked }: { editor: Editor; select
               </IconButton>
             )
           })}
+          <IconButton label="Inline code" pressed={pressedOf(blocks.code)} disabled={locked} onClick={() => editor.toggleCode()}>
+            <InlineCodeIcon />
+          </IconButton>
         </div>
+      </div>
+
+      {/* One row, the width of the panel: the panel shares its column with the layer list, which gets the height it does not use. */}
+      <div className="block-row" role="group" aria-label="Blocks">
+        {[...LISTS, ...BLOCKS].map(({ kind, label, icon: Icon }) => (
+          <IconButton
+            key={kind}
+            label={label}
+            pressed={pressedOf(blocks.blocks[kind])}
+            tip={text.editing ? `${label}: the selected lines` : `${label}: every line`}
+            tipSide="bottom"
+            disabled={locked}
+            onClick={() => editor.toggleTextBlock(kind)}
+          >
+            <Icon />
+          </IconButton>
+        ))}
+        <IconButton
+          label="Divider"
+          // A divider goes in at the caret: a box that is not being edited has none.
+          tip={text.editing ? undefined : 'Divider: double-click the text to place one'}
+          tipSide="bottom"
+          className={text.editing ? undefined : 'tip-always'}
+          disabled={locked || !text.editing || blocks.blocks.codeBlock !== 'off'}
+          onClick={() => editor.insertTextDivider()}
+        >
+          <DividerIcon />
+        </IconButton>
       </div>
 
       <div className="inspector-row">
@@ -451,7 +498,9 @@ export function Inspector({ editor, selection, cropping, onReplace }: {
         </button>
       )}
 
-      {selection.kind === 'text' && selection.text && <TextPanel editor={editor} selection={selection} text={selection.text} locked={selection.locked} />}
+      {selection.kind === 'text' && selection.text && selection.textBlocks && (
+        <TextPanel editor={editor} selection={selection} text={selection.text} blocks={selection.textBlocks} locked={selection.locked} />
+      )}
 
       {selection.layout && <LayoutPanel editor={editor} layout={selection.layout} />}
 

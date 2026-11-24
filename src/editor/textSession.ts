@@ -1,11 +1,12 @@
 import { history, isHistoryTransaction, redo, redoDepth, undo, undoDepth } from 'prosemirror-history'
 import { keydownHandler } from 'prosemirror-keymap'
-import { DOMParser as PMDOMParser, Fragment, Slice } from 'prosemirror-model'
-import type { Mark as PMMark, Node as PMNode, ParseOptions } from 'prosemirror-model'
+import { DOMParser as PMDOMParser, DOMSerializer, Fragment, Slice } from 'prosemirror-model'
+import type { Mark as PMMark, Node as PMNode, ParseOptions, ResolvedPos } from 'prosemirror-model'
 import { EditorState, Plugin, PluginKey, Selection, TextSelection } from 'prosemirror-state'
 import type { Command, Transaction } from 'prosemirror-state'
 import { ReplaceStep } from 'prosemirror-transform'
 import { DecorationSet, EditorView } from 'prosemirror-view'
+import type { NodeView } from 'prosemirror-view'
 import { resolveEditingShortcut, typedCharacter } from '../input/shortcuts.ts'
 import type { KeyEventLike } from '../input/shortcuts.ts'
 import { DEFAULT_FONT, canonicalTextFormatting, splitGraphemes } from '../model/richText.ts'
@@ -13,7 +14,7 @@ import type { Mark, TextFormatting } from '../model/richText.ts'
 import { legacyToBlocks } from '../model/textDoc.ts'
 import type { TextContent } from '../model/textDoc.ts'
 import type { FontId } from '../model/types.ts'
-import { blockOf, boxOf, contentFromDoc, docFromBlocks, docFromText, fontOf, marks, nodes, plainTextOfDoc, posAtTextOffset, renderStaticInto, textOffsetAt, textSchema } from './textSchema.ts'
+import { blockOf, boxOf, contentFromDoc, docFromBlocks, docFromText, exceedsBounds, fontOf, isCompactDoc, marks, nodes, plainTextOfDoc, posAtTextOffset, renderStaticInto, taskItemDOM, textOffsetAt, textSchema, textblocksOf } from './textSchema.ts'
 import type { TextSource } from './textSchema.ts'
 import {
   META,
@@ -24,24 +25,34 @@ import {
   deleteSelected,
   editKeys,
   imposeRuns,
+  indentItem,
+  inListItem,
+  insertDivider,
+  insertedRanges,
   lineLevels,
+  outdentItem,
   linesOfSelection,
   normalPending,
   pendingKey,
   pendingMarks,
   pendingOf,
   plainPasteContent,
+  selectionBlocks,
   selectionFormat,
   setLinesLevel,
   setRangeFont,
   shortcutTransaction,
+  toggleCodeBlock,
+  toggleList,
   togglePendingMark,
+  toggleQuote,
   toggleRangeMark,
+  toggleTaskAt,
   typedMarks,
   replacedRange,
   selectionOnCharacters,
 } from './textRules.ts'
-import type { CompactContent, FormatReadout, Pending } from './textRules.ts'
+import type { BlockKind, BlockReadout, CompactContent, FormatReadout, Pending } from './textRules.ts'
 
 /**
  * One edit of one text (plan Section 7): the ProseMirror state of the text being edited, the
@@ -148,6 +159,59 @@ const pasteParser = new KeepSpacesParser(textSchema, PMDOMParser.fromSchema(text
 
 /** Pasted plain text with one "\n" per line break, as the canvas's textarea holds it. */
 const normalBreaks = (text: string) => text.replace(/\r\n?/g, '\n')
+
+/** A selection from `anchor` to `head` (positions), or the start of a document with no line to put a caret in (only a divider). */
+function selectionAt(doc: PMNode, anchor: number, head = anchor): Selection {
+  return textblocksOf(doc).length > 0 ? TextSelection.create(doc, anchor, head) : Selection.atStart(doc)
+}
+
+/**
+ * A checklist item in the live editor: exactly the DOM its `toDOM` gives the static card
+ * (`taskItemDOM`), with the box answering a press: the item is checked or unchecked as a change
+ * of the edit (`toggle`), and the press does nothing else (no caret move, no focus change).
+ */
+class TaskItemView implements NodeView {
+  dom: HTMLElement
+  contentDOM: HTMLElement
+  private readonly box: HTMLElement
+  constructor(
+    node: PMNode,
+    private readonly getPos: () => number | undefined,
+    private readonly toggle: (pos: number) => void,
+  ) {
+    const { dom, contentDOM } = DOMSerializer.renderSpec(document, taskItemDOM(node.attrs.checked === true))
+    this.dom = dom as HTMLElement
+    this.contentDOM = contentDOM as HTMLElement
+    this.box = this.dom.firstElementChild as HTMLElement
+    this.box.addEventListener('mousedown', this.onPress)
+  }
+
+  private readonly onPress = (e: MouseEvent) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    const pos = this.getPos()
+    if (pos !== undefined) this.toggle(pos)
+  }
+
+  update(node: PMNode): boolean {
+    if (node.type !== nodes.taskItem) return false
+    this.dom.setAttribute('data-checked', String(node.attrs.checked === true))
+    return true
+  }
+
+  stopEvent(e: Event): boolean {
+    return e.target instanceof Node && this.box.contains(e.target)
+  }
+
+  ignoreMutation(m: { type: string; target: Node }): boolean {
+    return (m.type === 'attributes' && m.target === this.dom) || this.box.contains(m.target)
+  }
+
+  destroy() {
+    this.box.removeEventListener('mousedown', this.onPress)
+  }
+}
 
 /**
  * `offset` moved off the middle of a character (a surrogate pair or any grapheme cluster) to
@@ -269,7 +333,7 @@ export class EditSession {
     this.current = EditorState.create({
       schema: textSchema,
       doc,
-      selection: TextSelection.create(doc, caret),
+      selection: selectionAt(doc, caret),
       plugins: [
         this.inputPlugin(),
         this.keysPlugin(),
@@ -281,8 +345,23 @@ export class EditSession {
         canonicalGuard({ baseFont: () => this.baseFont, busy: () => this.busy }),
         pendingMarks({ baseFont: () => this.baseFont, afterHistory: (redone, depth) => (redone ? (this.conversions.get(depth) ?? null) : null), busy: () => this.busy }),
         selectionOnCharacters({ busy: () => this.busy }),
+        this.boundsPlugin(),
         ...(opts.decorate ? [this.decorationsPlugin(opts.decorate)] : []),
       ],
+    })
+  }
+
+  /**
+   * Nothing over a bound is ever written (plan Section 5): a change whose result would be stored as
+   * `blocks` and go over a bound a load enforces (depth, nodes, characters: `exceedsBounds`) is
+   * refused, so the keystroke, paste or command simply does not happen. Not while an IME composition
+   * is open, when refusing what the browser already shows would put the page and the session out of
+   * step (the store still refuses to write such a text).
+   */
+  private boundsPlugin(): Plugin {
+    return new Plugin({
+      key: new PluginKey('yuriful-bounds'),
+      filterTransaction: (tr) => !tr.docChanged || this.busy || !exceedsBounds(tr.doc, this.baseFont),
     })
   }
 
@@ -378,7 +457,7 @@ export class EditSession {
     if (c && c.state === this.current && c.box === this.box) return c.content
     let content = contentFromDoc(doc, this.box)
     const stored = this.storedBreaks
-    if (stored !== null && stored.replace(/\r\n/g, '\n') === content.text) {
+    if (stored !== null && !content.blocks && stored.replace(/\r\n/g, '\n') === content.text) {
       const spans = content.spans?.map((sp) => ({ ...sp, start: storedOffset(stored, sp.start), end: storedOffset(stored, sp.end) }))
       content = { text: stored, ...canonicalTextFormatting(stored, { ...this.box, spans, headings: content.headings }) }
     }
@@ -389,6 +468,11 @@ export class EditSession {
   /** What the formatting controls show: the selected range, or with only a caret the next typed character. */
   format(): FormatReadout {
     return selectionFormat(this.current, this.baseFont)
+  }
+
+  /** What the block controls show: inline code and each kind of block, for the selection or the caret. */
+  blockFormat(): BlockReadout {
+    return selectionBlocks(this.current)
   }
 
   /** The only way the state changes. */
@@ -491,7 +575,7 @@ export class EditSession {
       const doc = this.current.doc
       const text = plainTextOfDoc(doc)
       const at = (o: number) => posAtTextOffset(doc, onCharacter(text, o))
-      this.dispatch(this.current.tr.setSelection(TextSelection.create(doc, at(anchor), at(head))))
+      this.dispatch(this.current.tr.setSelection(selectionAt(doc, at(anchor), at(head))))
       return true
     })
   }
@@ -516,6 +600,12 @@ export class EditSession {
     if (this.done) return false
     const ctx = { editedTextarea: this.root, canRevertShortcut: this.revert !== null && !this.composing }
     this.typed = typedCharacter(e, ctx) // observed only, never claimed
+    if (!e.isComposing && !this.composing && e.key === 'Tab' && e.target === this.root && !e.ctrlKey && !e.metaKey && !e.altKey && inListItem(this.current)) {
+      // In a list or checklist item: indent or outdent it (owner decision 8). An item that cannot
+      // go deeper (the first of its list) stays where it is, and the edit stays open.
+      this.run(e.shiftKey ? outdentItem : indentItem)
+      return true
+    }
     if (!e.isComposing && !this.composing && (e.key === 'Escape' || e.key === 'Tab') && e.target === this.root) {
       this.hooks.onWantsFinish?.(e.key === 'Escape' ? 'escape' : 'tab', this)
       return true
@@ -749,11 +839,11 @@ export class EditSession {
    * has it, otherwise on; bold never changes in heading lines), or with only a caret chosen
    * for what is typed next. True when anything changed.
    */
-  toggleMark(mark: Mark): boolean {
+  toggleMark(mark: Mark | 'code'): boolean {
     return this.unlessComposing(() => this.toggleMarkNow(mark))
   }
 
-  private toggleMarkNow(mark: Mark): boolean {
+  private toggleMarkNow(mark: Mark | 'code'): boolean {
     this.revert = null // a formatting command ends "straight after a shortcut"
     if (!this.editable) return false
     const sel = this.current.selection
@@ -778,6 +868,34 @@ export class EditSession {
     if (!setLinesLevel(tr, first, last, level)) return false
     this.dispatch(tr)
     return true
+  }
+
+  /**
+   * A bullet list, numbered list, checklist, quote or code block on the lines the selection touches
+   * (`toggleList`, `toggleQuote`, `toggleCodeBlock`): off when they all already are one, on
+   * otherwise. True when anything changed.
+   */
+  toggleBlock(kind: BlockKind): boolean {
+    const cmd = kind === 'blockquote' ? toggleQuote : kind === 'codeBlock' ? toggleCodeBlock : toggleList(kind)
+    return this.unlessComposing(() => {
+      this.revert = null
+      const before = this.current.doc
+      return this.editable && cmd(this.current, (tr) => this.dispatch(tr)) && this.current.doc !== before
+    })
+  }
+
+  /** A divider at the caret (`insertDivider`). True when it went in. */
+  insertDivider(): boolean {
+    return this.unlessComposing(() => {
+      this.revert = null
+      const before = this.current.doc
+      return this.editable && insertDivider(this.current, (tr) => this.dispatch(tr)) && this.current.doc !== before
+    })
+  }
+
+  /** Checks or unchecks the checklist item at `pos` (the position before it): a change of the edit like typing, its own in-edit undo step. */
+  toggleTask(pos: number): boolean {
+    return this.unlessComposing(() => this.editable && toggleTaskAt(pos)(this.current, (tr) => this.dispatch(tr)))
   }
 
   /** The font of the selected range, or with only a caret the font of what is typed next. */
@@ -847,8 +965,16 @@ export class EditSession {
 
   // ---- clipboard and drops ------------------------------------------------------------------------
 
-  /** Pasted plain text: one paragraph per line, literal (markers stay). Its marks are given afterwards, as today (`plainPasteContent`). */
-  plainTextSlice(text: string): Slice {
+  /**
+   * Pasted plain text: one paragraph per line, literal (markers stay). Its marks are given
+   * afterwards, as today (`plainPasteContent`). Into a code block (`$at`): the text itself, line
+   * breaks and all, as code.
+   */
+  plainTextSlice(text: string, $at?: ResolvedPos): Slice {
+    if ($at?.parent.type.spec.code) {
+      const t = normalBreaks(text)
+      return t ? new Slice(Fragment.from(textSchema.text(t)), 0, 0) : Slice.empty
+    }
     const paras = normalBreaks(text).split('\n').map((line) => nodes.paragraph.create(null, line ? textSchema.text(line) : null))
     return new Slice(Fragment.fromArray(paras), 1, 1)
   }
@@ -898,12 +1024,12 @@ export class EditSession {
     if (!this.editable) return false
     const sel = this.current.selection
     let slice: Slice
-    if (data.html !== undefined && !data.plain) {
+    if (data.html !== undefined && !data.plain && !(sel.$from.parent.type.spec.code && data.text !== undefined)) {
       const body = new DOMParser().parseFromString(sanitizePastedHTML(data.html), 'text/html').body
       slice = this.arriving(pasteParser.parseSlice(body, { context: sel.$from }), this.destinationFont(this.current))
     } else if (data.text !== undefined) {
       this.notePlainPaste(data.text, this.current)
-      slice = this.plainTextSlice(data.text)
+      slice = this.plainTextSlice(data.text, sel.$from)
     } else return false
     this.dispatch(this.current.tr.replaceSelection(slice).scrollIntoView().setMeta('paste', true).setMeta('uiEvent', 'paste'))
     return true
@@ -986,6 +1112,7 @@ export class EditSession {
       this.replacing = null
       return null
     }
+    if (!this.replacing && !isCompactDoc(oldState.doc)) return null // the earlier canvas's styling is for compact texts only
     if (!this.replacing) {
       const sel = oldState.selection
       const insertsText = root.steps.some((st) => st instanceof ReplaceStep) && root.getMeta('paste') !== true && root.getMeta('uiEvent') !== 'drop' && root.getMeta(META.levelsSet) !== true
@@ -1000,6 +1127,25 @@ export class EditSession {
     if (!want || rec === null || plainTextOfDoc(newState.doc) === rec.old.text) return null
     const tr = newState.tr
     return this.imposeContent(tr, newState.doc, want) ? tr : null
+  }
+
+  /**
+   * Plain text pasted or dropped into a rich text: it takes the formatting of the place it arrives at
+   * (the caret's, or the first selected character's), with the pending choices. The earlier canvas's
+   * styling (`plainPasteContent`) is kept for compact texts only, which is all it knew.
+   */
+  private richPasteMarks(root: Transaction, oldState: EditorState, newState: EditorState, pending: Pending | null): Transaction | null {
+    const step = root.steps.find((st): st is ReplaceStep => st instanceof ReplaceStep)
+    if (!step) return null
+    const $at = oldState.doc.resolve(Math.min(step.from, oldState.doc.content.size))
+    const first = step.to > step.from && $at.parent.isTextblock && $at.parentOffset < $at.parent.content.size ? $at.parent.childAfter($at.parentOffset).node : null
+    const set = applyPending(first?.isText ? first.marks : $at.marks(), pending, this.baseFont)
+    const tr = newState.tr
+    for (const r of insertedRanges([root])) {
+      tr.removeMark(r.from, r.to)
+      for (const m of set) tr.addMark(r.from, r.to, m)
+    }
+    return tr.docChanged ? tr : null
   }
 
   private pastePlugin(): Plugin {
@@ -1025,6 +1171,7 @@ export class EditSession {
           from = textOffsetAt(oldState.doc, step.from, -1)
           to = textOffsetAt(oldState.doc, step.to, 1)
         }
+        if (!isCompactDoc(oldState.doc) || rec.pending?.code !== undefined) return replaced ? null : this.richPasteMarks(root, oldState, newState, rec.pending)
         const old = contentFromDoc(oldState.doc, this.box)
         const want = plainPasteContent({ text: old.text, spans: old.spans, headings: old.headings }, this.baseFont, from, to, rec.text, rec.pending)
         if (want.text !== plainTextOfDoc(newState.doc)) return null
@@ -1134,16 +1281,24 @@ export class EditSession {
             return false
           },
         },
+        // Into a code block, a paste is its plain text, whatever else the clipboard holds.
+        handlePaste: (view, e) => {
+          if (!view.state.selection.$from.parent.type.spec.code) return false
+          const text = e.clipboardData?.getData('text/plain')
+          if (text === undefined) return false
+          this.paste({ text })
+          return true
+        },
         transformPastedHTML: (html) => {
           this.incoming = 'html'
           return sanitizePastedHTML(html)
         },
         clipboardParser: pasteParser,
-        clipboardTextParser: (text, _$context, _plain, view) => {
+        clipboardTextParser: (text, $context, _plain, view) => {
           this.incoming = 'text'
           if (this.dropPos === null) this.notePlainPaste(text, view.state)
           else this.plainPaste = { text: normalBreaks(text), from: 0, to: 0, pending: pendingOf(view.state) }
-          return this.plainTextSlice(text)
+          return this.plainTextSlice(text, $context)
         },
         transformPasted: (slice, view) => {
           const kind = this.incoming
@@ -1193,7 +1348,14 @@ export class EditSession {
     const attrs = Array.from(el.attributes, (a): [string, string] => [a.name, a.value])
     // Before the view, so that it runs before ProseMirror's own `selectionchange` listener.
     el.ownerDocument.addEventListener('selectionchange', this.keepMoveToStart)
-    const view = new EditorView({ mount: el }, { state: this.current, dispatchTransaction: (tr) => this.dispatch(tr) })
+    const view = new EditorView(
+      { mount: el },
+      {
+        state: this.current,
+        dispatchTransaction: (tr) => this.dispatch(tr),
+        nodeViews: { taskItem: (node, _view, getPos) => new TaskItemView(node, getPos, (pos) => this.toggleTask(pos)) },
+      },
+    )
     this.mounted = { view, el, attrs }
     return view
   }

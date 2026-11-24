@@ -166,3 +166,48 @@ export const UnlockIcon = () => (
     <path d="M8.5 10.5V7.5a3.5 3.5 0 016.8-1.2" />
   </Svg>
 )
+export const InlineCodeIcon = () => (
+  <Svg>
+    <path d="M9 7.5L4.5 12 9 16.5M15 7.5l4.5 4.5-4.5 4.5" />
+  </Svg>
+)
+export const BulletListIcon = () => (
+  <Svg>
+    <circle cx="5.5" cy="7" r="1.1" fill="currentColor" stroke="none" />
+    <circle cx="5.5" cy="12" r="1.1" fill="currentColor" stroke="none" />
+    <circle cx="5.5" cy="17" r="1.1" fill="currentColor" stroke="none" />
+    <path d="M9.5 7h10M9.5 12h10M9.5 17h10" />
+  </Svg>
+)
+export const NumberedListIcon = () => (
+  <Svg>
+    <path d="M4.6 5.4l1.1-.6v4.4M4.4 11.6c.2-.6.7-.9 1.3-.9.7 0 1.2.4 1.2 1 0 .9-1.6 1.6-2.5 2.6h2.6M4.5 16.4c.3-.3.7-.5 1.2-.5.6 0 1.1.3 1.1.9s-.5.9-1.1.9c.7 0 1.2.4 1.2 1s-.6 1-1.3 1c-.5 0-.9-.2-1.2-.5" strokeWidth="1.3" />
+    <path d="M10 7h9.5M10 12h9.5M10 17h9.5" />
+  </Svg>
+)
+export const ChecklistIcon = () => (
+  <Svg>
+    <rect x="3.75" y="4.75" width="5" height="5" rx="1.2" />
+    <path d="M4.9 7.3l1.1 1.1 1.8-2.1" strokeWidth="1.4" />
+    <rect x="3.75" y="14.25" width="5" height="5" rx="1.2" />
+    <path d="M11.5 7.25h8M11.5 16.75h8" />
+  </Svg>
+)
+export const QuoteIcon = () => (
+  <Svg>
+    <path d="M5.5 5v14" strokeWidth="2.2" />
+    <path d="M10 8h9M10 12h9M10 16h6" />
+  </Svg>
+)
+export const CodeBlockIcon = () => (
+  <Svg>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+    <path d="M10 9.5L7.5 12l2.5 2.5M14 9.5l2.5 2.5-2.5 2.5" />
+  </Svg>
+)
+export const DividerIcon = () => (
+  <Svg>
+    <path d="M4 12h16" />
+    <path d="M7 6.5h10M7 17.5h10" strokeOpacity="0.45" />
+  </Svg>
+)

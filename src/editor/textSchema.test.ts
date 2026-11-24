@@ -67,11 +67,39 @@ describe('a stored text read into the editor document and back', () => {
     expect(roundTrip(rec)).toStrictEqual({ text: 'ab\ncd', spans: [{ start: 0, end: 5, bold: true }] })
   })
 
-  it('compact rich blocks are read too; other rich blocks (lists, quotes, code) are not editable yet', () => {
+  it('compact rich blocks are read too and come back compact; every other block comes back as loading gives it', () => {
     expect(roundTrip({ text: 'x', blocks: [{ type: 'heading', level: 2, content: [{ text: 'Hi', italic: true }] }] })).toStrictEqual({ text: 'Hi', spans: [{ start: 0, end: 2, italic: true }], headings: [2] })
-    expect(docFromText({ text: 'x', blocks: [{ type: 'bulletList', items: [{ blocks: [{ type: 'paragraph' }] }] }] })).toBeNull()
-    expect(docFromText({ text: 'x', blocks: [{ type: 'paragraph', content: [{ text: 'a', code: true }] }] })).toBeNull()
+    const rich: TextSource[] = [
+      { text: 'x', blocks: [{ type: 'bulletList', items: [{ blocks: [{ type: 'paragraph' }] }] }] },
+      { text: 'x', blocks: [{ type: 'paragraph', content: [{ text: 'a', code: true }] }] },
+      {
+        text: '',
+        font: 'serif',
+        blocks: [
+          { type: 'heading', level: 1, content: [{ text: 'Blue Lines' }] },
+          { type: 'blockquote', blocks: [{ type: 'paragraph', content: [{ text: 'Warm ', italic: true }, { text: 'bassline', italic: true, font: 'mono' }] }] },
+          { type: 'taskList', items: [{ checked: true, blocks: [{ type: 'paragraph', content: [{ text: 'Check the remaster' }] }] }, { checked: false, blocks: [{ type: 'paragraph' }] }] },
+          { type: 'orderedList', start: 3, items: [{ blocks: [{ type: 'paragraph', content: [{ text: 'three' }] }, { type: 'bulletList', items: [{ blocks: [{ type: 'paragraph', content: [{ text: 'nested' }] }] }] }] }] },
+          { type: 'divider' },
+          { type: 'codeBlock', text: 'let a = 1\n\nlet b = 2\n' },
+          { type: 'paragraph', content: [{ text: 'Side B', code: true, bold: true }] },
+        ],
+      },
+    ]
+    for (const rec of rich) expect(roundTrip(rec)).toStrictEqual(loaded(rec))
     expect(docFromText({ text: 3 } as unknown as TextSource)).toBeNull()
+  })
+
+  it('lines are textblocks wherever they sit: offsets, positions and the plain text agree with the stored text', () => {
+    const rec: TextSource = { text: '', blocks: [{ type: 'paragraph', content: [{ text: 'ab' }] }, { type: 'bulletList', items: [{ blocks: [{ type: 'paragraph', content: [{ text: 'cd' }] }] }] }, { type: 'divider' }, { type: 'codeBlock', text: 'e\nf' }] }
+    const read = docFromText(rec)!
+    expect(linesOf(read.doc)).toEqual(['ab', 'cd', 'e\nf'])
+    expect(plainTextOfDoc(read.doc)).toBe(loaded(rec)!.text)
+    for (let o = 0; o <= 9; o++) expect(textOffsetAt(read.doc, posAtTextOffset(read.doc, o))).toBe(o)
+    // Just before and after the divider: the end of the line before it, or the start of the one after it.
+    const hr = read.doc.child(0).nodeSize + read.doc.child(1).nodeSize
+    expect(textOffsetAt(read.doc, hr, -1)).toBe(5)
+    expect(textOffsetAt(read.doc, hr + 1, 1)).toBe(6)
   })
 
   it('a long compact text is not held to the rich-text bounds', () => {
@@ -83,11 +111,15 @@ describe('a stored text read into the editor document and back', () => {
 })
 
 describe('the schema', () => {
-  it('holds only paragraphs and headings of level 1 to 3, with the four marks and a font', () => {
-    expect(Object.keys(textSchema.nodes)).toEqual(['doc', 'paragraph', 'heading', 'text'])
-    expect(Object.keys(textSchema.marks)).toEqual(['font', 'bold', 'italic', 'underline', 'strike'])
+  it('holds exactly the blocks and marks a record can store', () => {
+    expect(Object.keys(textSchema.nodes)).toEqual(['doc', 'paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'taskList', 'taskItem', 'blockquote', 'codeBlock', 'divider', 'text'])
+    expect(Object.keys(textSchema.marks)).toEqual(['font', 'bold', 'italic', 'underline', 'strike', 'code'])
     expect(() => textSchema.nodes.heading!.create({ level: 4 })).toThrow()
     expect(() => textSchema.marks.font!.create({ font: 'comic' })).toThrow()
+    expect(() => textSchema.nodes.orderedList!.create({ start: 0 }, textSchema.nodes.listItem!.create(null, textSchema.nodes.paragraph!.create()))).toThrow()
+    // A code block holds no marks; inline code does not carry on past its end.
+    expect(textSchema.nodes.codeBlock!.allowsMarkType(textSchema.marks.bold!)).toBe(false)
+    expect(textSchema.marks.code!.spec.inclusive).toBe(false)
   })
 })
 
@@ -97,6 +129,29 @@ describe('static rendering (an idle card)', () => {
     const host = document.createElement('div')
     host.appendChild(renderStatic(read.doc))
     expect(host.innerHTML).toBe('<h1>Title</h1><h2><br></h2><p><strong><s>bo</s>ld</strong> <span data-font="mono"><u>mono</u></span></p><p><br></p>')
+  })
+
+  it('rich blocks: the same DOM as the live editor, a <br> in every empty line and after the last line break of a code block', () => {
+    const read = docFromText({
+      text: '',
+      blocks: [
+        { type: 'bulletList', items: [{ blocks: [{ type: 'paragraph', content: [{ text: 'one' }] }] }, { blocks: [{ type: 'paragraph' }] }] },
+        { type: 'orderedList', start: 4, items: [{ blocks: [{ type: 'paragraph', content: [{ text: 'four' }] }] }] },
+        { type: 'taskList', items: [{ checked: true, blocks: [{ type: 'paragraph', content: [{ text: 'done', code: true }] }] }] },
+        { type: 'blockquote', blocks: [{ type: 'paragraph', content: [{ text: 'q' }] }] },
+        { type: 'divider' },
+        { type: 'codeBlock', text: 'x\n' },
+        { type: 'codeBlock', text: '' },
+      ],
+    })!
+    const host = document.createElement('div')
+    host.appendChild(renderStatic(read.doc))
+    expect(host.innerHTML).toBe(
+      '<ul><li><p>one</p></li><li><p><br></p></li></ul>' +
+        '<ol start="4" style="counter-reset: yp-item 3;"><li><p>four</p></li></ol>' +
+        '<ul class="yp-tasks"><li class="yp-task" data-checked="true"><span class="yp-check" contenteditable="false"></span><div class="yp-task-body"><p><code>done</code></p></div></li></ul>' +
+        '<blockquote><p>q</p></blockquote><hr><pre><code>x\n<br></code></pre><pre><code><br></code></pre>',
+    )
   })
 
   it('the static HTML parses back to the same document', async () => {

@@ -35,10 +35,10 @@ export const RICH_FIELDS: readonly RichField[] = ['blocks', 'height', 'surface']
 /**
  * The rich fields this build can draw, edit and save back unchanged. A board that uses any
  * other one opens read-only, as if it came from a newer build, so that nothing in it is
- * dropped by a save. None yet: lists and the rest of `blocks`, a fixed height and paper
- * each join this set with the change that lets the canvas edit them.
+ * dropped by a save. `blocks` (lists, checklists, quotes, code, dividers) is editable; a fixed
+ * height and paper each join this set with the change that lets the canvas edit them.
  */
-export const EDITABLE_RICH_FIELDS: ReadonlySet<RichField> = new Set<RichField>()
+export const EDITABLE_RICH_FIELDS: ReadonlySet<RichField> = new Set<RichField>(['blocks'])
 
 const RUN_MARKS: readonly TextMark[] = [...MARKS, 'code']
 

@@ -24,7 +24,8 @@ npm run dev        # http://localhost:5173
 - Pan and zoom (hand tool, Space+drag, middle mouse, wheel pans, Ctrl/Cmd+wheel zooms, +/- and Fit buttons).
 - Add images by file picker or by dropping files onto the board.
 - Add text with the Text tool (`T`): click for a default box, or drag out a box to set its wrap width and minimum height. Double-click to edit; the text you are editing has a thin outline in the accent colour. Side handles change the wrap width, and corner handles scale the text and box together.
-- Formatted text: font, bold, italic, underline and strikethrough on ranges of characters, headings (2, 1.5 or 1.25 times the box's font size, always bold) on whole lines, and alignment and colour for the whole box. Use the panel or `Ctrl/Cmd+B`, `I`, `U` for the corresponding marks.
+- Formatted text: font, bold, italic, underline, strikethrough and inline code on ranges of characters, headings (2, 1.5 or 1.25 times the box's font size, always bold) on whole lines, and alignment and colour for the whole box. Use the panel or `Ctrl/Cmd+B`, `I`, `U` for the corresponding marks.
+- Writing blocks: bullet lists, numbered lists, checklists you tick with a click, quotes, dividers and code blocks, typed with Markdown-style shortcuts or made with the panel (see Writing blocks).
 - Move, resize, rotate, multi-select, layer (forward/back/front/back), delete.
 - **Frames**: named rectangles that structure a board without forcing everything into pages (see below).
 - **Layers**: a list of everything on the board in stacking order, so that something completely covered can still be selected (see below).
@@ -86,7 +87,7 @@ With the Text tool (`T`), click for a box ten font sizes wide, or drag a rectang
 
 - You can drag out a box inside a frame because the interior is click-through. The centre of the text box determines which frame owns it. This is checked again when you first finish typing, after any growth. Pressing on an existing object or on a frame's label or outline selects that target.
 - `Esc` or switching away from the window while dragging cancels it, and `Esc` also leaves the Text tool. The tool is single-use: after the release you are typing in the new box with the Select tool active.
-- A box you leave without typing anything disappears, with nothing saved and no undo step.
+- A box you leave without typing anything disappears, with nothing saved and no undo step. So does one that holds only an empty list item, an empty checklist item, an empty quote or an empty heading. A box that holds only a divider, or only a ticked checkbox, is kept.
 - Select words and drag them to move them within the same box. To move words into another box, cut and paste them: dragging them from one box into another does not work.
 
 ## Formatting text
@@ -114,6 +115,43 @@ While you type in a text, three markers turn into formatting, as a quicker way t
 - `Ctrl/Cmd+Z` straight after a shortcut also brings the markers back; a second `Ctrl/Cmd+Z` takes back what you typed. Redo after either turns the markers into formatting again.
 - Like typing, a shortcut is saved straight away and is part of the one undo step recorded when you leave the text.
 
+## Writing blocks
+
+A text can hold more than lines: bullet lists, numbered lists, checklists, quotes, dividers and code. They are meant for longer writing, such as a review with a track list, a few quotes and a to-do list at the end.
+
+Type a shortcut at the start of a line and it turns into the block as you type. The characters you typed disappear.
+
+| Type at the start of a line | You get |
+| --- | --- |
+| `- ` | a bullet list |
+| `1. ` (any number from 1) | a numbered list starting at that number |
+| `- [ ] ` or `- [x] ` | a checklist item, unticked or ticked |
+| `[] ` or `[ ] ` | an unticked checklist item |
+| `> ` | a quote |
+| `---` (the whole line) | a divider, with a new line after it |
+| ```` ``` ```` | a code block holding the rest of the line |
+
+Inside a line, `` `code` `` makes inline code: typing the closing backtick sets the text between the backticks in a monospace font on a light tint, and what you type next is plain.
+
+- A checklist item comes in two steps: `- ` makes a bullet, then `[ ] ` or `[x] ` at the start of that item makes it a checklist item. In a list of several bullets, only that item changes.
+- `* ` is not a bullet: `* item` stays as typed. So do `0. `, a marker after other text, and markers typed inside a list item, a code block or inline code.
+- **Backspace straight after a shortcut puts the characters back** exactly as you typed them, as for the other typing shortcuts. `Ctrl/Cmd+Z` straight after does the same, and a second `Ctrl/Cmd+Z` takes back what you typed.
+- Pasted text never turns into blocks: a list copied from one text and pasted into another arrives as plain lines (see Known limits).
+
+**In a list or checklist:** Enter starts a new item (a new checklist item starts unticked). Enter on an empty item leaves the list, or moves a nested item out one level. Backspace at the start of an item does the same. `Tab` nests the item under the one above it and `Shift+Tab` moves it back out. `Tab` on the first item of a list does nothing, so the edit stays open. Anywhere else, `Tab` leaves the text as before.
+
+**Checkboxes:** while you edit the text, click a box to tick or untick it. It is saved like typing and is one step of Undo while you edit.
+
+**In a quote:** Enter adds a line to the quote; Enter on an empty line, or Backspace at the start of its first line, takes that line out of the quote.
+
+**In a code block:** Enter is a line break of the code. Press Enter twice at the end to leave it. Backspace at the very start turns the code back into ordinary lines. Code lines wrap anywhere, in every box, so a long line of code never widens the box.
+
+**A divider:** Backspace at the start of the line after it, or Delete at the end of the line before it, removes it.
+
+**The panel:** under Style there is an **Inline code** button. A row of block buttons holds **Bulleted list**, **Numbered list**, **Checklist**, **Quote**, **Code block** and **Divider**. They work like the heading buttons: while you edit, on the lines the selection touches; on a selected box, on every line, as one undo step. A block button is shown pressed when every line concerned is already in that block, and pressing it then takes the lines out. Choosing a different kind of list changes the list the lines are in, all of its items. **Divider** goes in at the caret, so it works only while you edit.
+
+Marks, fonts, headings, alignment, colour, font size and scaling work inside every block. Undo after you leave takes back the whole edit, blocks and all.
+
 ## Board appearance
 
 Open **Appearance** in the header to choose a background color and dots, grid, or no pattern. Try a built-in preset or name your combination and click **Save preset** to use it again. Custom presets stay with this local board after reload. **Reset appearance** brings back the default dots and keeps your saved presets. Background changes save automatically and sit outside object undo and redo.
@@ -136,7 +174,7 @@ The **Layers** panel at the bottom right lists everything on the board, front-mo
 - **Alt-drag moves a covered object you selected from the list.** Its handles work as usual, but a plain press on its body goes to whatever lies on top of it, as everywhere on the board (inside the box of a multi-selection a press goes to the selection, Alt or not). Hold Alt while pressing and the press goes to the selected object instead, if it is under the pointer. It is an ordinary drag: one undo step, cancelled by Esc (even with Alt still held), and dragged out of its frame it stops belonging to it. A frame's label or outline still wins over it.
 - **Drag a row to reorder it.** Aim at the upper or lower half of another row to place it above or below that row. The line marks where it will go. Images and text can move among other images and text, and frames can move among other frames. A locked row can anchor a drop. Unlock it to drag it. A drop moves one row, keeps the current selection and frame ownership, and is one undo step. Press Esc or release where there is no line to cancel.
 - `[` / `]` and the Layer buttons in the panel on the right reorder the selection; the list shows the new order straight away.
-- A text's row follows what you type. While a text is empty it is not listed, because an empty text is never kept.
+- A text's row follows what you type. While a text is empty it is not listed, because an empty text is never kept. A text that holds only a divider or a ticked checkbox is listed as `Text`.
 - The list is flat. Something that belongs to a frame is not shown inside it, because stacking order is shared by the whole board and has nothing to do with belonging; its row shows the frame's name instead.
 - Selecting from the list changes nothing on the board, so it is never an undo step and never saves. If you were typing a text, leaving it works as when you click anywhere else: typed text is kept as its own undo step, and a text left empty is discarded. A field you were typing in (font size, frame name, board title) keeps what you typed and lets go, so your next keys act on the board.
 - Each row has a padlock at its right edge (it shows on hover, and always on a locked row). See Locking.
@@ -196,14 +234,15 @@ Everything is stored in this browser's IndexedDB, for this origin (`http://local
 - **The first save of a board that contains a frame upgrades the database** in the same step that writes the board. From then on the previous build can no longer open it. This is deliberate: an old tab would otherwise silently drop the frames. There is no backup and no way back to the old build for that board.
 - **Two tabs on one board:** a tab never overwrites a board that another tab has changed since it loaded or last saved. It becomes read-only with a Reload button, and whatever it had not yet saved is not saved.
 - **Text formatting is stored inside each text**, in optional fields that are left out when they have their default, so a plain text is stored exactly as before and formatting needs no database change. A malformed formatting field is dropped when the board loads instead of making the board unreadable. The previous build shows formatted text plain and drops its formatting the next time it saves that board.
-- **Rich text cards from a later build** (lists, checklists, quotes, code, a fixed height or paper) are stored in a newer format. This build cannot make them yet. It reads them only to keep them safe: a board that has one opens read-only and empty, with the same message as a board saved by a newer version, and nothing in it is changed or deleted. The first save of such a card upgrades the database in the same step, as the first frame does, and from then on builds from before this one cannot open the board, even after the card is deleted.
+- **Lists, checklists, quotes, dividers, code blocks and inline code** are stored in a newer format. The first save of a text that uses one upgrades the database in the same step, as the first frame does. From then on, builds from before this one cannot open the board, even after those blocks are gone. A text that goes back to plain lines and headings is stored in the old form again.
+- **A fixed height or paper from a later build** is stored in the same newer format, and this build cannot make either yet. It reads them only to keep them safe: a board that has one opens read-only and empty, with the same message as a board saved by a newer version, and nothing in it is changed or deleted.
 - A card containing something this build does not recognise at all, such as a kind of block added after it, makes the board unreadable here: it opens read-only and stays exactly as stored.
 - If another tab holds the database while a frame is first being saved, the save fails after a few seconds with a Retry; close the other tab and retry.
 
 ### Known limits
 
 - One board per browser profile and origin.
-- Until a board has its first frame or rich text card, an open tab of the previous build can still overwrite it or prune its unused images, as it always could. This build reports the conflict instead of overwriting back, and re-stores any image bytes that are missing the next time it saves.
+- Until a board has its first frame or text with blocks, an open tab of the previous build can still overwrite it or prune its unused images, as it always could. This build reports the conflict instead of overwriting back, and re-stores any image bytes that are missing the next time it saves.
 - Image bytes are stored as uploaded (no downscaling) and are also kept in memory for the session, so that undo can always bring an image back; very large images are limited by browser storage quota, and a failed write is reported in the header.
 - Something sitting inside a frame without belonging to it looks the same as something that does. The item count and "Select with contents" tell you which is which.
 - A new text belongs to a frame based on the centre of its box. A click creates a box ten font sizes wide, so a short note near the right edge can be loose even when its words are inside. Drawing a box lets you place its centre. Its frame is decided again when you first stop typing, so overflow can move the centre below the frame. You can move or resize the box afterwards. Whether a new text should keep the frame it started in is an open design question.
@@ -240,6 +279,12 @@ Everything is stored in this browser's IndexedDB, for this origin (`http://local
 - A locked item selected from the list is let go as soon as you press on it on the board, because the press goes to whatever lies beneath it (or starts a marquee).
 - "Select with contents" stays available for a frame that owns only locked things; it then selects the frame alone.
 - Alt+double-click on a covered text that you selected from the list starts editing it while it is still hidden under whatever covers it, so typing changes text you cannot see. Whether that double-click should be ignored, or bring the text into view, is an open design question.
+- Pasting keeps today's rule for now: blocks never come with a paste. A list, quote or code copied from a text arrives as plain lines, and pasted Markdown markers such as `- ` stay as they are. Plain text pasted into a text that has blocks takes the formatting of the place it is pasted, without the three oddities listed above, which apply to texts without blocks only.
+- On a keyboard where the backtick is a dead key (it waits for the next key), the backtick arrives as composed text, so `` `code` `` and ```` ``` ```` stay as typed. Use the panel's **Inline code** and **Code block** buttons instead.
+- In a centred or right-aligned text, list markers and checkboxes stay at the left of their items while the words move.
+- Numbers of three digits or more reach past the left edge of the text.
+- Backspace at the start of a line just after a list moves that line into the list as its last item.
+- The block buttons sit in one unlabelled row (their names show on hover), and with a text selected the layer list below the panel has a little less room than before.
 
 ## Testing
 
@@ -251,7 +296,7 @@ npm run test:e2e           # starts its own dev server on :5199 and runs e2e/*.s
 ```
 
 - **Unit tests** (`src/**/*.test.ts`, Vitest) cover the pure model (documents, rich text, ownership rules, scale limits, hit geometry), history, persistence (revision tokens, the database upgrade, asset presence, with `fake-indexeddb`), keyboard handling, crop, Fit, Fill and replace geometry, and the `Editor` state machines (hydration, gestures, frames, layers, locking, crop mode, Fit and Fill, replacing an image) on a small fake of Fabric, since jsdom has no canvas.
-- **e2e tests** (`e2e/`, Playwright) run the real app and real IndexedDB in a real browser: `hydration.spec.ts` (nothing is editable or saved before the board has loaded; a board that cannot be restored is read-only and untouched), `gestures.spec.ts` (what a save sees during a drag, cancelling, mouse buttons, the single scale factor), `frames.spec.ts` (drawing, hit testing, ownership, carrying, resizing), `layers.spec.ts` (selecting covered objects from the layer list and Alt-dragging them, reordering, multi-selections built from the list, leaving a text edit, the panel's place on screen), `locking.spec.ts` (presses, marquees and Shift-click passing through locked things, a locked member travelling with its frame, the three ways to lock, undo, save and reload), `images.spec.ts` (cropping by handles and by moving the box, on rotated and scaled images, proving with canvas pixel samples that the kept pixels do not move; cancelling; what a save and a reload see mid-crop; Fit and Fill; frame belonging; a cropped image in a multi-selection), `replace.spec.ts` (replacing a picture through the file chooser keeps the box, owner and stacking, with pixel samples of the new picture; undo, reload and which picture files stay stored; a target deleted or locked while the dialog is open), `storage.spec.ts` (opening a milestone 1 board, the upgrades, two tabs, rich cards from a later build), `text.spec.ts` (formatted text drawn, saved, scaled, undone and typed into), `formatting.spec.ts` (the panel's text controls and `Ctrl/Cmd+B`, `I`, `U` on a range, at a caret and on a whole box), `texttool.spec.ts` (dragging out a text box with the Text tool, and the click that still gives the default box) and `typing.spec.ts` (the typing shortcuts typed for real, what stays literal, Backspace and `Ctrl/Cmd+Z` to undo one, and that typing goes on normally afterwards). What the page shows is checked on composited screenshots. `interleaving.spec.ts`, `dom-editing.spec.ts` and `dom-preview.spec.ts` run real key presses and pointer actions on the app and compare what it saves, records and shows with what the earlier Fabric canvas did for the same actions, and `scene-layer.spec.ts` compares the drawn text with it line by line. That canvas is gone: what it did was recorded once by running it, before it was removed, and is kept as frozen references in `e2e/fabric-reference/` (and `src/editor/testing/fabric-reference/` for the unit tests). They were recorded in Chromium on Windows, so on another platform the comparisons that measure text can fail on the fonts alone. `text-engine-parity.spec.ts` compares the text engine edit by edit with a frozen copy of that canvas's text code (`src/editor/testing/fabricTextOracle.ts`). Fixtures are generated in code, including boards written by a frozen copy of the previous build's storage code; each test gets an isolated browser context, so it never touches your own profile or data.
+- **e2e tests** (`e2e/`, Playwright) run the real app and real IndexedDB in a real browser: `hydration.spec.ts` (nothing is editable or saved before the board has loaded; a board that cannot be restored is read-only and untouched), `gestures.spec.ts` (what a save sees during a drag, cancelling, mouse buttons, the single scale factor), `frames.spec.ts` (drawing, hit testing, ownership, carrying, resizing), `layers.spec.ts` (selecting covered objects from the layer list and Alt-dragging them, reordering, multi-selections built from the list, leaving a text edit, the panel's place on screen), `locking.spec.ts` (presses, marquees and Shift-click passing through locked things, a locked member travelling with its frame, the three ways to lock, undo, save and reload), `images.spec.ts` (cropping by handles and by moving the box, on rotated and scaled images, proving with canvas pixel samples that the kept pixels do not move; cancelling; what a save and a reload see mid-crop; Fit and Fill; frame belonging; a cropped image in a multi-selection), `replace.spec.ts` (replacing a picture through the file chooser keeps the box, owner and stacking, with pixel samples of the new picture; undo, reload and which picture files stay stored; a target deleted or locked while the dialog is open), `storage.spec.ts` (opening a milestone 1 board, the upgrades, two tabs, rich cards from a later build), `writing.spec.ts` (lists, checklists, quotes, dividers and code typed for real, Tab in lists, what is kept, the storage upgrade, that entering and leaving an edit moves nothing, what the page and a frame preview paint, transforms, captions and a board going read-only mid-edit), `text.spec.ts` (formatted text drawn, saved, scaled, undone and typed into), `formatting.spec.ts` (the panel's text controls and `Ctrl/Cmd+B`, `I`, `U` on a range, at a caret and on a whole box), `texttool.spec.ts` (dragging out a text box with the Text tool, and the click that still gives the default box) and `typing.spec.ts` (the typing shortcuts typed for real, what stays literal, Backspace and `Ctrl/Cmd+Z` to undo one, and that typing goes on normally afterwards). What the page shows is checked on composited screenshots. `interleaving.spec.ts`, `dom-editing.spec.ts` and `dom-preview.spec.ts` run real key presses and pointer actions on the app and compare what it saves, records and shows with what the earlier Fabric canvas did for the same actions, and `scene-layer.spec.ts` compares the drawn text with it line by line. That canvas is gone: what it did was recorded once by running it, before it was removed, and is kept as frozen references in `e2e/fabric-reference/` (and `src/editor/testing/fabric-reference/` for the unit tests). They were recorded in Chromium on Windows, so on another platform the comparisons that measure text can fail on the fonts alone. `text-engine-parity.spec.ts` compares the text engine edit by edit with a frozen copy of that canvas's text code (`src/editor/testing/fabricTextOracle.ts`). Fixtures are generated in code, including boards written by a frozen copy of the previous build's storage code; each test gets an isolated browser context, so it never touches your own profile or data.
 - Use a browser already on your machine instead of the bundled one with `PW_CHANNEL=msedge` or `PW_CHANNEL=chrome`; change the port with `E2E_PORT`.
 - Failure traces and screenshots go to `test-results/` (git-ignored).
 
@@ -271,6 +316,7 @@ Shortcuts never fire while you are typing in a field or editing text, except `Ct
 | `[` / `]`                   | Send backward / bring forward (frames stay behind content) |
 | `Ctrl/Cmd+[` / `]`          | Send to back / bring to front  |
 | `Ctrl/Cmd+Shift+L`          | Lock the selection; unlock a locked one |
+| `Tab` / `Shift+Tab` (in a list item) | Nest the item / move it back out (elsewhere in a text, `Tab` leaves it) |
 | `Ctrl/Cmd+B` / `I` / `U`    | Bold / italic / underline: the selected characters (or what you type next) while editing a text; the whole box when one text is selected |
 | `+` / `-` / `0` / `Shift+1` | Zoom in / out / 100% / fit     |
 | `Esc`                       | Cancel what is in progress (also a crop); otherwise leave the tool, or deselect |
@@ -289,4 +335,4 @@ Only the primary mouse button edits. The middle button pans. Holding Alt while p
 - `src/persistence/` has the IndexedDB store (document and image bytes written in one transaction, guarded by a revision token) and the `Autosaver` status machine.
 - `src/input/shortcuts.ts` maps key events to actions and decides when to stay out of the way.
 
-The saved document references images by id; the bytes live in a separate IndexedDB store. Frames have stable ids, names and unrotated rectangles, and each object records the frame that owns it. A text's formatting is stored as character ranges (UTF-16 offsets into its text) and per-line heading levels, and turned into the text engine's document to be drawn and edited (`src/editor/textSchema.ts`); a text saved by this build is stored exactly as the earlier canvas stored it. Undo/redo restores objects from serialized snapshots, using already-decoded images, so it is synchronous.
+The saved document references images by id; the bytes live in a separate IndexedDB store. Frames have stable ids, names and unrotated rectangles, and each object records the frame that owns it. A text's formatting is stored as character ranges (UTF-16 offsets into its text) and per-line heading levels, and turned into the text engine's document to be drawn and edited (`src/editor/textSchema.ts`); a text without blocks is stored exactly as the earlier canvas stored it. A text with lists, checklists, quotes, dividers or code is stored as a tree of blocks (`blocks`, `src/model/textDoc.ts`), with its plain text beside it. Undo/redo restores objects from serialized snapshots, using already-decoded images, so it is synchronous.

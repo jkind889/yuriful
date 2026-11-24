@@ -5,7 +5,7 @@ import type { HeadingLevel } from '../model/richText.ts'
 import type { CropRect, FontId, FrameRecord, ImageRecord, ObjectRecord, Scene, TextRecord, Viewport } from '../model/types.ts'
 import type { Size } from '../model/viewport.ts'
 import { FONT_STACKS } from './fonts.ts'
-import { docFromText, nodes, renderStatic } from './textSchema.ts'
+import { docFromText, isListType, nodes, renderStatic, textblocksOf } from './textSchema.ts'
 
 /**
  * The board drawn as DOM: frame paper, images and text cards, in one layer that sits beneath a
@@ -56,6 +56,20 @@ export const BASELINE_DEPTH = FONT_SIZE_MULT * (1 - FONT_SIZE_FRACTION)
 export const LAST_LINE_TRIM = LINE_PITCH - FONT_SIZE_MULT
 /** Fabric's decoration thickness, in the box's font sizes. */
 export const DECORATION_THICKNESS = 66.667 / 1000
+
+// ---- the layout of rich blocks ---------------------------------------------------------------------
+//
+// Lengths, in em of the box's base font size, that move a line's words to the right; the same
+// values are in `.yuriful-prose` (styles.css), and a browser test measures them there. Because they
+// are in em, a corner scale (which folds into the font size) scales them with the text. Changing one
+// re-wraps every saved text that uses the block.
+
+/** How far each level of a list (bullet, numbered or check) moves its items in: the marker's gutter. */
+export const LIST_INDENT_EM = 1.5
+/** How far a quote moves its lines in: its rule and the gap after it. */
+export const QUOTE_INDENT_EM = 1
+/** A code block's padding on either side. */
+export const CODE_PAD_X_EM = 0.75
 
 /** A paragraph (0) and the three heading levels. */
 const LEVELS = [0, 1, 2, 3] as const
@@ -305,13 +319,33 @@ export function resetTypography() {
 interface CardLines {
   font: FontId
   fontSize: number
+  /** The lines: every textblock (paragraph, heading, code block) in order. */
   blocks: PMNode[]
   /** Per line: what its widths depend on (the line itself, the box font and size). */
   keys: string[]
+  /** Per line: how far its blocks move its words in, in scene units (`lineIndent`). */
+  indents: number[]
+  /** Per line: it is a code block, which wraps anywhere and keeps no word whole. */
+  code: boolean[]
 }
 let lastLines: { key: string; lines: CardLines | null } | null = null
 
-/** The lines (top-level blocks) of a text and their cache keys; the last text's are kept, so a resize does not read it again. */
+/**
+ * How far the blocks around the textblock at `pos` move its words in, in em of the base size: each
+ * list it is in, each quote, and a code block's own padding.
+ */
+export function lineIndent(doc: PMNode, pos: number): number {
+  const $p = doc.resolve(pos + 1)
+  let em = $p.parent.type === nodes.codeBlock ? 2 * CODE_PAD_X_EM : 0
+  for (let d = $p.depth - 1; d > 0; d--) {
+    const t = $p.node(d).type
+    if (isListType(t)) em += LIST_INDENT_EM
+    else if (t === nodes.blockquote) em += QUOTE_INDENT_EM
+  }
+  return em
+}
+
+/** The lines (textblocks) of a text and their cache keys; the last text's are kept, so a resize does not read it again. */
 function cardLines(rec: CardSource): CardLines | null {
   const key = JSON.stringify([rec.text, rec.spans, rec.headings, rec.blocks, rec.font, rec.fontSize])
   if (lastLines?.key === key) return lastLines.lines
@@ -319,11 +353,16 @@ function cardLines(rec: CardSource): CardLines | null {
   let lines: CardLines | null = null
   if (read) {
     const font = read.box.font ?? 'sans'
-    const blocks: PMNode[] = []
-    read.doc.forEach((block) => {
-      blocks.push(block)
-    })
-    lines = { font, fontSize: rec.fontSize, blocks, keys: blocks.map((b) => JSON.stringify([b.toJSON(), font, rec.fontSize])) }
+    const tbs = textblocksOf(read.doc)
+    const blocks = tbs.map((t) => t.node)
+    lines = {
+      font,
+      fontSize: rec.fontSize,
+      blocks,
+      keys: blocks.map((b) => JSON.stringify([b.toJSON(), font, rec.fontSize])),
+      indents: tbs.map((t) => lineIndent(read.doc, t.pos) * rec.fontSize),
+      code: blocks.map((b) => b.type === nodes.codeBlock),
+    }
   }
   lastLines = { key, lines }
   return lines
@@ -334,7 +373,7 @@ function wordKey(block: PMNode, start: number, end: number, font: FontId, fontSi
   let key: string | undefined
   block.forEach((child, offset) => {
     if (key === undefined && offset <= start && offset + child.nodeSize >= end) {
-      key = JSON.stringify([font, fontSize, block.attrs.level ?? 0, child.marks.map((m) => m.toJSON()), child.text?.slice(start - offset, end - offset)])
+      key = JSON.stringify([font, fontSize, block.type.name, block.attrs.level ?? 0, child.marks.map((m) => m.toJSON()), child.text?.slice(start - offset, end - offset)])
     }
   })
   return key
@@ -476,7 +515,7 @@ function measureLines(rec: CardSource, doc: Document): LineMeasure[] | null {
   })
   for (const i of fresh) {
     const m = out[i]!
-    m.tokens = m.words.filter((t) => t.breakable)
+    m.tokens = lines.code[i] ? [] : m.words.filter((t) => t.breakable)
     m.widestWord = Math.max(0, ...m.words.map((t) => t.width))
   }
   if (measured || probed.length === 0) {
@@ -487,10 +526,10 @@ function measureLines(rec: CardSource, doc: Document): LineMeasure[] | null {
 }
 
 /** The widest grapheme of each line, measured once per line (and once per distinct grapheme). */
-function measureGraphemes(rec: CardSource, measures: LineMeasure[], doc: Document) {
+function measureGraphemes(rec: CardSource, measures: LineMeasure[], doc: Document, only: (i: number) => boolean = () => true) {
   const lines = cardLines(rec)
   if (!lines) return
-  const which = measures.flatMap((m, i) => (m.widestGrapheme === undefined ? [i] : []))
+  const which = measures.flatMap((m, i) => (m.widestGrapheme === undefined && only(i) ? [i] : []))
   if (which.length === 0) return
   withProbe(which.map((i) => lines.blocks[i]!), lines.font, rec.fontSize, doc, (els, range) => {
     els.forEach((el, k) => {
@@ -525,10 +564,14 @@ const roundUp = (n: number): number => Math.ceil(n * 100 - 1e-6) / 100
  */
 export function minCardWidth(rec: CardSource, doc: Document = document): number {
   const measures = measureLines(rec, doc)
-  if (!measures) return 0
-  if (!isDrawn(rec)) return roundUp(Math.max(0, ...measures.map((m) => m.widestWord)))
-  measureGraphemes(rec, measures, doc)
-  return roundUp(Math.max(0, ...measures.map((m) => m.widestGrapheme ?? 0)))
+  const lines = cardLines(rec)
+  if (!measures || !lines) return 0
+  // A line's floor is its widest word (grapheme, on a drawn box or in a code block, which wraps
+  // anywhere) plus how far its blocks move it in.
+  const drawn = isDrawn(rec)
+  measureGraphemes(rec, measures, doc, (i) => drawn || lines.code[i] === true)
+  const floor = (m: LineMeasure, i: number) => (drawn || lines.code[i] ? (m.widestGrapheme ?? 0) : m.widestWord) + (lines.indents[i] ?? 0)
+  return roundUp(Math.max(0, ...measures.map(floor)))
 }
 
 /**
@@ -553,7 +596,8 @@ export function liveCardWidth(rec: CardSource, doc: Document = document): number
  */
 export function effectiveCardWidth(rec: CardSource, doc: Document = document): number {
   const width = Math.max(rec.width, minCardWidth(rec, doc))
-  if (isDrawn(rec)) return width
+  // The plain-sans first layout is the earlier canvas's, which never drew a rich text.
+  if (isDrawn(rec) || rec.blocks) return width
   return Math.max(width, minCardWidth({ text: rec.text, fontSize: rec.fontSize, width: rec.width }, doc))
 }
 
@@ -715,14 +759,15 @@ export function measureDrawnTokens(rec: CardSource, doc: Document = document): M
  * is wider than `width`, as Fabric measures them. Words that fit are left alone, so this costs
  * nothing unless a word is wider than the box, and only once per word.
  */
-export function measureWideTokens(rec: CardSource, tokens: MeasuredToken[][], width: number, doc: Document = document) {
+export function measureWideTokens(rec: CardSource, tokens: MeasuredToken[][], width: number | ((line: number) => number), doc: Document = document) {
   const lines = cardLines(rec)
   if (!lines) return
   tokens.forEach((line, i) => {
     const block = lines.blocks[i]
-    if (!block) return
+    if (!block || lines.code[i]) return
+    const w = typeof width === 'number' ? width : width(i)
     for (const t of line) {
-      if (t.graphemes || t.width <= width + FIT_SLACK) continue
+      if (t.graphemes || t.width <= w + FIT_SLACK) continue
       // A repeated word measured before: its graphemes, moved to where this one starts.
       const key = wordKeys.get(t)
       const known = key === undefined ? undefined : wordCache.get(key)?.graphemes
@@ -747,9 +792,12 @@ export function measureWideTokens(rec: CardSource, tokens: MeasuredToken[][], wi
 export function noWrapRanges(rec: CardSource, doc: Document = document): NoWrapRange[][] {
   if (isDrawn(rec)) {
     const width = effectiveCardWidth(rec, doc)
+    const lines = cardLines(rec)
+    // A line inside blocks has the box's width less how far they move it in; a code block keeps no word whole.
+    const lineWidth = (i: number) => width - (lines?.indents[i] ?? 0)
     const tokens = measureDrawnTokens(rec, doc)
-    measureWideTokens(rec, tokens, width, doc)
-    return tokens.map((line) => drawnNoWrapRanges(line, width))
+    measureWideTokens(rec, tokens, lineWidth, doc)
+    return tokens.map((line, i) => (lines?.code[i] ? [] : drawnNoWrapRanges(line, lineWidth(i))))
   }
   return (measureLines(rec, doc) ?? []).map((m) => m.tokens.map(({ start, end }) => ({ start, end })))
 }
@@ -813,7 +861,8 @@ export function renderCardBody(body: HTMLElement, rec: CardSource, ranges: NoWra
     return
   }
   const frag = renderStatic(read.doc, doc)
-  Array.from(frag.children).forEach((block, i) => {
+  // Each line's element, in document order (the same order as the textblocks, and so as `ranges`).
+  Array.from(frag.querySelectorAll('p, h1, h2, h3, pre')).forEach((block, i) => {
     wrapRanges(block, ranges[i] ?? [])
     wrapTabs(block)
   })

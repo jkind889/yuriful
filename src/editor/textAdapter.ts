@@ -1,6 +1,6 @@
 import type { FabricObject } from 'fabric'
 import { EditorState } from 'prosemirror-state'
-import type { Transaction } from 'prosemirror-state'
+import type { Command, Transaction } from 'prosemirror-state'
 import type { Node as PMNode } from 'prosemirror-model'
 import { Decoration, DecorationSet } from 'prosemirror-view'
 import type { EditorView } from 'prosemirror-view'
@@ -12,15 +12,17 @@ import type { Mark, TextAlign, TextFormatting } from '../model/richText.ts'
 import { snapPreview } from './captionSnapLayer.ts'
 import type { CaptionSnapPreview } from './captionSnapLayer.ts'
 import type { CardSync, DomScene, WidthAnchor } from './domScene.ts'
-import type { TextFormatInfo } from './Editor.ts'
+import type { TextBlockInfo, TextFormatInfo } from './Editor.ts'
 import type { FrameCanvas } from './FrameCanvas.ts'
 import { ProxyRect, captionOf, captionSideOf, centerOf, createProxy, idOf, isLocked, ownerOf, setOwner, setTextData, textDataOf, toRecord } from './objects.ts'
 import type { TextData } from './objects.ts'
-import { boxFormat, clearRangeFonts, setBoxLevel, toggleBoxMark } from './textRules.ts'
+import { BLOCK_KINDS, allText, boxBlocks, boxFormat, clearRangeFonts, setBoxLevel, toggleBoxMark, toggleCodeBlock, toggleList, toggleQuote } from './textRules.ts'
+import type { BlockKind } from './textRules.ts'
 import { noWrapRanges } from './sceneLayer.ts'
-import { boxOf, contentFromDoc, docFromText, plainTextOfDoc, textOffsetAt } from './textSchema.ts'
+import { boxOf, contentFromDoc, docFromText, plainTextOfDoc, textOffsetAt, textblocksOf } from './textSchema.ts'
 import { createEditSession } from './textSession.ts'
 import type { EditSession } from './textSession.ts'
+import { isBlankTextDoc } from '../model/textDoc.ts'
 import type { TextContent } from '../model/textDoc.ts'
 
 const NO_FRAMES: ReadonlySet<string> = new Set()
@@ -70,6 +72,8 @@ export interface TextAdapter {
   isBlank(obj: FabricObject | null | undefined): boolean
   fontSizeOf(obj: FabricObject): number
   formatInfo(obj: FabricObject): TextFormatInfo
+  /** What the block controls show (inline code, lists, quote, code block). */
+  blockInfo(obj: FabricObject): TextBlockInfo
   /** Folds any residual scale into the text's size (no limit of its own); true when there was one. */
   normalizeScale(obj: FabricObject): boolean
   /** A caption's background colour ('' for none). */
@@ -108,8 +112,12 @@ export interface TextAdapter {
   /** The editor is being disposed: an edit in progress ends without committing anything. */
   dispose(): void
   setFontSize(size: number): void
-  toggleMark(mark: Mark): void
+  toggleMark(mark: Mark | 'code'): void
   setHeading(level: 0 | 1 | 2 | 3): void
+  /** A bullet list, numbered list, checklist, quote or code block: the selected lines while editing, every line of a selected box. */
+  toggleBlock(kind: BlockKind): void
+  /** A divider at the caret of the edited text (nothing outside an edit). */
+  insertDivider(): void
   setFont(font: FontId): void
   setAlign(align: TextAlign): void
   setColor(color: string): void
@@ -139,6 +147,7 @@ function withContent(td: TextData, c: TextContent): TextData {
     ...(c.color !== undefined && { color: c.color }),
     ...(c.spans !== undefined && { spans: c.spans }),
     ...(c.headings !== undefined && { headings: c.headings }),
+    ...(c.blocks !== undefined && { blocks: c.blocks }),
     ...(td.captionBackground && { captionBackground: td.captionBackground }),
   }
 }
@@ -255,7 +264,7 @@ export class DomTextAdapter implements TextAdapter {
 
   isBlank(obj: FabricObject | null | undefined): boolean {
     const td = textDataOf(obj)
-    return td !== undefined && td.text.trim() === ''
+    return td !== undefined && isBlankTextDoc(td)
   }
 
   fontSizeOf(obj: FabricObject): number {
@@ -278,6 +287,15 @@ export class DomTextAdapter implements TextAdapter {
     }
     const { font, ...state } = boxFormat(read.doc, read.box.font ?? 'sans')
     return { editing: false, font, align: read.box.align ?? 'left', color: read.box.color ?? DEFAULT_TEXT_COLOR, ...state }
+  }
+
+  /** What the block controls show: inline code and each block, over the whole box, or while it is edited the selection or caret. */
+  blockInfo(obj: FabricObject): TextBlockInfo {
+    const td = textDataOf(obj)
+    if (td && this.edit?.target === obj) return this.edit.session.blockFormat()
+    const read = td ? docFromText(td) : null
+    if (!read) return { code: 'off', blocks: Object.fromEntries(BLOCK_KINDS.map((k) => [k, 'off'])) as TextBlockInfo['blocks'] }
+    return boxBlocks(read.doc)
   }
 
   /**
@@ -337,7 +355,7 @@ export class DomTextAdapter implements TextAdapter {
     const td = textDataOf(obj)
     const textId = td && idOf(obj)
     // In the Fabric renderer's order: an ineligible text is rejected before anything else is read.
-    if (!td || !textId || this.editedTarget() === obj || isLocked(obj) || obj.angle % 360 !== 0 || td.text.trim() === '') return null
+    if (!td || !textId || this.editedTarget() === obj || isLocked(obj) || obj.angle % 360 !== 0 || isBlankTextDoc(td)) return null
     const geometry = () => ({
       center: obj.getCenterPoint(),
       width: obj.getScaledWidth(),
@@ -637,7 +655,7 @@ export class DomTextAdapter implements TextAdapter {
     this.syncCard(obj, { widen: alignAnchor(td.align) })
     if (!this.host.applying() && this.host.editable()) {
       if (!this.host.busy() && !this.host.cropping() && captionOf(obj)) this.host.syncCaptions(obj)
-      if (!this.commanding || content.text.trim() !== '') this.host.markDirty()
+      if (!this.commanding || !isBlankTextDoc(content)) this.host.markDirty()
     }
     this.host.canvas.requestRenderAll()
     this.host.syncState() // the layer list follows typing; the history buttons follow in-edit undo
@@ -673,10 +691,10 @@ export class DomTextAdapter implements TextAdapter {
     if (!td) return DecorationSet.empty
     this.decorated = this.decorationBasis(td)
     const content = contentFromDoc(doc, boxOf(td))
-    const ranges = noWrapRanges({ ...td, text: content.text, spans: content.spans, headings: content.headings }, this.scene.layer.root.ownerDocument)
+    const ranges = noWrapRanges({ ...td, text: content.text, spans: content.spans, headings: content.headings, blocks: content.blocks }, this.scene.layer.root.ownerDocument)
     const out: Decoration[] = []
-    doc.forEach((block, offset, i) => {
-      const start = offset + 1
+    textblocksOf(doc).forEach(({ node: block, pos }, i) => {
+      const start = pos + 1
       const pieces: Array<{ from: number; to: number }> = []
       let at = 0
       block.forEach((child) => {
@@ -900,7 +918,7 @@ export class DomTextAdapter implements TextAdapter {
     this.syncCard(active, { widen: 'left' })
     this.host.canvas.requestRenderAll()
     // A text that is blank right now (emptied in the middle of an edit) is not in the scene.
-    if (td.text.trim() === '') return
+    if (isBlankTextDoc(td)) return
     if (this.isEditing(active) && captionOf(active)) {
       this.host.syncCaptions(active)
       this.host.markDirty()
@@ -935,7 +953,7 @@ export class DomTextAdapter implements TextAdapter {
    * (`contentFromDoc`). Nothing changes, records or saves when that is what the text already was.
    * A box that grows keeps its alignment edge where it is; its owner never changes.
    */
-  private formatBox(obj: FabricObject, kind: string, change?: (tr: Transaction) => unknown, box?: (fmt: TextFormatting) => TextFormatting) {
+  private formatBox(obj: FabricObject, kind: string, change?: (tr: Transaction) => unknown, box?: (fmt: TextFormatting) => TextFormatting, command?: Command) {
     const td = textDataOf(obj)
     const read = td ? docFromText(td) : null
     if (!td || !read) return
@@ -946,6 +964,13 @@ export class DomTextAdapter implements TextAdapter {
       change(tr)
       doc = tr.doc
     }
+    if (command) {
+      // As in an edit with all the text selected.
+      const state = EditorState.create({ doc: read.doc, selection: allText(read.doc) ?? undefined })
+      command(state, (tr) => {
+        doc = tr.doc
+      })
+    }
     const after = contentFromDoc(doc, box ? boxOf(box(read.box)) : read.box)
     if (JSON.stringify(after) === JSON.stringify(before)) return
     const anchor = alignAnchor(td.align)
@@ -955,7 +980,7 @@ export class DomTextAdapter implements TextAdapter {
     this.host.commit(`format-${kind}:${idOf(obj) ?? ''}`)
   }
 
-  toggleMark(mark: Mark) {
+  toggleMark(mark: Mark | 'code') {
     const obj = this.formatTarget()
     if (obj && !this.inEdit(obj, (s) => s.toggleMark(mark))) this.formatBox(obj, `mark-${mark}`, (tr) => toggleBoxMark(tr, mark))
   }
@@ -963,6 +988,23 @@ export class DomTextAdapter implements TextAdapter {
   setHeading(level: 0 | 1 | 2 | 3) {
     const obj = this.formatTarget()
     if (obj && !this.inEdit(obj, (s) => s.setHeading(level))) this.formatBox(obj, 'heading', (tr) => setBoxLevel(tr, level))
+  }
+
+  /**
+   * A block on the selected lines while editing; on a selected box, the same command with all of its
+   * text selected (every line), as an undo step of its own.
+   */
+  toggleBlock(kind: BlockKind) {
+    const obj = this.formatTarget()
+    if (!obj || this.inEdit(obj, (s) => s.toggleBlock(kind))) return
+    const command = kind === 'blockquote' ? toggleQuote : kind === 'codeBlock' ? toggleCodeBlock : toggleList(kind)
+    this.formatBox(obj, `block-${kind}`, undefined, undefined, command)
+  }
+
+  /** A divider at the caret while editing. A selected box has no caret, so nothing happens there. */
+  insertDivider() {
+    const obj = this.formatTarget()
+    if (obj && this.edit?.target === obj) this.inEdit(obj, (s) => s.insertDivider())
   }
 
   /** The font of the selection or caret while editing; outside an edit the whole box's font, every font override going. */

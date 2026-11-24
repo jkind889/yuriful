@@ -50,6 +50,9 @@ import { History } from '../model/history.ts'
 import { layoutOffsets } from '../model/layout.ts'
 import type { Layout } from '../model/layout.ts'
 import type { Mark, MarkState, TextAlign } from '../model/richText.ts'
+import type { BlockKind } from './textRules.ts'
+export type { BlockKind } from './textRules.ts'
+import { isBlankTextDoc } from '../model/textDoc.ts'
 import { canReorderLayered, reorderLayered } from '../model/layers.ts'
 import type { LayerDropSide, LayerOp } from '../model/layers.ts'
 import { DEFAULT_TITLE, DOC_VERSION } from '../model/types.ts'
@@ -137,6 +140,8 @@ export interface SelectionInfo {
   caption: { edit: 'add' | 'edit' | null; canEdit: boolean; attached: boolean; canDetach: boolean; canMake: boolean; canStyle: boolean; background?: string }
   /** Only for a single text: what the formatting controls show. */
   text: TextFormatInfo | null
+  /** The block controls of the one selected text (see `TextBlockInfo`), or null. */
+  textBlocks: TextBlockInfo | null
 }
 
 /**
@@ -155,6 +160,17 @@ export interface TextFormatInfo {
   heading: number | 'mixed'
   /** Bold is the headings' own here and cannot be changed (every character concerned is on a heading line). */
   boldFromHeading: boolean
+}
+
+/**
+ * What the block controls show for the one selected text, beside `TextFormatInfo`: inline code over
+ * the characters concerned, and each kind of block over the lines concerned (a line is in a list
+ * when its nearest list is of that kind). While editing, the selected range or the caret's line and
+ * next character; otherwise the whole box.
+ */
+export interface TextBlockInfo {
+  code: MarkState
+  blocks: Record<BlockKind, MarkState>
 }
 
 export interface Notice {
@@ -680,7 +696,7 @@ export class Editor {
       if (existing.length) this.canvas.remove(...existing)
       const built: FabricObject[] = scene.frames.map((rec) => this.buildFrame(rec))
       for (const rec of scene.objects) {
-        if (rec.type === 'text' && rec.text.trim() === '') continue // an old board may still store a blank text: invisible, so not shown
+        if (rec.type === 'text' && isBlankTextDoc(rec)) continue // an old board may still store a blank text: invisible, so not shown
         const obj = this.build(rec, (id) => this.assets.get(id))
         if (obj) built.push(obj)
       }
@@ -789,6 +805,7 @@ export class Editor {
         background: (styled ? this.text.backgroundOf(styled) : undefined) || undefined,
       },
       text: this.text.isText(single) ? this.text.formatInfo(single) : null,
+      textBlocks: this.text.isText(single) ? this.text.blockInfo(single) : null,
     }
   }
 
@@ -2554,6 +2571,24 @@ export class Editor {
   /** Heading level 1 to 3, or 0 for body text. Editing: every line the selection touches (the caret's line). Not editing: every line. */
   setHeading(level: 0 | 1 | 2 | 3) {
     this.text.setHeading(level)
+  }
+
+  /** Inline code: the selected range, a caret's next characters, or the whole box. */
+  toggleCode() {
+    this.text.toggleMark('code')
+  }
+
+  /**
+   * Bullet list, numbered list, checklist, quote or code block. Editing: the lines the selection
+   * touches. Not editing: every line, as one undo step. Off when every line concerned already is one.
+   */
+  toggleTextBlock(kind: BlockKind) {
+    this.text.toggleBlock(kind)
+  }
+
+  /** A divider at the caret of the text being edited; nothing on a box that is not being edited. */
+  insertTextDivider() {
+    this.text.insertDivider()
   }
 
   /** The font of the selection or whole box, or the next characters typed at a caret. */

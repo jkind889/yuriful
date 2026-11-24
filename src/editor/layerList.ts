@@ -1,5 +1,6 @@
 import type { FabricObject } from 'fabric'
-import { frameNameOf, idOf, isFrame, isLocked, ownerOf, plainTextOf, toRecord } from './objects.ts'
+import { isBlankTextDoc } from '../model/textDoc.ts'
+import { frameNameOf, idOf, isFrame, isLocked, ownerOf, textDataOf, toRecord } from './objects.ts'
 
 /** One row of the layer list. */
 export interface LayerItem {
@@ -55,12 +56,14 @@ export function computeLayers(
       continue
     }
     // A text: its proxy's card.
-    const text = plainTextOf(o)
-    if (text !== undefined && text.trim() === '') continue
+    const td = textDataOf(o)
+    if (td && isBlankTextDoc(td)) continue
+    const text = td?.text
     const owner = ownerOf(o)
     const frameName = owner !== undefined ? (frameNames.get(owner) ?? null) : null
     if (text !== undefined) {
-      content.push({ id, kind: 'text', label: textLabel(text), selected: selected.has(o), frameName, locked: isLocked(o) })
+      // A kept text with no characters (only a divider or a ticked box) is listed as `Text`, as an unnamed image is as `Image`.
+      content.push({ id, kind: 'text', label: textLabel(text) || 'Text', selected: selected.has(o), frameName, locked: isLocked(o) })
     } else {
       const rec = toRecord(o)
       const name = rec?.type === 'image' ? assetName(rec.assetId)?.trim() : undefined

@@ -295,7 +295,7 @@ describe('resolveEditingShortcut: a held key, and Backspace after a typing short
 })
 
 describe('typedCharacter: what a key types that can complete a typing shortcut', () => {
-  it('a space or a star typed into the edited text, AltGr included; nothing else', () => {
+  it('a space, a star, a hyphen or a backtick typed into the edited text, AltGr included; nothing else', () => {
     const ta = el('textarea')
     const ctx = { editedTextarea: ta }
     expect(typedCharacter(key(' ', { code: 'Space', target: ta }), ctx)).toBe(' ')
@@ -307,6 +307,9 @@ describe('typedCharacter: what a key types that can complete a typing shortcut',
     expect(typedCharacter(key('*', { isComposing: true, target: ta }), ctx)).toBeNull()
     expect(typedCharacter(key('Process', { target: ta }), ctx)).toBeNull() // a key the IME takes
     expect(typedCharacter(key('#', { target: ta }), ctx)).toBeNull() // only the last character of a marker counts
+    expect(typedCharacter(key('-', { code: 'Minus', target: ta }), ctx)).toBe('-')
+    expect(typedCharacter(key('`', { code: 'Backquote', target: ta }), ctx)).toBe('`')
+    expect(typedCharacter(key('Dead', { code: 'Backquote', target: ta }), ctx)).toBeNull() // a dead key: the backtick comes composed
     expect(typedCharacter(key('a', { target: ta }), ctx)).toBeNull()
     expect(typedCharacter(key('*', { target: el('textarea') }), ctx)).toBeNull()
     expect(typedCharacter(key('*', { target: ta }), { editedTextarea: null })).toBeNull()

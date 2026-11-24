@@ -173,7 +173,7 @@ export function resolveEditingShortcut(e: KeyEventLike, ctx: EditingContext): Ed
 
 /**
  * The character a key is about to type into the text being edited, when it is one that can
- * complete a typing shortcut (a space or a `*`); otherwise null. Only observed, never claimed:
+ * complete a typing shortcut (a space, a `*`, the third `-` of a divider, or a backtick); otherwise null. Only observed, never claimed:
  * the editor fires a shortcut only for a character that a key typed, so that pasted, dropped
  * and composed text stays as it is. Not during IME composition, and not with Ctrl/Cmd held
  * unless Alt is held too (AltGr, which some layouts need for these characters, is reported as
@@ -182,7 +182,7 @@ export function resolveEditingShortcut(e: KeyEventLike, ctx: EditingContext): Ed
 export function typedCharacter(e: KeyEventLike, ctx: EditingContext): string | null {
   if (ctx.editedTextarea === null || e.target !== ctx.editedTextarea || e.isComposing) return null
   if ((e.ctrlKey || e.metaKey) && !e.altKey) return null
-  return e.key === ' ' || e.key === '*' ? e.key : null
+  return e.key === ' ' || e.key === '*' || e.key === '-' || e.key === '`' ? e.key : null
 }
 
 /** Space held (outside fields/buttons) temporarily switches to the hand tool. */

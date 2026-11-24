@@ -4,7 +4,7 @@ import { DEFAULT_TEXT_COLOR, HEADING_SCALE } from '../model/richText.ts'
 import type { TextRecord } from '../model/types.ts'
 import { FONT_STACKS } from './fonts.ts'
 import { cardBleed, cardSvg, frameBitmapSize, PROSE_CSS, xmlSafe } from './renderFrameBitmap.ts'
-import {
+import { CODE_PAD_X_EM, LIST_INDENT_EM, QUOTE_INDENT_EM,
   BASELINE_DEPTH,
   LAST_LINE_TRIM,
   LINE_PITCH,
@@ -311,8 +311,18 @@ describe('a card body', () => {
 
   it('shows a text this schema cannot read as its plain lines', () => {
     const body = document.createElement('div')
-    renderCardBody(body, { text: 'one\n\ntwo', fontSize: 12, width: 120, blocks: [{ type: 'divider' }] })
+    renderCardBody(body, { text: 'one\n\ntwo', fontSize: 12, width: 120, blocks: [{ type: 'table' } as never] })
     expect(body.innerHTML).toBe('<p>one</p><p><br></p><p>two</p>')
+  })
+
+  it('shows rich blocks, with no-wrap spans and tabs on the lines inside them', () => {
+    const body = document.createElement('div')
+    renderCardBody(
+      body,
+      { text: '', fontSize: 12, width: 120, blocks: [{ type: 'bulletList', items: [{ blocks: [{ type: 'paragraph', content: [{ text: 'a\tb' }] }] }] }, { type: 'divider' }, { type: 'codeBlock', text: 'c' }] },
+      [[{ start: 0, end: 3 }], []],
+    )
+    expect(body.innerHTML).toBe('<ul><li><p><span class="yp-nowrap">a<span class="yp-tab">\t</span>b</span></p></li></ul><hr><pre><code>c</code></pre>')
   })
 })
 
@@ -330,7 +340,15 @@ describe('the prose rules', () => {
     expect(rule('.yuriful-prose')).toContain(`color: ${DEFAULT_TEXT_COLOR};`)
     expect(rule('.yuriful-prose')).toContain(`font-family: ${FONT_STACKS.sans};`)
     expect(rule('.yuriful-prose > :last-child')).toContain(`margin-bottom: -${+LAST_LINE_TRIM.toFixed(4)}em;`)
-    for (const level of [1, 2, 3] as const) expect(rule(`.yuriful-prose > h${level}`)).toContain(`font-size: ${HEADING_SCALE[level]}em;`)
+    for (const level of [1, 2, 3] as const) expect(rule(`.yuriful-prose h${level}`)).toContain(`font-size: ${HEADING_SCALE[level]}em;`)
+    // The lengths the measurer adds for blocks are the stylesheet's.
+    expect(block).toContain(`.yuriful-prose ul,
+.yuriful-prose ol {
+  margin: 0;
+  padding: 0 0 0 ${LIST_INDENT_EM}em;`)
+    expect(block).toMatch(/\.yuriful-prose blockquote \{\n {2}display: flow-root;\n {2}margin: 0\.4em 0;\n {2}padding: 0 0 0 0\.875em;\n {2}border-left: 0\.125em solid /)
+    expect(0.125 + 0.875).toBe(QUOTE_INDENT_EM)
+    expect(block).toMatch(new RegExp(`\\.yuriful-prose pre \\{[^}]*\\n {2}padding: 0\\.5em ${CODE_PAD_X_EM}em;`))
     for (const [id, stack] of Object.entries(FONT_STACKS)) {
       expect(block).toContain(`.yuriful-prose[data-font="${id}"],
 .yuriful-prose [data-font="${id}"] {
