@@ -1,14 +1,14 @@
 import { chainCommands, createParagraphNear, deleteSelection, joinBackward, joinForward, liftEmptyBlock, newlineInCode, splitBlock } from 'prosemirror-commands'
 import { closeHistory, isHistoryTransaction, redo, undo, undoDepth } from 'prosemirror-history'
 import { Fragment, Mark as PMMark } from 'prosemirror-model'
-import type { Node as PMNode, NodeType, ResolvedPos } from 'prosemirror-model'
+import type { Node as PMNode, NodeType, ResolvedPos, Slice } from 'prosemirror-model'
 import { liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list'
 import { AllSelection, EditorState, NodeSelection, Plugin, PluginKey, TextSelection } from 'prosemirror-state'
 import type { Command, Transaction } from 'prosemirror-state'
-import { AddMarkStep, RemoveMarkStep, canJoin, findWrapping, liftTarget } from 'prosemirror-transform'
-import { MARKS, canonicalTextFormatting, headingsAfterEdit, isHeadingLevel, markMask, spansFromCharStyles, splitGraphemes, textAfterEdit, withPendingMarks } from '../model/richText.ts'
+import { AddMarkStep, RemoveMarkStep, Transform, canJoin, findWrapping, liftTarget } from 'prosemirror-transform'
+import { DEFAULT_FONT, MARKS, canonicalTextFormatting, headingsAfterEdit, isHeadingLevel, markMask, spansFromCharStyles, splitGraphemes, textAfterEdit, withPendingMarks } from '../model/richText.ts'
 import type { CharStyle, HeadingLevel, Mark, MarkState, PendingTextStyle, RangeFormat, TextFormatting } from '../model/richText.ts'
-import { RUN_MARKS, blockOf, blockTypeFor, boxOf, contentFromDoc, docFromText, exceedsBounds, fontOf, isItemType, isListType, levelOf, marks, marksOfRun, nodes, posAtTextOffset, runKey, textOffsetAt, textSchema, textblocksOf } from './textSchema.ts'
+import { RUN_MARKS, blockOf, blockTypeFor, boxOf, contentFromDoc, docFromText, exceedsBounds, fontOf, isItemType, isListType, levelOf, marks, marksOfRun, nodes, plainTextOfDoc, posAtTextOffset, runKey, textOffsetAt, textSchema, textblocksOf } from './textSchema.ts'
 import type { TextSource } from './textSchema.ts'
 import type { TextContent } from '../model/textDoc.ts'
 import { blocksToLegacy, isListStart, legacyToBlocks, parseBlocks } from '../model/textDoc.ts'
@@ -1298,8 +1298,11 @@ const copyLeaf = (l: Leaf): Leaf => ({ ...l, frames: [...l.frames] })
  * A list kind on: each selected line whose nearest list is of another kind gets a list of this kind
  * in that list's place (its item a new item of it), and each selected line in no list gets one around
  * it; selected lines next to each other in the same place share one list (an existing list of this
- * kind just before them included). A selected line inside a converted item (a nested line) goes with
- * it; an unselected one stays where it was.
+ * kind just before them included). "Next to each other" is at their own level in the same parent: a
+ * line follows the last selected line in the same place when nothing comes between them but what is
+ * nested in that line's item (a nested list, quote or code block), so `Album`, a nested `Track`, then
+ * `Cover` stay one list. A selected line inside a converted item (a nested line) goes with it; an
+ * unselected one stays where it was.
  */
 function listOn(leaves: readonly Leaf[], selected: (l: Leaf) => boolean, kind: ContainerKind, next: () => number): Leaf[] {
   const out = leaves.map(copyLeaf)
@@ -1312,31 +1315,36 @@ function listOn(leaves: readonly Leaf[], selected: (l: Leaf) => boolean, kind: C
     while (joined.has(t)) t = joined.get(t)!
     return t
   }
-  let prev: { idx: number; key: string; list: number } | null = null
+  /** For each place (the blocks around a line's nearest list), the last selected line there: its index, its list now, and the item it was in. */
+  const lastAt = new Map<string, { idx: number; list: number; item: string | null }>()
   out.forEach((l, idx) => {
     if (!selected(l)) return
     const i = lastListIndex(l.frames)
-    const prefix = i >= 0 ? l.frames.slice(0, i) : l.frames
-    const key = prefix.map(frameKey).join('/')
-    const joins = prev !== null && prev.idx === idx - 1 && prev.key === key
+    const depth = i >= 0 ? i : l.frames.length
+    const key = l.frames.slice(0, depth).map(frameKey).join('/')
+    const item = i >= 0 ? frameKey(leaves[idx]!.frames[i]!) : null
+    const last = lastAt.get(key)
+    // Only what is nested in that line's item comes between (a line in no list has nothing nested).
+    const joins = last !== undefined && (last.idx === idx - 1 || (last.item !== null && leaves.slice(last.idx + 1, idx).every((m) => m.frames[depth] !== undefined && frameKey(m.frames[depth]!) === last.item)))
+    let list: number
     if (leafHas(l, kind)) {
-      // Already in a list of this kind: a selected line just before it in the same place, in another
+      // Already in a list of this kind: a selected line before it in the same place, in another
       // list, makes them one list.
-      const own = target(l.frames[i]!.id)
-      if (joins && target(prev!.list) !== own) joined.set(own, target(prev!.list))
-      prev = { idx, key, list: target(own) }
-      return
-    }
-    const list = joins ? target(prev!.list) : next()
-    if (i >= 0) {
-      const old = l.frames[i]!
-      const k = frameKey(old)
-      if (!replaced.has(k)) replaced.set(k, { kind, id: list, item: next(), checked: false, start: 1, number: null })
-      prev = { idx, key, list: replaced.get(k)!.id }
+      list = target(l.frames[i]!.id)
+      if (joins && target(last.list) !== list) joined.set(list, target(last.list))
+      list = target(list)
     } else {
-      l.frames.push({ kind, id: list, item: next(), checked: false, start: 1, number: null })
-      prev = { idx, key, list }
+      const into = joins ? target(last.list) : next()
+      if (i >= 0) {
+        const k = frameKey(l.frames[i]!)
+        if (!replaced.has(k)) replaced.set(k, { kind, id: into, item: next(), checked: false, start: 1, number: null })
+        list = replaced.get(k)!.id
+      } else {
+        l.frames.push({ kind, id: into, item: next(), checked: false, start: 1, number: null })
+        list = into
+      }
     }
+    lastAt.set(key, { idx, list, item })
   })
   const kept = out.map((l) => (selected(l) ? { ...l, frames: l.frames.map((f) => (f.kind !== 'blockquote' && replaced.get(frameKey(f))) || f) } : l))
   if (joined.size === 0) return kept
@@ -1417,20 +1425,145 @@ function codeOff(leaves: readonly Leaf[], selected: (l: Leaf) => boolean): Leaf[
  * whole content only if ProseMirror could not fit that part exactly.
  */
 function replaceChanged(state: EditorState, content: Fragment): Transaction {
-  const old = state.doc.content
-  const whole = () => state.tr.replaceWith(0, old.size, content)
+  return replaceChangedIn(state.tr, content)
+}
+
+/** `replaceChanged` on a transaction under way: its document becomes `content`, by steps added to it. */
+function replaceChangedIn(tr: Transaction, content: Fragment): Transaction {
+  const doc = tr.doc
+  const old = doc.content
+  const whole = () => new Transform(doc).replaceWith(0, old.size, content)
+  let t: Transform
   const start = old.findDiffStart(content)
   const end = old.findDiffEnd(content)
-  if (start === null || !end) return whole()
-  let { a: endA, b: endB } = end
-  const overlap = start - Math.min(endA, endB)
-  if (overlap > 0) {
-    endA += overlap
-    endB += overlap
+  if (start === null || !end) t = whole()
+  else {
+    let { a: endA, b: endB } = end
+    const overlap = start - Math.min(endA, endB)
+    if (overlap > 0) {
+      endA += overlap
+      endB += overlap
+    }
+    const want = doc.copy(content)
+    t = new Transform(doc).replace(start, endA, want.slice(start, endB))
+    if (!t.doc.eq(want)) t = whole()
   }
-  const want = state.doc.copy(content)
-  const tr = state.tr.replace(start, endA, want.slice(start, endB))
-  return tr.doc.eq(want) ? tr : whole()
+  for (const step of t.steps) tr.step(step)
+  return tr
+}
+
+/** Some line other than a code block holds a line break (ProseMirror's join of a code block's text into it): its lines are no longer its blocks. */
+function breakOutsideCode(doc: PMNode): boolean {
+  return textblocksOf(doc).some(({ node }) => !node.type.spec.code && node.textContent.includes('\n'))
+}
+
+/** What replaces a selection: typed (or composed) text, Enter, a pasted slice, or nothing (a deletion). */
+export type ReplacementInput = { kind: 'text'; text: string } | { kind: 'enter' } | { kind: 'slice'; slice: Slice } | { kind: 'delete' }
+
+/**
+ * The selection `from` to `to` (positions in `tr.doc`, each in a line) deleted, its two ends joined
+ * into one line of the first end's kind, in its place, whatever blocks they are in: the second end's
+ * text after it goes onto the first line (as plain text into a code block, or out of one; a code
+ * block's lines after its first stay a code block), the lines and dividers between go, and lines in
+ * the second end's list item after it stay where they are, with their numbers. False when that could
+ * not be built (nothing changed).
+ */
+function deleteAcrossLines(tr: Transaction, from: number, to: number): boolean {
+  const doc = tr.doc
+  const $from = doc.resolve(from)
+  const $to = doc.resolve(to)
+  if (!$from.parent.isTextblock || !$to.parent.isTextblock) return false
+  if ($from.parent === $to.parent) {
+    tr.delete(from, to)
+    return true
+  }
+  let ids = 0
+  const next = () => ++ids
+  const leaves = flatten(doc, next)
+  const tbs = textblocksOf(doc)
+  const la = tbs.findIndex((t) => t.pos === $from.before())
+  const lb = tbs.findIndex((t) => t.pos === $to.before())
+  const ai = leaves.findIndex((l) => l.line === la)
+  const bi = leaves.findIndex((l) => l.line === lb)
+  if (ai < 0 || bi <= ai) return false
+  const A = leaves[ai]!.node
+  const B = leaves[bi]!.node
+  const head = A.content.cut(0, $from.parentOffset)
+  const tail = B.content.cut($to.parentOffset)
+  const plain = (text: string) => (text ? Fragment.from(textSchema.text(text)) : Fragment.empty)
+  let joined: PMNode
+  let rest: PMNode | null = null
+  try {
+    if (A.type.spec.code) joined = A.type.createChecked(A.attrs, plain(head.textBetween(0, head.size) + tail.textBetween(0, tail.size)))
+    else if (B.type.spec.code) {
+      const [first = '', ...more] = tail.textBetween(0, tail.size).split('\n')
+      joined = A.type.createChecked(A.attrs, head.append(plain(first)))
+      if (more.length > 0) rest = B.type.create(B.attrs, plain(more.join('\n')))
+    } else joined = A.type.createChecked(A.attrs, head.append(tail))
+  } catch {
+    return false
+  }
+  const out: Leaf[] = [...leaves.slice(0, ai), { ...leaves[ai]!, node: joined, selected: true }]
+  if (rest) out.push({ ...leaves[bi]!, node: rest })
+  out.push(...leaves.slice(bi + 1))
+  let content: Fragment
+  try {
+    content = Fragment.fromArray(rebuild(out))
+  } catch (e) {
+    if (e instanceof UnstorableStart) return false
+    throw e
+  }
+  replaceChangedIn(tr, content)
+  return true
+}
+
+/**
+ * A transaction that replaced the selection of `state` with `input` (typing, Enter, a paste, a
+ * deletion), settled so that, whatever blocks the selection started in, ended in and crossed, the
+ * text is the text before the selection, then the input, then the text after it, the record is one
+ * that can be stored (`valid`), and the caret is collapsed right after the input. ProseMirror's own
+ * replacement does that except across blocks that cannot hold each other's content: across a code
+ * block and a line with marks it left two lines, the line break still there, and `insertText` then
+ * left a selection over the typed text and that break (so each next key replaced the one before);
+ * from a heading into a code block it put the code's line break inside the heading, a record that
+ * cannot be stored, so the bounds refused the keystroke and the text typed was lost. Then the
+ * replacement is made again from `state`: the selection deleted across its lines
+ * (`deleteAcrossLines`), then the input at the caret. Returns `tr` when it was right (with its caret
+ * collapsed), otherwise the new transaction, without the metadata `tr` carried (the caller adds it).
+ */
+export function settleReplacement(state: EditorState, tr: Transaction, input: ReplacementInput, valid: (doc: PMNode) => boolean): Transaction {
+  const sel = state.selection
+  if (sel.empty || !tr.docChanged) return tr
+  const range = replacedRange(state, '')
+  const old = plainTextOfDoc(state.doc)
+  const inserted = input.kind === 'text' ? input.text : input.kind === 'enter' ? '\n' : input.kind === 'slice' ? input.slice.content.textBetween(0, input.slice.content.size, '\n') : ''
+  const meant = input.kind === 'enter' ? ['\n', ''] : [inserted]
+  const settle = (t: Transaction) => {
+    const now = plainTextOfDoc(t.doc)
+    const which = meant.find((m) => now === old.slice(0, range.from) + m + old.slice(range.to))
+    if (which === undefined || !valid(t.doc) || breakOutsideCode(t.doc)) return false
+    const caret = range.from + which.length
+    if (!(t.selection.empty && textOffsetAt(t.doc, t.selection.head, -1) === caret) && textblocksOf(t.doc).length > 0) t.setSelection(TextSelection.create(t.doc, posAtTextOffset(t.doc, caret)))
+    return true
+  }
+  if (settle(tr)) return tr
+  if (!(sel instanceof TextSelection)) return tr
+  const fresh = state.tr
+  const marks = sel.$from.marksAcross(sel.$to) ?? []
+  if (!deleteAcrossLines(fresh, sel.from, sel.to)) return tr
+  const at = posAtTextOffset(fresh.doc, range.from)
+  fresh.setSelection(TextSelection.create(fresh.doc, at))
+  if (input.kind === 'text' && input.text) {
+    const $at = fresh.doc.resolve(at)
+    fresh.insert(at, textSchema.text(input.text, $at.parent.type.spec.code ? [] : marks))
+  } else if (input.kind === 'slice') fresh.replaceSelection(input.slice)
+  else if (input.kind === 'enter') {
+    enterAnywhere(EditorState.create({ doc: fresh.doc, selection: fresh.selection }), (t) => {
+      for (const step of t.steps) fresh.step(step)
+      fresh.setSelection(TextSelection.create(fresh.doc, t.selection.anchor, t.selection.head))
+    })
+  }
+  return settle(fresh) ? fresh : tr
 }
 
 /**
@@ -1737,7 +1870,7 @@ function enterOverItems(state: EditorState, dispatch?: (tr: Transaction) => void
   const { $from, $to, empty } = state.selection
   if (empty || $from.sameParent($to) || (!itemAround($from) && !itemAround($to))) return false
   if (!dispatch) return true
-  const tr = state.tr.deleteSelection()
+  const tr = settleReplacement(state, state.tr.deleteSelection(), { kind: 'delete' }, (doc) => !exceedsBounds(doc, DEFAULT_FONT))
   const sub = EditorState.create({ doc: tr.doc, selection: tr.selection })
   enterAnywhere(sub, (t) => {
     for (const step of t.steps) tr.step(step)

@@ -6,7 +6,7 @@ import { canonicalTextContent, MAX_BLOCK_DEPTH, MAX_LIST_START, MAX_TEXT_LENGTH,
 import type { BlockNode, InlineRun } from '../model/types.ts'
 import type { TextContent } from '../model/textDoc.ts'
 import type { EditSession } from './textSession.ts'
-import { docFromText, isListType, nodes, textblocksOf } from './textSchema.ts'
+import { docFromText, isListType, nodes, plainTextOfDoc, textblocksOf } from './textSchema.ts'
 import type { TextSource } from './textSchema.ts'
 import { BLOCK_KINDS, boxBlocks, boxCommandContent, completesShortcut, linesOfSelection, shortcutTransaction, toggleBlockKind } from './textRules.ts'
 import type { BlockKind } from './textRules.ts'
@@ -58,6 +58,38 @@ function lineFacts(doc: PMNode): LineFacts[] {
     const painted = d >= 2 && $p.node(d).type === nodes.listItem && $p.index(d) === 0 && $p.node(d - 1).type === nodes.orderedList ? ($p.node(d - 1).attrs.start as number) + $p.index(d - 1) : null
     return { around, kind: node.type === nodes.heading ? `h${node.attrs.level}` : node.type.name, text: node.textContent, runs: JSON.stringify(node.content.toJSON()), painted }
   })
+}
+
+/** The lists of a document none of whose lines (by index) is in `selected`. */
+function untouchedLists(doc: PMNode, selected: ReadonlySet<number>): PMNode[] {
+  const lineAt = new Map(textblocksOf(doc).map((t, i) => [t.pos, i]))
+  const out: PMNode[] = []
+  doc.descendants((n, pos) => {
+    if (!isListType(n.type)) return true
+    let any = false
+    n.descendants((c, rel) => {
+      if (c.isTextblock && selected.has(lineAt.get(pos + 1 + rel)!)) any = true
+      return !any
+    })
+    if (!any) out.push(n)
+    return true
+  })
+  return out
+}
+
+/** How many lists there are at each level of nesting (lists inside lists), outermost first. */
+function listsPerLevel(doc: PMNode): number[] {
+  const out: number[] = []
+  const walk = (node: PMNode, level: number) => {
+    node.forEach((c) => {
+      if (isListType(c.type)) {
+        out[level] = (out[level] ?? 0) + 1
+        walk(c, level + 1)
+      } else walk(c, level)
+    })
+  }
+  walk(doc, 0)
+  return Array.from(out, (n) => n ?? 0)
 }
 
 /** Whether a line has a kind of block, as the controls read it. */
@@ -123,7 +155,9 @@ function judge(x: Press): string | null {
   lastPress.refused = !x.changed && x.lines !== null && textblocksOf(x.beforeDoc).length > 0
   const { kind, before, after } = x
   if (canonicalTextContent(after as unknown as Record<string, unknown>) === null || (after.blocks && parseBlocks(after.blocks) === null)) return 'the result does not load'
-  if (lf(after.text) !== lf(before.text)) return `text changed: ${JSON.stringify(before.text)} -> ${JSON.stringify(after.text)}`
+  // Line endings are normalised only where the input is a compact text (its stored "\r\n" goes once it holds blocks); a rich text compares exactly.
+  const same = before.blocks ? after.text === before.text : lf(after.text) === lf(before.text)
+  if (!same) return `text changed: ${JSON.stringify(before.text)} -> ${JSON.stringify(after.text)}`
   if (x.changed === (JSON.stringify(after) === JSON.stringify(before))) return x.changed ? 'reported a change, but nothing changed' : 'reported no change, but changed'
   const facts = lineFacts(x.beforeDoc)
   if (!x.lines || facts.length === 0) {
@@ -164,6 +198,22 @@ function judge(x: Press): string | null {
       // Checklist on: a line already in a checklist keeps its tick; one that newly becomes an item is unticked.
       if (kind === 'taskList' && on && tickOf(b) !== (tickOf(a) ?? 'unticked')) return `selected line ${first + i} has the tick ${tickOf(b)}, not ${tickOf(a) ?? 'unticked'}`
     }
+  }
+  // A list none of whose lines is selected is left exactly as it is (nothing joins it).
+  const selectedLines = new Set(Array.from({ length: last - first + 1 }, (_, k) => first + k))
+  for (const node of untouchedLists(x.beforeDoc, selectedLines)) {
+    let found = false
+    x.afterDoc.descendants((n) => {
+      if (!found && n.eq(node)) found = true
+      return !found
+    })
+    if (!found) return `an unselected list changed: ${JSON.stringify(node.toJSON())}`
+  }
+  // Every line selected and already in a list, a list button on: at each level of nesting there are no more lists than before (a nested item never splits its parent's list).
+  if (on && kind !== 'blockquote' && kind !== 'codeBlock' && first === 0 && last === facts.length - 1 && facts.every((f) => f.around.some((a) => (LIST_KINDS as readonly string[]).includes(a)))) {
+    const was = listsPerLevel(x.beforeDoc)
+    const now2 = listsPerLevel(x.afterDoc)
+    if (now2.some((n, level) => n > (was[level] ?? 0))) return `lists per level of nesting went from ${JSON.stringify(was)} to ${JSON.stringify(now2)}`
   }
   if (x.readout !== (on ? 'on' : 'off')) return `the button reads ${x.readout} after turning it ${on ? 'on' : 'off'}`
   return null
@@ -576,6 +626,22 @@ function blocks(r: Rand, depth: number, lists: number, n: number): BlockNode[] {
   return Array.from({ length: n }, () => block(r, depth, lists))
 }
 
+/** A list of 2 to 4 items, each a line and sometimes a nested list (to `depth` 2), a quote or a code block. */
+function nestedList(r: Rand, depth: number): BlockNode {
+  const kind = r.pick(LIST_KINDS)
+  const items = Array.from({ length: 2 + r.int(3) }, (_, i) => {
+    const blocks: BlockNode[] = [line(r, 'paragraph')]
+    const extra = r.int(5)
+    if (extra <= 1 && depth < 2) blocks.push(nestedList(r, depth + 1))
+    else if (extra === 2) blocks.push(quote(p(`q${i}`)))
+    else if (extra === 3) blocks.push({ type: 'codeBlock', text: `c${i}` })
+    return blocks
+  })
+  const out = list(kind, ...items)
+  if (out.type === 'taskList') for (const it of out.items) it.checked = r.int(2) === 0
+  return out
+}
+
 /** A compact text whose line breaks are sometimes "\r\n", with a lone "\r" now and then, spans and headings. */
 function compactText(r: Rand): TextSource | null {
   const n = 1 + r.int(4)
@@ -592,6 +658,15 @@ function compactText(r: Rand): TextSource | null {
 function selection(r: Rand, s: EditSession): [number, number] {
   const text = s.content().text
   const len = text.length
+  // Sometimes a caret in a line in no list just before or after a list (a neighbouring list it must not join).
+  const facts = lineFacts(s.state.doc)
+  const inList = (f: LineFacts | undefined) => f !== undefined && f.around.some((a) => (LIST_KINDS as readonly string[]).includes(a))
+  const nextToList = facts.map((f, i) => (!inList(f) && (inList(facts[i - 1]) || inList(facts[i + 1])) ? i : -1)).filter((i) => i >= 0)
+  if (nextToList.length > 0 && r.int(4) === 0) {
+    const i = r.pick(nextToList)
+    const at = facts.slice(0, i).reduce((n, f) => n + f.text.length + 1, 0)
+    return [at, at]
+  }
   const mode = r.int(4)
   if (mode === 0) {
     const at = r.int(len + 1)
@@ -623,7 +698,11 @@ describe('the block-button rule, seeded and randomised', () => {
         const sibling = r.pick(['blockquote', 'bulletList', 'orderedList', 'taskList'] as const)
         const raw = parseBlocks(Array.from({ length: 60 + r.int(10) }, (_, i) => (sibling === 'blockquote' ? quote(p(`q${i}`)) : list(sibling, [p(`l${i}`)]))))
         source = raw && { text: '', blocks: raw }
-      } else if (shape <= 3) {
+      } else if (shape <= 5) {
+        // One list whose items hold nested lists, quotes or code (Album, a nested Track, Cover).
+        const raw = parseBlocks([nestedList(r, 0)])
+        source = raw && { text: '', blocks: raw }
+      } else if (shape <= 8) {
         source = compactText(r)
         if (source) counts.crlf++
       } else {
@@ -685,6 +764,183 @@ describe('the block-button rule, seeded and randomised', () => {
     expect(pressed).toBeGreaterThan(DOCS * 10)
     expect(counts.divider).toBeGreaterThan(50)
     expect(counts.crlf).toBeGreaterThan(20)
+  })
+})
+
+// ---- T2: a nested item never splits its parent's list ------------------------------------------------------
+
+describe('T2: a list with nested items, all selected, another list kind: one list at each level', () => {
+  const kinds = LIST_KINDS
+  const shapes = (k: (typeof LIST_KINDS)[number]) => ({
+    'Album, a nested Track, Cover': [list(k, [p('Album'), list(k, [p('Track')])], [p('Cover')])],
+    'three levels, then back out one at a time': [list(k, [p('Album'), list(k, [p('Track'), list(k, [p('Deep')])], [p('Track2')])], [p('Cover')])],
+    'a quote nested in the item': [list(k, [p('Album'), quote(p('note'))], [p('Cover')])],
+    'a code block nested in the item': [list(k, [p('Album'), { type: 'codeBlock', text: 'x = 1' }], [p('Cover')])],
+  })
+  for (const from of kinds) {
+    for (const to of kinds) {
+      if (from === to) continue
+      it(`${from} to ${to}: in an edit and on a selected box`, () => {
+        const before = shapes(from)
+        const after = shapes(to)
+        for (const name of Object.keys(before) as Array<keyof typeof before>) {
+          const s = open({ text: '', blocks: before[name] })
+          const len = s.content().text.length
+          s.select(0, len)
+          expect(checkRule(s, to), name).toBeNull()
+          s.select(0, len)
+          s.toggleBlock(to)
+          expect(content(s).blocks, name).toStrictEqual(after[name])
+          const box = boxCommandContent({ text: '', blocks: before[name] }, { command: toggleBlockKind(to, { wholeBox: true }) })!
+          expect(box.blocks, `${name}, on a selected box`).toStrictEqual(after[name])
+        }
+      })
+    }
+  }
+
+  it('the numbers: `Album` 1 and `Cover` 2, `Track` 1 under `Album`', () => {
+    const s = open({ text: '', blocks: [list('bulletList', [p('Album'), list('bulletList', [p('Track')])], [p('Cover')])] })
+    s.select(0, s.content().text.length)
+    s.toggleBlock('orderedList')
+    expect(paintedOf(s.state.doc)).toStrictEqual([1, 1, 2])
+  })
+})
+
+// ---- T1: typing, pasting, Enter, Backspace, Delete and a composition over any selection -------------------
+
+/** A document from the generator: sometimes a code block next to a line with marks (the reviewer's shape). */
+function richSource(r: Rand): TextSource | null {
+  const doc = r.int(4) === 0 ? [p('alpha'), { type: 'codeBlock' as const, text: r.pick(['code', 'a\nb']) }, p('beta', { italic: true }), p('gamma')] : blocks(r, 1, 0, 1 + r.int(5))
+  if (r.int(5) === 0) doc.push(p())
+  const raw = parseBlocks(doc)
+  return raw && { text: '', blocks: raw }
+}
+
+type Input = 'type' | 'paste' | 'paste lines' | 'Enter' | 'Backspace' | 'Delete' | 'composition'
+const INPUTS: readonly Input[] = ['type', 'paste', 'paste lines', 'Enter', 'Backspace', 'Delete', 'composition']
+
+/** Applies one input to the selection of `s`; returns what it means to put in place of the selection (Enter: a line break, or none when it takes an emptied item or quote line out instead). */
+function apply(s: EditSession, input: Input): string[] {
+  switch (input) {
+    case 'type':
+      type(s, 'QRS')
+      return ['QRS']
+    case 'paste':
+      s.paste({ text: 'P' })
+      return ['P']
+    case 'paste lines':
+      s.paste({ text: 'P1\nP2' })
+      return ['P1\nP2']
+    case 'Enter':
+      press(s, 'Enter')
+      return ['\n', '']
+    case 'Backspace':
+    case 'Delete':
+      press(s, input)
+      return ['']
+    case 'composition':
+      s.compositionStart()
+      insert(s, 'か', true)
+      s.compositionEnd()
+      return ['か']
+  }
+}
+
+/** Checks one input over the selection `s` has; a description of the first way it went wrong, or null. */
+function checkReplacement(s: EditSession, input: Input): string | null {
+  const before = s.content()
+  const old = plainTextOfDoc(s.state.doc)
+  const { from, to } = s.selection()
+  const meant = apply(s, input)
+  const after = s.content()
+  if (canonicalTextContent(after as unknown as Record<string, unknown>) === null || (after.blocks && parseBlocks(after.blocks) === null)) return 'the result does not load'
+  const now = plainTextOfDoc(s.state.doc)
+  if (after.blocks && after.text !== now) return 'the stored text is not the text shown'
+  const which = meant.find((text) => now === old.slice(0, from) + text + old.slice(to))
+  if (which === undefined) return `the text is ${JSON.stringify(now)}, not ${meant.map((t) => JSON.stringify(old.slice(0, from) + t + old.slice(to))).join(' or ')}`
+  const sel = s.selection()
+  if (sel.anchor !== sel.head) return `the selection is ${sel.anchor} to ${sel.head}, not a caret`
+  // Enter that takes an emptied nested item out of an item with no line of its own (ProseMirror then adds the line) leaves the caret before that line.
+  if (sel.head !== from + which.length && !(input === 'Enter' && sel.head === from)) return `the caret is at ${sel.head}, not ${from + which.length}`
+  s.undo()
+  if (JSON.stringify(s.content()) !== JSON.stringify(before)) return `one undo did not give back the stored record: ${JSON.stringify(before)} -> ${JSON.stringify(s.content())}`
+  return null
+}
+
+describe('T1: typing, pasting, Enter, Backspace, Delete and a composition over a selection', () => {
+  it('the reviewer\'s case: `alpha` as a code block, the selection from its start to the start of the italic `beta`, `XYZ` typed: every key kept, the caret after them', () => {
+    for (const backward of [false, true]) {
+      const s = open({ text: '', blocks: [p('alpha'), p('beta', { italic: true }), p('gamma')] })
+      s.select(0, 6)
+      s.toggleBlock('codeBlock')
+      expect(s.selection()).toMatchObject({ from: 0, to: 6 })
+      if (backward) s.select(6, 0)
+      type(s, 'XYZ')
+      expect(content(s)).toStrictEqual({ text: 'XYZbeta\ngamma', blocks: [{ type: 'codeBlock', text: 'XYZbeta' }, p('gamma')] })
+      expect(s.selection()).toMatchObject({ anchor: 3, head: 3 })
+    }
+  })
+
+  it('each input over a selection from a code block into a line with marks, and the other way: exact text, a caret after it, one undo back', () => {
+    for (const input of INPUTS) {
+      for (const [a, b] of [
+        [2, 8],
+        [8, 2],
+        [0, 6],
+        [3, 12],
+      ] as const) {
+        const s = open({ text: '', blocks: [{ type: 'codeBlock', text: 'alpha' }, p('beta', { italic: true }), p('gamma', { bold: true })] })
+        s.select(a, b)
+        expect(checkReplacement(s, input), `${input} over [${a}, ${b}]`).toBeNull()
+        const t = open({ text: '', blocks: [p('alpha', { italic: true }), { type: 'codeBlock', text: 'beta' }, p('gamma')] })
+        t.select(a, b)
+        expect(checkReplacement(t, input), `${input} over [${a}, ${b}], code second`).toBeNull()
+      }
+    }
+  })
+
+  it('holds for random selections over random rich texts, every input (seeded)', () => {
+    const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env
+    const SEED = Number(env?.REPLACE_RULE_SEED ?? 0x7171)
+    const r = random(SEED)
+    const failures: string[] = []
+    let applied = 0
+    let atLineStart = 0
+    for (let d = 0; d < 250 && failures.length < 5; d++) {
+      const source = richSource(r)
+      if (!source || !docFromText(source)) continue
+      const text = plainTextOfDoc(open(source).state.doc)
+      if (text.length === 0) continue
+      for (let k = 0; k < 2; k++) {
+        let a = r.int(text.length + 1)
+        let b = r.int(text.length + 1)
+        // Sometimes ending exactly at the start of a line.
+        const starts = [...text.matchAll(/\n/g)].map((m) => m.index! + 1)
+        if (starts.length > 0 && r.int(3) === 0) {
+          b = r.pick(starts)
+          atLineStart++
+        }
+        if (a === b) a = a > 0 ? a - 1 : Math.min(text.length, a + 1)
+        if (a === b) continue
+        const [anchor, head] = r.int(2) === 0 ? [Math.min(a, b), Math.max(a, b)] : [Math.max(a, b), Math.min(a, b)]
+        for (const input of INPUTS) {
+          const s = open(source)
+          s.select(anchor, head)
+          let broken: string | null
+          try {
+            broken = checkReplacement(s, input)
+          } catch (e) {
+            broken = `threw ${String(e)}`
+          }
+          applied++
+          if (broken) failures.push(`seed ${SEED}, document ${d}, ${input} over [${anchor}, ${head}]: ${broken}\n  source: ${JSON.stringify(source)}`)
+        }
+      }
+    }
+    if (failures.length > 0) console.log(failures.join('\n'))
+    console.log(`replacement rule: ${applied} inputs over random selections (seed ${SEED}), ${atLineStart} selections ending at the start of a line`)
+    expect(failures, failures[0]).toEqual([])
+    expect(applied).toBeGreaterThan(2000)
   })
 })
 

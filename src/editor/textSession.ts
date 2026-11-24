@@ -50,9 +50,10 @@ import {
   toggleTaskAt,
   typedMarks,
   replacedRange,
+  settleReplacement,
   selectionOnCharacters,
 } from './textRules.ts'
-import type { BlockKind, BlockReadout, CompactContent, FormatReadout, Pending } from './textRules.ts'
+import type { BlockKind, BlockReadout, CompactContent, FormatReadout, Pending, ReplacementInput } from './textRules.ts'
 
 /**
  * One edit of one text (plan Section 7): the ProseMirror state of the text being edited, the
@@ -324,6 +325,8 @@ export class EditSession {
   private caretKeyAt = -Infinity
   /** ProseMirror's `composition` metadata on its last composition transaction (the follow-up joins that history step). */
   private lastComposition: unknown = undefined
+  /** What is being pasted (the slice as it arrives), for `settleSelectionReplacement`. */
+  private pastedSlice: Slice | null = null
   /** A plain-text paste in progress: what it pastes, where, and with which pending choices. */
   private plainPaste: { text: string; from: number; to: number; pending: Pending | null } | null = null
   /** Where a drop in progress lands (from the drop event), for the destination font. */
@@ -501,11 +504,12 @@ export class EditSession {
   }
 
   /** The only way the state changes. */
-  dispatch(tr: Transaction) {
+  dispatch(given: Transaction) {
     if (!this.editable) {
       this.plainPaste = null
       return
     }
+    const tr = this.settleSelectionReplacement(given)
     if (this.composingHeadless && tr.getMeta('composition') === undefined) tr.setMeta('composition', `headless-${this.headlessCompositions}`)
     const before = this.current
     const { state, transactions } = this.current.applyTransaction(tr)
@@ -549,6 +553,29 @@ export class EditSession {
         r.from = from
       }
     }
+  }
+
+  /**
+   * Typing, Enter, a deletion or a paste over a selection always ends with exactly the new text in
+   * place of the selection and a collapsed caret after it, whatever blocks the selection crossed
+   * (`settleReplacement`). An IME composition starts with such a deletion.
+   */
+  private settleSelectionReplacement(tr: Transaction): Transaction {
+    const slice = this.pastedSlice
+    this.pastedSlice = null
+    if (tr.doc === this.current.doc || tr.before !== this.current.doc || this.current.selection.empty) return tr
+    const replaced = tr.getMeta(META.replaced) as { text: string } | undefined
+    let input: ReplacementInput
+    if (replaced) input = replaced.text === '' ? { kind: 'delete' } : replaced.text === '\n' ? { kind: 'enter' } : { kind: 'text', text: replaced.text }
+    else if (tr.getMeta('paste') === true && slice) input = { kind: 'slice', slice }
+    else return tr
+    const settled = settleReplacement(this.current, tr, input, (doc) => !exceedsBounds(doc, this.baseFont))
+    if (settled === tr) return tr
+    // Made again: with the metadata the replacement carried (what it replaced, a paste, a composition id...).
+    for (const [key, value] of Object.entries((tr as unknown as { meta: Record<string, unknown> }).meta)) settled.setMeta(key, value)
+    if (tr.storedMarks !== this.current.storedMarks) settled.setStoredMarks(tr.storedMarks)
+    if (tr.scrolledIntoView) settled.scrollIntoView()
+    return settled
   }
 
   /**
@@ -734,7 +761,7 @@ export class EditSession {
 
   /** A composition starts without a view (a mounted view reports its own). */
   compositionStart() {
-    this.beginComposition()
+    this.beginComposition(null, `headless-${this.headlessCompositions + 1}`)
     this.headlessCompositions++
     this.composingHeadless = true
   }
@@ -761,7 +788,7 @@ export class EditSession {
    * browser has collapsed its selection to a caret after the committed text while the session
    * still has that text selected).
    */
-  private beginComposition(shown: { from: number; to: number } | null = null) {
+  private beginComposition(shown: { from: number; to: number } | null, composition: unknown) {
     if (this.done || this.imeOpen) return
     let state = this.current
     const { from, to } = shown ?? state.selection
@@ -781,7 +808,10 @@ export class EditSession {
         // which a fast IME can break. ProseMirror's own deletion of a selection across blocks at
         // `compositionstart` comes after that check, so stores none either.
         this.imeStart ??= { state, conversions: new Map(this.conversions), storedBreaks: this.storedBreaks }
-        deleteSelected(state, (tr) => this.dispatch(tr.setStoredMarks(null)))
+        // It carries the composition's own `composition` id, so that what the composition puts in
+        // joins its in-edit undo step (one undo gives the selection back) wherever the caret then is;
+        // how the deletion itself joins what came before it is unchanged.
+        deleteSelected(state, (tr) => this.dispatch(tr.setStoredMarks(null).setMeta('composition', composition)))
         if (this.current !== state) this.deletion = { before: state, after: this.current, delivered: false }
       }
     }
@@ -1113,6 +1143,7 @@ export class EditSession {
       this.notePlainPaste(data.text, this.current)
       slice = this.plainTextSlice(data.text, sel.$from)
     } else return false
+    this.pastedSlice = slice
     this.dispatch(this.current.tr.replaceSelection(slice).scrollIntoView().setMeta('paste', true).setMeta('uiEvent', 'paste'))
     return true
   }
@@ -1346,7 +1377,8 @@ export class EditSession {
             return false
           },
           compositionstart: (view) => {
-            this.beginComposition(this.domSelection(view))
+            // ProseMirror's id for the composition starting now: it moves on only at `compositionend`.
+            this.beginComposition(this.domSelection(view), (view as unknown as { input: { compositionID: number } }).input.compositionID)
             this.imeOpen = true
             return false
           },
@@ -1391,7 +1423,9 @@ export class EditSession {
         transformPasted: (slice, view) => {
           const kind = this.incoming
           this.incoming = null
-          return kind === 'text' ? slice : this.arriving(slice, this.destinationFont(view.state))
+          const out = kind === 'text' ? slice : this.arriving(slice, this.destinationFont(view.state))
+          this.pastedSlice = out
+          return out
         },
         transformCopied: (slice) => copiedSlice(slice),
         clipboardTextSerializer: (slice) => slice.content.textBetween(0, slice.content.size, '\n'),

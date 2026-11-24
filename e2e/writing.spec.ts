@@ -1332,3 +1332,64 @@ test('S4: autosave while an over-limit candidate is open saves the last valid te
   expect((reloaded.text as string).endsWith('xA')).toBe(true)
   expect(errors).toEqual([])
 })
+
+test('T1: typing over a selection from a code block into an italic line keeps every key, forward and backward', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  const btn = (name: string) => page.getByRole('button', { name, exact: true })
+  for (const [i, backward] of [false, true].entries()) {
+    await newText(page, at, 80, 60 + i * 200)
+    await page.keyboard.type('alpha\n')
+    await page.keyboard.press('Control+i')
+    await page.keyboard.type('beta')
+    await page.keyboard.press('Control+i')
+    await page.keyboard.type('\ngamma')
+    const typed = await storedWhen(page, (d) => texts(d).filter((t) => t.text === 'alpha\nbeta\ngamma').length === 1)
+    const id = texts(typed).find((t) => t.text === 'alpha\nbeta\ngamma')!.id
+    // From the start of alpha to the start of beta (or back).
+    await page.keyboard.press('Control+Home')
+    if (backward) {
+      await page.keyboard.press('ArrowDown')
+      await page.keyboard.press('Home')
+      await page.keyboard.press('Shift+ArrowUp')
+    } else await page.keyboard.press('Shift+ArrowDown')
+    await btn('Code block').click()
+    await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify([{ type: 'codeBlock', text: 'alpha' }, p('beta', { italic: true }), p('gamma')]))
+    await page.keyboard.type('XYZ')
+    await storedWhen(page, (d) => byId(d, id).text === 'XYZbeta\ngamma')
+    expect(byId(await storedDoc(page), id).blocks).toEqual([{ type: 'codeBlock', text: 'XYZbeta' }, p('gamma')])
+    // The caret is after XYZ: one more key lands there.
+    await page.keyboard.type('!')
+    await storedWhen(page, (d) => byId(d, id).text === 'XYZ!beta\ngamma')
+    await page.keyboard.press('Escape')
+  }
+  expect(errors).toEqual([])
+})
+
+test('T2: `Album`, a nested `Track`, then `Cover`, all selected, Numbered list: one list, Album 1 and Cover 2; on the box from Layers too', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  const btn = (name: string) => page.getByRole('button', { name, exact: true })
+  await newText(page, at, 80, 60)
+  await page.keyboard.type('- Album\nTrack')
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Shift+Tab')
+  await page.keyboard.type('Cover')
+  const bulleted = [bullets([p('Album'), bullets([p('Track')])], [p('Cover')])]
+  const typed = await storedWhen(page, (d) => texts(d).some((t) => JSON.stringify(t.blocks) === JSON.stringify(bulleted)))
+  const id = texts(typed).find((t) => JSON.stringify(t.blocks) === JSON.stringify(bulleted))!.id
+  await page.keyboard.press('Control+a')
+  await btn('Numbered list').click()
+  const numbered = [{ type: 'orderedList', items: [{ blocks: [p('Album'), { type: 'orderedList', items: [{ blocks: [p('Track')] }] }] }, { blocks: [p('Cover')] }] }]
+  await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify(numbered))
+  // The page paints one outer list of two items, and the nested one inside the first.
+  await expect(page.locator('.scene-layer ol', { hasText: 'Cover' })).toHaveCount(1)
+  await expect(page.locator('.scene-layer ol', { hasText: 'Cover' }).locator(':scope > li')).toHaveCount(2)
+  await page.keyboard.press('Escape')
+  // On the box from Layers: Checklist on every line keeps the shape too.
+  await page.evaluate((id) => window.__writing.select(id), id)
+  await btn('Checklist').click()
+  await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify([tasks([false, [p('Album'), tasks([false, [p('Track')]])]], [false, [p('Cover')]])]))
+  await btn('Bulleted list').click()
+  await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify(bulleted))
+  expect(errors).toEqual([])
+})
