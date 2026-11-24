@@ -486,12 +486,6 @@ button:disabled {
   padding: 0 10px;
   font-size: 12px;
 }
-/* A disabled button takes no mouse events at all, so a drag released over one (a text's side handle
-   pulled under the panel) would never end; let the press and release go to the panel behind it.
-   A button whose tip says why it is disabled keeps them, for its tip */
-.inspector button:disabled:not(.tip-always) {
-  pointer-events: none;
-}
 .inspector-btn:disabled {
   opacity: 0.5;
 }
@@ -618,7 +612,26 @@ button:disabled {
   pointer-events: auto;
 }
 
+/* The panel gives way before the layer list does: it may shrink and then scrolls inside itself
+   (`is-scrolling`, set only when its controls do not fit, since a scroller clips hover tips) */
+.side-stack > .inspector {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+.side-stack > .inspector.is-scrolling {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
 /* ---- layers ---- */
+/* The layer list keeps its header and two complete rows (one when it has one), whatever is selected */
+.side-stack > .layers:has(.layer-row) {
+  min-height: 72px;
+}
+.side-stack > .layers:has(.layer-row + .layer-row) {
+  min-height: 100px;
+}
 .side-stack > .layers {
   flex: 0 1 auto;
   margin-top: auto;

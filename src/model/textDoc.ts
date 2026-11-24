@@ -42,6 +42,9 @@ export const EDITABLE_RICH_FIELDS: ReadonlySet<RichField> = new Set<RichField>([
 
 const RUN_MARKS: readonly TextMark[] = [...MARKS, 'code']
 
+/** A numbered list may start at any whole number from 1 that is exactly representable (stored only when above 1). */
+export const isListStart = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 1
+
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 const isFont = (v: unknown): v is FontId => FONT_IDS.includes(v as FontId)
 
@@ -139,7 +142,7 @@ function parseBlock(raw: unknown, depth: number, budget: Budget): BlockNode | nu
     case 'orderedList': {
       const items = parseItems(raw.items, depth, budget)
       const start = raw.start
-      return items && { type: 'orderedList', ...(Number.isSafeInteger(start) && (start as number) > 1 && { start: start as number }), items }
+      return items && { type: 'orderedList', ...(isListStart(start) && start > 1 && { start }), items }
     }
     case 'taskList': {
       const items = parseTaskItems(raw.items, depth, budget)

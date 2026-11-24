@@ -19,7 +19,7 @@ import type { TextData } from './objects.ts'
 import { BLOCK_KINDS, allText, boxBlocks, boxFormat, clearRangeFonts, setBoxLevel, toggleBoxMark, toggleCodeBlock, toggleList, toggleQuote } from './textRules.ts'
 import type { BlockKind } from './textRules.ts'
 import { noWrapRanges } from './sceneLayer.ts'
-import { boxOf, contentFromDoc, docFromText, plainTextOfDoc, textOffsetAt, textblocksOf } from './textSchema.ts'
+import { boxOf, contentFromDoc, docFromText, exceedsBounds, plainTextOfDoc, textOffsetAt, textblocksOf } from './textSchema.ts'
 import { createEditSession } from './textSession.ts'
 import type { EditSession } from './textSession.ts'
 import { isBlankTextDoc } from '../model/textDoc.ts'
@@ -971,7 +971,12 @@ export class DomTextAdapter implements TextAdapter {
         doc = tr.doc
       })
     }
-    const after = contentFromDoc(doc, box ? boxOf(box(read.box)) : read.box)
+    const nextBox = box ? boxOf(box(read.box)) : read.box
+    // Nothing over a bound is written: a whole-box command whose result a load would refuse (a list
+    // around lines already nested to the depth bound) changes nothing, records nothing, saves nothing,
+    // exactly as the edit session refuses it while editing.
+    if (exceedsBounds(doc, nextBox.font ?? 'sans')) return
+    const after = contentFromDoc(doc, nextBox)
     if (JSON.stringify(after) === JSON.stringify(before)) return
     const anchor = alignAnchor(td.align)
     setTextData(obj, withContent(td, after))

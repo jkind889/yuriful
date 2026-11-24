@@ -18,6 +18,7 @@ import {
   openBlank,
   paintedAt,
   sceneToPage,
+  screenPixels,
   seedMilestone1,
   seedRaw,
   snapshotIdb,
@@ -188,6 +189,22 @@ test('checklist-typed-char-by-char-upgrades-bullet-without-trapping', async ({ p
   const ticked = await storedWhen(page, (d) => JSON.stringify(texts(d)[0]!.blocks).includes('"checked":true'))
   expect(texts(ticked)[0]!.blocks).toEqual([tasks([true, [p('Buy vinyl')]])])
   expect(await editedText(page)).toMatchObject({ value: 'Buy vinyl', start: 9, end: 9, focused: true })
+  // Untick and tick again quickly, then in-edit undo: each click is an undo step of its own, so the
+  // first undo gives the state in between (unticked), the second the state before both (ticked).
+  const boxAt = at(box.left + box.width / 2, box.top + box.height / 2)
+  const task = page.locator('.scene-layer .yp-task')
+  await page.mouse.click(boxAt.x, boxAt.y)
+  await page.mouse.click(boxAt.x, boxAt.y, { delay: 0 })
+  await expect(task).toHaveAttribute('data-checked', 'true')
+  await page.keyboard.press('Control+z')
+  await expect(task).toHaveAttribute('data-checked', 'false')
+  await page.keyboard.press('Control+z')
+  await expect(task).toHaveAttribute('data-checked', 'true')
+  await page.keyboard.press('Control+z')
+  await expect(task).toHaveAttribute('data-checked', 'false')
+  await page.keyboard.press('Control+Shift+z')
+  await expect(task).toHaveAttribute('data-checked', 'true')
+  await storedWhen(page, (d) => JSON.stringify(texts(d)[0]!.blocks) === JSON.stringify([tasks([true, [p('Buy vinyl')]])]))
   await page.keyboard.press('Escape')
   await page.reload()
   await expect(status(page)).toContainText('Saved on this device')
@@ -244,7 +261,7 @@ test('divider-only-and-ticked-box-cards-are-kept', async ({ page }) => {
 })
 
 test('pinned-literal-cases-empty-list-discard-and-backspace-revert', async ({ page }) => {
-  const { errors, at } = await open(page, [textRec('L', 600, 400, { text: 'x', blocks: [bullets([p('x')])] })])
+  const { errors, at } = await open(page, [textRec('L', 600, 400, { text: 'x', blocks: [bullets([p('x')])] }), textRec('C', 600, 510, { text: '-x', blocks: [{ type: 'paragraph', content: [{ text: '-x', code: true }] }] })])
   // Typed literal cases stay literal.
   await newText(page, at, 60, 60)
   await page.keyboard.type('2 * 3 * 4\nsnake*case*\n* item\n#tag\n#### four')
@@ -261,6 +278,17 @@ test('pinned-literal-cases-empty-list-discard-and-backspace-revert', async ({ pa
   await cdp.send('Input.insertText', { text: ' ' })
   await page.keyboard.type('x')
   const literal = '2 * 3 * 4\nsnake*case*\n* item\n#tag\n#### four\n- item\n- x'
+  // Inside inline code no shortcut fires: `-x` as code, a space typed between `-` and `x` stays a space.
+  await page.keyboard.press('Escape')
+  await editAtEnd(page, at(605, 520))
+  await page.keyboard.press('End')
+  await page.keyboard.press('ArrowLeft')
+  await page.keyboard.type(' ')
+  const inCode = await storedWhen(page, (d) => byId(d, 'C').text === '- x')
+  expect(byId(inCode, 'C').blocks).toEqual([{ type: 'paragraph', content: [{ text: '- x', code: true }] }])
+  await page.keyboard.press('Escape')
+  await page.mouse.dblclick(at(70, 70).x, at(70, 70).y)
+  await expect.poll(async () => (await editedText(page))?.focused).toBe(true)
   const lit = await storedWhen(page, (d) => texts(d).some((t) => t.text === literal))
   expect(texts(lit).find((t) => t.text === literal)).not.toHaveProperty('blocks')
   expect(texts(lit).find((t) => t.text === literal)).not.toHaveProperty('spans')
@@ -324,9 +352,12 @@ test('a-card-cannot-grow-past-the-stored-bounds', async ({ page }) => {
   // Lists nested five deep: the innermost lines are at depth 6, the bound.
   let deep: Block = bullets([p('a')], [p('b')])
   for (let i = 0; i < 4; i++) deep = bullets([p(`l${i}`), deep])
+  let quoted: Block = p('q')
+  for (let i = 0; i < 5; i++) quoted = { type: 'blockquote', blocks: [quoted] }
   const { errors, at } = await open(page, [
     textRec('n', 40, 40, { text: '', fontSize: 8, width: 200, blocks: [bullets(...items)] }),
     textRec('d', 600, 40, { text: '', blocks: [deep] }),
+    textRec('q', 900, 40, { text: 'q', width: 300, blocks: [quoted] }),
   ])
   // A new item would add two nodes: Enter does nothing. Typing in the last item adds none, and is saved.
   await editAtEnd(page, at(60, 45))
@@ -346,6 +377,22 @@ test('a-card-cannot-grow-past-the-stored-bounds', async ({ page }) => {
   await page.waitForTimeout(AUTOSAVE_QUIET_MS)
   expect(byId(await storedDoc(page), 'd').blocks).toEqual(deepBefore)
   await expect(status(page)).toContainText('Saved on this device')
+  await page.keyboard.press('Escape')
+  // A `- ` that would put a line six levels deep (five quotes) one level deeper does not convert;
+  // Backspace then deletes the space, not what was typed before it.
+  await editAtEnd(page, at(1000, 50))
+  await page.keyboard.type('keep\n- ')
+  expect((await editedText(page))!.value.endsWith('keep\n- ')).toBe(true)
+  await page.keyboard.press('Backspace')
+  expect((await editedText(page))!.value.endsWith('keep\n-')).toBe(true)
+  await page.keyboard.press('Escape')
+  // A paste that would add nodes past the bound does not happen.
+  await editAtEnd(page, at(60, 45))
+  const atBound = (await editedText(page))!.value
+  await page.evaluate(() => navigator.clipboard.writeText('one\ntwo'))
+  await page.keyboard.press('Control+v')
+  expect((await editedText(page))!.value).toBe(atBound)
+  await page.keyboard.press('Escape')
   expect(errors).toEqual([])
 })
 
@@ -524,6 +571,14 @@ test('a frame preview shows the blocks where the page shows them', async ({ page
     return [png.data[i]!, png.data[i + 1]!, png.data[i + 2]!]
   }
   const paper = (c: number[]) => c[0]! > 250 && c[1]! > 250 && c[2]! > 250
+  // Each marker, on the board and in the preview: the preview must show at least most of the ink the board shows there.
+  const regions = await markerRegions(page)
+  for (const r of regions) {
+    const board = inkShare(await screenPixels(page, r.left, r.top, r.width, r.height), r.faint)
+    const shown = inkShare(previewCrop(png, scale, frame, r), r.faint)
+    expect(board, `${r.name} on the board`).toBeGreaterThan(0.02)
+    expect(shown, `${r.name} in the preview (board ${board.toFixed(3)})`).toBeGreaterThan(board * 0.5)
+  }
   const li = await rectIn(page, 'ul:not(.yp-tasks) > li')
   expect(paper(px(li.left - 0.8 * li.em, li.top + 0.62 * li.em))).toBe(false) // the bullet
   expect(paper(px(li.left - 0.3 * li.em, li.top + 0.62 * li.em))).toBe(true)
@@ -673,5 +728,317 @@ test('the panel: block buttons on the selected lines while editing and on every 
   // One undo step for the whole edit.
   await undoButton(page).click()
   expect(byId(await storedWhen(page, (d) => byId(d, 't').text === 'a\nb'), 't').blocks).toEqual([bullets([p('a')], [p('b')])])
+  expect(errors).toEqual([])
+})
+
+// ---- the review round: browser evidence for each fix -------------------------------------------------
+
+interface Region {
+  name: string
+  left: number
+  top: number
+  width: number
+  height: number
+  /** A light tint (the code panel), not ink. */
+  faint?: boolean
+}
+
+/** Where each kind of marker is drawn on the board (scene units, the canvas at zoom 1). */
+async function markerRegions(page: Page): Promise<Region[]> {
+  const li = await rectIn(page, 'ul:not(.yp-tasks) > li')
+  const ol = await rectIn(page, 'ol > li')
+  const ticked = await rectIn(page, '.yp-check', 0)
+  const empty = await rectIn(page, '.yp-check', 1)
+  const quote = await rectIn(page, 'blockquote')
+  const hr = await rectIn(page, 'hr')
+  const pre = await rectIn(page, 'pre')
+  const em = li.em
+  return [
+    { name: 'bullet', left: li.left - 1.2 * em, top: li.top + 0.3 * em, width: 0.8 * em, height: 0.7 * em },
+    { name: 'number', left: ol.left - 1.4 * em, top: ol.top + 0.15 * em, width: 1.2 * em, height: 1.1 * em },
+    { name: 'ticked box', left: ticked.left, top: ticked.top, width: ticked.width, height: ticked.height },
+    { name: 'unticked box', left: empty.left, top: empty.top, width: empty.width, height: empty.height },
+    { name: 'quote rule', left: quote.left, top: quote.top, width: 0.2 * em, height: quote.height },
+    { name: 'divider', left: hr.left, top: hr.top + hr.height * 0.3, width: hr.width, height: hr.height * 0.4 },
+    { name: 'code panel', left: pre.left + 1, top: pre.top + 1, width: 0.5 * em, height: 0.35 * em, faint: true },
+  ]
+}
+
+/** The share of pixels that are not white paper: ink (far from white), or for a faint region any tint. */
+function inkShare(img: { width: number; height: number; data: Uint8Array }, faint = false): number {
+  let ink = 0
+  const n = img.width * img.height
+  for (let i = 0; i < n; i++) {
+    const d = Math.max(255 - img.data[i * 4]!, 255 - img.data[i * 4 + 1]!, 255 - img.data[i * 4 + 2]!)
+    if (d > (faint ? 6 : 40)) ink++
+  }
+  return n === 0 ? 0 : ink / n
+}
+
+/** The pixels of a scene region in a frame's preview bitmap. */
+function previewCrop(png: { width: number; height: number; data: Uint8Array }, scale: number, frame: { left: number; top: number }, r: Region) {
+  const x0 = Math.round((r.left - frame.left) * scale)
+  const y0 = Math.round((r.top - frame.top) * scale)
+  const w = Math.max(1, Math.round(r.width * scale))
+  const h = Math.max(1, Math.round(r.height * scale))
+  const data = new Uint8Array(w * h * 4)
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const sx = x0 + x
+      const sy = y0 + y
+      const o = (y * w + x) * 4
+      if (sx < 0 || sy < 0 || sx >= png.width || sy >= png.height) {
+        data.set([255, 255, 255, 255], o)
+        continue
+      }
+      const i = (sy * png.width + sx) * 4
+      data.set(png.data.subarray(i, i + 4), o)
+    }
+  }
+  return { width: w, height: h, data }
+}
+
+test('17: a frame preview shows a long list number that reaches left of its text, as the board does', async ({ page }) => {
+  const frame = { id: 'F', name: 'Numbers', left: 20, top: 20, width: 700, height: 300 }
+  const { errors } = await open(
+    page,
+    [
+      textRec('a', 300, 60, { fontSize: 24, width: 380, frameId: 'F', blocks: [{ type: 'orderedList', start: 123, items: [{ blocks: [p('Listen')] }] }] }),
+      textRec('b', 300, 160, { fontSize: 24, width: 380, frameId: 'F', blocks: [{ type: 'orderedList', start: 123456789, items: [{ blocks: [p('Listen')] }] }] }),
+    ],
+    [frame],
+  )
+  // What the board shows first, with nothing selected (a selected frame's handles would be in the way).
+  const seen: Array<{ r: Region; board: { width: number; height: number; data: Uint8Array }; boxLeft: number }> = []
+  for (const i of [0, 1]) {
+    const li = await rectIn(page, 'ol > li', i)
+    const card = await rectIn(page, '.scene-text-body', i)
+    // The whole gutter and beyond, to the frame's left edge: what the board shows of the number there.
+    const r: Region = { name: `number ${i}`, left: frame.left + 2, top: li.top + 0.15 * li.em, width: li.left - frame.left - 4, height: 1.1 * li.em }
+    seen.push({ r, board: await screenPixels(page, r.left, r.top, r.width, r.height), boxLeft: card.left })
+  }
+  const url = await page.evaluate(() => window.__writing.preview('F'))
+  const png = decodePng(Buffer.from(url.split(',')[1]!, 'base64'))
+  const scale = png.width / frame.width
+  for (const { r, board, boxLeft } of seen) {
+    expect(inkShare(board), 'the board shows the number').toBeGreaterThan(0.02)
+    // Columns of ink, left to right: the preview has ink in (nearly) every column the board does, the part left of the box included.
+    const cols = (img: { width: number; height: number; data: Uint8Array }) =>
+      Array.from({ length: img.width }, (_, x) => Array.from({ length: img.height }, (_, y) => 255 - img.data[(y * img.width + x) * 4]! > 60).some(Boolean))
+    const boardCols = cols(board)
+    const shownCols = cols(previewCrop(png, scale, frame, r))
+    expect(boardCols.indexOf(true) + r.left, `${r.name} reaches left of its box`).toBeLessThan(boxLeft)
+    let missing = 0
+    boardCols.forEach((on, x) => {
+      if (on && !shownCols.slice(Math.max(0, Math.floor(x * scale) - 2), Math.floor(x * scale) + 3).some(Boolean)) missing++
+    })
+    expect(missing, `${r.name}: columns missing from the preview (of ${boardCols.filter(Boolean).length})`).toBeLessThanOrEqual(1)
+  }
+  expect(errors).toEqual([])
+})
+
+test('2: a whole-box Quote that would nest past the bound is refused: the bullets stay, the board saves, later writing survives a reload', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  await newText(page, at, 100, 80)
+  await page.keyboard.type('- Side A')
+  for (let i = 1; i <= 5; i++) {
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Tab')
+    await page.keyboard.type(`Track ${i}`)
+  }
+  await page.keyboard.press('Escape')
+  const before = await storedWhen(page, (d) => texts(d).length === 1 && (texts(d)[0]!.text as string).endsWith('Track 5'))
+  const rec = texts(before)[0]!
+  await page.locator('.layer-row', { hasText: 'Side A' }).click()
+  await page.getByRole('button', { name: 'Quote', exact: true }).click()
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  await expect(status(page)).toContainText('Saved on this device')
+  expect(texts(await storedDoc(page))[0]).toEqual(rec)
+  await expect(undoButton(page)).toBeEnabled() // the text's own creation, not a refused Quote
+  await expect(page.locator('.scene-layer blockquote')).toHaveCount(0)
+  // Later writing is kept.
+  await editAtEnd(page, at(110, 92))
+  await page.keyboard.type(' later')
+  await page.keyboard.press('Escape')
+  await storedWhen(page, (d) => (texts(d)[0]!.text as string).endsWith('Track 5 later'))
+  await page.reload()
+  await expect(status(page)).toContainText('Saved on this device')
+  expect((texts(await storedDoc(page))[0]!.text as string).endsWith('Track 5 later')).toBe(true)
+  expect(errors).toEqual([])
+})
+
+test('9a: Checklist and Numbered list convert a nested item with its parent, on a selected box and in an edit', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  await newText(page, at, 100, 80)
+  await page.keyboard.type('- Album\nTrack')
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Escape')
+  await storedWhen(page, (d) => texts(d).length === 1)
+  const btn = (name: string) => page.getByRole('button', { name, exact: true })
+  await page.locator('.layer-row', { hasText: 'Album' }).click()
+  await btn('Checklist').click()
+  const checked = await storedWhen(page, (d) => JSON.stringify(texts(d)[0]!.blocks).includes('taskList'))
+  expect(texts(checked)[0]!.blocks).toEqual([tasks([false, [p('Album'), tasks([false, [p('Track')]])]])])
+  await expect(btn('Checklist')).toHaveAttribute('aria-pressed', 'true')
+  await btn('Numbered list').click()
+  const numberedBox = await storedWhen(page, (d) => JSON.stringify(texts(d)[0]!.blocks).includes('orderedList') && !JSON.stringify(texts(d)[0]!.blocks).includes('taskList'))
+  expect(texts(numberedBox)[0]!.blocks).toEqual([{ type: 'orderedList', items: [{ blocks: [p('Album'), { type: 'orderedList', items: [{ blocks: [p('Track')] }] }] }] }])
+  // In an edit, with both lines selected: back to bullets, both.
+  await editAtEnd(page, at(140, 92))
+  await page.keyboard.press('Control+a')
+  await btn('Bulleted list').click()
+  const bulleted = await storedWhen(page, (d) => !JSON.stringify(texts(d)[0]!.blocks).includes('orderedList'))
+  expect(texts(bulleted)[0]!.blocks).toEqual([bullets([p('Album'), bullets([p('Track')])])])
+  await expect(btn('Bulleted list')).toHaveAttribute('aria-pressed', 'true')
+  expect(errors).toEqual([])
+})
+
+test('11: a ten-digit number starts a numbered list', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  await newText(page, at, 100, 80)
+  await page.keyboard.type('1000000000. ten')
+  const saved = await storedWhen(page, (d) => texts(d).length === 1 && texts(d)[0]!.text === 'ten')
+  expect(texts(saved)[0]!.blocks).toEqual([{ type: 'orderedList', start: 1000000000, items: [{ blocks: [p('ten')] }] }])
+  expect(errors).toEqual([])
+})
+
+test('1: the Divider button replaces selected text without an error', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('t', 100, 100, { text: 'abc' })])
+  await editAtEnd(page, at(110, 110))
+  await page.keyboard.press('Shift+ArrowLeft')
+  await page.getByRole('button', { name: 'Divider', exact: true }).click()
+  const one = await storedWhen(page, (d) => byId(d, 't').blocks !== undefined)
+  expect(byId(one, 't').blocks).toEqual([p('ab'), { type: 'divider' }, p()])
+  await page.keyboard.press('Control+a')
+  await page.getByRole('button', { name: 'Divider', exact: true }).click()
+  await expect(page.locator('.ProseMirror hr')).toHaveCount(1)
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 't').blocks) === JSON.stringify([{ type: 'divider' }, p()]))
+  expect(errors).toEqual([])
+})
+
+test('3: an IME composition that would take a code block past the character bound is undone, through Chromium\'s IME', async ({ page }) => {
+  await openBlank(page)
+  await page.evaluate(async () => {
+    const path = '/src/editor/textSession.ts'
+    const { createEditSession } = await import(/* @vite-ignore */ path)
+    const el = document.createElement('div')
+    document.body.replaceChildren(el)
+    el.style.cssText = 'max-height:100px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere'
+    const s = createEditSession({ text: '', blocks: [{ type: 'codeBlock', text: 'x'.repeat(500000) }] }, {}, { caret: 0 })
+    ;(window as unknown as { s: unknown }).s = s
+    s.mount(el).focus()
+  })
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.imeSetComposition', { text: 'か', selectionStart: 1, selectionEnd: 1 })
+  await cdp.send('Input.insertText', { text: 'か' })
+  const result = await page.evaluate(async () => {
+    const path = '/src/model/textDoc.ts'
+    const { canonicalTextContent } = await import(/* @vite-ignore */ path)
+    const s = (window as unknown as { s: { content(): { text: string }; finish(): void } }).s
+    await new Promise((r) => setTimeout(r, 50))
+    const live = s.content().text.length
+    s.finish()
+    const c = s.content()
+    return { live, length: c.text.length, loadable: canonicalTextContent(c) !== null }
+  })
+  expect(result).toEqual({ live: 500000, length: 500000, loadable: true })
+})
+
+test('4: an HTML-only paste into a selected code line inserts the words of the HTML', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('t', 100, 100, { text: 'abc', blocks: [{ type: 'codeBlock', text: 'abc' }] })])
+  await editAtEnd(page, at(125, 118))
+  await page.keyboard.press('Control+a')
+  await page.evaluate(() => navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob(['<p>new</p>'], { type: 'text/html' }) })]))
+  await page.keyboard.press('Control+v')
+  expect((await editedText(page))?.value).toBe('new')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 't').blocks) === JSON.stringify([{ type: 'codeBlock', text: 'new' }]))
+  expect(errors).toEqual([])
+})
+
+test('19: a resize or a move released over a disabled panel button ends there and is kept', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('t', 100, 120, { text: 'plain words', width: 420 }), textRec('h', 100, 400, { text: 'Heading', headings: [1], width: 420 })])
+  const cases: Array<{ id: string; button: string; what: 'resize' | 'move' }> = [
+    { id: 't', button: 'Divider', what: 'resize' }, // disabled outside an edit, with its tip
+    { id: 'h', button: 'Bold', what: 'resize' }, // disabled on a heading, with its tip
+    { id: 'h', button: 'Bring to front', what: 'move' }, // an ordinary disabled button (the heading is already in front)
+  ]
+  for (const c of cases) {
+    await page.evaluate((id) => window.__writing.select(id), c.id)
+    const target = page.getByRole('button', { name: c.button, exact: true })
+    await expect(target, c.button).toBeDisabled()
+    const to = (await target.boundingBox())!
+    const before = byId(await storedDoc(page), c.id)
+    const controls = (await page.evaluate(() => window.__writing.controls()))!
+    const from = c.what === 'resize' ? controls.mr! : { x: (controls.tl!.x + controls.br!.x) / 2, y: (controls.tl!.y + controls.br!.y) / 2 }
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 })
+    await page.mouse.up()
+    // Back over the board: the change stays.
+    await page.mouse.move(at(700, 650).x, at(700, 650).y, { steps: 4 })
+    const after = await storedWhen(page, (d) => JSON.stringify(byId(d, c.id)) !== JSON.stringify(before))
+    if (c.what === 'resize') expect(byId(after, c.id).width, c.button).not.toBe(before.width)
+    else expect(byId(after, c.id).left, c.button).not.toBe(before.left)
+    // The button did nothing, and the text is still selected.
+    expect(byId(after, c.id).blocks, c.button).toBeUndefined()
+    expect(await page.locator('.inspector-title').textContent()).toContain('Text')
+  }
+  expect(errors).toEqual([])
+})
+
+test('20: at 1366x768 the Layers header and two rows stay usable whatever is selected', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 })
+  const image = { type: 'image', id: 'img', left: 120, top: 120, angle: 0, assetId: 'a1', scaleX: 1, scaleY: 1 }
+  const caption = { ...textRec('cap', 120, 330, { text: 'A caption', fontSize: 16, width: 300 }), captionOf: 'img' }
+  const plain = textRec('t', 600, 120, { text: 'A text' })
+  const frame = { id: 'F', name: 'Spread', left: 560, top: 300, width: 300, height: 200 }
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await openBlank(page)
+  await seedRaw(page, 2, { version: 2, title: 'Layers', frames: [frame], objects: [image, caption, plain], viewport: UNIT }, [{ id: 'a1', name: 'a.png', width: 300, height: 200 }])
+  await installProbe(page)
+  await openApp(page)
+  for (const id of ['cap', 't', 'img', 'F']) {
+    await page.evaluate((id) => window.__writing.select(id), id)
+    const panel = (await page.locator('.layers').boundingBox())!
+    // The column holds both, one above the other: the panel ends above the list, and the list within the column (clear of the zoom controls).
+    const column = (await page.locator('.side-stack').boundingBox())!
+    const inspector = (await page.locator('.inspector').boundingBox())!
+    expect(inspector.y + inspector.height, id).toBeLessThanOrEqual(panel.y + 0.5)
+    expect(panel.y + panel.height, id).toBeLessThanOrEqual(column.y + column.height + 0.5)
+    // Everything in the panel can be reached: its last button scrolls into view inside it.
+    const last = page.locator('.inspector button').last()
+    await last.scrollIntoViewIfNeeded()
+    const lastBox = (await last.boundingBox())!
+    expect(lastBox.y + lastBox.height, id).toBeLessThanOrEqual(inspector.y + inspector.height + 0.5)
+    const header = (await page.locator('.layers-header').boundingBox())!
+    expect(header.y, id).toBeGreaterThanOrEqual(panel.y - 0.5)
+    expect(header.y + header.height, id).toBeLessThanOrEqual(panel.y + panel.height + 0.5)
+    const list = (await page.locator('.layers-list').boundingBox())!
+    const rows = page.locator('.layer-row')
+    for (const i of [0, 1]) {
+      const r = (await rows.nth(i).boundingBox())!
+      expect(r.y, `${id} row ${i}`).toBeGreaterThanOrEqual(list.y - 0.5)
+      expect(r.y + r.height, `${id} row ${i}`).toBeLessThanOrEqual(list.y + list.height + 0.5)
+    }
+    // Usable: the second row takes a click (it selects that object).
+    await rows.nth(1).click()
+    await expect(rows.nth(1)).toHaveAttribute('aria-selected', 'true')
+  }
+  expect(errors).toEqual([])
+})
+
+test('21: in a code block the mark buttons are disabled and say why; their keys do nothing', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('t', 100, 100, { text: 'const x', blocks: [{ type: 'codeBlock', text: 'const x' }] })])
+  await editAtEnd(page, at(125, 118))
+  await page.keyboard.press('Control+a')
+  for (const name of ['Bold', 'Italic', 'Underline', 'Strikethrough', 'Inline code']) {
+    const b = page.getByRole('button', { name, exact: true })
+    await expect(b, name).toBeDisabled()
+    await expect(b, name).toHaveAttribute('data-tip', `${name}: code blocks are plain text`)
+  }
+  await page.keyboard.press('Control+b')
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  expect(byId(await storedDoc(page), 't').blocks).toEqual([{ type: 'codeBlock', text: 'const x' }])
   expect(errors).toEqual([])
 })

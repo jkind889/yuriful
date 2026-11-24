@@ -148,9 +148,11 @@ Inside a line, `` `code` `` makes inline code: typing the closing backtick sets 
 
 **A divider:** Backspace at the start of the line after it, or Delete at the end of the line before it, removes it.
 
-**The panel:** under Style there is an **Inline code** button. A row of block buttons holds **Bulleted list**, **Numbered list**, **Checklist**, **Quote**, **Code block** and **Divider**. They work like the heading buttons: while you edit, on the lines the selection touches; on a selected box, on every line, as one undo step. A block button is shown pressed when every line concerned is already in that block, and pressing it then takes the lines out. Choosing a different kind of list changes the list the lines are in, all of its items. **Divider** goes in at the caret, so it works only while you edit.
+**The panel:** under Style there is an **Inline code** button. A row of block buttons holds **Bulleted list**, **Numbered list**, **Checklist**, **Quote**, **Code block** and **Divider**. They work like the heading buttons: while you edit, on the lines the selection touches; on a selected box, on every line, as one undo step. A block button is shown pressed when every line concerned is already in that block, and pressing it then takes those lines out of it, nested lists and quotes inside quotes too. Choosing a different kind of list changes the list each line is in, all of its items, nested lists included. Each press, and each click on a checkbox, is one step of Undo while you edit. **Divider** goes in at the caret, so it works only while you edit.
 
-Marks, fonts, headings, alignment, colour, font size and scaling work inside every block. Undo after you leave takes back the whole edit, blocks and all.
+Marks, fonts, headings, alignment, colour, font size and scaling work inside every block, except that a code block holds plain text: with only code lines selected, Bold, Italic, Underline, Strikethrough and Inline code are greyed out (their tip says why) and their keys do nothing; over a selection that also covers other lines, they change those lines only. Undo after you leave takes back the whole edit, blocks and all.
+
+A command that would nest lines deeper than a text can be stored (six levels: a list in a list in a list, and so on) does nothing, on a selected box as while typing. Pasting into a code block pastes plain text: the clipboard's own, or the words of its formatted text. A paste with no text in it at all changes nothing.
 
 ## Board appearance
 
@@ -284,7 +286,10 @@ Everything is stored in this browser's IndexedDB, for this origin (`http://local
 - In a centred or right-aligned text, list markers and checkboxes stay at the left of their items while the words move.
 - Numbers of three digits or more reach past the left edge of the text.
 - Backspace at the start of a line just after a list moves that line into the list as its last item.
-- The block buttons sit in one unlabelled row (their names show on hover), and with a text selected the layer list below the panel has a little less room than before.
+- The block buttons sit in one unlabelled row (their names show on hover). When the panel on the right does not fit above the layer list, it scrolls inside itself so that the list keeps its header and two rows; while it scrolls, a hover tip near its edge is cut off.
+- Select all and Delete leaves a divider at the start of a text, or a ticked checkbox, behind, because they are not text. Press Backspace on the empty line that is left: it removes the divider before it, or takes the line out of its checklist.
+- Enter on an empty item of a list nested directly inside a checklist item (or the other way round) adds an empty line to the outer item, rather than a new item of the outer list. Which it should do is an open question.
+- Leaving a new text that you emptied again (a list marker typed, or a letter typed and deleted) saves the board once more, unchanged.
 
 ## Testing
 

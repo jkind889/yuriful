@@ -1514,6 +1514,35 @@ export class Editor {
       // it through would end Fabric's tracking of the drag.
       if (this.primaryDown) e.stopPropagation()
     }
+    // Chromium sends no `mouseup` for a release over a disabled control (a greyed-out panel button),
+    // only a `pointerup`: a drag released there would never end for Fabric or for the editor, and the
+    // next move would undo it. Such a release is passed on as the `mouseup` it should have been, from
+    // the control's enabled parent, so it reaches the window and the document like any other; nothing
+    // is clicked (no `mousedown` went with it) and the control does not act.
+    const onPointerUp = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse' || !(e.target instanceof Element)) return
+      const disabled = e.target.closest(':disabled')
+      if (!disabled) return
+      const from = disabled.parentElement ?? disabled.ownerDocument.body
+      from.dispatchEvent(
+        new MouseEvent('mouseup', {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          view: window,
+          clientX: e.clientX,
+          clientY: e.clientY,
+          screenX: e.screenX,
+          screenY: e.screenY,
+          button: e.button,
+          buttons: e.buttons,
+          ctrlKey: e.ctrlKey,
+          shiftKey: e.shiftKey,
+          altKey: e.altKey,
+          metaKey: e.metaKey,
+        }),
+      )
+    }
     // A native drag (e.g. dragging selected text) ends with `dragend` and no `mouseup` at all.
     const onDragEnd = () => this.healPrimaryDown(0)
     const onMouseDown = (e: MouseEvent) => this.healPrimaryDown(e.button === 0 ? 0 : e.buttons)
@@ -1522,7 +1551,9 @@ export class Editor {
     window.addEventListener('mouseup', onMouseUp, { capture: true })
     window.addEventListener('mousemove', onMouseMove, { capture: true })
     window.addEventListener('dragend', onDragEnd, { capture: true })
+    window.addEventListener('pointerup', onPointerUp, { capture: true })
     this.cleanups.push(() => {
+      window.removeEventListener('pointerup', onPointerUp, { capture: true })
       window.removeEventListener('mousedown', onMouseDown, { capture: true })
       window.removeEventListener('mouseup', onMouseUp, { capture: true })
       window.removeEventListener('dragend', onDragEnd, { capture: true })

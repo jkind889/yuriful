@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
 import type { BlockKind, Editor, SelectionInfo, TextBlockInfo, TextFormatInfo } from '../editor/Editor.ts'
 import { FONT_STACKS } from '../editor/fonts.ts'
@@ -225,6 +225,7 @@ const BLOCKS: ReadonlyArray<{ kind: BlockKind; label: string; icon: () => ReactE
   { kind: 'codeBlock', label: 'Code block', icon: CodeBlockIcon },
 ]
 const pressedOf = (s: MarkState): boolean | 'mixed' => (s === 'mixed' ? 'mixed' : s === 'on')
+const CODE_PLAIN = 'Code blocks are plain text'
 
 /**
  * Formatting for the one selected text. Every control is a button, and the panel's buttons
@@ -234,6 +235,8 @@ const pressedOf = (s: MarkState): boolean | 'mixed' => (s === 'mixed' ? 'mixed' 
  */
 function TextPanel({ editor, selection, text, blocks, locked }: { editor: Editor; selection: SelectionInfo; text: TextFormatInfo; blocks: TextBlockInfo; locked: boolean }) {
   const id = useId()
+  // Every line concerned is a code block: it holds plain text, so the marks do not apply there.
+  const inCode = blocks.blocks.codeBlock === 'on'
   const colourName = TEXT_PALETTE.find((p) => p.color === text.color)?.name ?? text.color
   return (
     <>
@@ -307,26 +310,34 @@ function TextPanel({ editor, selection, text, blocks, locked }: { editor: Editor
         <div className="btn-group" role="group" aria-labelledby={`${id}-style`}>
           {MARKS.map(({ mark, label, shortcut, keys, icon: Icon }) => {
             // In heading lines bold is the heading's own: shown as on, and not changeable there.
-            const fixed = mark === 'bold' && text.boldFromHeading
+            const fixed = mark === 'bold' && text.boldFromHeading && !inCode
             return (
               <IconButton
                 key={mark}
                 label={label}
                 shortcut={shortcut}
                 keys={keys}
-                pressed={fixed ? true : pressedOf(text.marks[mark])}
-                disabled={locked || fixed}
+                pressed={fixed ? true : !inCode && pressedOf(text.marks[mark])}
+                disabled={locked || fixed || inCode}
                 // One tip that explains why it is greyed out (shown although the button is disabled).
-                tip={fixed ? 'Bold: headings are always bold' : undefined}
-                className={fixed ? 'tip-always' : undefined}
-                aria-description={fixed ? 'Headings are always bold' : undefined}
+                tip={inCode ? `${label}: code blocks are plain text` : fixed ? 'Bold: headings are always bold' : undefined}
+                className={fixed || inCode ? 'tip-always' : undefined}
+                aria-description={inCode ? CODE_PLAIN : fixed ? 'Headings are always bold' : undefined}
                 onClick={() => editor.toggleMark(mark)}
               >
                 <Icon />
               </IconButton>
             )
           })}
-          <IconButton label="Inline code" pressed={pressedOf(blocks.code)} disabled={locked} onClick={() => editor.toggleCode()}>
+          <IconButton
+            label="Inline code"
+            pressed={!inCode && pressedOf(blocks.code)}
+            disabled={locked || inCode}
+            tip={inCode ? 'Inline code: code blocks are plain text' : undefined}
+            className={inCode ? 'tip-always' : undefined}
+            aria-description={inCode ? CODE_PLAIN : undefined}
+            onClick={() => editor.toggleCode()}
+          >
             <InlineCodeIcon />
           </IconButton>
         </div>
@@ -442,9 +453,24 @@ export function Inspector({ editor, selection, cropping, onReplace }: {
 }) {
   const sizeId = useId()
   const isFrame = selection.kind === 'frame'
+  const panel = useRef<HTMLElement>(null)
+  // The panel shares its column with the layer list, which keeps its header and two rows: when the
+  // panel's controls are taller than the room left, it scrolls inside itself. Only then, because a
+  // scrolling panel clips the hover tips that reach past its edges.
+  useLayoutEffect(() => {
+    const el = panel.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const fit = () => el.classList.toggle('is-scrolling', el.scrollHeight > el.clientHeight + 1)
+    fit()
+    const watch = new ResizeObserver(fit)
+    watch.observe(el)
+    for (const child of Array.from(el.children)) watch.observe(child)
+    return () => watch.disconnect()
+  })
   if (cropping) return <CropPanel editor={editor} />
   return (
     <aside
+      ref={panel}
       className="floating inspector"
       aria-label="Selection"
       // A press on the panel itself (not on a field) must not take focus from a text being

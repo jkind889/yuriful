@@ -1,4 +1,4 @@
-import { history, isHistoryTransaction, redo, redoDepth, undo, undoDepth } from 'prosemirror-history'
+import { closeHistory, history, isHistoryTransaction, redo, redoDepth, undo, undoDepth } from 'prosemirror-history'
 import { keydownHandler } from 'prosemirror-keymap'
 import { DOMParser as PMDOMParser, DOMSerializer, Fragment, Slice } from 'prosemirror-model'
 import type { Mark as PMMark, Node as PMNode, ParseOptions, ResolvedPos } from 'prosemirror-model'
@@ -156,6 +156,12 @@ class KeepSpacesParser extends PMDOMParser {
   }
 }
 const pasteParser = new KeepSpacesParser(textSchema, PMDOMParser.fromSchema(textSchema).rules)
+
+/** The words of pasted HTML as plain text, one line per line it shows (through the same inert sanitizer as an HTML paste). */
+function htmlPlainText(html: string): string {
+  const body = new DOMParser().parseFromString(sanitizePastedHTML(html), 'text/html').body
+  return Array.from(body.children, (p) => p.textContent ?? '').join('\n')
+}
 
 /** Pasted plain text with one "\n" per line break, as the canvas's textarea holds it. */
 const normalBreaks = (text: string) => text.replace(/\r\n?/g, '\n')
@@ -603,7 +609,7 @@ export class EditSession {
     if (!e.isComposing && !this.composing && e.key === 'Tab' && e.target === this.root && !e.ctrlKey && !e.metaKey && !e.altKey && inListItem(this.current)) {
       // In a list or checklist item: indent or outdent it (owner decision 8). An item that cannot
       // go deeper (the first of its list) stays where it is, and the edit stays open.
-      this.run(e.shiftKey ? outdentItem : indentItem)
+      this.unlessComposing(() => this.runStep(e.shiftKey ? outdentItem : indentItem))
       return true
     }
     if (!e.isComposing && !this.composing && (e.key === 'Escape' || e.key === 'Tab') && e.target === this.root) {
@@ -651,13 +657,20 @@ export class EditSession {
       this.dispatch(this.typedTransaction(text, from, to))
       return true
     }
+    const beforeTyped = this.current
     this.dispatch(this.typedTransaction(text, from, to))
+    if (this.current === beforeTyped) return true // the character itself was refused (a bound)
     const pendingBefore = pendingOf(this.current)
     const tr = shortcutTransaction(this.current, text)
     if (tr) {
+      const beforeConversion = this.current
       this.dispatch(tr)
-      this.revert = { pending: pendingBefore }
-      this.conversions.set(undoDepth(this.current) as number, pendingOf(this.current))
+      // Only a conversion that happened can be reverted: one the bounds refused leaves the typed
+      // character as ordinary typing, and Backspace deletes it.
+      if (this.current !== beforeConversion) {
+        this.revert = { pending: pendingBefore }
+        this.conversions.set(undoDepth(this.current) as number, pendingOf(this.current))
+      }
     }
     return true
   }
@@ -818,6 +831,13 @@ export class EditSession {
   private followUp() {
     if (this.composing || this.composed.length === 0) return
     const tr = this.followUpTransaction(this.current)
+    if (exceedsBounds(tr.doc, this.baseFont)) {
+      // The composition took the text over a bound the store enforces (the bounds filter stands aside
+      // while the browser owns the text): its own step is undone, so what is kept can be stored.
+      this.composed = []
+      if (this.editable) undo(this.current, (t) => this.dispatch(t))
+      return
+    }
     // The selection the browser shows: ProseMirror has not read its last move yet (it collapses
     // the committed text's selection to a caret after it), and showing the follow-up would put
     // the session's older one back on the page.
@@ -877,25 +897,33 @@ export class EditSession {
    */
   toggleBlock(kind: BlockKind): boolean {
     const cmd = kind === 'blockquote' ? toggleQuote : kind === 'codeBlock' ? toggleCodeBlock : toggleList(kind)
-    return this.unlessComposing(() => {
-      this.revert = null
-      const before = this.current.doc
-      return this.editable && cmd(this.current, (tr) => this.dispatch(tr)) && this.current.doc !== before
-    })
+    return this.unlessComposing(() => this.runStep(cmd))
   }
 
   /** A divider at the caret (`insertDivider`). True when it went in. */
   insertDivider(): boolean {
-    return this.unlessComposing(() => {
-      this.revert = null
-      const before = this.current.doc
-      return this.editable && insertDivider(this.current, (tr) => this.dispatch(tr)) && this.current.doc !== before
-    })
+    return this.unlessComposing(() => this.runStep(insertDivider))
   }
 
-  /** Checks or unchecks the checklist item at `pos` (the position before it): a change of the edit like typing, its own in-edit undo step. */
+  /** Checks or unchecks the checklist item at `pos` (the position before it): a change of the edit like typing, an in-edit undo step of its own. */
   toggleTask(pos: number): boolean {
-    return this.unlessComposing(() => this.editable && toggleTaskAt(pos)(this.current, (tr) => this.dispatch(tr)))
+    return this.unlessComposing(() => this.runStep(toggleTaskAt(pos)))
+  }
+
+  /**
+   * A block command (a list, quote, code block, divider, checkbox, indent or outdent) as an in-edit
+   * undo step of its own: never merged with typing before it, a command just before it, or typing
+   * straight after it. It ends "straight after a shortcut". True when the text changed.
+   */
+  private runStep(cmd: Command): boolean {
+    this.revert = null
+    if (!this.editable) return false
+    const before = this.current
+    cmd(this.current, (tr) => this.dispatch(closeHistory(tr)))
+    if (this.current === before) return false
+    // What comes next starts a step of its own (an empty transaction that only closes the step).
+    this.dispatch(closeHistory(this.current.tr))
+    return true
   }
 
   /** The font of the selected range, or with only a caret the font of what is typed next. */
@@ -1024,10 +1052,17 @@ export class EditSession {
     if (!this.editable) return false
     const sel = this.current.selection
     let slice: Slice
-    if (data.html !== undefined && !data.plain && !(sel.$from.parent.type.spec.code && data.text !== undefined)) {
+    if (sel.$from.parent.type.spec.code) {
+      // Into a code block: plain text, the clipboard's own or the words of its HTML. Nothing at all: nothing changes.
+      const text = data.text || (data.html !== undefined ? htmlPlainText(data.html) : '')
+      if (!text) return false
+      this.notePlainPaste(text, this.current)
+      slice = this.plainTextSlice(text, sel.$from)
+    } else if (data.html !== undefined && !data.plain) {
       const body = new DOMParser().parseFromString(sanitizePastedHTML(data.html), 'text/html').body
       slice = this.arriving(pasteParser.parseSlice(body, { context: sel.$from }), this.destinationFont(this.current))
-    } else if (data.text !== undefined) {
+      if (slice.size === 0 && !data.text) return false // nothing to paste: the selection stays
+    } else if (data.text) {
       this.notePlainPaste(data.text, this.current)
       slice = this.plainTextSlice(data.text, sel.$from)
     } else return false
@@ -1089,9 +1124,13 @@ export class EditSession {
     return plainPasteContent(rec.old, this.baseFont, rec.from, rec.to, text.slice(rec.from, rec.from + length), rec.pending)
   }
 
-  /** Gives every block of `doc` the runs of `want` (same text). True when anything changed. */
+  /**
+   * Gives every block of `doc` the runs of `want` (same text). Only for a compact document, line for
+   * line: anything else (a divider or list the change put in) is left as it is. True when anything changed.
+   */
   private imposeContent(tr: Transaction, doc: PMNode, want: CompactContent): boolean {
     const expected = docFromBlocks(legacyToBlocks(want.text, want, this.baseFont))
+    if (!isCompactDoc(doc) || expected.childCount !== doc.childCount) return false
     let changed = false
     doc.forEach((block, offset, i) => {
       const b = blockOf(expected.child(i))
@@ -1282,12 +1321,14 @@ export class EditSession {
           },
         },
         // Into a code block, a paste is its plain text, whatever else the clipboard holds.
-        handlePaste: (view, e) => {
+        handlePaste: (view, e, slice) => {
+          const data = e.clipboardData
+          // A paste with no text at all (an image copied from a page, an empty clipboard) changes nothing, the selection included.
+          if (slice.size === 0 && !data?.getData('text/plain')) return true
           if (!view.state.selection.$from.parent.type.spec.code) return false
-          const text = e.clipboardData?.getData('text/plain')
-          if (text === undefined) return false
-          this.paste({ text })
-          return true
+          const html = data?.getData('text/html')
+          this.paste({ text: data?.getData('text/plain') ?? '', ...(html ? { html } : {}) })
+          return true // handled, even when there was nothing to paste: the selection stays
         },
         transformPastedHTML: (html) => {
           this.incoming = 'html'

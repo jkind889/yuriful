@@ -314,6 +314,31 @@ export function frameBitmapSize(frame: Pick<FrameRecord, 'width' | 'height'>, ma
 export const cardBleed = (rec: Pick<TextRecord, 'fontSize'>): number => Math.ceil(rec.fontSize * 2)
 
 /**
+ * How far, in scene units, the numbers of a card's numbered lists reach left of its box (0 when none
+ * does): a number sits in its item's gutter, ending a little before the words, and a long one (`100.`,
+ * `123456789.`) runs out past the box's left edge, where the board shows it too. Measured on the laid
+ * out card: each list's longest number, as its marker draws it, set where the marker sits.
+ */
+export function numberOverhang(body: HTMLElement): number {
+  const doc = body.ownerDocument
+  const left = body.getBoundingClientRect().left
+  let reach = 0
+  for (const ol of Array.from(body.querySelectorAll('ol'))) {
+    const li = ol.querySelector(':scope > li')
+    if (!li) continue
+    const start = Number(ol.getAttribute('start') ?? '1') || 1
+    const probe = doc.createElement('span')
+    // The marker's own style (`.yuriful-prose ol > li::before`): its number, at its size and spacing.
+    probe.style.cssText = 'position:absolute;right:100%;top:0;margin-right:0.35em;font-size:1em;font-style:normal;font-weight:400;font-variant-numeric:tabular-nums;white-space:nowrap;visibility:hidden'
+    probe.textContent = `${start + ol.children.length - 1}.`
+    li.append(probe)
+    reach = Math.max(reach, left - probe.getBoundingClientRect().left)
+    probe.remove()
+  }
+  return Math.max(0, reach)
+}
+
+/**
  * Characters XML 1.0 cannot hold (controls other than tab, line feed and carriage return; U+FFFE,
  * U+FFFF) and lone surrogates, which would make a card's SVG fail to decode (or its data URL
  * fail to encode). The bitmap shows U+FFFD in their place; the record is never changed.
@@ -505,7 +530,7 @@ export async function renderFrameToCanvas(scene: Scene, frameId: string, opts: F
         host.append(body)
         renderCardBody(body, rec)
         const size = { width: cardWidth, height: measurer.measureHeight(body, rec) }
-        const bleed = Math.max(cardBleed(rec), Math.ceil(body.scrollWidth - cardWidth) + 2)
+        const bleed = Math.max(cardBleed(rec), Math.ceil(body.scrollWidth - cardWidth) + 2, Math.ceil(numberOverhang(body)) + 2)
         if (!overlapsFrame(boxCorners(rec, size, bleed), frame)) {
           body.remove()
           continue

@@ -3,13 +3,13 @@ import { closeHistory, isHistoryTransaction, redo, undo, undoDepth } from 'prose
 import { Mark as PMMark } from 'prosemirror-model'
 import type { Node as PMNode, NodeType, ResolvedPos } from 'prosemirror-model'
 import { liftListItem, sinkListItem, splitListItem, wrapInList } from 'prosemirror-schema-list'
-import { AllSelection, Plugin, PluginKey, TextSelection } from 'prosemirror-state'
-import type { Command, EditorState, Transaction } from 'prosemirror-state'
+import { AllSelection, EditorState, Plugin, PluginKey, TextSelection } from 'prosemirror-state'
+import type { Command, Transaction } from 'prosemirror-state'
 import { AddMarkStep, RemoveMarkStep, canJoin, findWrapping, liftTarget } from 'prosemirror-transform'
 import { MARKS, canonicalTextFormatting, headingsAfterEdit, isHeadingLevel, markMask, spansFromCharStyles, splitGraphemes, textAfterEdit, withPendingMarks } from '../model/richText.ts'
 import type { CharStyle, HeadingLevel, Mark, MarkState, PendingTextStyle, RangeFormat } from '../model/richText.ts'
 import { RUN_MARKS, blockOf, blockTypeFor, fontOf, isItemType, isListType, levelOf, marks, marksOfRun, nodes, posAtTextOffset, runKey, textOffsetAt, textSchema, textblocksOf } from './textSchema.ts'
-import { blocksToLegacy, legacyToBlocks, parseBlocks } from '../model/textDoc.ts'
+import { blocksToLegacy, isListStart, legacyToBlocks, parseBlocks } from '../model/textDoc.ts'
 import type { FontId, InlineRun, TextSpan } from '../model/types.ts'
 
 /**
@@ -161,7 +161,7 @@ export interface BlockShortcut {
  * The block shortcut `inserted`, just typed so that the caret is at `caret` of `line`, completes,
  * or null, wherever the line is (`shortcutTransaction` decides where each may fire):
  * - a space after `-` (bullet list), `>` (quote), a number from 1 and `.` (numbered list starting
- *   at it), `[]` or `[ ]` (unticked checklist item) or `[x]` (ticked) at the very start of the line;
+ *   at it; up to the largest exactly representable whole number, as storage allows), `[]` or `[ ]` (unticked checklist item) or `[x]` (ticked) at the very start of the line;
  * - the third `-` of a line that is exactly `---` (divider);
  * - the third backtick of ```` ``` ```` at the start of a line (code block; the rest of the line
  *   becomes its text).
@@ -176,8 +176,9 @@ export function matchBlockShortcut(line: string, caret: number, inserted: string
     if (head === '> ') return { kind: 'blockquote', end: caret }
     if (head === '[] ' || head === '[ ] ') return { kind: 'taskList', checked: false, end: caret }
     if (head === '[x] ') return { kind: 'taskList', checked: true, end: caret }
-    const n = /^(\d{1,9})\. $/.exec(head)
-    if (n && Number(n[1]) >= 1) return { kind: 'orderedList', start: Number(n[1]), end: caret }
+    // Exactly the starts a stored numbered list accepts (`isListStart`); any other number stays as typed.
+    const n = /^(\d+)\. $/.exec(head)
+    if (n && isListStart(Number(n[1]))) return { kind: 'orderedList', start: Number(n[1]), end: caret }
     return null
   }
   if (inserted === '-' && line === '---' && caret === 3) return { kind: 'divider', end: 3 }
@@ -206,16 +207,16 @@ type AnyShortcut = { line: LineShortcut } | { block: BlockShortcut }
 /**
  * The shortcut that typing `inserted` completes on the textblock at `$at` whose text is now `line`
  * with the caret at `caret`; `inCode`: the typed character is inline code. Nothing fires in a code
- * block; heading, bold, italic and code do not fire inside inline code (bold and italic) or in a
- * code block; block shortcuts fire only where `blockShortcutAllowed` says.
+ * block or for a character typed inside inline code; block shortcuts fire only where
+ * `blockShortcutAllowed` says.
  */
 function shortcutAt($at: ResolvedPos, line: string, caret: number, inserted: string, inCode: boolean): AnyShortcut | null {
-  if (!$at.parent.isTextblock || $at.parent.type.spec.code) return null
+  // Nothing fires in a code block, nor for a character typed inside inline code: code is literal.
+  if (!$at.parent.isTextblock || $at.parent.type.spec.code || inCode) return null
   const block = matchBlockShortcut(line, caret, inserted)
   if (block) return blockShortcutAllowed(block, lineContext($at)) ? { block } : null
   const sc = matchShortcut(line, caret, inserted) ?? matchCodeShortcut(line, caret, inserted)
-  if (!sc || (inCode && sc.kind !== 'heading')) return null
-  return { line: sc }
+  return sc ? { line: sc } : null
 }
 
 /** Whether inserting `text` at `from` (nothing replaced) would complete a typing shortcut. */
@@ -1116,9 +1117,10 @@ function codeToParagraphs(tr: Transaction, lines: ReadonlyArray<{ node: PMNode; 
 
 /**
  * Bullet list, numbered list or checklist on the lines the selection touches (outside an edit,
- * every line): off when every one of them is already in a list of that kind (each lifted one level
- * out of it); otherwise the lists they are in become that kind, or, when not every line is in a
- * list, the lines are put in a new list, one item each. The words stay as they are.
+ * every line): off when every one of them is already in a list of that kind (each leaves every list
+ * of that kind it is nearest to, `leaveAll`, so the button then shows off); otherwise each line's
+ * nearest list becomes that kind, or, when not every line is in a list, the lines are put in a new
+ * list, one item each. The words stay as they are.
  */
 export function toggleList(kind: 'bulletList' | 'orderedList' | 'taskList'): Command {
   return (state, dispatch) => {
@@ -1127,7 +1129,12 @@ export function toggleList(kind: 'bulletList' | 'orderedList' | 'taskList'): Com
     const lines = touchedLines(state)
     if (lines.length === 0) return false
     const kinds = lines.map((t) => kindsOfLine(state.doc, t.pos))
-    if (kinds.every((k) => k[kind])) return liftListItem(itemType)(state, dispatch)
+    if (kinds.every((k) => k[kind])) {
+      const tr = leaveAll(state, kind, () => liftListItem(itemType))
+      if (!tr) return false
+      dispatch?.(keepSelection(state)(tr))
+      return true
+    }
     const inSomeList = kinds.every((k) => k.bulletList || k.orderedList || k.taskList)
     if (inSomeList) {
       // The nearest list of each line changes kind; the items too when checklist and list swap.
@@ -1141,7 +1148,10 @@ export function toggleList(kind: 'bulletList' | 'orderedList' | 'taskList'): Com
         }
       }
       const tr = state.tr
-      for (const [pos, list] of [...lists].sort((a, b) => b[0] - a[0])) {
+      // The innermost first: each keeps its size, so the positions of those around it stay valid,
+      // and each list is read from the document as it is now (with the lists inside it changed).
+      for (const pos of [...lists.keys()].sort((a, b) => b - a)) {
+        const list = tr.doc.nodeAt(pos)!
         if (list.type === listType) continue
         const items: PMNode[] = []
         list.forEach((item) => {
@@ -1157,17 +1167,75 @@ export function toggleList(kind: 'bulletList' | 'orderedList' | 'taskList'): Com
   }
 }
 
-/** Quote on the lines the selection touches: off when every one of them is in a quote (they leave the innermost one), otherwise they go into a new quote. */
+/** Lifts the selected lines out of their innermost quote. */
+const liftOutOfQuote: Command = (state, dispatch) => {
+  const { $from, $to } = state.selection
+  const range = $from.blockRange($to, (n) => n.type === nodes.blockquote)
+  const target = range && liftTarget(range)
+  if (!range || target === null || target === undefined) return false
+  dispatch?.(state.tr.lift(range, target))
+  return true
+}
+
+/**
+ * The innermost block of `kind` the line (textblock) at `pos` is in, as the controls count it: for
+ * a list kind, its nearest list when that is of the kind; for a quote, its innermost quote. Null when
+ * the line is not in one.
+ */
+function containerOf(doc: PMNode, pos: number, kind: BlockKind): { pos: number; depth: number } | null {
+  const $p = doc.resolve(pos + 1)
+  for (let d = $p.depth - 1; d > 0; d--) {
+    const t = $p.node(d).type
+    if (kind === 'blockquote' ? t === nodes.blockquote : isListType(t)) return t === nodes[kind] ? { pos: $p.before(d), depth: d } : null
+  }
+  return null
+}
+
+/**
+ * Every line the selection touches leaves every block of `kind` it is in (a list of that kind it is
+ * nearest to, or any quote), in one transaction: round after round, the lines inside the innermost
+ * such block are lifted out of it by `lift` (run on that block's lines alone, whichever lists or
+ * quotes they are in side by side). Lifting never changes the text, so the lines are found again by
+ * their index. Null when nothing could be lifted.
+ */
+function leaveAll(state: EditorState, kind: BlockKind, lift: () => Command): Transaction | null {
+  const { first, last } = linesOfSelection(state.doc, state.selection.from, state.selection.to)
+  const tr = state.tr
+  for (let round = 0; round < 4 * MAX_ROUNDS; round++) {
+    const lines = textblocksOf(tr.doc).slice(first, last + 1)
+    let best: { pos: number; depth: number } | null = null
+    for (const t of lines) {
+      const c = containerOf(tr.doc, t.pos, kind)
+      if (c && (!best || c.depth > best.depth)) best = c
+    }
+    if (!best) break
+    const end = best.pos + tr.doc.nodeAt(best.pos)!.nodeSize
+    const inside = lines.filter((t) => t.pos > best.pos && t.pos < end)
+    const a = inside[0]!
+    const b = inside[inside.length - 1]!
+    const sub = EditorState.create({ doc: tr.doc, selection: TextSelection.create(tr.doc, a.pos + 1, b.pos + 1 + b.node.content.size) })
+    const steps = tr.steps.length
+    lift()(sub, (t) => {
+      for (const step of t.steps) tr.step(step)
+    })
+    if (tr.steps.length === steps) break
+  }
+  return tr.docChanged ? tr : null
+}
+
+/** A bound on the rounds of `leaveAll`: no text nests deeper than this. */
+const MAX_ROUNDS = 16
+
+/** Quote on the lines the selection touches: off when every one of them is in a quote (they leave every quote they are in), otherwise they go into a new quote. */
 export const toggleQuote: Command = (state, dispatch) => {
   const lines = touchedLines(state)
   if (lines.length === 0) return false
   const { $from, $to } = state.selection
   const keep = keepSelection(state)
   if (lines.every((t) => kindsOfLine(state.doc, t.pos).blockquote)) {
-    const range = $from.blockRange($to, (n) => n.type === nodes.blockquote)
-    const target = range && liftTarget(range)
-    if (!range || target === null || target === undefined) return false
-    dispatch?.(keep(state.tr.lift(range, target)))
+    const tr = leaveAll(state, 'blockquote', () => liftOutOfQuote)
+    if (!tr) return false
+    dispatch?.(keep(tr))
     return true
   }
   const range = $from.blockRange($to)
@@ -1422,11 +1490,32 @@ const deleteDividerAfter: Command = (state, dispatch) => {
 }
 
 /**
- * Enter. On a selected divider: a paragraph after it (`createParagraphNear`). In a list item, a
- * code block or an empty line of a quote, as those blocks do (`listEnter`, `codeEnter`,
- * `quoteEnter`); everywhere else a line break as before.
+ * Enter. On a selected divider: a paragraph after it (`createParagraphNear`). Over a selection that
+ * reaches into a list item from another line, the selection goes first (`enterOverItems`). In a code
+ * block (wherever it sits, a list item too), a list item or an empty line of a quote, as those
+ * blocks do (`codeEnter` before `listEnter`, `quoteEnter`); everywhere else a line break as before.
  */
-const enterAnywhere: Command = chainCommands(createParagraphNear, listEnter, codeEnter, quoteEnter, enterKey)
+const enterAnywhere: Command = chainCommands(createParagraphNear, enterOverItems, codeEnter, listEnter, quoteEnter, enterKey)
+
+/**
+ * Enter over a selection that reaches into a list item from another line (across items, or from a
+ * line outside the list): the selection is deleted, then Enter acts at the caret it leaves, as it
+ * would there (`enterAnywhere`), in the same transaction. Without this, a split inside a list item
+ * would refuse a selection that does not lie in one line.
+ */
+function enterOverItems(state: EditorState, dispatch?: (tr: Transaction) => void): boolean {
+  const { $from, $to, empty } = state.selection
+  if (empty || $from.sameParent($to) || (!itemAround($from) && !itemAround($to))) return false
+  if (!dispatch) return true
+  const tr = state.tr.deleteSelection()
+  const sub = EditorState.create({ doc: tr.doc, selection: tr.selection })
+  enterAnywhere(sub, (t) => {
+    for (const step of t.steps) tr.step(step)
+    tr.setSelection(TextSelection.create(tr.doc, t.selection.anchor, t.selection.head))
+  })
+  dispatch(tr.scrollIntoView())
+  return true
+}
 const backspace: Command = chainCommands(deleteSelected, blockStartBackspace, joinBackward, deleteCharBackward)
 
 export const editKeys: Readonly<Record<string, Command>> = {

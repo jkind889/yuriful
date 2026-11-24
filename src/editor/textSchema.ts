@@ -2,7 +2,7 @@ import { DOMSerializer, Schema } from 'prosemirror-model'
 import type { Mark as PMMark, Node as PMNode, NodeType } from 'prosemirror-model'
 import { DEFAULT_FONT, FONT_IDS, MARKS, canonicalTextFormatting, isHeadingLevel } from '../model/richText.ts'
 import type { HeadingLevel, Mark, TextFormatting } from '../model/richText.ts'
-import { blocksToLegacy, canonicalTextContent, legacyToBlocks, parseBlocks, plainTextOf } from '../model/textDoc.ts'
+import { blocksToLegacy, canonicalTextContent, isListStart, legacyToBlocks, parseBlocks, plainTextOf } from '../model/textDoc.ts'
 import type { TextContent } from '../model/textDoc.ts'
 import type { BlockNode, FontId, InlineRun, ListItemNode, TaskItemNode, TextMark, TextRecord } from '../model/types.ts'
 
@@ -73,7 +73,7 @@ export const textSchema = new Schema({
         start: {
           default: 1,
           validate: (v: unknown) => {
-            if (!Number.isSafeInteger(v) || (v as number) < 1) throw new RangeError(`list start ${String(v)} is not a whole number from 1`)
+            if (!isListStart(v)) throw new RangeError(`list start ${String(v)} is not a whole number from 1`)
           },
         },
       },
@@ -153,7 +153,7 @@ export const textSchema = new Schema({
 
 function listStart(raw: string | null): number {
   const n = raw === null ? 1 : Number(raw)
-  return Number.isSafeInteger(n) && n >= 1 ? n : 1
+  return isListStart(n) ? n : 1
 }
 
 /**
