@@ -1,6 +1,26 @@
 import { expect } from '@playwright/test'
-import type { BrowserContext, Page } from '@playwright/test'
+import type { APIResponse, BrowserContext, Page, Route } from '@playwright/test'
 import zlib from 'node:zlib'
+
+/**
+ * `route.fetch()` for a route that rewrites a dev-server module (the test probes on `/src/main.tsx`),
+ * tried again on a network error: on a busy machine the dev server can reset the connection while
+ * a page reloads (`route.fetch: read ECONNRESET`). Any other error, and the first error when every
+ * try fails, is thrown as it came.
+ */
+export async function fetchRetrying(route: Route, tries = 4): Promise<APIResponse> {
+  let first: unknown = null
+  for (let i = 0; ; i++) {
+    try {
+      return await route.fetch()
+    } catch (e) {
+      first ??= e
+      const network = /ECONNRESET|ECONNREFUSED|EPIPE|socket hang up/i.test(String(e))
+      if (!network || i + 1 >= tries) throw first
+      await new Promise((resolve) => setTimeout(resolve, 50 * (i + 1)))
+    }
+  }
+}
 
 /** The autosave debounce is 500ms; "nothing was written" checks wait well past it. */
 export const AUTOSAVE_QUIET_MS = 1500

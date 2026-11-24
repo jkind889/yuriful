@@ -1632,11 +1632,31 @@ function dividerAlone(state: EditorState, sel: NodeSelection): boolean {
 /**
  * Shift+Left or Shift+Right with the selection's moving end at the edge of a line, a divider next to
  * that line: the selection reaches past the divider to the next place in a line (the browser's own
- * keys stop there; Shift+Up or Down and the mouse already cross it). False otherwise: the browser moves it.
+ * keys stop there; Shift+Up or Down and the mouse already cross it). With a divider itself selected
+ * (clicked), the selection extends from it in that direction: from the line on its other side to the
+ * next place past it (from the place just past it to the next character, when there is no line on its
+ * other side). False otherwise: the browser moves it.
  */
 function extendPastDivider(dir: 1 | -1): Command {
   return (state, dispatch) => {
     const sel = state.selection
+    if (sel instanceof NodeSelection && sel.node.type === nodes.divider) {
+      const behind = Selection.findFrom(state.doc.resolve(dir > 0 ? sel.from : sel.to), -dir, true)
+      const beyond = Selection.findFrom(state.doc.resolve(dir > 0 ? sel.to : sel.from), dir, true)
+      if (!beyond) return true // nothing in a line that way: the divider stays selected
+      let anchor = behind ? behind.head : beyond.head
+      let head = beyond.head
+      if (!behind) {
+        // No line on the divider's other side: the selection starts just past it and takes one character.
+        const $b = state.doc.resolve(head)
+        const room = dir > 0 ? $b.parent.content.size - $b.parentOffset : $b.parentOffset
+        if (room === 0) return true
+        anchor = head
+        head += dir
+      }
+      dispatch?.(state.tr.setSelection(TextSelection.create(state.doc, anchor, head)))
+      return true
+    }
     if (!(sel instanceof TextSelection)) return false
     const $head = sel.$head
     if (!$head.parent.isTextblock || $head.parentOffset !== (dir > 0 ? $head.parent.content.size : 0)) return false
@@ -1831,9 +1851,10 @@ export function toggleBlockKind(kind: BlockKind, opts: { wholeBox?: boolean } = 
  *   caret's line, as a plain paste does.
  * - Otherwise the caret's line is split around the paste: the text before the caret stays its line,
  *   of its kind, and the text after it becomes a line of the same kind after the paste (a new item
- *   of a list or checklist, unticked, like Enter). The existing line never takes the kind of a pasted
- *   block. A pasted first block that is a plain paragraph joins the text before the caret, and a
- *   pasted last one the text after it, as a plain paste of several lines does. At the start of a
+ *   of a list or checklist, unticked, like Enter, taking the rest of the caret's item with it). The
+ *   existing line never takes the kind of a pasted block. A pasted first block that is a plain
+ *   paragraph joins the text before the caret, and a pasted last one the text after it, as a plain
+ *   paste of several lines does: both halves still keep the line's kind. At the start of a
  *   line no empty line is left before the paste, and at its end none after it.
  * - The pasted blocks go where the caret's line is: inside its list item or quote. Pasted items of a
  *   list of the same kind as the caret's list become items of that list (numbered on from there,
@@ -1843,6 +1864,13 @@ export function toggleBlockKind(kind: BlockKind, opts: { wholeBox?: boolean } = 
  *   the last thing in the text, or was pasted on an empty line (which then stays after it): the caret goes there.
  * - The caret ends after the pasted text (or, after a final divider, at the start of the line after it).
  */
+/** `content` without bold (what a heading's text never stores). */
+function withoutBold(content: Fragment): Fragment {
+  const out: PMNode[] = []
+  content.forEach((n) => out.push(n.isText ? n.mark(marks.bold.removeFromSet(n.marks)) : n))
+  return Fragment.fromArray(out)
+}
+
 export function pasteBlocks(state: EditorState, pasted: Fragment, opts: { inline?: boolean } = {}): Transaction | null {
   const $c = state.selection.$from
   if (!state.selection.empty || !$c.parent.isTextblock || $c.parent.type.spec.code) return null
@@ -1883,27 +1911,38 @@ export function pasteBlocks(state: EditorState, pasted: Fragment, opts: { inline
   const lastJoins = placed.length >= 2 && plainPara(placed.length - 1)
   const out: Leaf[] = []
   let caret: { leaf: Leaf; offset: number } | null = null
-  if (firstJoins) out.push({ ...L, node: L.node.copy(head.append(placed[0]!.node.content)) })
+  // Both halves of the split line keep its kind (a heading its level; a heading stores no bold).
+  const ofLine = (content: Fragment) => L.node.type.create(L.node.attrs, L.node.type === nodes.heading ? withoutBold(content) : content)
+  // In a list, the half after the caret is a new unticked item when the line was split (as Enter
+  // makes one), and the rest of the caret's item (its later paragraphs, nested lists) goes with it.
+  // So does that rest when pasted items of the caret's list come between it and the caret's line,
+  // with nothing after the caret: it is the item's continuation, after them.
+  const sameItem = (f: Frame | undefined) => k >= 0 && f !== undefined && f.kind === Lf[k]!.kind && f.id === Lf[k]!.id && f.item === Lf[k]!.item
+  const restOfItem = k >= 0 && leaves.slice(li + 1).some((l) => sameItem(l.frames[k]))
+  const continues = tail.size > 0 || (restOfItem && joinedItems.size > 0)
+  const newItem = (head.size > 0 || firstJoins) && continues && k >= 0 ? { ...Lf[k]!, item: next(), checked: false, number: null } : null
+  const tailFrames = newItem ? Lf.map((f, i) => (i === k ? newItem : f)) : Lf
+  if (firstJoins) out.push({ ...L, node: ofLine(head.append(placed[0]!.node.content)) })
   else if (head.size > 0) out.push({ ...L, node: L.node.copy(head) })
   const middle = placed.slice(firstJoins ? 1 : 0, lastJoins ? placed.length - 1 : placed.length)
   out.push(...middle)
   const lastPlaced = placed[placed.length - 1]!
   if (lastJoins) {
-    const leaf = { ...lastPlaced, node: lastPlaced.node.copy(lastPlaced.node.content.append(tail)) }
+    // The last pasted paragraph joins the text after the caret, in that half's line.
+    const leaf = tail.size > 0 ? { ...lastPlaced, node: ofLine(lastPlaced.node.content.append(tail)), frames: tailFrames } : lastPlaced
     out.push(leaf)
     caret = { leaf, offset: lastPlaced.node.content.size }
   } else {
     const lastOut = out[out.length - 1]
     if (lastOut && lastOut.node.isTextblock) caret = { leaf: lastOut, offset: lastOut === out[0] && firstJoins ? head.size + placed[0]!.node.content.size : lastOut.node.content.size }
     if (tail.size > 0) {
-      // The text after the caret: a line of the caret line's kind; in a list, a new item when the line was split.
-      const frames = head.size > 0 || firstJoins ? Lf.map((f, i) => (i === k ? { ...f, item: next(), checked: false, number: null } : f)) : Lf
-      const leaf: Leaf = { ...L, node: L.node.type.create(L.node.attrs, tail), frames }
+      // The text after the caret: a line of the caret line's kind.
+      const leaf: Leaf = { ...L, node: L.node.type.create(L.node.attrs, tail), frames: tailFrames }
       out.push(leaf)
       if (!caret) caret = { leaf, offset: 0 }
     }
   }
-  const after = leaves.slice(li + 1)
+  const after = leaves.slice(li + 1).map((l) => (newItem && sameItem(l.frames[k]) ? { ...l, frames: l.frames.map((f, i) => (i === k ? newItem : f)) } : l))
   if (!caret) {
     // The paste ends with a divider. Pasted on an empty line, that line stays, after it, with the caret
     // (no line of the text goes); otherwise the caret goes to the start of the next line, or to a new

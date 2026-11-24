@@ -12,11 +12,14 @@ import type { BlockNode, FontId, InlineRun } from '../model/types.ts'
  * - blocks: `h1`–`h3` (`h4`–`h6` become level 3), `ul`, `ol` (`start`, held to the stored range),
  *   `li`, checklist items (an `li` with `data-checked` or `data-type="taskItem"`, or one that starts
  *   with a checkbox `input`, ticked by `data-checked="true"` or `checked`; a list marked
- *   `data-type="taskList"` or Yuriful's own `ul.yp-tasks`), `blockquote`, `pre` (a code block),
- *   `hr` (a divider), and every other block element (`p`, `div`, table cells...) as a line;
- * - inline: bold, italic, underline and strikethrough (also from inline `style`), `code` (inline
- *   code), `br` (a line break), links unwrapped to their text, and `data-font` on a `span` when it
- *   names one of `FONT_IDS` (what Yuriful itself puts on the clipboard).
+ *   `data-type="taskList"` or Yuriful's own `ul.yp-tasks`; a checkbox after words is no marker, and a
+ *   list of ordinary and checklist items is split where they change), `blockquote`, `pre` (a code
+ *   block, character for character), `hr` (a divider), and every other block element (`p`, `div`,
+ *   table cells...) as a line; comments are nothing;
+ * - inline: bold, italic, underline and strikethrough (also from inline `style`, on any element
+ *   around the text, a list included), `code` (inline code; `kbd`, `samp` and the like are only
+ *   text), `br` (a line break), links unwrapped to their text, and `data-font` on a `span` when it
+ *   names one of `FONT_IDS`, only in Yuriful's own copy (`YURIFUL_COPY`): outside text never brings a font.
  * Lists and quotes nested deeper than storage keeps (`MAX_BLOCK_DEPTH`) stay at the deepest level
  * they can. A heading's text never stores bold. Whitespace: runs of spaces are kept; whitespace
  * that runs across a line break of the HTML source becomes one space; inside `pre` line breaks are
@@ -49,20 +52,30 @@ export interface PastedHtml {
   fromHeading: boolean
   /**
    * It carries nothing a paste keeps: only paragraphs, with no mark at all (as a code editor puts on the
-   * clipboard). Never a ProseMirror copy (`data-pm-slice`), Yuriful's own: that keeps its characters as
-   * they are, so a copied line holding `**x**` comes back as `**x**`.
+   * clipboard). Never Yuriful's own copy (`own`): that keeps its characters as they are, so a copied
+   * line holding `**x**` comes back as `**x**`.
    */
   plain: boolean
+  /** It is Yuriful's own copy (`YURIFUL_COPY`): its fonts are read, each character's as it was shown. */
+  own: boolean
 }
 
-function marksOf(el: Element, inherited: Marks): Marks {
+/**
+ * The attribute Yuriful puts on what it copies (`YURIFUL_COPY`, set by the session's clipboard
+ * serializer). Only with it is a font read (`data-font`), and only with it is HTML that carries no
+ * marks still Yuriful's own text rather than plain text to convert. A page that forges it gains no
+ * more than that: a font from `FONT_IDS`, and its words pasted as they are.
+ */
+export const YURIFUL_COPY = 'data-yuriful'
+
+function marksOf(el: Element, inherited: Marks, fonts: boolean): Marks {
   const m: Marks = { ...inherited }
   const tag = el.localName
   if (tag === 'b' || tag === 'strong') m.bold = true
   if (tag === 'i' || tag === 'em') m.italic = true
   if (tag === 'u') m.underline = true
   if (tag === 's' || tag === 'del' || tag === 'strike') m.strike = true
-  if (tag === 'code' || tag === 'kbd' || tag === 'samp') m.code = true
+  if (tag === 'code') m.code = true
   const style = el.getAttribute('style') !== null ? (el as HTMLElement).style : undefined
   if (style) {
     const weight = style.fontWeight
@@ -74,18 +87,34 @@ function marksOf(el: Element, inherited: Marks): Marks {
     if (deco.includes('underline')) m.underline = true
     if (deco.includes('line-through')) m.strike = true
   }
-  const font = el.localName === 'span' ? el.getAttribute('data-font') : null
+  const font = fonts && el.localName === 'span' ? el.getAttribute('data-font') : null
   if (font && (FONT_IDS as readonly string[]).includes(font)) m.font = font as FontId
   return m
 }
 
-/** Whether an `li` is a checklist item, and its tick. */
+/** The first thing in `node` that shows: an element, or text other than white space (comments and empty spans are nothing). */
+function firstShown(node: Node): Node | null {
+  for (const c of Array.from(node.childNodes)) {
+    if (c.nodeType === 3) {
+      if ((c.nodeValue ?? '').trim() !== '') return c
+    } else if (c.nodeType === 1) {
+      const el = c as Element
+      if (DROPPED.has(el.localName)) continue
+      if (el.localName === 'span' && el.textContent === '' && !el.querySelector('input')) continue
+      return el
+    }
+  }
+  return null
+}
+
+/** Whether an `li` is a checklist item, and its tick: marked as one, or starting with a checkbox (a checkbox after words is not a marker). */
 function taskOf(li: Element, inTaskList: boolean): { checked: boolean } | null {
   const data = li.getAttribute('data-checked')
   if (data !== null) return { checked: data === 'true' }
   if (li.getAttribute('data-type') === 'taskItem') return { checked: false }
-  const first = Array.from(li.children).find((c) => c.localName !== 'span' || c.textContent !== '')
-  const box = first?.localName === 'input' ? first : first?.localName === 'p' || first?.localName === 'label' ? first.querySelector(':scope > input') : null
+  let first = firstShown(li)
+  while (first && first.nodeType === 1 && ['p', 'label', 'span', 'div'].includes((first as Element).localName)) first = firstShown(first)
+  const box = first && first.nodeType === 1 && (first as Element).localName === 'input' ? (first as Element) : null
   if (box && box.getAttribute('type')?.toLowerCase() === 'checkbox') return { checked: box.hasAttribute('checked') || box.getAttribute('aria-checked') === 'true' }
   return inTaskList ? { checked: false } : null
 }
@@ -93,6 +122,8 @@ function taskOf(li: Element, inTaskList: boolean): { checked: boolean } | null {
 /** Reads pasted HTML into blocks (see the module comment). */
 export function htmlToBlocks(html: string): PastedHtml {
   const inert = new DOMParser().parseFromString(html, 'text/html')
+  // Yuriful's own copy (its marker, not ProseMirror's generic `data-pm-slice`, which other editors write too).
+  const own = inert.body.querySelector(`[${YURIFUL_COPY}]`) !== null
   let fromHeading = false
 
   /** A list of blocks being filled, with the depth its blocks are at (top level 1). */
@@ -153,7 +184,7 @@ export function htmlToBlocks(html: string): PastedHtml {
         const runs: InlineRun[] = []
         lv.out.push({ type: 'heading', level, content: runs })
         lv.line = { runs, heading: level }
-        walk(el, lv, marksOf(el, marks), pre, true)
+        walk(el, lv, marksOf(el, marks, own), pre, true)
         close(lv)
         return
       }
@@ -174,44 +205,57 @@ export function htmlToBlocks(html: string): PastedHtml {
             }
           })
         read(el)
-        lv.out.push({ type: 'codeBlock', text: text.replace(/\r\n?/g, '\n').replace(/\n$/, '') })
+        lv.out.push({ type: 'codeBlock', text: text.replace(/\r\n?/g, '\n') })
         return
       }
       const room = lv.depth < MAX_BLOCK_DEPTH
       if ((tag === 'ul' || tag === 'ol') && room) {
         close(lv)
         const taskList = el.classList.contains('yp-tasks') || el.getAttribute('data-type') === 'taskList'
+        // Marks set on the list itself (`<ul style="font-style: italic">`) apply to the text inside it.
+        const listMarks = marksOf(el, marks, own)
         const items: Array<{ blocks: BlockNode[]; checked: boolean | null }> = []
         el.childNodes.forEach((c) => {
+          if (c.nodeType !== 1 && c.nodeType !== 3) return // a comment between items is nothing
           if (c.nodeType === 1 && DROPPED.has((c as Element).localName)) return
           const li = c.nodeType === 1 && (c as Element).localName === 'li' ? (c as Element) : null
           if (!li && (c.nodeType !== 1 || !BLOCKS.has((c as Element).localName)) && !(c.textContent ?? '').trim()) return
           const inner: Level = { out: [], depth: lv.depth + 1, line: null }
           const task = li ? taskOf(li, taskList) : null
-          if (li) walk(li, inner, marksOf(li, marks), false, true)
-          else walk({ childNodes: [c] } as unknown as Node, inner, marks, false, true)
+          if (li) walk(li, inner, marksOf(li, listMarks, own), false, true)
+          else walk({ childNodes: [c] } as unknown as Node, inner, listMarks, false, true)
           close(inner)
           items.push({ blocks: inner.out.length > 0 ? inner.out : [{ type: 'paragraph' }], checked: task ? task.checked : null })
         })
         if (items.length === 0) return
-        if (items.some((it) => it.checked !== null)) lv.out.push({ type: 'taskList', items: items.map((it) => ({ checked: it.checked === true, blocks: it.blocks })) })
-        else if (tag === 'ol') {
-          const start = Number(el.getAttribute('start') ?? '1')
-          lv.out.push({ type: 'orderedList', ...(isListStart(start) && start !== 1 ? { start } : {}), items: items.map((it) => ({ blocks: it.blocks })) })
-        } else lv.out.push({ type: 'bulletList', items: items.map((it) => ({ blocks: it.blocks })) })
+        // Ordinary items stay ordinary: where they and checklist items change, the list is split, in order.
+        const start = Number(el.getAttribute('start') ?? '1')
+        let at = 0
+        while (at < items.length) {
+          const tasks = items[at]!.checked !== null
+          let end = at
+          while (end < items.length && (items[end]!.checked !== null) === tasks) end++
+          const run = items.slice(at, end)
+          if (tasks) lv.out.push({ type: 'taskList', items: run.map((it) => ({ checked: it.checked === true, blocks: it.blocks })) })
+          else if (tag === 'ol') {
+            const first = start + at
+            lv.out.push({ type: 'orderedList', ...(isListStart(first) && first !== 1 ? { start: first } : {}), items: run.map((it) => ({ blocks: it.blocks })) })
+          } else lv.out.push({ type: 'bulletList', items: run.map((it) => ({ blocks: it.blocks })) })
+          at = end
+        }
         return
       }
       if (tag === 'blockquote' && room) {
         close(lv)
         const inner: Level = { out: [], depth: lv.depth + 1, line: null }
-        walk(el, inner, marksOf(el, marks), false, true)
+        walk(el, inner, marksOf(el, marks, own), false, true)
         lv.out.push({ type: 'blockquote', blocks: inner.out.length > 0 ? inner.out : [{ type: 'paragraph' }] })
         return
       }
       const block = BLOCKS.has(tag)
       const before = lv.out.length
       if (block) close(lv)
-      walk(el, lv, marksOf(el, marks), pre, block ? !CONTAINERS.has(tag) : para)
+      walk(el, lv, marksOf(el, marks, own), pre, block ? !CONTAINERS.has(tag) : para)
       if (block && !CONTAINERS.has(tag) && lv.out.length === before) lv.out.push({ type: 'paragraph' }) // an empty block is an empty line
       if (block) close(lv)
     })
@@ -230,8 +274,8 @@ export function htmlToBlocks(html: string): PastedHtml {
     inline = true
     fromHeading = lines[0]!.type === 'heading'
   }
-  const plain = !slice && blocks.every((b) => b.type === 'paragraph' && (b.content ?? []).every((r) => Object.keys(r).length === 1))
-  return { blocks, inline, fromHeading, plain }
+  const plain = !own && blocks.every((b) => b.type === 'paragraph' && (b.content ?? []).every((r) => Object.keys(r).length === 1))
+  return { blocks, inline, fromHeading, plain, own }
 }
 
 /** Empty runs and empty content arrays go (a paragraph with no text has no `content`). */

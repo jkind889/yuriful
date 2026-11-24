@@ -3,7 +3,7 @@ import type { FeedbackSnapshot } from '../src/editor/feedbackLayer.ts'
 import type { CanvasPrefs } from '../src/model/prefs.ts'
 import type { Scene, Viewport } from '../src/model/types.ts'
 import type { Rect } from '../src/model/viewport.ts'
-import { albumSpread, openApp, openBlank, pagePixels, pngBuffer, sceneToPage, seedRaw } from './helpers.ts'
+import { albumSpread, fetchRetrying, openApp, openBlank, pagePixels, pngBuffer, sceneToPage, seedRaw } from './helpers.ts'
 import type { SeedAsset, StoredBoard } from './helpers.ts'
 
 export const VIEW: Viewport = { zoom: 1, panX: 0, panY: 0 }
@@ -35,7 +35,7 @@ declare global {
 /** Observe the normal app instance. This hook lives in the browser test route only. */
 async function installFeelProbe(page: Page) {
   await page.route(/\/src\/main\.tsx(?:\?|$)/, async (route) => {
-    const response = await route.fetch()
+    const response = await fetchRetrying(route)
     const source = await response.text()
     await route.fulfill({ response, body: `
       import { Editor as FeelEditor } from '/src/editor/Editor.ts'

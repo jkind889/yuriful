@@ -13,7 +13,7 @@
  */
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { AUTOSAVE_QUIET_MS, dbVersion, decodePng, drag, editedText, openApp, openBlank, seedMilestone1, seedRaw, snapshotIdb, status, storedDoc } from './helpers.ts'
+import { AUTOSAVE_QUIET_MS, dbVersion, decodePng, drag, editedText, fetchRetrying, openApp, openBlank, seedMilestone1, seedRaw, snapshotIdb, status, storedDoc } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredObject, View } from './helpers.ts'
 
 // The platform's own scrollbars, as a person sees them (Playwright hides them by default): on Windows a
@@ -58,7 +58,7 @@ declare global {
 /** A probe on the app's editor (this test route only): its state, selecting by id, the selected object's handles, a proxy's size, frame previews. */
 async function installProbe(page: Page) {
   await page.route(/\/src\/main\.tsx(?:\?|$)/, async (route) => {
-    const response = await route.fetch()
+    const response = await fetchRetrying(route)
     const source = await response.text()
     await route.fulfill({
       response,

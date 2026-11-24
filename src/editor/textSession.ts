@@ -11,11 +11,11 @@ import { resolveEditingShortcut, typedCharacter } from '../input/shortcuts.ts'
 import type { KeyEventLike } from '../input/shortcuts.ts'
 import { DEFAULT_FONT, canonicalTextFormatting, splitGraphemes } from '../model/richText.ts'
 import type { Mark, TextFormatting } from '../model/richText.ts'
-import { legacyToBlocks, parseBlocks } from '../model/textDoc.ts'
+import { isListStart, legacyToBlocks, parseBlocks } from '../model/textDoc.ts'
 import { markdownToBlocks } from '../model/markdownPaste.ts'
 import type { TextContent } from '../model/textDoc.ts'
 import type { BlockNode, FontId } from '../model/types.ts'
-import { DROPPED, htmlToBlocks } from './pasteHtml.ts'
+import { DROPPED, YURIFUL_COPY, htmlToBlocks } from './pasteHtml.ts'
 import type { PastedHtml } from './pasteHtml.ts'
 import { blockOf, boxOf, contentFromDoc, docFromBlocks, docFromText, exceedsBounds, fontOf, isCompactDoc, marks, nodes, plainTextOfDoc, posAtTextOffset, renderStaticInto, taskItemDOM, textOffsetAt, textSchema, textblocksOf } from './textSchema.ts'
 import type { TextSource } from './textSchema.ts'
@@ -163,6 +163,16 @@ class KeepSpacesParser extends PMDOMParser {
 }
 const pasteParser = new KeepSpacesParser(textSchema, PMDOMParser.fromSchema(textSchema).rules)
 
+/** What Yuriful puts on the clipboard: the schema's own HTML, its first element marked as Yuriful's copy (`YURIFUL_COPY`). */
+class YurifulClipboardSerializer extends DOMSerializer {
+  override serializeFragment(fragment: Fragment, options: { document?: Document } = {}, target?: HTMLElement | DocumentFragment): HTMLElement | DocumentFragment {
+    const out = super.serializeFragment(fragment, options, target)
+    out.firstElementChild?.setAttribute(YURIFUL_COPY, '')
+    return out
+  }
+}
+const clipboardSerializer = new YurifulClipboardSerializer(DOMSerializer.fromSchema(textSchema).nodes, DOMSerializer.fromSchema(textSchema).marks)
+
 /** The words of pasted HTML as plain text, one line per line it shows (through the same inert sanitizer as an HTML paste). */
 function htmlPlainText(html: string): string {
   const body = new DOMParser().parseFromString(sanitizePastedHTML(html), 'text/html').body
@@ -252,6 +262,43 @@ function storedOffset(stored: string, offset: number): number {
  * Text leaving a card by copy, cut or drag: a heading's text goes as bold body text, and no
  * text carries its font (pasted or dropped text never brings its own size, colour or font).
  */
+/**
+ * What a copy or cut of `selection` puts on the clipboard (`slice` is its content). A copy from within
+ * one line, the whole line included, stays as ProseMirror gives it (open at both ends: it pastes as
+ * inline text, and text leaving a heading arrives bold, plan Section 11 point 4). A copy across lines is
+ * closed, so the HTML holds every block around the copied lines (a quote, a list, an item and its
+ * tick) rather than ProseMirror's context for them, and each numbered list on its left edge starts at
+ * the number its first copied item was painted with. Every character carries the font it was shown in
+ * (the box's `baseFont` where it has none of its own), so a paste into a box of another font keeps it.
+ */
+export function clipboardSlice(slice: Slice, selection: Selection, baseFont: FontId): Slice {
+  const shown = marks.font.create({ font: baseFont })
+  const withFonts = (frag: Fragment, code: boolean): Fragment => {
+    const out: PMNode[] = []
+    frag.forEach((n) => {
+      if (n.isText) out.push(code || marks.font.isInSet(n.marks) ? n : n.mark(shown.addToSet(n.marks)))
+      else out.push(n.copy(withFonts(n.content, n.type.spec.code === true)))
+    })
+    return Fragment.fromArray(out)
+  }
+  slice = new Slice(withFonts(slice.content, false), slice.openStart, slice.openEnd)
+  const { $from, $to } = selection
+  if ($from.parent.isTextblock && $from.sameParent($to)) return slice
+  if (slice.openStart !== $from.depth) return slice // not a selection's own content (with its parents): left as it is
+  const edge = (frag: Fragment, d: number): Fragment => {
+    const first = frag.firstChild
+    if (!first || d > $from.depth) return frag
+    const ancestor = $from.node(d)
+    let attrs = first.attrs
+    if (first.type === nodes.orderedList && ancestor.type === nodes.orderedList) {
+      const painted = (ancestor.attrs.start as number) + $from.index(d)
+      if (isListStart(painted)) attrs = { ...attrs, start: painted }
+    }
+    return frag.replaceChild(0, first.type.create(attrs, edge(first.content, d + 1), first.marks))
+  }
+  return new Slice(edge(slice.content, 1), 0, 0)
+}
+
 export function copiedSlice(slice: Slice): Slice {
   const map = (frag: Fragment): Fragment => {
     const out: PMNode[] = []
@@ -280,6 +327,8 @@ export class EditSession {
   private readonly initial: { doc: PMNode; box: TextFormatting; content: TextContent }
   private mounted: { view: EditorView; el: HTMLElement; attrs: Array<[string, string]> } | null = null
   private done = false
+  /** True while ProseMirror serializes a drag's slice (`dragstart`), which is not a copy. */
+  private draggingOut = false
   private composingHeadless = false
   /**
    * Everything the session holds that a composition can change (its state, history included, the
@@ -867,6 +916,17 @@ export class EditSession {
    * (text, marks, a selected divider, the selection), with no undo step left. True when it did.
    */
   private giveBackDeleted(): boolean {
+    const start = this.imeStart
+    if (!this.deletion && start && !isCompactDoc(start.state.doc) && this.current !== start.state && this.current.doc.eq(start.state.doc)) {
+      // At a caret: nothing was deleted, and a candidate then cancelled leaves the text as it was. The
+      // state before the composition comes back, so no undo step is left.
+      this.composed = []
+      this.current = start.state
+      this.mounted?.view.updateState(start.state)
+      this.reportChange()
+      this.hooks.onSelectionChange?.(this)
+      return true
+    }
     const d = this.deletion
     // (In a text without blocks a composition that delivered a candidate keeps the deletion, as the earlier canvas does.)
     if (!d || (d.delivered && isCompactDoc(d.before.doc)) || !this.current.doc.eq(d.after.doc)) return false
@@ -1168,7 +1228,14 @@ export class EditSession {
    * (`plainPasteContent`). Never fires a typing shortcut.
    */
   paste(data: PasteData): boolean {
-    return this.unlessComposing(() => this.pasteNow(data))
+    return this.unlessComposing(() => {
+      // Its own undo step (two for a converted Markdown paste), however quickly typing or another
+      // paste comes before or after it: undo after a paste never takes away what was there before it.
+      this.dispatch(closeHistory(this.current.tr))
+      const done = this.pasteNow(data)
+      this.dispatch(closeHistory(this.current.tr))
+      return done
+    })
   }
 
   private pasteNow(data: PasteData): boolean {
@@ -1176,16 +1243,23 @@ export class EditSession {
     const sel = this.current.selection
     if (sel.$from.parent.type.spec.code) {
       // Into a code block: plain text, the clipboard's own or the words of its HTML. Nothing at all: nothing changes.
-      const text = data.text || (data.html !== undefined ? htmlPlainText(data.html) : '')
+      const text = data.text || (data.html !== undefined && !data.plain ? htmlPlainText(data.html) : '')
+      if (!text) return false
+      return this.pasteLiteral(text)
+    }
+    if (this.codeAtPaste(this.current)) {
+      // Inline code chosen at the caret (or the caret in inline code): the plain text goes in literally, as code, whatever HTML came with it.
+      const text = data.text || (data.html !== undefined && !data.plain ? htmlPlainText(data.html) : '')
       if (!text) return false
       return this.pasteLiteral(text)
     }
     if (data.html !== undefined && !data.plain) {
       const read = htmlToBlocks(data.html)
-      // HTML that carries nothing a paste keeps (as a code editor puts on the clipboard): its plain text, converted.
-      // HTML with no words at all is pasted as before (as the earlier canvas did: a blank line, whatever the plain text).
+      // HTML that carries nothing a paste keeps (as a code editor puts on the clipboard): its plain text goes
+      // through the Markdown converter, but its characters still arrive as HTML's do (own marks only, never
+      // the place's). HTML with no words at all is pasted as before (a blank line, whatever the plain text).
       const words = read.blocks.some((b) => b.type === 'paragraph' && (b.content ?? []).some((r) => r.text !== ''))
-      if (read.plain && data.text && words) return this.pastePlainText(data.text)
+      if (read.plain && data.text && words) return this.pastePlainText(data.text, true)
       const structural = read.blocks.some((b) => b.type !== 'paragraph' || (b.content ?? []).some((r) => r.font !== undefined || r.code === true))
       if (structural) return this.pasteHtmlBlocks(read, data)
       // Only lines with bold, italic, underline or strikethrough: as before.
@@ -1198,6 +1272,17 @@ export class EditSession {
     }
     if (!data.text) return false
     return data.plain ? this.pasteLiteral(data.text) : this.pastePlainText(data.text)
+  }
+
+  /**
+   * `text` pasted literally as the plain text of a clipboard that carried HTML: its characters arrive as
+   * HTML's do (`arriving`: no mark from the place, its font, the pending choices).
+   */
+  private pasteArriving(text: string): boolean {
+    const slice = this.arriving(this.plainTextSlice(text, this.current.selection.$from), this.destinationFont(this.current))
+    this.pastedSlice = slice
+    this.dispatch(this.current.tr.replaceSelection(slice).scrollIntoView().setMeta('paste', true).setMeta('uiEvent', 'paste'))
+    return true
   }
 
   /** Plain text pasted literally, one line per line, styled exactly as before (`plainPasteContent`): `Ctrl/Cmd+Shift+V`, a code block, text with no Markdown. */
@@ -1226,14 +1311,17 @@ export class EditSession {
    * it arrives. A conversion is two in-edit undo steps: the literal lines, exactly as a plain paste
    * puts them, then the conversion (`closeHistory` between them and after), so the first undo gives
    * back the literal text and the second removes the paste. A conversion whose result could not be
-   * stored leaves the literal paste; one the bounds refuse even literally changes nothing.
+   * stored leaves the literal paste; one the bounds refuse even literally changes nothing. `fromHtml`:
+   * the plain text of a clipboard that carried HTML that keeps nothing, whose literal lines arrive as
+   * HTML's do (`pasteArriving`) rather than taking the formatting of the place.
    */
-  private pastePlainText(text: string): boolean {
+  private pastePlainText(text: string, fromHtml = false): boolean {
     const before = this.current
     const blocks = this.codeAtPaste(before) ? null : markdownToBlocks(normalBreaks(text))
-    this.pasteLiteral(text)
+    if (fromHtml) this.pasteArriving(text)
+    else this.pasteLiteral(text)
     if (!blocks || this.current === before) return true
-    const target = this.pastedBlocks(before, blocks, 'markdown', false, false)
+    const target = this.pastedBlocks(before, blocks, false, false)
     if (!target) return true
     const tr = closeHistory(replaceDocument(this.current.tr, target.doc.content))
     tr.setSelection(TextSelection.create(tr.doc, target.selection.anchor, target.selection.head))
@@ -1244,8 +1332,13 @@ export class EditSession {
 
   /** Pasted HTML that keeps structure (headings, lists, quotes, code, dividers, fonts copied in Yuriful): one in-edit undo step; over a bound, pasted as lines with marks only (as before), and over a bound even so, nothing. */
   private pasteHtmlBlocks(read: PastedHtml, data: PasteData): boolean {
-    const target = this.pastedBlocks(this.current, read.blocks, 'html', read.inline, read.fromHeading)
-    if (!target) return this.pasteNow({ ...data, html: `<div>${sanitizePastedHTML(data.html ?? '')}</div>` })
+    const target = this.pastedBlocks(this.current, read.blocks, read.inline, read.fromHeading, read.own)
+    if (!target) {
+      // It does not fit: the clipboard's plain text, literally (never converted again), arriving as HTML's
+      // characters do; when that does not fit either, nothing changes.
+      const text = data.text || htmlPlainText(data.html ?? '')
+      return text ? this.pasteArriving(text) : false
+    }
     this.dispatch(target.setMeta(META.levelsSet, true).setMeta('uiEvent', 'paste').scrollIntoView())
     return true
   }
@@ -1255,7 +1348,7 @@ export class EditSession {
    * by the settled rule for input over a selection), with their marks given (`pasteMarks`), placed
    * by `pasteBlocks`; null when it could not be stored, or the selection could not be deleted.
    */
-  private pastedBlocks(state: EditorState, blocks: BlockNode[], source: 'markdown' | 'html', inline: boolean, fromHeading: boolean): Transaction | null {
+  private pastedBlocks(state: EditorState, blocks: BlockNode[], inline: boolean, fromHeading: boolean, ownFonts = false): Transaction | null {
     const valid = (doc: PMNode) => !exceedsBounds(doc, this.baseFont)
     const canonical = parseBlocks(blocks, this.baseFont)
     if (!canonical) return null
@@ -1273,7 +1366,7 @@ export class EditSession {
       })
       blocksIn = Fragment.from(nodes.paragraph.create(null, (run as PMNode | null)?.content ?? Fragment.empty))
     }
-    const content = this.pasteMarks(blocksIn, state, source, inline && fromHeading && !intoHeading)
+    const content = this.pasteMarks(blocksIn, state, inline && fromHeading && !intoHeading, ownFonts)
     const placed = pasteBlocks(at, content, { inline })
     if (!placed) return null
     for (const step of placed.steps) tr.step(step)
@@ -1282,16 +1375,17 @@ export class EditSession {
   }
 
   /**
-   * The marks pasted blocks take (plan Section 11 point 4): converted Markdown takes the marks of
-   * the place it arrives at, as plain text does, plus its own; HTML keeps its own and takes the
-   * place's font unless it brings one (only Yuriful's own copy does). Both get the pending choices.
+   * The marks pasted blocks take (plan Section 11 point 4): their own (what the HTML or the Markdown
+   * gave them) and never the place's marks, since the Markdown or the HTML said what is bold; the
+   * place's font unless they bring one (only Yuriful's own copy does: then every character has its
+   * font as it was shown, one with none being in the box's base font, `ownFonts`); and the pending choices.
    * A heading stores no bold; a code block no marks. `bold`: a run from inside a heading arriving
    * elsewhere arrives bold.
    */
-  private pasteMarks(content: Fragment, state: EditorState, source: 'markdown' | 'html', bold: boolean): Fragment {
+  private pasteMarks(content: Fragment, state: EditorState, bold: boolean, ownFonts = false): Fragment {
     const pending = pendingOf(state)
-    const place = source === 'markdown' ? this.placeMarks(state) : []
-    const font = source === 'html' ? this.destinationFont(state) : undefined
+    // Yuriful's own copy brings each character's font as it was shown: one with none is in the box's base font.
+    const font = ownFonts ? undefined : this.destinationFont(state)
     const fontMark = font && font !== this.baseFont ? marks.font.create({ font }) : null
     const restyle = (frag: Fragment, heading: boolean): Fragment => {
       const out: PMNode[] = []
@@ -1299,7 +1393,6 @@ export class EditSession {
         if (n.type.spec.code) return void out.push(n)
         if (!n.isText) return void out.push(n.copy(restyle(n.content, n.type === nodes.heading)))
         let set: readonly PMMark[] = n.marks
-        for (const m of place) if (m.type !== marks.font || !marks.font.isInSet(set)) set = m.addToSet(set)
         if (fontMark && !marks.font.isInSet(set)) set = fontMark.addToSet(set)
         if (bold) set = marks.bold.create().addToSet(set)
         set = applyPending(set, pending, this.baseFont)
@@ -1538,6 +1631,12 @@ export class EditSession {
             this.handleKeyUp()
             return false
           },
+          dragstart: () => {
+            // What ProseMirror serializes next is a drag, not a copy: `transformCopied` leaves it as it is.
+            this.draggingOut = true
+            queueMicrotask(() => (this.draggingOut = false))
+            return false
+          },
           drop: (view, e) => {
             this.dropPos = view.posAtCoords({ left: e.clientX, top: e.clientY })?.pos ?? null
             queueMicrotask(() => (this.dropPos = null))
@@ -1610,7 +1709,8 @@ export class EditSession {
           return out
         },
         // What a copy or cut puts on the clipboard keeps the blocks, ticks, list starts and fonts, so a paste in Yuriful brings them back (a drop flattens it, `arriving`).
-        transformCopied: (slice) => slice,
+        transformCopied: (slice, view) => (this.draggingOut ? slice : clipboardSlice(slice, view.state.selection, this.baseFont)),
+        clipboardSerializer,
         clipboardTextSerializer: (slice) => slice.content.textBetween(0, slice.content.size, '\n'),
       },
     })

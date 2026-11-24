@@ -210,10 +210,15 @@ describe('paste', () => {
     expect(s.content().spans).toEqual([{ start: 0, end: 3, bold: true }, { start: 3, end: 4, underline: true }])
   })
 
-  it('pasted HTML keeps bold, italic, underline and strikethrough and its headings; never a size or colour, and a font only from `data-font` (what Yuriful copies)', () => {
-    const s = open()
-    s.paste({ html: '<h1 style="font-size:40px">Head</h1><p style="color:red"><b>B</b> <i>I</i> <u>U</u> <del>S</del> <span data-font="mono" style="font-family:serif">F</span> <span style="font-family:serif">G</span></p>' })
-    expect(s.content()).toStrictEqual({ text: 'Head\nB I U S F G', spans: [{ start: 5, end: 6, bold: true }, { start: 7, end: 8, italic: true }, { start: 9, end: 10, underline: true }, { start: 11, end: 12, strike: true }, { start: 13, end: 14, font: 'mono' }], headings: [1] })
+  it('pasted HTML keeps bold, italic, underline and strikethrough and its headings; never a size or colour, and a font only from `data-font` in what Yuriful copies (its marker)', () => {
+    const html = (marker: string) => `<h1 style="font-size:40px"${marker}>Head</h1><p style="color:red"><b>B</b> <i>I</i> <u>U</u> <del>S</del> <span data-font="mono" style="font-family:serif">F</span> <span style="font-family:serif">G</span></p>`
+    const spans = [{ start: 5, end: 6, bold: true }, { start: 7, end: 8, italic: true }, { start: 9, end: 10, underline: true }, { start: 11, end: 12, strike: true }]
+    const own = open()
+    own.paste({ html: html(' data-yuriful=""') })
+    expect(own.content()).toStrictEqual({ text: 'Head\nB I U S F G', spans: [...spans, { start: 13, end: 14, font: 'mono' }], headings: [1] })
+    const outside = open()
+    outside.paste({ html: html('') })
+    expect(outside.content()).toStrictEqual({ text: 'Head\nB I U S F G', spans, headings: [1] })
   })
 
   it('pasted HTML never fires a typing shortcut and takes the pending choices', () => {

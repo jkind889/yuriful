@@ -1268,7 +1268,7 @@ describe('T1: typing, pasting, Enter, Backspace, Delete and a composition over a
 const textOfBlocks = (blocks: BlockNode[]): string => (canonicalTextContent({ text: '', blocks } as unknown as Record<string, unknown>) as TextContent | null)?.text ?? ''
 
 describe('paste, seeded and randomised', () => {
-  it('holds for random pastes (Markdown, prose, HTML of random blocks, Yuriful\'s own copy) at random carets and selections (seeded)', () => {
+  it('holds for random pastes (Markdown, prose, HTML of random blocks, unformatted web lines, Yuriful\'s own copy) at random carets and selections (seeded)', () => {
     const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env
     const SEED = Number(env?.PASTE_RULE_SEED ?? 0x5a5a)
     const r = random(SEED)
@@ -1287,11 +1287,16 @@ describe('paste, seeded and randomised', () => {
       const text0 = plainTextOfDoc(open(source).state.doc)
       for (let k = 0; k < 3; k++) {
         // The paste.
-        const kind = r.pick(['markdown', 'prose', 'html', 'copy'] as const)
+        const kind = r.pick(['markdown', 'prose', 'html', 'web', 'copy'] as const)
         let data: { text: string; html?: string }
         if (kind === 'markdown') data = { text: Array.from({ length: 1 + r.int(4) }, () => r.pick(snippets)).join('\n') }
         else if (kind === 'prose') data = { text: Array.from({ length: 1 + r.int(2) }, () => r.pick(prose)).join('\n') }
-        else if (kind === 'html') {
+        else if (kind === 'web') {
+          // Lines of a web page with no formatting of their own (colour spans only), Markdown or prose.
+          const lines = Array.from({ length: 1 + r.int(3) }, () => r.pick([...snippets, ...prose]).split('\n')).flat()
+          const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          data = { html: lines.map((l) => `<p><span style="color: rgb(32, 33, 36); font-weight: 400">${esc(l)}</span></p>`).join(''), text: lines.join('\n') }
+        } else if (kind === 'html') {
           const raw = parseBlocks(blocks(r, 1, 0, 1 + r.int(3)))
           if (!raw) continue
           const box = document.createElement('div')
@@ -1320,6 +1325,14 @@ describe('paste, seeded and randomised', () => {
         let b = r.int(2) === 0 ? a : r.int(text0.length + 1)
         if (r.int(2) === 0) [a, b] = [b, a]
         s.select(a, b)
+        // Sometimes something is typed or pasted at the caret just before, with no pause (Y1): the
+        // paste's own undo steps must still give back exactly the text as it was just before the paste.
+        let lead = ''
+        if (a === b && r.int(3) === 0) {
+          lead = r.pick(['typed', 'pasted'] as const)
+          if (lead === 'typed') type(s, 'q')
+          else s.paste({ text: 'z' })
+        }
         const before = s.content()
         const beforeDoc = s.state.doc
         const rich = before.blocks !== undefined
@@ -1327,24 +1340,29 @@ describe('paste, seeded and randomised', () => {
         const old = plainTextOfDoc(beforeDoc)
         const prefix = old.slice(0, from)
         const suffix = old.slice(to)
+        // Inline code where it arrives (the caret's, or the first selected character's): a literal paste, as code (Y4).
+        const $at = s.state.selection.$from
+        const firstSelected = !s.state.selection.empty && $at.parent.isTextblock && $at.parentOffset < $at.parent.content.size ? $at.parent.childAfter($at.parentOffset).node : null
+        const atCode = (firstSelected?.isText ? firstSelected.marks : $at.marks()).some((m) => m.type.name === 'code')
         let broken: string | null = null
         try {
           s.paste(data)
           pasted++
           const after = s.content()
+          const afterDoc = s.state.doc
           if (canonicalTextContent(after as unknown as Record<string, unknown>) === null || (after.blocks && parseBlocks(after.blocks) === null)) broken = 'the result does not load'
           const now = plainTextOfDoc(s.state.doc)
           if (!broken && now === old && JSON.stringify(after) === JSON.stringify(before)) {
             refused++
-            // Allowed for a paste that brings no characters, or at a stored limit.
-            const empty = data.text === '' && (data.html === undefined || textOfBlocks(htmlToBlocks(data.html).blocks) === '')
+            // Allowed for a paste that brings no characters, one that puts back exactly the characters it replaces, or at a stored limit.
+            const empty = (data.text === '' && (data.html === undefined || textOfBlocks(htmlToBlocks(data.html).blocks) === '')) || old.slice(from, to) === data.text.replace(/\r\n?/g, '\n')
             if (!empty && !nearListLimit(beforeDoc) && old.length + data.text.length < MAX_TEXT_LENGTH - 1000) broken = 'nothing changed'
           } else if (!broken) {
             // The characters: outside the selection unchanged; in between, the paste once and in order (with the line breaks its placement adds).
             if (!now.startsWith(prefix) || !now.endsWith(suffix)) broken = 'the text outside the selection changed'
             else {
               const middle = now.slice(prefix.length, now.length - suffix.length)
-              const md = kind === 'markdown' || kind === 'prose' ? markdownToBlocks(data.text) : null
+              const md = kind === 'markdown' || kind === 'prose' || kind === 'web' ? markdownToBlocks(data.text) : null
               const read = data.html !== undefined ? htmlToBlocks(data.html) : null
               const cores = new Set<string>([data.text.replace(/\r\n?/g, '\n')])
               if (md) cores.add(textOfBlocks(md))
@@ -1372,13 +1390,38 @@ describe('paste, seeded and randomised', () => {
                 if (!broken && !back()) broken = `undo did not give back the record: ${JSON.stringify(s.content())}`
                 for (let i = 0; i < steps && !broken; i++) s.redo()
                 if (!broken && JSON.stringify(s.content()) !== result) broken = 'redo did not give back the paste'
+                // Whose formatting (X1): a clipboard that carried HTML, and Markdown that converted, give the
+                // pasted characters only marks their source gave them, never the marks around the caret (no
+                // mark is pending here). Plain text left literal takes the place's formatting, as before.
+                if (!broken && !atCode && (data.html !== undefined || steps === 2)) {
+                  const own = new Set<string>()
+                  const collect = (list: BlockNode[]): void => {
+                    for (const b of list) {
+                      if (b.type === 'paragraph' || b.type === 'heading') {
+                        if (b.type === 'heading') own.add('bold') // a heading's text arrives bold where it is not a heading
+                        for (const r of b.content ?? []) for (const k of Object.keys(r)) if (k !== 'text' && k !== 'font') own.add(k)
+                      } else if (b.type === 'blockquote') collect(b.blocks)
+                      else if (b.type === 'bulletList' || b.type === 'orderedList' || b.type === 'taskList') for (const it of b.items) collect(it.blocks)
+                    }
+                  }
+                  if (read) collect(read.blocks)
+                  const fromText = markdownToBlocks(data.text)
+                  if (fromText) collect(fromText)
+                  const marksNow = charMarks(afterDoc)
+                  for (let i = prefix.length; i < now.length - suffix.length && !broken; i++) {
+                    const c = marksNow[i]
+                    if (!c || c.code) continue
+                    const taken = c.marks.split(',').filter((m) => m !== '' && !m.startsWith('font:') && !own.has(m))
+                    if (taken.length > 0) broken = `pasted character ${i} took ${taken.join(',')} from around it (its source has ${[...own].join(',') || 'no marks'})`
+                  }
+                }
               }
             }
           }
         } catch (e) {
           broken = `threw ${String(e)}`
         }
-        if (broken) failures.push(`seed ${SEED}, document ${d}, ${kind} paste over [${a}, ${b}]: ${broken}\n  source: ${JSON.stringify(source)}\n  paste: ${JSON.stringify(data)}`)
+        if (broken) failures.push(`seed ${SEED}, document ${d}, ${kind} paste over [${a}, ${b}]${lead ? ` after a character ${lead} there` : ''}: ${broken}\n  source: ${JSON.stringify(source)}\n  paste: ${JSON.stringify(data)}`)
       }
     }
     el.remove()
@@ -1728,7 +1771,8 @@ describe('W1: an input over a selection changes the formatting of its own charac
 
 describe('W2: a cancelled composition gives everything back, with no undo step', () => {
   const shapes: Record<string, BlockNode[]> = {
-    'the only divider': [p('a'), { type: 'divider' }],
+    'a text that is only a divider': [{ type: 'divider' }],
+    'a divider at the end': [p('a'), { type: 'divider' }],
     'a divider between lines': [p('Album'), { type: 'divider' }, p('Cover')],
     'a divider in a list item': [list('bulletList', [p('Album'), { type: 'divider' }], [p('Cover')])],
     'a divider in a quote': [quote(p('Album'), { type: 'divider' }, p('Cover'))],

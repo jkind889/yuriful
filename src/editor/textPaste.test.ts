@@ -52,7 +52,7 @@ describe('the sanitizer: what pasted HTML brings', () => {
     expect(pastedHtml('<ul data-type="taskList"><li data-type="taskItem" data-checked="true">done</li><li data-checked="false">todo</li></ul>')).toStrictEqual(rec([tasks([true, [p('done')]], [false, [p('todo')]])]))
     expect(pastedHtml('<ul class="contains-task-list"><li class="task-list-item"><input type="checkbox" checked disabled> done</li><li class="task-list-item"><input type="checkbox" disabled> todo</li></ul>')).toStrictEqual(rec([tasks([true, [p(' done')]], [false, [p(' todo')]])]))
     expect(pastedHtml('<blockquote><p>q</p><blockquote><p>qq</p></blockquote></blockquote>')).toStrictEqual(rec([quote(p('q'), quote(p('qq')))]))
-    expect(pastedHtml('<pre><code>let a = 1\n  b()\n</code></pre><hr><p>x</p>')).toStrictEqual(rec([code('let a = 1\n  b()'), hr, p('x')]))
+    expect(pastedHtml('<pre><code>let a = 1\n  b()\n</code></pre><hr><p>x</p>')).toStrictEqual(rec([code('let a = 1\n  b()\n'), hr, p('x')]))
   })
 
   it('marks: bold, italic, underline, strikethrough and inline code, also from inline styles; links become their text; a heading stores no bold', () => {
@@ -62,8 +62,19 @@ describe('the sanitizer: what pasted HTML brings', () => {
     ]))
   })
 
-  it('never a size, a colour, a font from outside, a link target or an image; `data-font` only when it names a font', () => {
-    expect(pastedHtml('<h1 style="font-size:60px;color:red;font-family:Comic Sans">T</h1><p><span style="font-family:serif;color:blue;font-size:30px;background:url(https://x.example/a.png)">a</span><span data-font="mono">b</span><span data-font="evil">c</span><img src="https://x.example/i.png" alt="pic"></p>')).toStrictEqual(rec([h(1, 'T'), { type: 'paragraph', content: [{ text: 'a' }, { text: 'b', font: 'mono' }, { text: 'c' }] }]))
+  it('never a size, a colour, a font from outside, a link target or an image; `data-font` only in Yuriful\'s own copy, and only when it names a font', () => {
+    const page = '<p><span style="font-family:serif;color:blue;font-size:30px;background:url(https://x.example/a.png)">a</span><span data-font="mono">b</span><span data-font="evil">c</span><img src="https://x.example/i.png" alt="pic"></p>'
+    // Outside text (no marker of Yuriful's own): never a font, `data-font` included.
+    expect(pastedHtml('<h1 style="font-size:60px;color:red;font-family:Comic Sans">T</h1>' + page)).toStrictEqual(rec([h(1, 'T'), { type: 'paragraph', content: [{ text: 'abc' }] }]))
+    // Yuriful's own copy: its fonts, when they name one.
+    expect(pastedHtml('<h1 data-yuriful="">T</h1>' + page)).toStrictEqual(rec([h(1, 'T'), { type: 'paragraph', content: [{ text: 'a' }, { text: 'b', font: 'mono' }, { text: 'c' }] }]))
+  })
+
+  it('a page that forges the marker gains nothing but a font from the list and its words pasted as they are', () => {
+    const forged = pastedHtml('<p data-yuriful=""><span data-font="hand">**bold** and</span></p><p>- item</p>', '**bold** and\n- item')
+    expect(forged).toStrictEqual(rec([{ type: 'paragraph', content: [{ text: '**bold** and', font: 'hand' }] }, p('- item')]))
+    // The same page without the marker: no font, and its Markdown is converted (HTML that carries nothing).
+    expect(pastedHtml('<p><span data-font="hand">**bold** and</span></p><p>- item</p>', '**bold** and\n- item')).toStrictEqual(rec([{ type: 'paragraph', content: [{ text: 'bold', bold: true }, { text: ' and' }] }, bullets([p('item')])]))
   })
 
   it('dropped with everything inside them: scripts, styles, frames, objects, media, forms, SVG, MathML, templates, noscript, the head; nothing runs or loads', () => {
@@ -105,12 +116,6 @@ describe('the sanitizer: what pasted HTML brings', () => {
     expect(pastedHtml(vscode, '# Title\n- item')).toStrictEqual(rec([h(1, 'Title'), bullets([p('item')])]))
   })
 
-  it('an unformatted web paragraph carries nothing: it is its plain text, so beside bold text it arrives bold (plan Section 11 step 1; an open question against point 4)', () => {
-    const s = open({ text: 'ab', spans: [{ start: 0, end: 2, bold: true }] }, { caret: 2 })
-    s.paste({ html: '<p><span style="color: rgb(32, 33, 36); font-family: Arial; font-size: 16px; font-weight: 400">cd</span></p>', text: 'cd' })
-    expect(stored(s)).toStrictEqual({ text: 'abcd', spans: [{ start: 0, end: 4, bold: true }] })
-  })
-
   it('HTML with no words at all is pasted as before, whatever the plain text beside it (U1)', () => {
     for (const html of ['<p></p>', '<p><br></p>']) {
       const s = open({ text: 'AB\nCD\nEF', headings: [2, 0, 1] })
@@ -119,6 +124,48 @@ describe('the sanitizer: what pasted HTML brings', () => {
       expect(s.selection().head).toBe(2)
       expect(stored(s).text).toBe('AB\nEF')
     }
+  })
+})
+
+describe('whose formatting a paste gets: a clipboard that carried HTML never takes the marks around the caret (X1)', () => {
+  // Pasted into the middle of the bold Serif word "abcd".
+  const boldWord = () => open({ text: 'abcd', spans: [{ start: 0, end: 4, bold: true, font: 'serif' }] }, { caret: 2 })
+  const around = (middle: InlineRun[]) => rec([{ type: 'paragraph', content: [{ text: 'ab', bold: true, font: 'serif' }, ...middle, { text: 'cd', bold: true, font: 'serif' }] }])
+  const web = '<p><span style="color: rgb(32, 33, 36); font-family: Arial; font-size: 16px; font-weight: 400">xy</span></p>'
+  const editor = '<div style="color:#d4d4d4;background-color:#1e1e1e;font-family:Consolas"><div><span>plain </span><span style="color:#ce9178;">*it*</span></div></div>'
+
+  it('an unformatted web paragraph arrives plain, in the font of the place; the same words as plain text only arrive bold, as before', () => {
+    const html = boldWord()
+    html.paste({ html: web, text: 'xy' })
+    expect(stored(html)).toStrictEqual(around([{ text: 'xy', font: 'serif' }]))
+    const plain = boldWord()
+    plain.paste({ text: 'xy' })
+    expect(stored(plain)).toStrictEqual(around([{ text: 'xy', bold: true, font: 'serif' }]))
+  })
+
+  it('Markdown copied as a code editor\'s HTML converts with only its own marks; the first undo gives back its literal text, also plain', () => {
+    const s = boldWord()
+    s.paste({ html: editor, text: 'plain *it*' })
+    expect(stored(s)).toStrictEqual(around([{ text: 'plain ', font: 'serif' }, { text: 'it', italic: true, font: 'serif' }]))
+    s.undo()
+    expect(stored(s)).toStrictEqual(around([{ text: 'plain *it*', font: 'serif' }]))
+    s.undo()
+    expect(stored(s)).toStrictEqual(around([]))
+  })
+
+  it('plain-text Markdown that converts keeps only its own marks too (the Markdown said what is bold); its literal step is the plain paste of before', () => {
+    const s = boldWord()
+    s.paste({ text: 'plain *it*' })
+    expect(stored(s)).toStrictEqual(around([{ text: 'plain ', font: 'serif' }, { text: 'it', italic: true, font: 'serif' }]))
+    s.undo()
+    expect(stored(s)).toStrictEqual(around([{ text: 'plain *it*', bold: true, font: 'serif' }]))
+  })
+
+  it('a mark chosen at the caret applies to a clipboard that carried HTML; the marks around it still do not', () => {
+    const s = boldWord()
+    s.toggleMark('underline')
+    s.paste({ html: web, text: 'xy' })
+    expect(stored(s)).toStrictEqual(around([{ text: 'xy', underline: true, font: 'serif' }]))
   })
 })
 

@@ -3,7 +3,7 @@ import type { Browser, BrowserContext, Page } from '@playwright/test'
 import type { FeedbackSnapshot } from '../src/editor/feedbackLayer.ts'
 import type { Scene } from '../src/model/types.ts'
 import { fabricReference } from './fabricReference.ts'
-import { AUTOSAVE_QUIET_MS, dropImage, openApp, openBlank, pngBuffer, sceneToPage, seedRaw, snapshotIdb, status, storedDoc, tamperIdb } from './helpers.ts'
+import { AUTOSAVE_QUIET_MS, dropImage, fetchRetrying, openApp, openBlank, pngBuffer, sceneToPage, seedRaw, snapshotIdb, status, storedDoc, tamperIdb } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredFrame, StoredObject, View } from './helpers.ts'
 
 /**
@@ -68,7 +68,7 @@ declare global {
 /** Observes the normal app instance (route-only hook, as `feel-helpers.ts` does). */
 async function installProbe(page: Page) {
   await page.route(/\/src\/main\.tsx(?:\?|$)/, async (route) => {
-    const response = await route.fetch()
+    const response = await fetchRetrying(route)
     const source = await response.text()
     await route.fulfill({
       response,

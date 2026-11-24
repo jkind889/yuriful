@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import type { Browser, CDPSession, Page } from '@playwright/test'
 import type { Scene } from '../src/model/types.ts'
 import { fabricReference } from './fabricReference.ts'
-import { openApp, openBlank, redoButton, seedRaw, status, storedDoc, undoButton } from './helpers.ts'
+import { fetchRetrying, openApp, openBlank, redoButton, seedRaw, status, storedDoc, undoButton } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredFrame, StoredObject, View } from './helpers.ts'
 
 /**
@@ -71,7 +71,7 @@ declare global {
 
 async function installProbe(page: Page) {
   await page.route(/\/src\/main\.tsx(?:\?|$)/, async (route) => {
-    const response = await route.fetch()
+    const response = await fetchRetrying(route)
     const source = await response.text()
     await route.fulfill({
       response,
