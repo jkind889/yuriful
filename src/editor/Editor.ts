@@ -70,6 +70,7 @@ import type { CaptionSnapPreview } from './captionSnapLayer.ts'
 import { DomScene } from './domScene.ts'
 import { EdgePan } from './edgePan.ts'
 import { renderFramePreview } from './framePreview.ts'
+import { renderFrameToCanvas } from './renderFrameBitmap.ts'
 import { FeedbackLayer } from './feedbackLayer.ts'
 import { FrameCanvas } from './FrameCanvas.ts'
 import type { AssetSource } from './assets.ts'
@@ -87,6 +88,7 @@ import {
   frameNameOf,
   hasResidualScale,
   idOf,
+  imageDataOf,
   imageSizeOf,
   isFrame,
   isImage,
@@ -99,6 +101,7 @@ import {
   setImageElement,
   setLocked,
   setOwner,
+  shownCropOf,
   toFrameRecord,
   toRecord,
 } from './objects.ts'
@@ -1839,15 +1842,15 @@ export class Editor {
    * the crop box over it; Fabric's own handles are hidden and Fabric sees no presses.
    */
   startCrop() {
-    // Crop mode on the DOM renderer is Slice 2c-iii: inert there until then.
-    if (!this.editable || this.busy || this.crop || this.scene) return
+    if (!this.editable || this.busy || this.crop) return
     const img = this.canvas.getActiveObject()
     if (!isImage(img) || isLocked(img) || img.group) return
     this.finishEditing()
     if (this.state.tool !== 'select') this.switchTool('select')
     if (this.canvas.getActiveObject() !== img) return
     const size = imageSizeOf(img)
-    const start = { x: img.cropX, y: img.cropY, width: img.width, height: img.height }
+    // On the DOM renderer the proxy is un-cropped like a Fabric image, and the scene layer then draws the whole original.
+    const start = shownCropOf(img)
     const shown: Placement = { left: img.left, top: img.top, angle: img.angle, scaleX: img.scaleX, scaleY: img.scaleY }
     const full = uncroppedPlacement(shown, start)
     this.crop = {
@@ -1856,10 +1859,10 @@ export class Editor {
       before: {
         left: img.left,
         top: img.top,
-        cropX: img.cropX,
-        cropY: img.cropY,
-        width: img.width,
-        height: img.height,
+        cropX: start.x,
+        cropY: start.y,
+        width: start.width,
+        height: start.height,
         hasControls: img.hasControls,
         hasBorders: img.hasBorders,
       },
@@ -1907,7 +1910,11 @@ export class Editor {
     const onCanvas = this.canvas.getObjects().includes(img)
     if (!apply || unchanged || !onCanvas) {
       const b = s.before
-      img.set({ cropX: b.cropX, cropY: b.cropY, width: b.width, height: b.height, left: b.left, top: b.top, dirty: true })
+      if (imageDataOf(img)) {
+        // An image proxy: its picture data and size, exactly as they were (no rounding).
+        setImageCrop(img, { x: b.cropX, y: b.cropY, width: b.width, height: b.height })
+        img.set({ left: b.left, top: b.top })
+      } else img.set({ cropX: b.cropX, cropY: b.cropY, width: b.width, height: b.height, left: b.left, top: b.top, dirty: true })
       img.setCoords()
     } else {
       const at = croppedPlacement(s.full, stored ?? { x: 0, y: 0 })
@@ -2518,8 +2525,7 @@ export class Editor {
 
   /** Duplicates selected objects and the contents of selected frames as one undo step. */
   duplicateSelection() {
-    // Duplicate on the DOM renderer is Slice 2c-iii: inert there until then.
-    if (!this.editable || this.busy || this.selectionLocked() || this.canvas.getActiveObjects().length === 0 || this.scene) return
+    if (!this.editable || this.busy || this.selectionLocked() || this.canvas.getActiveObjects().length === 0) return
     this.finishEditing()
     const selected = new Set(this.selectedIds())
     const scene = this.snapshot()
@@ -2534,6 +2540,7 @@ export class Editor {
     })
     const content: FabricObject[] = []
     const selection: FabricObject[] = []
+    const ownersAfterAdding: Array<() => void> = []
     const chosen = (rec: Scene['objects'][number]) => selected.has(rec.id) || (rec.frameId !== undefined && copiedOwners.has(rec.frameId))
     const images = new Set(scene.objects.filter((rec) => rec.type === 'image' && chosen(rec)).map((rec) => rec.id))
     const sources = scene.objects.filter((rec) => chosen(rec) || (rec.type === 'text' && rec.captionOf !== undefined && images.has(rec.captionOf)))
@@ -2552,18 +2559,25 @@ export class Editor {
           delete copy.captionPosition
         }
       }
-      const obj = createObject(copy, (id) => this.assets.get(id))
+      const obj = this.build(copy, (id) => this.assets.get(id))
       if (!obj) return // nothing has been added yet
-      if (!captionOf(obj)) setOwner(obj, copiedOwner ?? ownerAfterManipulation(rec.frameId, centerOf(obj), scene.frames, NO_FRAMES))
+      const decideOwner = () => {
+        if (!captionOf(obj)) setOwner(obj, copiedOwner ?? ownerAfterManipulation(rec.frameId, centerOf(obj), scene.frames, NO_FRAMES))
+      }
+      // A text proxy has its card's size only once it is on the canvas (the scene layer sizes it
+      // when it is added), so on the DOM renderer the owner is decided after adding, from that size.
+      if (this.scene) ownersAfterAdding.push(decideOwner)
+      else decideOwner()
       content.push(obj)
       if (selected.has(rec.id)) selection.push(obj)
     }
     if (frames.length === 0 && content.length === 0) return
 
-    const frameObjects = frames.map(createFrame)
+    const frameObjects = frames.map((rec) => this.buildFrame(rec))
     this.canvas.discardActiveObject()
     if (frameObjects.length) this.canvas.insertAt(scene.frames.length, ...frameObjects)
     if (content.length) this.canvas.add(...content)
+    for (const decide of ownersAfterAdding) decide()
     this.selectByIds([...frameObjects, ...selection])
     this.canvas.requestRenderAll()
     this.commit()
@@ -2899,7 +2913,10 @@ export class Editor {
         const preview = rendering.then(() => {
           signal.throwIfAborted()
           if (this.disposed || !frameIds.has(id)) throw new Error('The tour frame is unavailable.')
-          return renderFramePreview(scene, id, (assetId) => this.assets.get(assetId))
+          const getImage = (assetId: string) => this.assets.get(assetId)
+          // The DOM renderer's bitmap comes from the same cards the scene layer draws (plan Section 10).
+          if (this.scene) return renderFrameToCanvas(scene, id, { getImage, measurer: this.scene.layer.measurer }).then((canvas) => canvas.toDataURL('image/png'))
+          return renderFramePreview(scene, id, getImage)
         })
         rendering = preview.then(() => undefined, () => undefined)
         return preview

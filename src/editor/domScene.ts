@@ -2,9 +2,10 @@ import { ActiveSelection } from 'fabric'
 import type { FabricImage, FabricObject, Transform } from 'fabric'
 import { roundPositive } from '../model/doc.ts'
 import type { FrameRecord, ImageRecord, ObjectRecord, Scene, TextRecord } from '../model/types.ts'
+import type { Size } from '../model/viewport.ts'
 import type { AssetSource } from './assets.ts'
 import type { FrameCanvas } from './FrameCanvas.ts'
-import { SceneLayer, effectiveCardWidth, liveCardWidth } from './sceneLayer.ts'
+import { SceneLayer, effectiveCardWidth, liveCardWidth, renderCardBody } from './sceneLayer.ts'
 import type { CardMeasurer } from './sceneLayer.ts'
 import { canAnimate, stillFrame } from './stillImage.ts'
 import { ProxyRect, frameNameOf, idOf, imageCropOf, imageDataOf, isFrame, setTextData, textDataOf, toRecord } from './objects.ts'
@@ -82,6 +83,8 @@ export class DomScene {
   private readonly stills = new Map<string, string | null>()
   private readonly urls: string[] = []
   private readonly cleanups: Array<() => void> = []
+  /** A hidden card for measuring a text that is not on the board (see `measureRecord`), made when first needed. */
+  private probe: HTMLElement | null = null
 
   constructor(
     private readonly canvas: FrameCanvas,
@@ -147,6 +150,8 @@ export class DomScene {
     this.disposed = true
     for (const c of this.cleanups.splice(0)) c()
     this.layer.dispose()
+    this.probe?.parentElement?.remove()
+    this.probe = null
     for (const url of this.urls.splice(0)) URL.revokeObjectURL(url)
     this.stills.clear()
     this.host.style.isolation = ''
@@ -216,6 +221,45 @@ export class DomScene {
     return body && id && td ? this.layer.measurer.measureMinWidth(body, this.textRecord(id, td)) : 0
   }
 
+  /**
+   * The size of a proxy built from this record, without putting it on the board: its card laid
+   * out on a hidden element with the layer's own rules and measurer, at the width the proxy a
+   * record makes takes (`effectiveCardWidth`).
+   */
+  measureRecord(rec: TextRecord): Size {
+    const doc = this.host.ownerDocument
+    const width = effectiveCardWidth(rec, doc)
+    const body = this.probeBody()
+    body.style.width = `${width}px`
+    renderCardBody(body, rec)
+    return { width, height: this.layer.measurer.measureHeight(body, rec) }
+  }
+
+  /**
+   * Caption snapping: the size a text will have once it is a caption, a drawn box built from its
+   * record (as `captionSnapLayer.ts` `makeSnapCaption` builds one on the Fabric path).
+   */
+  captionSize(obj: FabricObject): { width: number; height: number; fontSize: number } | null {
+    const rec = toRecord(obj)
+    if (rec?.type !== 'text') return null
+    const size = this.measureRecord({ ...rec, minHeight: rec.minHeight ?? 0 })
+    return { ...size, fontSize: rec.fontSize }
+  }
+
+  private probeBody(): HTMLElement {
+    if (this.probe?.isConnected) return this.probe
+    const doc = this.host.ownerDocument
+    const holder = doc.createElement('div')
+    holder.setAttribute('aria-hidden', 'true')
+    holder.style.cssText = 'position:absolute;left:-100000px;top:0;visibility:hidden;contain:layout style'
+    const body = doc.createElement('div')
+    body.className = 'scene-text-body'
+    holder.append(body)
+    doc.body.append(holder)
+    this.probe = body
+    return body
+  }
+
   // ---- following Fabric --------------------------------------------------------------------------
 
   /** Runs on every Fabric render of the main canvas, before anything is drawn on it. */
@@ -237,6 +281,7 @@ export class DomScene {
     }
     if (this.placeAll(objs)) changed = true
     if (this.syncMoving()) changed = true
+    this.syncLifted(objs)
     // Idle items wholly outside the view skip layout and paint; moving ones stay drawn. Whatever
     // moved or re-sized an item since the last render (also outside a render) counts.
     if (changed || this.cullPending) {
@@ -378,6 +423,31 @@ export class DomScene {
       changed = true
     }
     return changed
+  }
+
+  /**
+   * Drag lift (`feedbackLayer.ts`): an item Fabric would draw with a shadow (a proxy paints
+   * nothing, so it never shows one) is drawn lifted by the layer instead, with the same shadow:
+   * straight down by 4 and blurred by 11 at the board's zoom, whatever the item's own scale or
+   * rotation (the CSS shadow is given in the item's own units).
+   */
+  private syncLifted(objs: readonly FabricObject[]) {
+    for (const o of objs) {
+      const id = idOf(o)
+      const el = id ? this.layer.elementOf(id) : undefined
+      if (!el) continue
+      const on = !!o.shadow && !isFrame(o)
+      if (el.classList.contains('is-lifted') !== on) el.classList.toggle('is-lifted', on)
+      if (!on) continue
+      const m = o.calcTransformMatrix()
+      const det = m[0] * m[3] - m[1] * m[2]
+      if (!(Math.abs(det) > 1e-9)) continue
+      // The offset (0, 4) and blur at the board's zoom, in the item's own units: through the inverse of its linear part.
+      const dy = 4
+      el.style.setProperty('--lift-x', `${(-m[2] * dy) / det}px`)
+      el.style.setProperty('--lift-y', `${(m[0] * dy) / det}px`)
+      el.style.setProperty('--lift-blur', `${11 / Math.sqrt(Math.abs(det))}px`)
+    }
   }
 
   // ---- fonts and stills ----------------------------------------------------------------------------

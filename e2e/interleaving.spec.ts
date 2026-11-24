@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
 import type { Browser, BrowserContext, Page } from '@playwright/test'
+import type { FeedbackSnapshot } from '../src/editor/feedbackLayer.ts'
 import type { Scene } from '../src/model/types.ts'
-import { AUTOSAVE_QUIET_MS, openApp, openBlank, sceneToPage, seedRaw, snapshotIdb, status, storedDoc, tamperIdb } from './helpers.ts'
+import { AUTOSAVE_QUIET_MS, dropImage, openApp, openBlank, pngBuffer, sceneToPage, seedRaw, snapshotIdb, status, storedDoc, tamperIdb } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredFrame, StoredObject, View } from './helpers.ts'
 
 /**
@@ -35,6 +36,27 @@ interface DomProbe {
   run: (method: string, ...args: unknown[]) => void
   /** Scene-space bounds of an object (Fabric's bounding rect). */
   bounds: (id: string) => { left: number; top: number; right: number; bottom: number } | null
+  /** Crop mode: a crop handle's centre (or the box's, for 'move') in page pixels; null when crop mode is closed. */
+  cropPoint: (handle: string) => Corner | null
+  /** What the editor shows beyond the board: selection ids, layer rows, crop mode, undo, viewport. */
+  state: () => ProbeState
+  feedback: () => FeedbackSnapshot
+  /** Ids of the layer items drawn lifted. */
+  lifted: () => string[]
+  /** Replaces an image with a generated PNG, as a picked file would (resolves once applied or staged). */
+  replace: (id: string, base64: string) => Promise<void>
+  /** Renders a frame's tour preview and returns its data URL. */
+  preview: (frameId: string) => Promise<string>
+}
+
+interface ProbeState {
+  selected: string[]
+  layers: Array<{ id: string; kind: string; label: string; selected: boolean; frameName: string | null; locked: boolean }>
+  cropping: boolean
+  canUndo: boolean
+  canRedo: boolean
+  viewport: { zoom: number; panX: number; panY: number }
+  jumpReturns: boolean
 }
 
 declare global {
@@ -54,6 +76,8 @@ async function installProbe(page: Page) {
       body: `
       import { Editor as ProbeEditor } from '/src/editor/Editor.ts'
       import { idOf as probeIdOf } from '/src/editor/objects.ts'
+      import { cropOverlay as probeCropOverlay } from '/src/editor/cropLayer.ts'
+      import { CROP_HANDLES as probeCropHandles } from '/src/model/crop.ts'
       const probeInit = ProbeEditor.prototype.init
       ProbeEditor.prototype.init = function () {
         const ed = this
@@ -114,6 +138,43 @@ async function installProbe(page: Page) {
             if (!o) return null
             const b = o.getBoundingRect()
             return { left: b.left, top: b.top, right: b.left + b.width, bottom: b.top + b.height }
+          },
+          cropPoint: (handle) => {
+            const s = ed.crop
+            if (!s) return null
+            const o = probeCropOverlay(s.full, s.size, s.rect, ed.canvas.viewportTransform)
+            const r = ed.canvas.upperCanvasEl.getBoundingClientRect()
+            if (handle === 'move') {
+              const x = o.box.reduce((n, p) => n + p.x, 0) / 4
+              const y = o.box.reduce((n, p) => n + p.y, 0) / 4
+              return { x: r.left + x, y: r.top + y }
+            }
+            const i = probeCropHandles.findIndex((h) => h.handle === handle)
+            const p = o.handles[i]
+            return p ? { x: r.left + p.x, y: r.top + p.y } : null
+          },
+          state: () => {
+            const st = ed.getState()
+            return {
+              selected: ed.selectedIds(),
+              layers: st.layers.map((l) => ({ ...l })),
+              cropping: st.cropping,
+              canUndo: st.canUndo,
+              canRedo: st.canRedo,
+              viewport: { ...st.viewport },
+              jumpReturns: st.jumpReturns,
+            }
+          },
+          feedback: () => ed.getFeedbackSnapshot(),
+          lifted: () => [...document.querySelectorAll('.scene-item.is-lifted')].map((e) => e.dataset.id),
+          replace: async (id, base64) => {
+            const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+            await ed.replaceImageFile(id, new File([bytes], 'replacement.png', { type: 'image/png' }))
+          },
+          preview: async (frameId) => {
+            const tour = ed.startFrameTour()
+            if (!tour) throw new Error('no tour')
+            return tour.renderFrame(frameId, new AbortController().signal)
           },
         }
         return probeInit.call(this)
@@ -645,6 +706,8 @@ test.describe('the DOM renderer, static (Slice 2c-i)', () => {
 // stored values are rounded to 0.01, which can turn a 0.004 difference into 0.01.
 
 const GEOMETRY_TOLERANCE = 0.1
+/** A caption's snapped position is a fraction of the edge, taken from the text's measured centre: GEOMETRY_TOLERANCE over the shortest edge here. */
+const CAPTION_POSITION_TOLERANCE = 0.001
 const MEASURED = new Set(['left', 'top', 'width'])
 
 type Step =
@@ -705,7 +768,10 @@ function expectSameRecords(dom: readonly Record<string, unknown>[], fabric: read
     const f = fabric[i]!
     expect(Object.keys(d).sort(), `${where} ${String(d.id)} keys`).toEqual(Object.keys(f).sort())
     for (const key of Object.keys(f)) {
-      if (d.type === 'text' && MEASURED.has(key)) {
+      if (d.type === 'text' && key === 'captionPosition') {
+        // A snap stores where the text's centre lies along the edge: it moves with the text's measured height or width.
+        expect(Math.abs((d[key] as number) - (f[key] as number)), `${where} ${String(d.id)}.${key}: dom ${String(d[key])}, fabric ${String(f[key])}`).toBeLessThanOrEqual(CAPTION_POSITION_TOLERANCE)
+      } else if (d.type === 'text' && MEASURED.has(key)) {
         const diff = Math.abs((d[key] as number) - (f[key] as number))
         worst = Math.max(worst, diff)
         expect(diff, `${where} ${String(d.id)}.${key}: dom ${String(d[key])}, fabric ${String(f[key])}`).toBeLessThanOrEqual(GEOMETRY_TOLERANCE)
@@ -981,6 +1047,840 @@ test.describe('Fit only moves the view', () => {
     await expect.poll(async () => (await stored(page)).viewport).not.toEqual({ zoom: 0.5, panX: -100, panY: 300 })
     expect((await stored(page)).objects[0]!.width).toBe(155)
     await expectTracked(page, ['s', 'i'], 'after Fit')
+    expect(errors).toEqual([])
+  })
+})
+
+// ---- Slice 2c-iii: the base branch's features on the DOM renderer -------------------------------
+//
+// Crop mode, Fit, Fill and Replace, captions and caption snapping, duplicate, locks, the layer list,
+// the drag feedback and frame navigation, each run as one script on both renderers from the same
+// seeded board. After every step the scene, the history, what the editor shows (selection, layer
+// rows, crop mode, undo, viewport) and, mid-drag, the feedback are compared; at the end the stored
+// board. Same tolerance as above: only a text's left, top and width may differ, by at most
+// GEOMETRY_TOLERANCE, and the measured parts of a snap preview likewise. Fresh ids (duplicates) are
+// compared by the order in which they first appear.
+
+type FeatureStep =
+  | { select: string; also?: string[] }
+  | { run: string; args?: unknown[] }
+  | { key: string }
+  /** Drags an item (grabbed at a fraction of its box, default its centre) so that its bounding box's top-left lands at `left`, `top`. */
+  | { moveTo: string; left: number; top: number; at?: [number, number]; hold?: boolean; ctrl?: boolean }
+  | { drag: string; dx: number; dy: number; at?: [number, number]; hold?: boolean }
+  | { release: true; ctrl?: boolean }
+  | { handle: string; dx: number; dy: number; hold?: boolean }
+  | { crop: string; dx: number; dy: number }
+  | { click: [number, number] }
+  | { dblclick: string }
+  | { replace: string; width: number; height: number; seed?: number }
+  | { label: string; dx: number; dy: number }
+  | { blur: true }
+
+interface FeatureRecord {
+  step: string
+  scene: Scene
+  history: Scene
+  state: ProbeState
+  feedback?: FeedbackSnapshot
+}
+
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g
+
+/** Fresh ids replaced by `~1`, `~2`... in the order they first appear. */
+function normalizeIds<T>(value: T): T {
+  const seen = new Map<string, string>()
+  return JSON.parse(
+    JSON.stringify(value).replace(UUID, (id) => {
+      if (!seen.has(id)) seen.set(id, `~${seen.size + 1}`)
+      return seen.get(id)!
+    }),
+  ) as T
+}
+
+/** A page point inside an item: its proxy's box at the fractions `at` (rotation included). */
+async function pointIn(page: Page, id: string, at: [number, number] = [0.5, 0.5]): Promise<Corner> {
+  const c = await page.evaluate((id) => window.__dom.proxy(id), id)
+  if (!c) throw new Error(`no proxy ${id}`)
+  const [fx, fy] = at
+  const top = { x: c[0]!.x + (c[1]!.x - c[0]!.x) * fx, y: c[0]!.y + (c[1]!.y - c[0]!.y) * fx }
+  const bottom = { x: c[3]!.x + (c[2]!.x - c[3]!.x) * fx, y: c[3]!.y + (c[2]!.y - c[3]!.y) * fx }
+  return { x: top.x + (bottom.x - top.x) * fy, y: top.y + (bottom.y - top.y) * fy }
+}
+
+async function scenePoint(page: Page, x: number, y: number): Promise<Corner> {
+  const box = await page.locator('.canvas-host').boundingBox()
+  const v = (await page.evaluate(() => window.__dom.state())).viewport
+  return { x: box!.x + x * v.zoom + v.panX, y: box!.y + y * v.zoom + v.panY }
+}
+
+async function pressAndMove(page: Page, from: Corner, dx: number, dy: number) {
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.mouse.move(from.x + dx, from.y + dy, { steps: 10 })
+}
+
+/** A release where the pointer already is, Ctrl held when asked (Ctrl or Cmd at release suppresses a caption snap). */
+async function releaseAt(page: Page, at: Corner, ctrl = false) {
+  if (ctrl) {
+    await page.keyboard.down('Control')
+    await page.mouse.move(at.x + 0.5, at.y)
+    await page.mouse.move(at.x, at.y)
+  }
+  await page.mouse.up()
+  if (ctrl) await page.keyboard.up('Control')
+}
+
+async function runFeatureScript(browser: Browser, renderer: 'dom' | 'fabric', doc: StoredBoard, steps: readonly FeatureStep[], assets: SeedAsset[] = ASSETS) {
+  const context = await browser.newContext()
+  const page = await context.newPage()
+  const errors = errorsOf(page)
+  await openBoard(page, doc, assets, renderer)
+  const records: FeatureRecord[] = []
+  let last: Corner = { x: 0, y: 0 }
+  for (const step of steps) {
+    let feedback = false
+    if ('select' in step) {
+      await page.evaluate(
+        ({ id, also }) => {
+          window.__dom.run('selectLayer', id)
+          for (const other of also) window.__dom.run('selectLayer', other, { toggle: true })
+        },
+        { id: step.select, also: step.also ?? [] },
+      )
+    } else if ('run' in step) {
+      await page.evaluate(({ method, args }) => window.__dom.run(method, ...args), { method: step.run, args: step.args ?? [] })
+    } else if ('key' in step) {
+      await page.keyboard.press(step.key)
+    } else if ('moveTo' in step) {
+      const b = (await page.evaluate((id) => window.__dom.bounds(id), step.moveTo))!
+      const v = (await page.evaluate(() => window.__dom.state())).viewport
+      const from = await pointIn(page, step.moveTo, step.at)
+      const dx = (step.left - b.left) * v.zoom
+      const dy = (step.top - b.top) * v.zoom
+      await pressAndMove(page, from, dx, dy)
+      last = { x: from.x + dx, y: from.y + dy }
+      if (step.hold) feedback = true
+      else await releaseAt(page, last, step.ctrl)
+    } else if ('drag' in step) {
+      const from = await pointIn(page, step.drag, step.at)
+      await pressAndMove(page, from, step.dx, step.dy)
+      last = { x: from.x + step.dx, y: from.y + step.dy }
+      if (step.hold) feedback = true
+      else await releaseAt(page, last)
+    } else if ('release' in step) {
+      await releaseAt(page, last, step.ctrl)
+    } else if ('handle' in step) {
+      const h = (await page.evaluate(() => window.__dom.controls()))?.[step.handle]
+      if (!h) throw new Error(`no ${step.handle} handle`)
+      await pressAndMove(page, h, step.dx, step.dy)
+      last = { x: h.x + step.dx, y: h.y + step.dy }
+      if (step.hold) feedback = true
+      else await releaseAt(page, last)
+    } else if ('crop' in step) {
+      const p = await page.evaluate((h) => window.__dom.cropPoint(h), step.crop)
+      if (!p) throw new Error(`crop mode is not open (${step.crop})`)
+      await pressAndMove(page, p, step.dx, step.dy)
+      await page.mouse.up()
+    } else if ('click' in step) {
+      const p = await scenePoint(page, ...step.click)
+      await page.mouse.click(p.x, p.y)
+    } else if ('dblclick' in step) {
+      const p = await pointIn(page, step.dblclick)
+      await page.mouse.dblclick(p.x, p.y)
+    } else if ('replace' in step) {
+      const png = pngBuffer(step.width, step.height, step.seed ?? 5).toString('base64')
+      await page.evaluate(({ id, png }) => window.__dom.replace(id, png), { id: step.replace, png })
+    } else if ('label' in step) {
+      const b = (await page.evaluate((id) => window.__dom.bounds(id), step.label))!
+      const p = await scenePoint(page, b.left, b.top)
+      await pressAndMove(page, { x: p.x + 12, y: p.y - 9 }, step.dx, step.dy)
+      await page.mouse.up()
+    } else {
+      await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+    }
+    await frames(page, 2)
+    records.push({
+      step: JSON.stringify(step),
+      ...(await page.evaluate(() => ({ scene: window.__dom.scene(), history: window.__dom.history(), state: window.__dom.state() }))),
+      ...(feedback && { feedback: await page.evaluate(() => window.__dom.feedback()) }),
+    })
+  }
+  await page.waitForTimeout(800)
+  await expect(status(page)).toContainText('Saved on this device')
+  const saved = await stored(page)
+  expect(errors, renderer).toEqual([])
+  await context.close()
+  return normalizeIds({ records, saved })
+}
+
+/** Two feedback snapshots agree: exact, except the measured parts of a snap preview, within the tolerance. */
+function expectSameFeedback(dom: FeedbackSnapshot, fabric: FeedbackSnapshot, where: string): number {
+  const { snap: ds, ...dRest } = dom
+  const { snap: fs, ...fRest } = fabric
+  expect(dRest, `${where} feedback`).toEqual(fRest)
+  expect(ds === null, `${where} snap offered`).toBe(fs === null)
+  if (!ds || !fs) return 0
+  expect([ds.imageId, ds.side, ds.textId, ds.frameId], `${where} snap target`).toEqual([fs.imageId, fs.side, fs.textId, fs.frameId])
+  expect(ds.bounds, `${where} snap image bounds`).toEqual(fs.bounds)
+  expect(Math.abs(ds.position - fs.position), `${where} snap position`).toBeLessThanOrEqual(0.002)
+  let worst = 0
+  const pairs: Array<[string, number, number]> = [
+    ...(Object.keys(fs.box) as Array<keyof typeof fs.box>).map((k): [string, number, number] => [`box.${k}`, ds.box[k], fs.box[k]]),
+    ...(Object.keys(fs.size) as Array<keyof typeof fs.size>).map((k): [string, number, number] => [`size.${k}`, ds.size[k], fs.size[k]]),
+  ]
+  for (const [key, a, b] of pairs) {
+    const diff = Math.abs(a - b)
+    worst = Math.max(worst, diff)
+    expect(diff, `${where} snap ${key}: dom ${a}, fabric ${b}`).toBeLessThanOrEqual(GEOMETRY_TOLERANCE)
+  }
+  return worst
+}
+
+async function expectFeaturePaired(browser: Browser, doc: StoredBoard, steps: readonly FeatureStep[], assets: SeedAsset[] = ASSETS) {
+  const fabric = await runFeatureScript(browser, 'fabric', doc, steps, assets)
+  const dom = await runFeatureScript(browser, 'dom', doc, steps, assets)
+  let worst = 0
+  fabric.records.forEach((f, i) => {
+    const d = dom.records[i]!
+    const where = `after ${f.step}`
+    worst = Math.max(worst, expectSameRecords(d.scene.objects as never, f.scene.objects as never, where))
+    expect(d.scene.frames, `frames ${where}`).toEqual(f.scene.frames)
+    worst = Math.max(worst, expectSameRecords(d.history.objects as never, f.history.objects as never, `history ${where}`))
+    expect(d.history.frames, `history frames ${where}`).toEqual(f.history.frames)
+    expect(d.state, `state ${where}`).toEqual(f.state)
+    expect(d.feedback === undefined, `feedback recorded ${where}`).toBe(f.feedback === undefined)
+    if (d.feedback && f.feedback) worst = Math.max(worst, expectSameFeedback(d.feedback, f.feedback, where))
+  })
+  worst = Math.max(worst, expectSameRecords(dom.saved.objects as never, fabric.saved.objects as never, 'saved'))
+  expect(dom.saved.frames, 'saved frames').toEqual(fabric.saved.frames)
+  expect(dom.saved.version).toBe(fabric.saved.version)
+  expect(dom.saved.viewport).toEqual(fabric.saved.viewport)
+  return { worst, fabric, dom }
+}
+
+test.describe('the base branch features on the DOM renderer save what the Fabric renderer saves (paired, Slice 2c-iii)', () => {
+  test('crop mode: every handle and the box, applied by Enter, Done and an outside press, cancelled by Esc; rotated, scaled and cropped images; Fit, Fill and Replace afterwards; ownership after a crop', async ({ browser }) => {
+    const F1: StoredFrame = { id: 'F1', name: 'Left', left: 80, top: 60, width: 300, height: 260 }
+    const F2: StoredFrame = { id: 'F2', name: 'Right', left: 440, top: 420, width: 300, height: 200 }
+    const objects: StoredObject[] = [
+      image('P', 120, 100, { frameId: 'F1' }),
+      image('P2', 290, 200, { frameId: 'F1' }),
+      image('R', 560, 110, { angle: 30, scaleX: 0.8, scaleY: 0.8, crop: { x: 20, y: 10, width: 110, height: 90 } }),
+      image('E', 300, 430),
+    ]
+    const steps: FeatureStep[] = [
+      { select: 'P' },
+      { run: 'startCrop' },
+      { crop: 'br', dx: -40, dy: -30 },
+      { crop: 'tl', dx: 20, dy: 10 },
+      { crop: 'move', dx: 10, dy: 5 },
+      { crop: 't', dx: 0, dy: 6 },
+      { crop: 'b', dx: 0, dy: -6 },
+      { crop: 'tr', dx: -5, dy: 5 },
+      { crop: 'bl', dx: 5, dy: -5 },
+      { key: 'Enter' },
+      { dblclick: 'P' },
+      { crop: 'r', dx: 15, dy: 0 },
+      { run: 'applyCrop' },
+      { run: 'startCrop' },
+      { crop: 'l', dx: 10, dy: 0 },
+      { click: [760, 380] },
+      { run: 'startCrop' },
+      { crop: 't', dx: 0, dy: 20 },
+      { key: 'Escape' },
+      { run: 'fillImage' },
+      { run: 'fitImage' },
+      { select: 'R' },
+      { run: 'startCrop' },
+      { crop: 'br', dx: -20, dy: -20 },
+      { crop: 'tl', dx: 10, dy: 15 },
+      { key: 'Enter' },
+      { run: 'startCrop' },
+      { crop: 'l', dx: -30, dy: 0 },
+      { key: 'Enter' },
+      { run: 'fillImage' },
+      { run: 'fitImage' },
+      { run: 'fillImage' },
+      { select: 'E' },
+      { run: 'startCrop' },
+      { crop: 'l', dx: 140, dy: 0 },
+      { key: 'Enter' },
+      { select: 'P2' },
+      { run: 'startCrop' },
+      { crop: 'l', dx: 40, dy: 0 },
+      { key: 'Enter' },
+      { run: 'undo' },
+      { run: 'redo' },
+      { select: 'P' },
+      { replace: 'P', width: 300, height: 100 },
+      { run: 'fitImage' },
+      { run: 'undo' },
+      { run: 'undo' },
+      { run: 'redo' },
+      { select: 'R' },
+      { replace: 'R', width: 90, height: 200, seed: 7 },
+      { run: 'startCrop' },
+      { crop: 'b', dx: 0, dy: -40 },
+      { key: 'Enter' },
+    ]
+    const { dom, worst } = await expectFeaturePaired(browser, board([F1, F2], objects, { zoom: 1.1, panX: -20, panY: 10 }), steps)
+    const saved = (id: string) => dom.saved.objects.find((o) => o.id === id)!
+    expect(saved('E').frameId).toBe('F2') // the crop moved its centre into F2: it joined
+    expect(saved('P2').frameId).toBeUndefined() // and out of F1: it left
+    expect(saved('R').crop).toBeDefined()
+    console.log(`crop: largest geometry difference ${worst.toFixed(3)}`)
+  })
+
+  const captionBoard = () =>
+    board(
+      [{ id: 'F', name: 'Sleeve', left: 60, top: 520, width: 640, height: 260 }],
+      [
+        image('P', 100, 100),
+        image('Q', 380, 100),
+        image('R', 100, 330),
+        image('S', 380, 330),
+        text('T', 760, 80, 'Caption words here', { fontSize: 16, width: 150 }),
+        text('D', 760, 160, 'Side note', { fontSize: 16, width: 100, minHeight: 0 }),
+        text('U', 760, 240, 'Top label', { fontSize: 16, width: 120 }),
+        text('L', 760, 320, 'Left', { fontSize: 16, width: 60, minHeight: 0 }),
+      ],
+    )
+
+  test('caption snapping at each edge and along it, Ctrl to skip, Esc and blur mid-drag; captions follow a move, a resize, a rotation, a crop and a change of frame; background on and off; detach; a caption in a multi-selection', async ({ browser }) => {
+    const steps: FeatureStep[] = [
+      // Under P, previewed then dropped.
+      { moveTo: 'T', left: 130, top: 226, hold: true },
+      { release: true },
+      // Right of Q: Ctrl at release skips the snap; then a plain drop snaps.
+      { moveTo: 'D', left: 546, top: 140, ctrl: true },
+      { moveTo: 'D', left: 546, top: 150, hold: true },
+      { release: true },
+      // Above R: Esc mid-drag, then a window blur mid-drag, bring the scene back; then the drop.
+      { moveTo: 'U', left: 120, top: 304, hold: true },
+      { key: 'Escape' },
+      { release: true },
+      { moveTo: 'U', left: 120, top: 304, hold: true },
+      { blur: true },
+      { release: true },
+      { moveTo: 'U', left: 120, top: 304 },
+      // Left of S.
+      { moveTo: 'L', left: 314, top: 360, hold: true },
+      { release: true },
+      // The captions follow their images.
+      { drag: 'P', dx: 40, dy: 30 },
+      { select: 'Q' },
+      { handle: 'br', dx: 40, dy: 30 },
+      { select: 'R' },
+      { handle: 'mtr', dx: 60, dy: 10 },
+      { select: 'S' },
+      { run: 'startCrop' },
+      { crop: 'l', dx: 30, dy: 0 },
+      { crop: 'b', dx: 0, dy: -20 },
+      { key: 'Enter' },
+      { moveTo: 'P', left: 200, top: 580, at: [0.3, 0.3] },
+      // Backgrounds.
+      { select: 'T' },
+      { run: 'setCaptionBackground', args: ['#ffd0a0'] },
+      { run: 'setCaptionBackground', args: ['#c0e0ff'] },
+      { run: 'setCaptionBackground' },
+      { select: 'Q' },
+      { run: 'setCaptionBackground', args: ['#e0ffe0'] },
+      // Detach by the command, then by dragging a caption away.
+      { select: 'D' },
+      { run: 'detachCaption' },
+      { drag: 'U', dx: 0, dy: -90 },
+      // A caption in a multi-selection with its image moves once.
+      { select: 'P', also: ['T'] },
+      { drag: 'P', dx: -30, dy: -20, at: [0.3, 0.3] },
+      { run: 'undo' },
+      { run: 'redo' },
+    ]
+    const { dom, worst } = await expectFeaturePaired(browser, captionBoard(), steps)
+    const saved = (id: string) => dom.saved.objects.find((o) => o.id === id)!
+    expect(saved('T')).toMatchObject({ captionOf: 'P', frameId: 'F' })
+    expect(saved('L')).toMatchObject({ captionOf: 'S', captionSide: 'left' })
+    expect(saved('D').captionOf).toBeUndefined()
+    expect(saved('U').captionOf).toBeUndefined()
+    console.log(`captions: largest geometry difference ${worst.toFixed(3)}`)
+  })
+
+  test('the ownership preview while dragging and scaling: frames that may gain or lose items, carried members, and a text whose folded size leaves its frame', async ({ browser }) => {
+    const F: StoredFrame = { id: 'F', name: 'Edge', left: 100, top: 100, width: 360, height: 260 }
+    const G: StoredFrame = { id: 'G', name: 'Other', left: 560, top: 100, width: 300, height: 300 }
+    const objects: StoredObject[] = [
+      image('I', 140, 150, { frameId: 'F', scaleX: 0.5, scaleY: 0.5 }),
+      text('T', 300, 300, 'a note near the edge', { fontSize: 18, width: 140, frameId: 'F' }),
+      text('W', 600, 420, 'loose words', { fontSize: 18, width: 120, minHeight: 0 }),
+    ]
+    const steps: FeatureStep[] = [
+      { drag: 'I', dx: 470, dy: 40, hold: true },
+      { release: true },
+      { select: 'T' },
+      { handle: 'br', dx: 260, dy: 130, hold: true },
+      { release: true },
+      { label: 'G', dx: -60, dy: 0 },
+      { select: 'W' },
+      { handle: 'tl', dx: -40, dy: -30, hold: true },
+      { key: 'Escape' },
+      { release: true },
+    ]
+    const { fabric, worst } = await expectFeaturePaired(browser, board([F, G], objects), steps)
+    // The preview showed something to compare: G may gain the dragged image, F may lose the scaled text.
+    expect(fabric.records[0]!.feedback!.gaining).toContain('G')
+    expect(fabric.records[3]!.feedback!.losing).toContain('F')
+    console.log(`feedback: largest geometry difference ${worst.toFixed(3)}`)
+  })
+
+  test('duplicate: single items, a multi-selection, a frame with owned items including locked ones, a cropped image and a captioned image; stacking, the counterparts selected, one undo step', async ({ browser }) => {
+    const F: StoredFrame = { id: 'F', name: 'Album', left: 100, top: 80, width: 460, height: 340 }
+    const objects: StoredObject[] = [
+      image('A', 130, 110, { frameId: 'F', crop: { x: 10, y: 5, width: 120, height: 90 }, angle: 8 }),
+      text('K', 300, 120, 'Locked words', { frameId: 'F', locked: true, width: 160 }),
+      image('B', 300, 200, { frameId: 'F', scaleX: 0.6, scaleY: 0.6 }),
+      text('C', 300, 278, 'Its caption', { frameId: 'F', width: 96, minHeight: 0, captionOf: 'B', captionBackground: '#fff0c0' }),
+      image('Lk', 140, 300, { frameId: 'F', locked: true, assetId: 'grad', scaleX: 0.5, scaleY: 0.5 }),
+      text('T', 640, 120, 'Loose heading\nbody', { width: 200, headings: [1], spans: [{ start: 14, end: 18, italic: true }] }),
+      image('I', 640, 300, { assetId: 'grad', scaleX: 0.7, scaleY: 0.7 }),
+      // Loose just above F: its copy (24 screen pixels lower) has its centre inside F only once its height counts.
+      text('E', 330, 40, 'Two line\nnote', { width: 120 }),
+    ]
+    const steps: FeatureStep[] = [
+      { select: 'E' },
+      { run: 'duplicateSelection' },
+      { select: 'F' },
+      { run: 'duplicateSelection' },
+      { run: 'undo' },
+      { run: 'redo' },
+      { select: 'T' },
+      { key: 'Control+d' },
+      { select: 'I', also: ['T'] },
+      { run: 'duplicateSelection' },
+      { select: 'B' },
+      { run: 'duplicateSelection' },
+      { select: 'C' },
+      { run: 'duplicateSelection' },
+      { select: 'K' },
+      { run: 'duplicateSelection' },
+      { run: 'undo' },
+    ]
+    const { dom, worst } = await expectFeaturePaired(browser, board([F], objects, { zoom: 0.8, panX: 10, panY: 20 }), steps)
+    expect(dom.saved.frames).toHaveLength(2)
+    expect(dom.saved.objects.filter((o) => o.locked)).toHaveLength(2) // copies start unlocked
+    expect(dom.saved.objects.find((o) => o.id === '~1')).toMatchObject({ type: 'text', text: 'Two line\nnote', frameId: 'F' })
+    console.log(`duplicate: largest geometry difference ${worst.toFixed(3)}`)
+  })
+
+  test('locks: inspector, padlock and shortcut; click-through; Select all; locked members follow their frame; a selection that holds a locked item holds nothing else', async ({ browser }) => {
+    const F: StoredFrame = { id: 'F', name: 'Spread', left: 100, top: 80, width: 420, height: 320 }
+    const objects: StoredObject[] = [
+      image('A', 140, 120, { frameId: 'F' }),
+      text('K', 320, 140, 'Member note', { frameId: 'F', width: 150 }),
+      image('I', 640, 120, { assetId: 'grad', scaleX: 0.6, scaleY: 0.6 }),
+      text('T', 640, 300, 'Loose words', { width: 160 }),
+    ]
+    const steps: FeatureStep[] = [
+      { select: 'A' },
+      { run: 'setSelectionLocked', args: [true] },
+      { select: 'K' },
+      { key: 'Control+Shift+L' },
+      { select: 'T', also: ['I'] },
+      { run: 'setSelectionLocked', args: [true] },
+      { run: 'toggleLayerLock', args: ['I'] },
+      { run: 'selectAll' },
+      { select: 'I', also: ['A'] },
+      { click: [220, 180] }, // on locked A, inside F's click-through interior: the board
+      { label: 'F', dx: 60, dy: 40 },
+      { select: 'A' },
+      { run: 'deleteSelection' },
+      { run: 'arrange', args: ['front'] },
+      { key: 'Delete' },
+      { select: 'F' },
+      { run: 'selectFrameContents' },
+      { select: 'A' },
+      { key: 'Control+Shift+L' },
+      { run: 'toggleLayerLock', args: ['K'] },
+      { run: 'undo' },
+      { run: 'redo' },
+    ]
+    const { dom, worst } = await expectFeaturePaired(browser, board([F], objects), steps)
+    expect(dom.saved.objects.find((o) => o.id === 'T')!.locked).toBe(true)
+    console.log(`locks: largest geometry difference ${worst.toFixed(3)}`)
+  })
+
+  test('the layer list: selecting, reordering by keys and in the list, labels through whole-box changes and Make caption', async ({ browser }) => {
+    const objects: StoredObject[] = [
+      image('A', 120, 120),
+      text('T', 360, 140, 'First words of a longer note that runs past the label limit', { width: 220 }),
+      image('B', 120, 360, { assetId: 'grad' }),
+      text('U', 360, 380, 'Second', { width: 120, minHeight: 0 }),
+    ]
+    const frames2: StoredFrame[] = [
+      { id: 'F', name: 'Back', left: 80, top: 80, width: 300, height: 260 },
+      { id: 'G', name: '', left: 400, top: 300, width: 300, height: 260 },
+    ]
+    const steps: FeatureStep[] = [
+      { select: 'A' },
+      { key: ']' },
+      { key: '[' },
+      { key: 'Control+]' },
+      { key: 'Control+[' },
+      { run: 'moveLayer', args: ['T', 'A', 'before'] },
+      { run: 'moveLayer', args: ['U', 'B', 'after'] },
+      { run: 'moveLayer', args: ['G', 'F', 'before'] },
+      { select: 'T' },
+      { run: 'setHeading', args: [1] },
+      { run: 'toggleMark', args: ['bold'] },
+      { select: 'U', also: ['A'] },
+      { run: 'selectLayer', args: ['B', { toggle: true }] },
+      { select: 'A', also: ['U'] },
+      { run: 'makeCaption' },
+      { run: 'undo' },
+    ]
+    const { dom } = await expectFeaturePaired(browser, board(frames2, objects), steps)
+    const rows = dom.records.at(-2)!.state.layers
+    expect(rows.find((r) => r.id === 'U')).toMatchObject({ kind: 'text', label: 'Second' })
+    expect(rows.find((r) => r.id === 'B')).toMatchObject({ kind: 'image', label: 'grad.png' })
+  })
+
+  test('frame navigation: jumps share one return point, return restores the view exactly, a tour changes nothing', async ({ browser }) => {
+    const frames2: StoredFrame[] = [
+      { id: 'F', name: 'One', left: 80, top: 80, width: 300, height: 260 },
+      { id: 'G', name: 'Two', left: 1400, top: 900, width: 500, height: 300 },
+    ]
+    const objects: StoredObject[] = [image('A', 120, 120, { frameId: 'F' }), text('T', 1450, 950, 'Far away', { frameId: 'G' })]
+    const steps: FeatureStep[] = [
+      { run: 'jumpToFrame', args: ['G'] },
+      { run: 'jumpToFrame', args: ['F'] },
+      { run: 'jumpToFrame', args: ['F'] },
+      { run: 'returnFromJump' },
+      { run: 'jumpToFrame', args: ['G'] },
+      { run: 'startFrameTour' },
+      { run: 'returnFromJump' },
+    ]
+    await expectFeaturePaired(browser, board(frames2, objects, { zoom: 0.9, panX: 30, panY: -10 }), steps)
+  })
+})
+
+test.describe('what a person sees on the DOM renderer (Slice 2c-iii)', () => {
+  const ACCENT_RGB = hex('#6c7bf2')
+  const BOARD_RGB = hex('#f1f3f8')
+  const DIM: readonly number[] = [17, 20, 28]
+  const dimmed = (c: readonly number[]) => c.map((v, i) => 0.45 * v + 0.55 * DIM[i]!)
+
+  test('crop mode shows the whole original in place, dimmed outside the box, with eight handles above it; the kept pixels do not move when it is applied', async ({ page }) => {
+    const errors = errorsOf(page)
+    const at = await openBoard(page, board([], [image('P', 200, 150)]), ASSETS)
+    const kept = { x: at(210, 160).x, y: at(210, 160).y, width: 90, height: 70 }
+    const outside = at(345, 255)
+    await shot(page, { x: at(0, 0).x, y: at(0, 0).y, width: 600, height: 400 })
+    const local = (p: Corner) => ({ x: p.x - at(0, 0).x, y: p.y - at(0, 0).y })
+    const original = await pixel(page, local(outside).x, local(outside).y)
+    const before = await page.screenshot({ clip: kept })
+
+    await page.evaluate(() => window.__dom.run('selectLayer', 'P'))
+    await page.evaluate(() => window.__dom.run('startCrop'))
+    await frames(page, 2)
+    expect(await page.screenshot({ clip: kept }), 'entering crop mode moves nothing').toEqual(before)
+    const br = (await page.evaluate(() => window.__dom.cropPoint('br')))!
+    await page.mouse.move(br.x, br.y)
+    await page.mouse.down()
+    await page.mouse.move(br.x - 40, br.y - 30, { steps: 6 })
+    await page.mouse.up()
+    await frames(page, 2)
+    expect(await page.screenshot({ clip: kept }), 'the kept part, while cropping').toEqual(before)
+    // Outside the box: the original, dimmed (drawn by the canvas over the layer's whole image).
+    await shot(page, { x: at(0, 0).x, y: at(0, 0).y, width: 600, height: 400 })
+    const dim = await pixel(page, local(outside).x, local(outside).y)
+    expect(near(dim, dimmed(original), 6), `dimmed original outside the box: ${dim} from ${original}`).toBe(true)
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.scene-image[data-id="P"]')!).width)).toBe('160px')
+    // Eight handles, drawn by the canvas above the layer.
+    for (const h of ['tl', 't', 'tr', 'r', 'br', 'b', 'bl', 'l']) {
+      const p = (await page.evaluate((h) => window.__dom.cropPoint(h), h))!
+      expect(await page.evaluate(({ x, y }) => window.__dom.canvasAlpha(x, y), p), `handle ${h}`).toBe(255)
+    }
+
+    await page.keyboard.press('Enter')
+    await frames(page, 2)
+    expect(await page.screenshot({ clip: kept }), 'the kept part, after applying').toEqual(before)
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.scene-image[data-id="P"]')!).width)).toBe('120px')
+    await page.evaluate(() => window.__dom.run('selectLayer', 'P')) // still selected; deselect to see the board
+    await page.keyboard.press('Escape')
+    await frames(page, 2)
+    await shot(page, { x: at(0, 0).x, y: at(0, 0).y, width: 600, height: 400 })
+    expect(near(await pixel(page, local(outside).x, local(outside).y), BOARD_RGB, 8), 'the cropped-away part is gone').toBe(true)
+    await expectTracked(page, ['P'], 'after the crop')
+    expect(errors).toEqual([])
+  })
+
+  test('a dragged item is drawn lifted and the frame it may join is marked; a snap preview shows where a caption lands; a caption background is drawn', async ({ page }) => {
+    const errors = errorsOf(page)
+    const F: StoredFrame = { id: 'F', name: 'Spread', left: 100, top: 100, width: 300, height: 260 }
+    const objects: StoredObject[] = [
+      image('I', 500, 120, { scaleX: 0.5, scaleY: 0.5 }),
+      image('P', 500, 380),
+      text('T', 820, 300, 'Caption here', { fontSize: 16, width: 120 }),
+    ]
+    const at = await openBoard(page, board([F], objects), ASSETS)
+    const origin = at(0, 0)
+    const local = (x: number, y: number) => ({ x: at(x, y).x - origin.x, y: at(x, y).y - origin.y })
+    const area = { x: origin.x, y: origin.y, width: 1000, height: 640 }
+
+    // Lifted while dragged, with the frame it would join marked.
+    const grab = await pointIn(page, 'I')
+    await pressAndMove(page, grab, -300, 60)
+    await frames(page, 2)
+    expect(await page.evaluate(() => window.__dom.lifted())).toEqual(['I'])
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.scene-item[data-id="I"]')!).filter)).toContain('drop-shadow')
+    expect((await page.evaluate(() => window.__dom.feedback())).gaining).toEqual(['F'])
+    await shot(page, area)
+    const column = Math.round(local(100, 0).x)
+    const outline = await Promise.all([column - 1, column, column + 1].map((x) => pixel(page, x, local(0, 300).y)))
+    expect(outline.some((c) => near(c, ACCENT_RGB, 30)), `the frame that may gain it is marked ${JSON.stringify(outline)}`).toBe(true)
+    // The shadow: just below the dragged image the board is darker than before.
+    await page.mouse.up()
+    await frames(page, 2)
+    expect(await page.evaluate(() => window.__dom.lifted())).toEqual([])
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.scene-item[data-id="I"]')!).filter)).toBe('none')
+
+    // The caption snap preview: an accent outline where the text will land.
+    const b = (await page.evaluate(() => window.__dom.bounds('T')))!
+    const from = await pointIn(page, 'T')
+    await pressAndMove(page, from, 530 - b.left, 506 - b.top)
+    await frames(page, 2)
+    const snap = (await page.evaluate(() => window.__dom.feedback())).snap
+    expect(snap).toMatchObject({ imageId: 'P', side: 'under' })
+    await shot(page, area)
+    const left = Math.round(local(snap!.box.left, 0).x)
+    const samples: number[][] = []
+    for (let y = Math.ceil(local(0, snap!.box.top).y) + 1; y < local(0, snap!.box.bottom).y - 1; y++) {
+      for (const x of [left - 1, left, left + 1]) samples.push(await pixel(page, x, y))
+    }
+    expect(samples.some((c) => near(c, ACCENT_RGB, 30)), 'the preview outline').toBe(true)
+    await page.mouse.up()
+    await frames(page, 2)
+    const caption = ((await page.evaluate(() => window.__dom.scene())) as Scene).objects.find((o) => o.id === 'T')!
+    expect(caption).toMatchObject({ captionOf: 'P' })
+
+    // A caption's background is drawn by the layer (an empty spot in the box: its right end).
+    await page.evaluate(() => {
+      window.__dom.run('selectLayer', 'T')
+      window.__dom.run('setCaptionBackground', '#ff40c0')
+      window.__dom.run('selectLayer', 'P')
+    })
+    await page.keyboard.press('Escape')
+    await frames(page, 2)
+    const tb = (await page.evaluate(() => window.__dom.bounds('T')))!
+    const spot = local(tb.right - 4, (tb.top + tb.bottom) / 2)
+    await shot(page, area)
+    expect(near(await pixel(page, spot.x, spot.y), hex('#ff40c0'), 10), 'the background').toBe(true)
+    await page.evaluate(() => {
+      window.__dom.run('selectLayer', 'T')
+      window.__dom.run('setCaptionBackground')
+    })
+    await page.keyboard.press('Escape')
+    await frames(page, 2)
+    await shot(page, area)
+    expect(near(await pixel(page, spot.x, spot.y), BOARD_RGB, 8), 'no background').toBe(true)
+    expect(errors).toEqual([])
+  })
+
+  test('a frame preview draws images and text in true stacking order, a text in front of an image and an image in front of a text, crops included', async ({ page }) => {
+    const errors = errorsOf(page)
+    const A = text('A', 260, 200, 'Under', { captionBackground: '#ff40c0', width: 200, minHeight: 120 })
+    const I = image('I', 380, 230)
+    const B = text('B', 470, 300, 'Over', { captionBackground: '#20c0b0', width: 200, minHeight: 80 })
+    const K = image('K', 240, 420, { crop: { x: 80, y: 60, width: 80, height: 60 } })
+    // Turned: a detached Fabric canvas draws its glyphs directly, the compositor resamples the card's
+    // bitmap, so the two give different pixels and the comparison below tells which one drew it.
+    const R = text('R', 560, 160, 'Turned words', { width: 140, angle: 15 })
+    await openBoard(page, board([frame()], [A, I, B, K, R]), ASSETS)
+    const url = await page.evaluate(() => window.__dom.preview('F'))
+    expect(url.startsWith('data:image/png')).toBe(true)
+    // Drawn by the compositor, from the same cards the layer draws (not a detached Fabric canvas).
+    const composited = await page.evaluate(async () => {
+      const path = '/src/editor/renderFrameBitmap.ts'
+      const { renderFrameToCanvas } = await import(/* @vite-ignore */ path)
+      const images = new Map([...document.querySelectorAll('.scene-image[data-id] img')].map((img) => [(img.closest('[data-id]') as HTMLElement).dataset.id, img as HTMLImageElement]))
+      const scene = window.__dom.history()
+      const byAsset = new Map(scene.objects.flatMap((o) => (o.type === 'image' ? [[o.assetId, images.get(o.id)]] : [])))
+      const canvas = await renderFrameToCanvas(scene, 'F', { getImage: (id: string) => byAsset.get(id) })
+      return canvas.toDataURL('image/png')
+    })
+    expect(url).toBe(composited)
+    const f = frame()
+    const scale = Math.min(2, 1600 / Math.max(f.width, f.height))
+    const sample = (x: number, y: number) =>
+      page.evaluate(async ({ url, x, y }) => {
+        const img = new Image()
+        img.src = url
+        await img.decode()
+        const c = document.createElement('canvas')
+        c.width = img.naturalWidth
+        c.height = img.naturalHeight
+        const ctx = c.getContext('2d')!
+        ctx.drawImage(img, 0, 0)
+        return Array.from(ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data.slice(0, 3))
+      }, { url, x: (x - f.left) * scale, y: (y - f.top) * scale })
+    expect(near(await sample(680, 520), [255, 255, 255], 3), 'paper').toBe(true)
+    expect(near(await sample(300, 280), hex('#ff40c0')), 'text A where nothing covers it').toBe(true)
+    const iOverA = await sample(392, 242)
+    expect(iOverA[0]! > 100 && iOverA[1]! < 80 && iOverA[2]! < 80, `image I in front of text A ${iOverA}`).toBe(true)
+    expect(near(await sample(500, 320), hex('#20c0b0')), 'text B in front of image I').toBe(true)
+    const crop = await sample(250, 430)
+    expect(crop[0]! > 100 && crop[1]! > 90 && crop[2]! < 60, `the cropped image shows only its kept quadrant ${crop}`).toBe(true)
+    expect(errors).toEqual([])
+  })
+})
+
+test.describe('crop mode on the DOM renderer through interruptions (Slice 2c-iii)', () => {
+  const P = () => image('P', 200, 150)
+  const pRecord = async (page: Page) => ((await page.evaluate(() => window.__dom.scene())) as Scene).objects.find((o) => o.id === 'P')!
+  const open = async (page: Page) => {
+    await page.evaluate(() => {
+      window.__dom.run('selectLayer', 'P')
+      window.__dom.run('startCrop')
+    })
+    await frames(page, 2)
+  }
+  const shownWidth = (page: Page) => page.evaluate(() => getComputedStyle(document.querySelector('.scene-image[data-id="P"]')!).width)
+
+  test('Esc, a window blur mid-drag, a second button, a lost release, autosave, an import, undo and redo, a reload', async ({ page }) => {
+    const errors = errorsOf(page)
+    await openBoard(page, board([], [P()]), ASSETS)
+    const start = await snapshotIdb(page)
+    const before = await pRecord(page)
+
+    // Esc restores the image exactly; nothing recorded or saved.
+    await open(page)
+    expect(await shownWidth(page)).toBe('160px')
+    let br = (await page.evaluate(() => window.__dom.cropPoint('br')))!
+    await page.mouse.move(br.x, br.y)
+    await page.mouse.down()
+    await page.mouse.move(br.x - 50, br.y - 40, { steps: 5 })
+    await page.mouse.up()
+    await page.keyboard.press('Escape')
+    await frames(page, 2)
+    expect((await page.evaluate(() => window.__dom.state())).cropping).toBe(false)
+    expect(await pRecord(page)).toEqual(before)
+    expect(await shownWidth(page)).toBe('160px')
+    await expectTracked(page, ['P'], 'after Esc')
+    await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+    expect(await snapshotIdb(page)).toEqual(start)
+    expect((await page.evaluate(() => window.__dom.state())).canUndo).toBe(false)
+
+    // A blur mid-drag returns that drag to where it began and keeps crop mode open.
+    await open(page)
+    br = (await page.evaluate(() => window.__dom.cropPoint('br')))!
+    await page.mouse.move(br.x, br.y)
+    await page.mouse.down()
+    await page.mouse.move(br.x - 50, br.y - 40, { steps: 5 })
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+    await page.mouse.up()
+    await frames(page, 2)
+    expect((await page.evaluate(() => window.__dom.state())).cropping).toBe(true)
+    expect(await page.evaluate(() => window.__dom.cropPoint('br'))).toEqual(br)
+
+    // A second button during the drag changes nothing; the primary release ends it.
+    await page.mouse.move(br.x, br.y)
+    await page.mouse.down()
+    await page.mouse.move(br.x - 20, br.y - 10, { steps: 3 })
+    await page.mouse.down({ button: 'right' })
+    await page.mouse.up({ button: 'right' })
+    await page.mouse.move(br.x - 40, br.y - 30, { steps: 3 })
+    await page.mouse.up()
+    const moved = (await page.evaluate(() => window.__dom.cropPoint('br')))!
+    expect(Math.abs(moved.x - (br.x - 40))).toBeLessThan(1)
+    expect(Math.abs(moved.y - (br.y - 30))).toBeLessThan(1)
+
+    // A lost release: the next move without the button ends the drag where it is.
+    await page.mouse.move(moved.x, moved.y)
+    await page.mouse.down()
+    await page.mouse.move(moved.x - 10, moved.y - 10, { steps: 3 })
+    await page.evaluate(({ x, y }) => window.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y, buttons: 0 })), { x: moved.x - 10, y: moved.y - 10 })
+    await page.evaluate(({ x, y }) => window.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y, buttons: 0 })), { x: moved.x - 60, y: moved.y - 60 })
+    const healed = (await page.evaluate(() => window.__dom.cropPoint('br')))!
+    expect(Math.abs(healed.x - (moved.x - 10))).toBeLessThan(1)
+    await page.mouse.up()
+
+    // Autosave while crop mode is open stores the board from before it (here: the title changes).
+    await page.evaluate(() => window.__dom.run('setTitle', 'Mid crop'))
+    await expect.poll(async () => (await stored(page)).title).toBe('Mid crop')
+    expect((await stored(page)).objects[0]).toEqual(before)
+
+    // An import that completes applies the crop first, as its own step, then adds the image.
+    await dropImage(page, 'late.png', pngBuffer(60, 40, 2).toString('base64'), { x: 900, y: 600 })
+    await expect.poll(async () => (await stored(page)).objects.length).toBe(2)
+    expect((await page.evaluate(() => window.__dom.state())).cropping).toBe(false)
+    const cropped = (await stored(page)).objects[0]!
+    expect(cropped.crop).toBeDefined()
+    expect(await shownWidth(page)).toBe(`${cropped.crop!.width}px`)
+    await page.evaluate(() => window.__dom.run('undo'))
+    await expect.poll(async () => (await stored(page)).objects.length).toBe(1)
+    expect((await stored(page)).objects[0]).toEqual(cropped)
+    await page.evaluate(() => window.__dom.run('undo'))
+    await frames(page, 2)
+    expect(await pRecord(page)).toEqual(before)
+    expect(await shownWidth(page)).toBe('160px')
+    await page.evaluate(() => window.__dom.run('redo'))
+    await frames(page, 2)
+    expect(await pRecord(page)).toEqual(cropped)
+    expect(await shownWidth(page)).toBe(`${cropped.crop!.width}px`)
+    await expectTracked(page, ['P'], 'after undo and redo')
+
+    // A reload with crop mode open: the board as it was before crop mode.
+    await expect(status(page)).toContainText('Saved on this device')
+    await open(page)
+    br = (await page.evaluate(() => window.__dom.cropPoint('tl')))!
+    await page.mouse.move(br.x, br.y)
+    await page.mouse.down()
+    await page.mouse.move(br.x + 20, br.y + 20, { steps: 3 })
+    await page.mouse.up()
+    await page.reload()
+    await expect(status(page)).toContainText('Saved on this device')
+    await frames(page, 2)
+    expect(await pRecord(page)).toEqual(cropped)
+    expect(errors).toEqual([])
+  })
+
+  test('the board going read-only cancels crop mode and writes nothing', async ({ page, context }) => {
+    const errors = errorsOf(page)
+    await openBoard(page, board([], [P()]), ASSETS)
+    const before = await pRecord(page)
+    await open(page)
+    const br = (await page.evaluate(() => window.__dom.cropPoint('br')))!
+    await page.mouse.move(br.x, br.y)
+    await page.mouse.down()
+    await page.mouse.move(br.x - 50, br.y - 40, { steps: 5 })
+    await page.mouse.up()
+    // Another tab writes the board; this tab's next save finds it changed and goes read-only.
+    const other = await context.newPage()
+    await openBlank(other)
+    await other.evaluate(
+      (doc) =>
+        new Promise<void>((resolve, reject) => {
+          const open = indexedDB.open('yuriful')
+          open.onerror = () => reject(open.error)
+          open.onsuccess = () => {
+            const tx = open.result.transaction('boards', 'readwrite')
+            tx.objectStore('boards').put({ id: 'current', doc, rev: 'other-tab', updatedAt: 2 })
+            tx.oncomplete = () => {
+              open.result.close()
+              resolve()
+            }
+          }
+        }),
+      { ...board([], [image('P', 10, 10)]), title: 'Other tab' },
+    )
+    const written = await snapshotIdb(other)
+    await page.evaluate(() => window.__dom.run('setTitle', 'Conflict'))
+    await expect(page.getByTestId('readonly-banner')).toBeVisible()
+    await frames(page, 2)
+    expect((await page.evaluate(() => window.__dom.state())).cropping).toBe(false)
+    expect(await pRecord(page)).toEqual(before)
+    expect(await shownWidth(page)).toBe('160px')
+    await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+    expect(await snapshotIdb(other)).toEqual(written)
     expect(errors).toEqual([])
   })
 })

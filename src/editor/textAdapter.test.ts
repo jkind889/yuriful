@@ -242,14 +242,12 @@ describe('the DOM renderer, static (Slice 2c-i)', () => {
     expect(history().current.objects.find((o) => o.id === 't')).toMatchObject({ captionOf: 'i' })
   })
 
-  it('what cannot work on the DOM path yet is inert: typing a new text, captions, crop mode and duplicate', async () => {
+  it('what cannot work on the DOM path yet is inert: typing a new text and adding a caption', async () => {
     const { editor, canvas, obj, scene, history } = await open([], [img('i', 0, 0), txt('t', 0, 200)], dom())
     const before = scene()
     editor.addText()
     canvas.setActiveObject(obj('i'))
     editor.editCaption()
-    editor.startCrop()
-    editor.duplicateSelection()
     expect(scene()).toEqual(before)
     expect(canvas.objects).toHaveLength(2)
     expect(editor.getState().cropping).toBe(false)

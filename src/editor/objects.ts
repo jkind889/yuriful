@@ -844,6 +844,20 @@ export function imageCropOf(img: FabricImage): CropRect | undefined {
 }
 
 /**
+ * The part of the original an image shows right now, unrounded (crop mode starts from and
+ * restores exactly this): a Fabric image's `cropX`, `cropY`, `width` and `height`, or the same
+ * from an image proxy's data and size.
+ */
+export function shownCropOf(img: FabricImage): CropRect {
+  const proxy = proxyImage.get(img)
+  if (proxy) return { x: proxy.cropX, y: proxy.cropY, width: img.width, height: img.height }
+  return { x: img.cropX, y: img.cropY, width: img.width, height: img.height }
+}
+
+/** The plain text of a text on either renderer (a Fabric text box or a text proxy), or undefined for anything else. */
+export const plainTextOf = (obj: FabricObject): string | undefined => (obj instanceof Textbox ? obj.text : proxyText.get(obj)?.text)
+
+/**
  * Replace image: the same object (identity, owner, lock, stacking) now shows another decoded
  * picture, whole and uncropped. The caller then crops and places it (see `replaceRecord`).
  */

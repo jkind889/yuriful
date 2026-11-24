@@ -24,7 +24,7 @@ import {
 } from '../model/richText.ts'
 import type { Mark, PendingTextStyle, RangeFormat, TextAlign, TextFormatting } from '../model/richText.ts'
 import { resolveEditingShortcut, typedCharacter } from '../input/shortcuts.ts'
-import { findCaptionSnap, makeSnapCaption } from './captionSnapLayer.ts'
+import { findCaptionSnap, makeSnapCaption, snapPreview } from './captionSnapLayer.ts'
 import type { CaptionSnapPreview } from './captionSnapLayer.ts'
 import { DrawnTextbox } from './DrawnTextbox.ts'
 import type { DomScene, WidthAnchor } from './domScene.ts'
@@ -34,7 +34,9 @@ import {
   ProxyRect,
   applyTextFormatting,
   captionOf,
+  captionSideOf,
   centerOf,
+  createProxy,
   editTextAtEnd,
   idOf,
   isLocked,
@@ -49,6 +51,7 @@ import {
   setTextFontSize,
   setTextWrapWidth,
   textDataOf,
+  toRecord,
 } from './objects.ts'
 import type { TextData, TextEdit } from './objects.ts'
 import { boxFormat, clearRangeFonts, setBoxLevel, toggleBoxMark } from './textRules.ts'
@@ -699,13 +702,34 @@ export class DomTextAdapter implements TextAdapter {
     this.scene.syncCard(obj)
   }
 
-  /** Caption snapping on the DOM path is Slice 2c-iii: never offered here. */
-  findCaptionSnap(): CaptionSnapPreview | null {
-    return null
+  /**
+   * As on the Fabric path (`captionSnapLayer.ts`): the proxy's live position and scaled size, and
+   * the size it will have as a caption measured by the scene layer on a drawn copy of its record.
+   */
+  findCaptionSnap(obj: FabricObject, objects: readonly FabricObject[], zoom: number, previous: CaptionSnapPreview | null): CaptionSnapPreview | null {
+    const td = textDataOf(obj)
+    if (!td) return null
+    return snapPreview({
+      id: idOf(obj),
+      editing: this.editedTarget() === obj,
+      locked: isLocked(obj),
+      angle: obj.angle,
+      blank: td.text.trim() === '',
+      fontSize: td.fontSize,
+      center: obj.getCenterPoint(),
+      width: obj.getScaledWidth(),
+      height: obj.getScaledHeight(),
+      side: captionSideOf(obj),
+    }, objects, zoom, previous, () => this.scene.captionSize(obj))
   }
 
-  drawnCaptionOf(): FabricObject | null {
-    return null
+  /** The proxy itself when it is a drawn box, else a drawn proxy built from its record (sized when it is added). */
+  drawnCaptionOf(obj: FabricObject): FabricObject | null {
+    const td = textDataOf(obj)
+    if (!td) return null
+    if (td.minHeight !== undefined) return obj
+    const rec = toRecord(obj)
+    return rec?.type === 'text' ? createProxy({ ...rec, minHeight: 0 }, () => undefined) : null
   }
 
   // ---- editing (Slice 2c-ii): nothing is ever being edited yet

@@ -1,6 +1,5 @@
-import { Textbox } from 'fabric'
 import type { FabricObject } from 'fabric'
-import { frameNameOf, idOf, isFrame, isLocked, ownerOf, toRecord } from './objects.ts'
+import { frameNameOf, idOf, isFrame, isLocked, ownerOf, plainTextOf, toRecord } from './objects.ts'
 
 /** One row of the layer list. */
 export interface LayerItem {
@@ -55,11 +54,13 @@ export function computeLayers(
       frames.push({ id, kind: 'frame', label: frameNameOf(o) || 'Frame', selected: selected.has(o), frameName: null, locked: isLocked(o) })
       continue
     }
-    if (o instanceof Textbox && o.text.trim() === '') continue
+    // A text on either renderer: a Fabric text box, or a text proxy's card.
+    const text = plainTextOf(o)
+    if (text !== undefined && text.trim() === '') continue
     const owner = ownerOf(o)
     const frameName = owner !== undefined ? (frameNames.get(owner) ?? null) : null
-    if (o instanceof Textbox) {
-      content.push({ id, kind: 'text', label: textLabel(o.text), selected: selected.has(o), frameName, locked: isLocked(o) })
+    if (text !== undefined) {
+      content.push({ id, kind: 'text', label: textLabel(text), selected: selected.has(o), frameName, locked: isLocked(o) })
     } else {
       const rec = toRecord(o)
       const name = rec?.type === 'image' ? assetName(rec.assetId)?.trim() : undefined

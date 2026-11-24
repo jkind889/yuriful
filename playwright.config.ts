@@ -8,10 +8,14 @@ import { defineConfig, devices } from '@playwright/test'
  *   - default: Playwright's bundled Chromium  ->  `npm run test:e2e:install` once
  *   - PW_CHANNEL=msedge | chrome               ->  use a browser already installed on this machine
  *   - E2E_PORT=NNNN                            ->  dev-server port (default 5199)
+ *   - E2E_RENDERER=dom                         ->  every page runs the DOM renderer (a test-only switch
+ *                                                  until it becomes the default; see e2e/dom-renderer.vite.config.ts).
+ *                                                  Its own dev server: never one already listening.
  */
 const port = Number(process.env.E2E_PORT ?? 5199)
 const baseURL = `http://127.0.0.1:${port}`
 const channel = process.env.PW_CHANNEL || undefined
+const domRenderer = process.env.E2E_RENDERER === 'dom'
 
 export default defineConfig({
   testDir: './e2e',
@@ -33,9 +37,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort`,
+    command: `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort${domRenderer ? ' --config e2e/dom-renderer.vite.config.ts' : ''}`,
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    // A server already listening may not be the DOM renderer's: with E2E_RENDERER=dom, start one.
+    reuseExistingServer: !process.env.CI && !domRenderer,
     timeout: 60_000,
   },
 })
