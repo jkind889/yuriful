@@ -325,10 +325,108 @@ describe('what stays untouched inside too (P1)', () => {
     expect(md('- [*mix*](u)')).toStrictEqual([ul([p('[*mix*](u)')])])
     expect(md('# ![*cover*](c.jpg)')).toStrictEqual([h(1, '![*cover*](c.jpg)')])
     expect(md('> | *a* |')).toStrictEqual([q(p('| *a* |'))])
-    // A table line ends a list and keeps its indent.
-    expect(md('- a\n  | *x* |')).toStrictEqual([ul([p('a')]), p('  | *x* |')])
+    // Fault 4: an indented table line under an item is a paragraph of that item, exactly as written; an unindented one ends the list.
+    expect(md('- a\n  | *cell* |\n- b')).toStrictEqual([ul([p('a'), p('| *cell* |')], [p('b')])])
+    expect(md('- a\n| *cell* |')).toStrictEqual([ul([p('a')]), p('| *cell* |')])
+    expect(md('- a\n  - b\n    | *x* | **y** |\n  | *z* |')).toStrictEqual([ul([p('a'), ul([p('b'), p('| *x* | **y** |')]), p('| *z* |')])])
+    // Indented but under no item: it keeps its indent, as any line under a paragraph does.
+    expect(md('  - a\n  | *x* |')).toStrictEqual([ul([p('a')]), p('  | *x* |')])
+    expect(md('>   | *cell* |')).toStrictEqual([q(p('  | *cell* |'))])
     // A `[` or `<` that opens nothing is a character.
     expect(md('[*x*] and 2 < *y*')).toStrictEqual([p('[', r('x', I), '] and 2 < ', r('y', I))])
+  })
+})
+
+describe('the scan of what stays as written, settled rules', () => {
+  const yes = (before: string): BlockNode[] => [p(before, r('yes', I))]
+
+  it('rule 1: a label holds balanced and escaped brackets; a target balances parentheses, escapes and skips a quoted title', () => {
+    expect(md('[a [b] *secret*](u) *yes*')).toStrictEqual(yes('[a [b] *secret*](u) '))
+    expect(md('![a [b] *secret*](u) *yes*')).toStrictEqual(yes('![a [b] *secret*](u) '))
+    expect(md('[a [b] c](u) *yes*')).toStrictEqual(yes('[a [b] c](u) '))
+    expect(md('[a \\] *secret*](u) *yes*')).toStrictEqual(yes('[a \\] *secret*](u) '))
+    expect(md('[a](u "t (x) *secret*") *yes*')).toStrictEqual(yes('[a](u "t (x) *secret*") '))
+    expect(md("[a](u 't (x) *secret*') *yes*")).toStrictEqual(yes("[a](u 't (x) *secret*') "))
+    expect(md('[a](u\\) *x*) *yes*')).toStrictEqual(yes('[a](u\\) *x*) '))
+    expect(md('[a](u\\) "t *secret*") *yes*')).toStrictEqual(yes('[a](u\\) "t *secret*") '))
+    expect(md('[a](https://x.org/(b)*c*) *yes*')).toStrictEqual(yes('[a](https://x.org/(b)*c*) '))
+    expect(md('[a](x(y) *secret*) *yes*')).toStrictEqual(yes('[a](x(y) *secret*) '))
+    // A title holding a lone `)` is still skipped whole.
+    expect(md('[a](u "t) *secret*") *yes*')).toStrictEqual(yes('[a](u "t) *secret*") '))
+    expect(md("[a](u 't) *secret*') *yes*")).toStrictEqual(yes("[a](u 't) *secret*') "))
+    expect(md("[a](it's-*here*) *yes*")).toStrictEqual(yes("[a](it's-*here*) ")) // a quote not after a space opens no title
+  })
+
+  it('rule 1: a `[` with no balanced `](…)` after it on the line is a character', () => {
+    expect(md('[aside *yes* [a](u)')).toStrictEqual([p('[aside ', r('yes', I), ' [a](u)')])
+    expect(md('[*yes*] (u)')).toStrictEqual([p('[', r('yes', I), '] (u)')])
+    expect(md('[*yes*]')).toStrictEqual([p('[', r('yes', I), ']')])
+    expect(md(']( *yes*')).toStrictEqual(yes(']( '))
+    expect(md('[a](u *yes*')).toStrictEqual([p('[a](u ', r('yes', I))]) // the target never closes
+    expect(md('[a](u "t) *yes*')).toStrictEqual([p('[a](u "t) ', r('yes', I))]) // an unclosed quote is a character
+  })
+
+  it('rule 2: a tag runs to the next `>` outside a quoted value, with no `<` before it; comments and declarations', () => {
+    expect(md('<b title="> *secret*"> *yes*')).toStrictEqual(yes('<b title="> *secret*"> '))
+    expect(md("<b title='> *secret*'> *yes*")).toStrictEqual(yes("<b title='> *secret*'> "))
+    expect(md('<!-- > *secret* --> *yes*')).toStrictEqual(yes('<!-- > *secret* --> '))
+    expect(md('<!DOCTYPE *x*> *yes*')).toStrictEqual(yes('<!DOCTYPE *x*> '))
+    expect(md('<?php *x* ?> *yes*')).toStrictEqual(yes('<?php *x* ?> '))
+    expect(md('<https://x/*y*> *yes*')).toStrictEqual(yes('<https://x/*y*> '))
+    expect(md('x<y*z*>w')).toBeNull()
+    // Openers that complete nothing are characters.
+    expect(md('<something *yes* <b>x</b>')).toStrictEqual([p('<something ', r('yes', I), ' <b>x</b>')])
+    expect(md('a < b and *yes* > d')).toStrictEqual([p('a < b and ', r('yes', I), ' > d')])
+    expect(md('<3 *yes*')).toStrictEqual(yes('<3 '))
+    expect(md('<bad *yes*')).toStrictEqual(yes('<bad '))
+    expect(md('<b title="*x* *yes*')).toStrictEqual([p('<b title="', r('x', I), ' ', r('yes', I))]) // an unclosed value: no tag
+    expect(md('<!-- never closed *yes*')).toStrictEqual(yes('<!-- never closed '))
+  })
+
+  it('rule 3: a code span found first wins over a link or tag it swallows, and a link keeps a code span inside it', () => {
+    expect(md('`see [*a*](url)` *yes*')).toStrictEqual([p(r('see [*a*](url)', C), ' ', r('yes', I))])
+    expect(md('`show [a](url)` *yes*')).toStrictEqual([p(r('show [a](url)', C), ' ', r('yes', I))])
+    expect(md('`x [a` *b*](u)')).toStrictEqual([p(r('x [a', C), ' ', r('b', I), '](u)')])
+    expect(md('[a `x`](u) *yes*')).toStrictEqual(yes('[a `x`](u) '))
+    // Fault 6: a link target is never read for code.
+    expect(md('[x](`path`)')).toBeNull()
+    expect(md('[x](`path`) *yes*')).toStrictEqual(yes('[x](`path`) '))
+  })
+
+  it('fault 5: a marker beside half of a surrogate pair never counts', () => {
+    expect(md('*\uD83D*\uDE00')).toBeNull()
+    expect(md('`\uD83D`\uDE00')).toBeNull()
+    expect(md('*👩\uD800*\uDC69')).toBeNull()
+    expect(md('`👩\uD800`\uDC69')).toBeNull()
+    expect(md('**\uD83D**')).toBeNull()
+    // Whole surrogate pairs are characters like any other.
+    expect(md('*😀*😀')).toStrictEqual([p(r('😀', I), '😀')])
+  })
+})
+
+describe('known limits of the scan (out of scope, declared)', () => {
+  it('reads each line on its own: a link, tag or comment that goes on to the next line is not kept', () => {
+    // Ctrl/Cmd+Z straight after the paste gives the literal text back, and Ctrl/Cmd+Shift+V pastes literally.
+    expect(md('[see\n*secret*](u)')).toStrictEqual([p('[see'), p(r('secret', I), '](u)')])
+    expect(md('<span\n title="*x*">')).toStrictEqual([p('<span'), p(' title="', r('x', I), '">')])
+    expect(md('<!-- a\n*x*\n-->')).toStrictEqual([p('<!-- a'), p(r('x', I)), p('-->')])
+  })
+
+  it('has no reference links, no autolinks beyond the `<…>` rule and no HTML blocks', () => {
+    expect(md('[a][*b*]')).toStrictEqual([p('[a][', r('b', I), ']')])
+    expect(md('[b]: https://x.org "*title*"')).toStrictEqual([p('[b]: https://x.org "', r('title', I), '"')])
+    expect(md('see https://x.org/ *y*')).toStrictEqual([p('see https://x.org/ ', r('y', I))])
+    expect(md('<div>\n*x*\n</div>')).toStrictEqual([p('<div>'), p(r('x', I)), p('</div>')])
+    // A tag by the rule, though prose may have meant a comparison.
+    expect(md('a <b + *yes* > d')).toBeNull()
+  })
+
+  it('looks back only so far for characters that join: a very long cluster before a marker can still be split', () => {
+    const marks = '́'.repeat(32)
+    // 32 combining marks between the emoji and the ZWJ: the join is out of reach, so the markers count.
+    expect(md(`*👩${marks}‍*👩`)).not.toBeNull()
+    // With a few marks the join is seen and nothing converts.
+    expect(md(`*👩́‍*👩`)).toBeNull()
   })
 })
 
@@ -529,6 +627,20 @@ describe('performance', () => {
       `${' '.repeat(499_990)}- x`,
       // Non-ASCII text, so that characters are found by grapheme.
       '*é🙂* '.repeat(500_000 / 6),
+      // Openers of the kept spans, each looking for a closer that is far away or never comes (a `*`
+      // first, so that the line is scanned at all).
+      `*a* ${'['.repeat(499_996)}`,
+      `*a* ${'[a]('.repeat(124_999)}`,
+      `*a* [a](${'('.repeat(499_990)}`,
+      `*a* [a](${'('.repeat(249_990)}${')'.repeat(249_990)}`,
+      `*a* ${'[a](u "'.repeat(71_428)}`,
+      `*a* ${'<a '.repeat(166_665)}`,
+      `*a* ${'<a b="'.repeat(83_332)}`,
+      `*a* ${'<a b="x" '.repeat(55_555)}`,
+      `*a* ${'<!-- '.repeat(99_999)}`,
+      `*a* ${'<!'.repeat(249_998)}`,
+      `*a* ${'"'.repeat(249_998)}${"'".repeat(249_998)}`,
+      `*a* ${'[x [y] *z*](u "t (v)") <b c="> *d*"> '.repeat(12_500)}`,
     ]
     for (const text of cases) {
       const { ms } = timed(text)
@@ -663,6 +775,78 @@ describe('randomised: protected spans and blank lines between lists', () => {
       }
     }
     expect(checked).toBeGreaterThan(1500)
+  })
+
+  /** Every run in the blocks, at any depth. */
+  function runsOf(blocks: readonly BlockNode[], out: InlineRun[] = []): InlineRun[] {
+    for (const b of blocks) {
+      if (b.type === 'paragraph' || b.type === 'heading') out.push(...(b.content ?? []))
+      else if (b.type === 'blockquote') runsOf(b.blocks, out)
+      else if (b.type === 'bulletList' || b.type === 'orderedList' || b.type === 'taskList') for (const i of b.items) runsOf(i.blocks, out)
+    }
+    return out
+  }
+
+  it('keeps nested brackets, titles with parentheses, quoted `>`, comments and real spans after stray openers, and converts a marked word outside them', () => {
+    const next = rng(8623259)
+    const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(next() * xs.length)] as T
+    const STARTS = ['', '', '# ', '- ', '1. ', '- [ ] ', '> ', '> - ', '  ', '  - ', '\t']
+    // No bare `<`: with a `!` after it, it would make a declaration that rightly runs to the next `>`, wherever that is.
+    const PIECES = ['*', '**', ' ', 'word', '#', '(', ')', '[', ']', '!', '"', "'", '=', '🙂', '\\', '-', '>', '[aside ', '<something ', '<!-- ', '(paren ', '"quote ']
+    let checked = 0
+    let words = 0
+    for (let n = 0; n < 2000; n++) {
+      const payloads: string[] = []
+      const sentinels: string[] = []
+      const lines: string[] = []
+      const count = 1 + Math.floor(next() * 5)
+      for (let l = 0; l < count; l++) {
+        let line = pick(STARTS)
+        const pieces = Math.floor(next() * 8)
+        for (let k = 0; k < pieces; k++) {
+          if (next() < 0.3) {
+            const id = `${n}x${l}x${k}`
+            const payload = pick([
+              `[a [b] *P${id}*](u)`,
+              `![x [y] **P${id}**](u "t (z) *q*")`,
+              `[a \\] *P${id}*](u\\) *v*)`,
+              `[t](u '(*P${id}*)')`,
+              `[t](u "x) *P${id}*")`,
+              `<b title="> *P${id}*" data-x='>'>`,
+              `<!-- > *P${id}* -->`,
+              `<!DOCTYPE *P${id}*>`,
+              `[*P${id}*](https://x.org/(a)*${id}*)`,
+            ])
+            payloads.push(payload)
+            line += ` ${payload}`
+          } else line += pick(PIECES)
+        }
+        // A marked word at the end of the line, outside every kept span: nothing after it can close one around it.
+        const word = `W${n}x${l}`
+        sentinels.push(word)
+        lines.push(`${line} *${word}*`)
+      }
+      const text = lines.join('\n')
+      const out = markdownToBlocks(text)
+      expect(out, JSON.stringify(text)).not.toBeNull()
+      const blocks = out as BlockNode[]
+      expect(parseBlocks(blocks)).toStrictEqual(blocks)
+      const plain = plainTextOf(blocks)
+      let from = 0
+      for (const payload of payloads) {
+        const at = plain.indexOf(payload, from)
+        expect(at, `${JSON.stringify(payload)} in ${JSON.stringify(text)}`).toBeGreaterThanOrEqual(0)
+        from = at + payload.length
+        checked++
+      }
+      const italic = new Set(runsOf(blocks).filter((r) => r.italic && !r.code).map((r) => r.text))
+      for (const word of sentinels) {
+        expect(italic.has(word), `${word} italic in ${JSON.stringify(text)}`).toBe(true)
+        words++
+      }
+    }
+    expect(checked).toBeGreaterThan(2000)
+    expect(words).toBeGreaterThan(5000)
   })
 
   /** Every empty paragraph in the blocks, at any depth. */

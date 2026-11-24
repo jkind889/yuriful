@@ -16,8 +16,8 @@ import type { BlockNode, InlineRun, ListItemNode, TaskItemNode } from './types.t
  *   and `*italic*`, found as typing the line key by key at its end would find them (`inlineRuns`).
  * Inside a list item, as when typing there, only `[ ] `/`[x] ` (straight after `- `) and the
  * heading markers convert at its start; a heading never stores bold. Nothing converts inside a
- * link or image (`[text](url)`, `![alt](url)`), an HTML tag (`<...>`), on a table line (first
- * character other than a space `|`), or for a marker escaped with a backslash.
+ * link or image (`[text](url)`, `![alt](url)`), an HTML tag or comment (each within one line), on
+ * a table line (first character other than a space `|`), or for a marker escaped with a backslash.
  *
  * Lines: every line is one block. A blank line is an empty paragraph, except that a single blank
  * line between two items of the same list is dropped; two or more end the list. A list line
@@ -53,6 +53,7 @@ const JOIN_REACH = 32
 function ownAt(text: string, i: number): boolean {
   // Plain ASCII on both sides never joins (a line holds no "\r\n").
   if (!(text.charCodeAt(i + 1) >= 0x80) && text.charCodeAt(i) < 0x80 && (i === 0 || text.charCodeAt(i - 1) < 0x80)) return true
+  if (besideHalf(text, i)) return false
   const from = Math.max(0, i - 2)
   let o = from
   for (const g of splitGraphemes(text.slice(from, i + 3))) {
@@ -71,7 +72,7 @@ function ownUnits(s: string): Uint8Array | null {
   const own = new Uint8Array(s.length)
   let at = 0
   for (const g of splitGraphemes(s)) {
-    if (g.length === 1) own[at] = 1
+    if (g.length === 1 && !besideHalf(s, at)) own[at] = 1
     at += g.length
   }
   return own
@@ -145,7 +146,7 @@ function joinsAcross(left: string, right: string): boolean {
 }
 
 const isAsciiPunctuation = (c: number) => (c >= 33 && c <= 47) || (c >= 58 && c <= 64) || (c >= 91 && c <= 96) || (c >= 123 && c <= 126)
-const isTagStart = (c: number) => (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 47 /* / */ || c === 33 /* ! */ || c === 63 /* ? */
+const isTagStart = (c: number) => (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 47 /* / */
 
 /** For every unit of `s` (and its end), the index of the first unit at or after it that is `ch`; -1 for none. */
 function nextOf(s: string, ch: number): Int32Array {
@@ -157,6 +158,136 @@ function nextOf(s: string, ch: number): Int32Array {
   }
   return out
 }
+
+const isEscape = (s: string, i: number) => s.charCodeAt(i) === BACKSLASH && isAsciiPunctuation(s.charCodeAt(i + 1))
+
+/** For every `[` of `s` that is not escaped, the index of the `]` that closes it (brackets balance; escaped ones do not count); -1 for none. */
+function bracketPairs(s: string): Int32Array {
+  const out = new Int32Array(s.length).fill(-1)
+  const open: number[] = []
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i)
+    if (isEscape(s, i)) i++
+    else if (c === 91 /* [ */) open.push(i)
+    else if (c === 93 /* ] */ && open.length > 0) out[open.pop() as number] = i
+  }
+  return out
+}
+
+const UNKNOWN = -2
+
+/**
+ * A finder for the `)` that ends a link target whose first unit is `start` (just after its `(`): the
+ * target's parentheses balance, a backslash escapes the punctuation after it, and a quoted title
+ * (`"…"` or `'…'` after a space or tab) is skipped whole. -1 when the line ends first.
+ *
+ * Every call walks the same position-determined path from where it starts, so the answer for every
+ * unit a walk passes at its own depth is the walk's answer: each unit is walked once over all calls
+ * (memoised), which keeps a line of many `[x](` linear.
+ */
+function targetCloser(s: string): (start: number) => number {
+  const len = s.length
+  const memo = new Int32Array(len + 1).fill(UNKNOWN)
+  const dq = nextOf(s, 34 /* " */)
+  const sq = nextOf(s, 39 /* ' */)
+  return (start) => {
+    /** The units walked, and where each open parenthesis's own walk starts in it. */
+    const walked: number[] = []
+    const frames: number[] = [0]
+    let r = start
+    for (;;) {
+      let res: number
+      if (r >= len) res = -1
+      else if ((memo[r] as number) !== UNKNOWN) res = memo[r] as number
+      else {
+        walked.push(r)
+        const c = s.charCodeAt(r)
+        if (isEscape(s, r)) {
+          r += 2
+          continue
+        }
+        if (c === 40 /* ( */) {
+          frames.push(walked.length)
+          r++
+          continue
+        }
+        if ((c === 34 || c === 39) && (s[r - 1] === ' ' || s[r - 1] === '\t')) {
+          const q = (c === 34 ? dq : sq)[r + 1] as number
+          r = q >= 0 ? q + 1 : r + 1
+          continue
+        }
+        if (c !== 41 /* ) */) {
+          r++
+          continue
+        }
+        res = r
+      }
+      if (res < 0) {
+        for (const v of walked) memo[v] = -1
+        return -1
+      }
+      const from = frames.pop() as number
+      for (let k = from; k < walked.length; k++) memo[walked[k] as number] = res
+      walked.length = from
+      if (frames.length === 0) return res
+      r = res + 1
+    }
+  }
+}
+
+/**
+ * A finder for the `>` that ends an HTML tag whose name starts at `start` (just after its `<`): the
+ * next `>` outside a quoted attribute value (`"…"` or `'…'` straight after `=`); -1 when a `<` outside
+ * quotes or the end of the line comes first. Memoised like `targetCloser`: linear over all calls.
+ */
+function tagCloser(s: string): (start: number) => number {
+  const len = s.length
+  const memo = new Int32Array(len + 1).fill(UNKNOWN)
+  const dq = nextOf(s, 34)
+  const sq = nextOf(s, 39)
+  return (start) => {
+    const walked: number[] = []
+    let r = start
+    let res: number
+    for (;;) {
+      if (r >= len) {
+        res = -1
+        break
+      }
+      if ((memo[r] as number) !== UNKNOWN) {
+        res = memo[r] as number
+        break
+      }
+      walked.push(r)
+      const c = s.charCodeAt(r)
+      if (c === 62 /* > */) {
+        res = r
+        break
+      }
+      if (c === 60 /* < */) {
+        res = -1
+        break
+      }
+      if ((c === 34 || c === 39) && s.charCodeAt(r - 1) === 61 /* = */) {
+        const q = (c === 34 ? dq : sq)[r + 1] as number
+        if (q < 0) {
+          res = -1
+          break
+        }
+        r = q + 1
+        continue
+      }
+      r++
+    }
+    for (const v of walked) memo[v] = res
+    return res
+  }
+}
+
+const isHighSurrogate = (c: number) => c >= 0xd800 && c <= 0xdbff
+const isLowSurrogate = (c: number) => c >= 0xdc00 && c <= 0xdfff
+/** A unit beside half of a surrogate pair: taking it out could put the two halves of one character on either side of a formatting boundary. */
+const besideHalf = (s: string, i: number) => isHighSurrogate(s.charCodeAt(i - 1)) || isLowSurrogate(s.charCodeAt(i + 1))
 
 // ---- inline marks -------------------------------------------------------------------------------
 
@@ -175,13 +306,19 @@ function runOf(text: string, key: number): InlineRun {
 /**
  * The runs of `line` from `from`, in two passes.
  *
- * 1. Left to right, what is kept as written: a backslash and the punctuation it escapes, a link
- *    or image `[label](target)` / `![alt](target)` (the label up to the first `]`, which `(`
- *    follows; the target up to the first `)`), an HTML tag (`<` and a letter, `/`, `!` or `?`, up to
- *    the next `>`), and code spans. A backtick opens a code span when it starts a word and the next
- *    backtick closes it with code between them that is not empty and has no whitespace just inside
- *    either backtick (the typed rule); the backticks go, the code is marked and nothing in it is a
- *    marker. A backtick that opens nothing is a character.
+ * 1. Left to right, within this line only, what is kept as written; the earliest construct that
+ *    completes wins, and an opener that completes nothing is a character (the scan goes on just
+ *    after it):
+ *    - a backslash and the ASCII punctuation it escapes;
+ *    - a code span: a backtick that starts a word, closed by the next backtick, with code between
+ *      them that is not empty and has no whitespace just inside either backtick (the typed rule);
+ *      the backticks go, the code is marked and nothing in it is a marker;
+ *    - a link or image `[label](target)` / `![label](target)`: the label's brackets balance
+ *      (escaped ones do not count), `(` follows its `]`, and the target runs to its own `)`
+ *      (parentheses balance, a backslash escapes, a quoted title after a space is skipped whole);
+ *    - an HTML tag: `<` and a letter or `/`, to the next `>` outside a quoted attribute value, with
+ *      no other `<` before it; a comment `<!--` to the next `-->`; `<!…>` and `<?…>` to the next `>`.
+ *    Nothing that continues on the next line is recognised (a known limit).
  * 2. The rest typed key by key (a grapheme cluster at a time) at the line's end, with
  *    `matchShortcut`'s rule after each `*`: the closing marker pairs with the nearest live marker
  *    before it, the marked text is not empty, has no whitespace just inside either marker, the
@@ -192,7 +329,8 @@ function runOf(text: string, key: number): InlineRun {
  * In both passes a marker does not count when taking it out would join the characters on either
  * side of it into one (`joinsAcross`).
  *
- * Linear: links, tags and code spans are found through next-occurrence tables, live characters
+ * Linear: code spans and declarations are found through next-occurrence tables, labels through
+ * one bracket-pairing pass, targets and tags through memoised walks (`targetCloser`), live characters
  * are a linked list, live `*`s are a stack (a conversion only ever removes the top ones), and marks
  * are recorded as ranges and swept once at the end.
  */
@@ -224,14 +362,16 @@ function inlineRuns(line: string, from: number, heading: boolean): InlineRun[] {
   /** Whether the units `l` and `r` could join across a seam (`seamKind` is not `NEVER`). */
   const mayJoin = (l: number, r: number) => l >= 0 && r >= 0 && seamKind(cpEnding(l), s.codePointAt(r) as number) !== NEVER
 
-  // Pass 1: escapes, links, images, tags and code spans, left to right.
+  // Pass 1: escapes, code spans, links, images, tags and comments, left to right; the earliest that completes wins.
   const nextTick = nextOf(s, TICK)
-  const nextBracket = nextOf(s, 93 /* ] */)
-  const nextParen = nextOf(s, 41 /* ) */)
   const nextAngle = nextOf(s, 62 /* > */)
+  const brackets = bracketPairs(s)
+  const targetEnd = targetCloser(s)
+  const tagEnd = tagCloser(s)
+  let comments = true // false once no `-->` is left on the line
   for (let i = 0; i < len; ) {
     const c = s.charCodeAt(i)
-    if (c === BACKSLASH && isAsciiPunctuation(s.charCodeAt(i + 1))) {
+    if (isEscape(s, i)) {
       keep(i, i + 2)
       i += 2
       continue
@@ -251,25 +391,25 @@ function inlineRuns(line: string, from: number, heading: boolean): InlineRun[] {
       } else i++
       continue
     }
-    const link = c === 91 /* [ */ ? i : c === 33 /* ! */ && s.charCodeAt(i + 1) === 91 ? i + 1 : -1
-    if (link >= 0) {
-      const close = nextBracket[link + 1] as number
-      const end = close >= 0 && s.charCodeAt(close + 1) === 40 /* ( */ ? (nextParen[close + 2] as number) : -1
-      if (end >= 0) {
-        keep(i, end + 1)
-        i = end + 1
-        continue
-      }
+    let end = -1
+    const label = c === 91 /* [ */ ? i : c === 33 /* ! */ && s.charCodeAt(i + 1) === 91 ? i + 1 : -1
+    if (label >= 0) {
+      // `[label](target)`: the label's own `]`, straight after it `(`, then the target's own `)`.
+      const close = brackets[label] as number
+      if (close >= 0 && s.charCodeAt(close + 1) === 40 /* ( */) end = targetEnd(close + 2)
+    } else if (c === 60 /* < */) {
+      const n = s.charCodeAt(i + 1)
+      if (s.startsWith('<!--', i)) {
+        const k = comments ? s.indexOf('-->', i + 4) : -1
+        if (k < 0) comments = false
+        else end = k + 2
+      } else if (n === 33 /* ! */ || n === 63 /* ? */) end = nextAngle[i + 2] as number
+      else if (isTagStart(n)) end = tagEnd(i + 1)
     }
-    if (c === 60 /* < */ && isTagStart(s.charCodeAt(i + 1))) {
-      const end = nextAngle[i + 1] as number
-      if (end >= 0) {
-        keep(i, end + 1)
-        i = end + 1
-        continue
-      }
-    }
-    i++
+    if (end >= 0) {
+      keep(i, end + 1)
+      i = end + 1
+    } else i++ // an opener that completes nothing is a character
   }
   // Pass 2: `*` and `**`, as typed.
   const prev = new Int32Array(len)
@@ -580,8 +720,11 @@ function convertLines(lines: readonly string[], depth: number): BlockNode[] {
     }
   }
 
-  /** An indented line under a list item: a further paragraph of the item it is indented under. False when it is under none, or after two blank lines. */
-  const continueItem = (line: string): boolean => {
+  /**
+   * An indented line under a list item: a further paragraph of the item it is indented under (a
+   * table line exactly as written). False when it is under none, or after two blank lines.
+   */
+  const continueItem = (line: string, table: boolean): boolean => {
     if (blanks.length > 1) return false
     const { width, end } = indentOf(line)
     let at = stack.length - 1
@@ -590,7 +733,7 @@ function convertLines(lines: readonly string[], depth: number): BlockNode[] {
     const level = stack[at] as Level
     if (blanks.length > 0) level.item.blocks.push({ type: 'paragraph' })
     blanks = []
-    level.item.blocks.push(leafOf(line, end))
+    level.item.blocks.push(table ? paragraphOf(line.slice(end)) : leafOf(line, end))
     stack.length = at + 1
     return true
   }
@@ -629,8 +772,14 @@ function convertLines(lines: readonly string[], depth: number): BlockNode[] {
       i++
       continue
     }
+    const c = line.charCodeAt(0)
+    const indented = c === 32 || c === 9
     if (isTableLine(line)) {
-      // A table stays as written, cell by cell.
+      // A table stays as written, cell by cell: under a list item when indented under one, else after any list.
+      if (stack.length > 0 && indented && continueItem(line, true)) {
+        i++
+        continue
+      }
       settle()
       out.push(paragraphOf(line))
       i++
@@ -642,8 +791,7 @@ function convertLines(lines: readonly string[], depth: number): BlockNode[] {
       i++
       continue
     }
-    const c = line.charCodeAt(0)
-    if (stack.length > 0 && (c === 32 || c === 9) && continueItem(line)) {
+    if (stack.length > 0 && indented && continueItem(line, false)) {
       i++
       continue
     }
