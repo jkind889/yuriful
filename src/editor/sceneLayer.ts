@@ -532,12 +532,24 @@ export function minCardWidth(rec: CardSource, doc: Document = document): number 
 }
 
 /**
- * The width a card is drawn at: its stored width, or more when a word (a grapheme, on a drawn
- * box) is wider. Fabric widens such a box the same way when it builds it (Textbox
- * `initDimensions`), keeping its left edge: so does the layer. A click-created box is first laid
- * out in plain sans at its base size, before its formatting (objects.ts `createObject`), and a
- * text box never narrows: so its widest word in plain sans counts too (a word in a narrower font
- * mark keeps the plain word's width). The record is never changed.
+ * The width a box that already exists is drawn at, after any change to it (a side handle, a
+ * text, format or size change): its wrap width, or its widest word (grapheme, on a drawn box) as
+ * formatted when that is wider. This is Fabric's live floor (Textbox `initDimensions` and
+ * `dynamicMinWidth`); unlike `effectiveCardWidth`, the plain-sans layout of a box being built
+ * from a record does not count.
+ */
+export function liveCardWidth(rec: CardSource, doc: Document = document): number {
+  return Math.max(rec.width, minCardWidth(rec, doc))
+}
+
+/**
+ * The width a card built from a record is drawn at: its stored width, or more when a word (a
+ * grapheme, on a drawn box) is wider. Fabric widens such a box the same way when it builds it
+ * (Textbox `initDimensions`), keeping its left edge: so does the layer. A click-created box is
+ * first laid out in plain sans at its base size, before its formatting (objects.ts
+ * `createObject`), and a text box never narrows: so its widest word in plain sans counts too (a
+ * word in a narrower font mark keeps the plain word's width). Only building counts it: once the
+ * box exists, its floor is `liveCardWidth`. The record is never changed.
  */
 export function effectiveCardWidth(rec: CardSource, doc: Document = document): number {
   const width = Math.max(rec.width, minCardWidth(rec, doc))
@@ -971,6 +983,12 @@ export interface SceneLayerOptions {
    * turns it off to choose the moment (`refreshTypography`): never in the middle of a gesture.
    */
   followFonts?: boolean
+  /**
+   * The width a text card is drawn at, from its record (default `effectiveCardWidth`: as a box
+   * built from that record). The editor passes `liveCardWidth`: its records already hold the
+   * width the box was built with, and from then on only the formatted text widens it.
+   */
+  cardWidth?: (rec: CardSource, doc: Document) => number
 }
 
 interface ItemState {
@@ -1015,6 +1033,7 @@ export class SceneLayer {
   private disposed = false
   private readonly onFontsLoaded = () => this.refreshTypography()
   private readonly followFonts: boolean
+  private readonly cardWidth: (rec: CardSource, doc: Document) => number
 
   constructor(opts: SceneLayerOptions) {
     this.doc = opts.document ?? document
@@ -1022,6 +1041,7 @@ export class SceneLayer {
     this.getStill = opts.getStill
     this.measurer = opts.measurer ?? new DomCardMeasurer()
     this.followFonts = opts.followFonts ?? true
+    this.cardWidth = opts.cardWidth ?? effectiveCardWidth
     const div = (cls: string) => {
       const el = this.doc.createElement('div')
       el.className = cls
@@ -1089,7 +1109,7 @@ export class SceneLayer {
     return item?.kind === 'text' ? item.h : undefined
   }
 
-  /** A text card's effective width (scene units): its stored width, or its widest word when that is wider (`effectiveCardWidth`). */
+  /** A text card's drawn width (scene units): its stored width, or its widest word when that is wider (the `cardWidth` option). */
   widthOf(id: string): number | undefined {
     const item = this.items.get(id)
     return item?.kind === 'text' ? item.w : undefined
@@ -1350,7 +1370,7 @@ export class SceneLayer {
       body.className = 'scene-text-body'
       el.append(body)
     }
-    const width = effectiveCardWidth(rec, this.doc)
+    const width = this.cardWidth(rec, this.doc)
     el.style.width = `${width}px`
     if (item.editing) {
       // The live editor owns the children: only box-level styles follow the record.

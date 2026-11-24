@@ -904,3 +904,83 @@ test.describe('the DOM renderer keeps the layer and the proxies together', () =>
     expect(errors).toEqual([])
   })
 })
+
+test.describe('the live width floor is the text as formatted, not the plain-sans width a box is built with (paired)', () => {
+  // A box built from a record is laid out in plain sans first and never narrows (effectiveCardWidth);
+  // once it exists, a side handle stops at, and a change widens it to, its widest word as formatted.
+  const WORD = 'SOUNDTRACK'
+
+  test('side handles stop at the formatted word, from either side, in every alignment, for fonts narrower and wider than sans, bold and a heading', async ({ browser }) => {
+    // Frame F ends at x = 372: narrowed to the monospace word, the first text's centre comes inside it.
+    const F: StoredFrame = { id: 'F', name: 'Edge', left: 100, top: 240, width: 272, height: 200 }
+    const objects: StoredObject[] = [
+      text('mono', 300, 300, WORD, { width: 300, font: 'mono' }),
+      text('monoC', 300, 380, WORD, { width: 300, font: 'mono', align: 'center' }),
+      text('monoR', 300, 460, WORD, { width: 300, font: 'mono', align: 'right' }),
+      text('impact', 700, 60, WORD, { width: 300, font: 'display', align: 'right' }),
+      text('hand', 700, 160, WORD, { width: 320, font: 'hand' }),
+      text('bold', 700, 260, WORD, { width: 300, align: 'center', spans: [{ start: 0, end: 10, bold: true }] }),
+      text('head', 700, 360, WORD, { width: 340, headings: [1] }),
+      text('span', 700, 480, `see ${WORD} now`, { width: 300, spans: [{ start: 4, end: 14, font: 'mono' }] }),
+    ]
+    const steps: Step[] = []
+    for (const o of objects) steps.push({ select: o.id }, { handle: 'mr', dx: -250, dy: 0 }, { handle: 'ml', dx: 250, dy: 0 })
+    const { dom, worst } = await expectPaired(browser, board([F], objects), steps)
+    // The reviewer's case: stopped at the monospace word, inside F by its own movement.
+    const mono = dom.saved.objects.find((o) => o.id === 'mono')!
+    expect(mono.frameId).toBe('F')
+    expect(mono.width!).toBeLessThan(145)
+    console.log(`live floor, side handles: largest geometry difference ${worst.toFixed(3)}`)
+  })
+
+  test('a font size change up and down on formatted text widens only as far as the formatted text needs', async ({ browser }) => {
+    const W10 = 'WWWWWWWWWW'
+    const objects: StoredObject[] = [
+      text('l', 60, 80, W10, { width: 250, font: 'mono' }),
+      text('c', 60, 200, W10, { width: 250, font: 'mono', align: 'center' }),
+      text('r', 60, 320, W10, { width: 250, font: 'mono', align: 'right' }),
+      text('mix', 500, 80, `a ${WORD} b\nsecond line`, { width: 240, headings: [2, 0], spans: [{ start: 2, end: 12, font: 'display' }] }),
+      text('drawn', 500, 300, `${WORD} words`, { width: 200, minHeight: 20, font: 'mono', spans: [{ start: 0, end: 10, bold: true }] }),
+    ]
+    const steps: Step[] = []
+    for (const o of objects) steps.push({ select: o.id }, { run: 'setFontSize', args: [42] }, { run: 'setFontSize', args: [16] }, { run: 'setFontSize', args: [30] })
+    const { dom, worst } = await expectPaired(browser, board([], objects), steps)
+    expect(dom.saved.objects.find((o) => o.id === 'l')!.width).toBe(250) // ten monospace W at 42 fit in 250 on Fabric
+    console.log(`live floor, font size: largest geometry difference ${worst.toFixed(3)}`)
+  })
+
+  test('undo and redo rebuild a narrowed box from its record, as Fabric builds it (plain sans counts again)', async ({ browser }) => {
+    const objects: StoredObject[] = [text('mono', 300, 300, WORD, { width: 300, font: 'mono' }), text('head', 300, 420, WORD, { width: 340, headings: [1] })]
+    const steps: Step[] = [
+      { select: 'mono' },
+      { handle: 'mr', dx: -250, dy: 0 },
+      { run: 'undo' },
+      { run: 'redo' },
+      { select: 'head' },
+      { handle: 'ml', dx: 250, dy: 0 },
+      { run: 'undo' },
+      { run: 'redo' },
+    ]
+    await expectPaired(browser, board([], objects), steps)
+  })
+})
+
+test.describe('Fit only moves the view', () => {
+  test('after the layout changed under a card (a late font), Fit measures for the view and changes no stored width', async ({ page }) => {
+    const errors = errorsOf(page)
+    await openBoard(page, board([], [text('s', 300, 300, 'Georgia words here', { width: 155, font: 'serif' }), image('i', 700, 500)], { zoom: 0.5, panX: -100, panY: 300 }), ASSETS)
+    // A late font with other metrics, simulated: wider glyphs, then the browser's "fonts loaded" signal.
+    await page.addStyleTag({ content: '.yuriful-prose, .yuriful-prose * { letter-spacing: 12px !important }' })
+    await page.evaluate(() => document.fonts.dispatchEvent(new Event('loadingdone')))
+    await frames(page, 3)
+    await page.evaluate(() => window.__dom.run('setTitle', 'Renamed'))
+    await expect(status(page)).toContainText('Saved on this device')
+    await page.waitForTimeout(700)
+    expect((await stored(page)).objects[0]!.width).toBe(155)
+    await page.evaluate(() => window.__dom.run('fit'))
+    await expect.poll(async () => (await stored(page)).viewport).not.toEqual({ zoom: 0.5, panX: -100, panY: 300 })
+    expect((await stored(page)).objects[0]!.width).toBe(155)
+    await expectTracked(page, ['s', 'i'], 'after Fit')
+    expect(errors).toEqual([])
+  })
+})

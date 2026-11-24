@@ -2828,7 +2828,7 @@ export class Editor {
 
   fit() {
     if (!this.live) return
-    this.scene?.syncAllCards() // text proxies are their cards' current size
+    this.scene?.syncAllCards({ keepWidth: true }) // text proxies are their cards' current size; Fit changes no record
     let bounds: Rect | null = null
     for (const obj of this.canvas.getObjects()) {
       for (const p of obj.getCoords()) {

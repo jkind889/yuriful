@@ -4,7 +4,7 @@ import { roundPositive } from '../model/doc.ts'
 import type { FrameRecord, ImageRecord, ObjectRecord, Scene, TextRecord } from '../model/types.ts'
 import type { AssetSource } from './assets.ts'
 import type { FrameCanvas } from './FrameCanvas.ts'
-import { SceneLayer } from './sceneLayer.ts'
+import { SceneLayer, effectiveCardWidth, liveCardWidth } from './sceneLayer.ts'
 import type { CardMeasurer } from './sceneLayer.ts'
 import { canAnimate, stillFrame } from './stillImage.ts'
 import { ProxyRect, frameNameOf, idOf, imageCropOf, imageDataOf, isFrame, setTextData, textDataOf, toRecord } from './objects.ts'
@@ -27,9 +27,15 @@ export interface CardSync {
   hold?: { x: Transform['originX']; y: Transform['originY'] }
   /**
    * Leave the stored wrap width alone even when the card is drawn wider than it (a late font
-   * load: Fabric never lays a text box out again then, so its record keeps the width it had).
+   * load, or Fit: Fabric never lays a text box out again then, so its record keeps the width it had).
    */
   keepWidth?: boolean
+  /**
+   * The proxy has just been built from a record: its wrap width becomes the width Fabric builds
+   * such a box at (`effectiveCardWidth`, which counts the plain-sans layout of a click-created
+   * box). Without it only the live floor counts (`liveCardWidth`: the text as formatted).
+   */
+  build?: boolean
 }
 
 export interface DomSceneOptions {
@@ -84,7 +90,8 @@ export class DomScene {
     private readonly opts: DomSceneOptions,
   ) {
     // The layer does not follow font loads by itself: they wait for a gesture to settle (see `onFontsLoaded`).
-    this.layer = new SceneLayer({ getImage: (id) => assets.get(id), getStill: (id) => this.still(id), measurer: opts.measurer, followFonts: false })
+    // Cards are drawn at the live width: a proxy's record holds the width it was built with (see `CardSync.build`).
+    this.layer = new SceneLayer({ getImage: (id) => assets.get(id), getStill: (id) => this.still(id), measurer: opts.measurer, followFonts: false, cardWidth: liveCardWidth })
     // The canvas, transparent, lies over the layer, so handles, frame outlines and labels are
     // drawn crisp over every item. The host keeps both stacked inside it, under the overlays.
     host.style.isolation = 'isolate'
@@ -104,7 +111,7 @@ export class DomScene {
     // Whatever adds a text proxy (a rebuild, Make caption, ...), it is sized from its card before
     // anything selects it, decides its owner or commits.
     canvas.on('object:added', ({ target }) => {
-      if (textDataOf(target)) this.syncCard(target)
+      if (textDataOf(target)) this.syncCard(target, { build: true })
     })
   }
 
@@ -156,7 +163,7 @@ export class DomScene {
     const objs = this.canvas.getObjects()
     this.order = null
     this.syncContent(objs)
-    for (const o of objs) if (textDataOf(o)) this.sizeFromLayer(o)
+    for (const o of objs) if (textDataOf(o)) this.sizeFromLayer(o, true, true)
     this.placeAll(objs)
   }
 
@@ -185,7 +192,7 @@ export class DomScene {
         this.shown.set(id, td)
       }
     }
-    this.sizeFromLayer(obj, !sync.keepWidth)
+    this.sizeFromLayer(obj, !sync.keepWidth, sync.build === true)
     if (anchor && origin) obj.setPositionByOrigin(anchor, origin.x, origin.y)
     obj.setCoords()
     this.placed.delete(id)
@@ -302,10 +309,22 @@ export class DomScene {
    * A text proxy takes its card's effective width and measured height, and its narrowest width for
    * side handles. `holdWidth`: a card drawn wider than its stored wrap width (its widest word is
    * wider) makes that its wrap width, as a Fabric text box widens itself when it lays its text out.
+   * `build`: the proxy was just built from its record, so the wrap width is first the one Fabric
+   * builds such a box at (`effectiveCardWidth`).
    */
-  private sizeFromLayer(o: FabricObject, holdWidth = true) {
+  private sizeFromLayer(o: FabricObject, holdWidth = true, build = false) {
     const id = idOf(o)
     if (!id) return
+    const built = textDataOf(o)
+    if (build && built) {
+      const width = effectiveCardWidth(this.textRecord(id, built), this.host.ownerDocument)
+      if (width > built.width) {
+        const held = { ...built, width }
+        setTextData(o, held)
+        this.layer.updateItem(this.textRecord(id, held))
+        this.shown.set(id, held)
+      }
+    }
     const width = this.layer.widthOf(id)
     const height = this.layer.heightOf(id)
     if (width === undefined || height === undefined) return
