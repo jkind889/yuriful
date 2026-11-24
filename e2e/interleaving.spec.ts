@@ -44,7 +44,7 @@ interface DomProbe {
   /** Ids of the layer items drawn lifted. */
   lifted: () => string[]
   /** Replaces an image with a generated PNG, as a picked file would (resolves once applied or staged). */
-  replace: (id: string, base64: string) => Promise<void>
+  replace: (id: string, base64: string, type?: string, name?: string) => Promise<void>
   /** Renders a frame's tour preview and returns its data URL. */
   preview: (frameId: string) => Promise<string>
 }
@@ -167,9 +167,9 @@ async function installProbe(page: Page) {
           },
           feedback: () => ed.getFeedbackSnapshot(),
           lifted: () => [...document.querySelectorAll('.scene-item.is-lifted')].map((e) => e.dataset.id),
-          replace: async (id, base64) => {
+          replace: async (id, base64, type = 'image/png', name = 'replacement.png') => {
             const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
-            await ed.replaceImageFile(id, new File([bytes], 'replacement.png', { type: 'image/png' }))
+            await ed.replaceImageFile(id, new File([bytes], name, { type }))
           },
           preview: async (frameId) => {
             const tour = ed.startFrameTour()
@@ -1882,5 +1882,193 @@ test.describe('crop mode on the DOM renderer through interruptions (Slice 2c-iii
     await page.waitForTimeout(AUTOSAVE_QUIET_MS)
     expect(await snapshotIdb(other)).toEqual(written)
     expect(errors).toEqual([])
+  })
+})
+
+// ---- Slice 2c-iii follow-up: frame previews, the lifted look's shadow ---------------------------
+
+/** A picture whose HTML content taints a canvas it is drawn on (Chromium: an SVG image holding a `<foreignObject>`). */
+const TAINTING_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><foreignObject x="0" y="0" width="120" height="80">' +
+  '<div xmlns="http://www.w3.org/1999/xhtml" style="width:120px;height:80px;background:#0a8">html</div></foreignObject></svg>'
+
+test.describe('a frame preview draws only what overlaps the frame (Slice 2c-iii follow-up)', () => {
+  /** Opens the board, replaces `target` with the tainting picture, and renders frame F's tour preview. */
+  async function previewAfterReplacing(browser: Browser, renderer: 'dom' | 'fabric', target: string) {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+    const errors = errorsOf(page)
+    const objects: StoredObject[] = [
+      text('T', 260, 200, 'Words in the frame', { width: 220 }),
+      image('IN', 420, 300),
+      image('OUT', 1400, 1000), // well outside F (200..720 × 120..540)
+    ]
+    await openBoard(page, board([frame()], objects), ASSETS, renderer)
+    await page.evaluate(({ id, b64 }) => window.__dom.replace(id, b64, 'image/svg+xml', 'html.svg'), { id: target, b64: Buffer.from(TAINTING_SVG).toString('base64') })
+    await expect.poll(() => page.evaluate((id) => (window.__dom.scene().objects.find((o) => o.id === id) as { assetId?: string }).assetId, target)).not.toBe('quad')
+    const outcome = await page.evaluate(() =>
+      window.__dom.preview('F').then(
+        (url) => ({ drawn: url.startsWith('data:image/png'), error: null as string | null }),
+        (e: Error) => ({ drawn: false, error: e.name }),
+      ),
+    )
+    expect(errors, renderer).toEqual([])
+    await context.close()
+    return outcome
+  }
+
+  test('an image outside the frame cannot break its preview; an image inside it that taints a canvas fails the preview on both renderers alike', async ({ browser }) => {
+    const outside = { fabric: await previewAfterReplacing(browser, 'fabric', 'OUT'), dom: await previewAfterReplacing(browser, 'dom', 'OUT') }
+    expect(outside.fabric).toEqual({ drawn: true, error: null })
+    expect(outside.dom).toEqual(outside.fabric)
+    // Inside the frame both renderers draw it, as they must, and the browser refuses the tainted bitmap.
+    const inside = { fabric: await previewAfterReplacing(browser, 'fabric', 'IN'), dom: await previewAfterReplacing(browser, 'dom', 'IN') }
+    expect(inside.fabric).toEqual({ drawn: false, error: 'SecurityError' })
+    expect(inside.dom).toEqual(inside.fabric)
+  })
+
+  test('a text card outside the frame is never rasterized, and with the layer\'s sizes never laid out either; one within its ink bleed is', async ({ page }) => {
+    const errors = errorsOf(page)
+    const objects: StoredObject[] = [
+      text('T', 260, 200, 'Words in the frame', { width: 220 }),
+      text('NEAR', 730, 300, 'Just past the edge', { width: 160 }), // 10 beyond F's right edge: its ink may reach in
+      text('FAR', 1400, 1000, 'Far away words', { width: 160 }),
+    ]
+    await openBoard(page, board([frame()], objects), ASSETS)
+    const watch = () =>
+      page.evaluate(() => {
+        const w = window as unknown as { __rasterized: string[]; __laidOut: string[] }
+        w.__rasterized = []
+        w.__laidOut = []
+        const decode = HTMLImageElement.prototype.decode
+        HTMLImageElement.prototype.decode = function () {
+          if (this.src.startsWith('data:image/svg+xml')) w.__rasterized.push(decodeURIComponent(this.src).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim())
+          return decode.call(this)
+        }
+        new MutationObserver((records) => {
+          for (const r of records) for (const n of r.addedNodes) if (n instanceof HTMLElement && n.classList.contains('scene-text-body') && !n.closest('.scene-layer')) w.__laidOut.push(n.textContent ?? '')
+        }).observe(document.body, { childList: true, subtree: true })
+      })
+    const seen = () => page.evaluate(() => {
+      const w = window as unknown as { __rasterized: string[]; __laidOut: string[] }
+      return { rasterized: w.__rasterized.map((t) => t.replace(/^.*?(Words|Just|Far)/, '$1')), laidOut: [...w.__laidOut] }
+    })
+    await watch()
+    expect(await page.evaluate(() => window.__dom.preview('F').then((url) => url.length > 0))).toBe(true)
+    let s = await seen()
+    expect(s.rasterized.map((t) => t.split(' ')[0])).toEqual(['Words', 'Just'])
+    expect(s.laidOut).toEqual(['Words in the frame', 'Just past the edge'])
+    // Without the layer's sizes (the compositor on its own): FAR is laid out to learn its size, then left out.
+    await page.evaluate(async () => {
+      const w = window as unknown as { __rasterized: string[]; __laidOut: string[] }
+      w.__rasterized = []
+      w.__laidOut = []
+      const path = '/src/editor/renderFrameBitmap.ts'
+      const { renderFrameToCanvas } = await import(/* @vite-ignore */ path)
+      await renderFrameToCanvas(window.__dom.history(), 'F', { getImage: () => undefined })
+    })
+    s = await seen()
+    expect(s.rasterized.map((t) => t.split(' ')[0])).toEqual(['Words', 'Just'])
+    expect(s.laidOut).toEqual(['Words in the frame', 'Just past the edge', 'Far away words'])
+    expect(errors).toEqual([])
+  })
+})
+
+test.describe('the lifted look casts the canvas\'s shadow (Slice 2c-iii follow-up)', () => {
+  /** Drags image I by (dx, dy) and holds; returns the screen around it and its corners, in clip pixels. */
+  async function liftedShot(browser: Browser, renderer: 'dom' | 'fabric', doc: StoredBoard, dx: number, dy: number, clipIn?: { x: number; y: number; width: number; height: number }) {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+    const errors = errorsOf(page)
+    await openBoard(page, doc, ASSETS, renderer)
+    await pressAndMove(page, await pointIn(page, 'I'), dx, dy)
+    await frames(page, 3)
+    const corners = (await page.evaluate(() => window.__dom.proxy('I')))!
+    const xs = corners.map((p) => p.x)
+    const ys = corners.map((p) => p.y)
+    const clip = clipIn ?? { x: Math.floor(Math.min(...xs)) - 40, y: Math.floor(Math.min(...ys)) - 40, width: Math.ceil(Math.max(...xs) - Math.min(...xs)) + 80, height: Math.ceil(Math.max(...ys) - Math.min(...ys)) + 80 }
+    const png = (await page.screenshot({ clip })).toString('base64')
+    const lifted = await page.evaluate(() => window.__dom.feedback().lifted)
+    await page.mouse.up()
+    expect(errors, renderer).toEqual([])
+    await context.close()
+    return { png, clip, corners: corners.map((p) => ({ x: p.x - clip.x, y: p.y - clip.y })), lifted }
+  }
+
+  /**
+   * Compares the two screens outside the image, beyond 5 screen pixels of its edges (the moving
+   * selection border, which the canvas draws 2 units out on both renderers, and the edge's
+   * anti-aliasing): the largest per-channel difference, and each screen's red channel at distances
+   * straight below the image's centre, from its lower edge.
+   */
+  async function compareShadows(page: Page, a: string, b: string, corners: Corner[]) {
+    return page.evaluate(async ({ a, b, corners }) => {
+      const decode = async (b64: string) => {
+        const img = new Image()
+        img.src = `data:image/png;base64,${b64}`
+        await img.decode()
+        const c = document.createElement('canvas')
+        c.width = img.naturalWidth
+        c.height = img.naturalHeight
+        const ctx = c.getContext('2d')!
+        ctx.drawImage(img, 0, 0)
+        return ctx.getImageData(0, 0, c.width, c.height)
+      }
+      const [da, db] = [await decode(a), await decode(b)]
+      // Signed distance from the image's quadrilateral (negative inside).
+      const dist = (x: number, y: number) => {
+        let inside = false
+        let best = Infinity
+        for (let i = 0; i < 4; i++) {
+          const p = corners[i]!
+          const q = corners[(i + 1) % 4]!
+          if ((p.y > y) !== (q.y > y) && x < ((q.x - p.x) * (y - p.y)) / (q.y - p.y) + p.x) inside = !inside
+          const t = Math.max(0, Math.min(1, ((x - p.x) * (q.x - p.x) + (y - p.y) * (q.y - p.y)) / ((q.x - p.x) ** 2 + (q.y - p.y) ** 2)))
+          best = Math.min(best, Math.hypot(x - (p.x + t * (q.x - p.x)), y - (p.y + t * (q.y - p.y))))
+        }
+        return inside ? -best : best
+      }
+      let worst = 0
+      let darkest = 255
+      for (let y = 0; y < da.height; y++) {
+        for (let x = 0; x < da.width; x++) {
+          if (dist(x + 0.5, y + 0.5) < 5) continue
+          const i = (y * da.width + x) * 4
+          for (let k = 0; k < 3; k++) worst = Math.max(worst, Math.abs(da.data[i + k]! - db.data[i + k]!))
+          darkest = Math.min(darkest, db.data[i]!)
+        }
+      }
+      // Straight below the image's centre, from its lower edge.
+      const cx = corners.reduce((s, p) => s + p.x, 0) / 4
+      let edge = -Infinity
+      for (let k = 0; k < 4; k++) {
+        const p = corners[k]!
+        const q = corners[(k + 1) % 4]!
+        if ((p.x - cx) * (q.x - cx) <= 0 && p.x !== q.x) edge = Math.max(edge, p.y + ((cx - p.x) * (q.y - p.y)) / (q.x - p.x))
+      }
+      const below = [4, 8, 12, 15, 20].map((d) => {
+        const i = (Math.round(edge + d) * da.width + Math.round(cx)) * 4
+        return { d, a: da.data[i]!, b: db.data[i]! }
+      })
+      return { worst, darkest, below }
+    }, { a, b, corners })
+  }
+
+  test('same extent and darkness at every distance: upright over frame paper at 100%, turned and scaled at 150%', async ({ browser, page }) => {
+    await openBlank(page)
+    const big: StoredFrame = { id: 'F', name: 'Paper', left: 60, top: 60, width: 900, height: 600 }
+    const cases: Array<{ name: string; doc: StoredBoard; dx: number; dy: number }> = [
+      { name: 'upright, 100%', doc: board([big], [image('I', 300, 200, { frameId: 'F' })]), dx: 40, dy: 30 },
+      { name: 'turned 30° at 0.6, 150%', doc: board([big], [image('I', 260, 160, { frameId: 'F', angle: 30, scaleX: 0.6, scaleY: 0.6 })], { zoom: 1.5, panX: -60, panY: -40 }), dx: 30, dy: 20 },
+    ]
+    for (const c of cases) {
+      const fabric = await liftedShot(browser, 'fabric', c.doc, c.dx, c.dy)
+      const dom = await liftedShot(browser, 'dom', c.doc, c.dx, c.dy, fabric.clip)
+      expect(dom.lifted).toEqual(['I'])
+      const r = await compareShadows(page, fabric.png, dom.png, fabric.corners)
+      console.log(`lift shadow, ${c.name}: red below the image (fabric/dom) ${r.below.map((s) => `${s.d}px ${s.a}/${s.b}`).join(', ')}; largest difference ${r.worst}`)
+      expect(r.darkest, `${c.name}: there is a shadow to compare`).toBeLessThan(235)
+      expect(r.worst, `${c.name}: largest per-channel difference outside the image`).toBeLessThanOrEqual(3)
+    }
   })
 })

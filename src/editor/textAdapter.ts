@@ -708,19 +708,17 @@ export class DomTextAdapter implements TextAdapter {
    */
   findCaptionSnap(obj: FabricObject, objects: readonly FabricObject[], zoom: number, previous: CaptionSnapPreview | null): CaptionSnapPreview | null {
     const td = textDataOf(obj)
-    if (!td) return null
-    return snapPreview({
-      id: idOf(obj),
-      editing: this.editedTarget() === obj,
-      locked: isLocked(obj),
-      angle: obj.angle,
-      blank: td.text.trim() === '',
-      fontSize: td.fontSize,
+    const textId = td && idOf(obj)
+    // In the Fabric path's order: an ineligible text is rejected before anything else is read.
+    if (!td || !textId || this.editedTarget() === obj || isLocked(obj) || obj.angle % 360 !== 0 || td.text.trim() === '') return null
+    const geometry = () => ({
       center: obj.getCenterPoint(),
       width: obj.getScaledWidth(),
       height: obj.getScaledHeight(),
       side: captionSideOf(obj),
-    }, objects, zoom, previous, () => this.scene.captionSize(obj))
+      fontSize: td.fontSize,
+    })
+    return snapPreview(textId, geometry, objects, zoom, previous, () => this.scene.captionSize(obj))
   }
 
   /** The proxy itself when it is a drawn box, else a drawn proxy built from its record (sized when it is added). */

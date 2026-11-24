@@ -959,7 +959,7 @@ button:disabled {
 }
 /* Drag lift (the DOM renderer's form of the shadow feedbackLayer.ts gives a dragged item). */
 .scene-item.is-lifted {
-  filter: drop-shadow(var(--lift-x, 0px) var(--lift-y, 4px) var(--lift-blur, 11px) rgba(28, 36, 61, 0.24));
+  filter: drop-shadow(var(--lift-x) var(--lift-y) var(--lift-blur) var(--lift-color));
 }
 .scene-image {
   overflow: hidden;

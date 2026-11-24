@@ -2915,7 +2915,16 @@ export class Editor {
           if (this.disposed || !frameIds.has(id)) throw new Error('The tour frame is unavailable.')
           const getImage = (assetId: string) => this.assets.get(assetId)
           // The DOM renderer's bitmap comes from the same cards the scene layer draws (plan Section 10).
-          if (this.scene) return renderFrameToCanvas(scene, id, { getImage, measurer: this.scene.layer.measurer }).then((canvas) => canvas.toDataURL('image/png'))
+          const dom = this.scene
+          if (dom) {
+            // A card the layer has laid out and that lies outside the frame is not laid out again.
+            const cardSize = (rec: TextRecord) => {
+              const width = dom.layer.widthOf(rec.id)
+              const height = dom.layer.heightOf(rec.id)
+              return width !== undefined && height !== undefined ? { width, height } : undefined
+            }
+            return renderFrameToCanvas(scene, id, { getImage, measurer: dom.layer.measurer, cardSize }).then((canvas) => canvas.toDataURL('image/png'))
+          }
           return renderFramePreview(scene, id, getImage)
         })
         rendering = preview.then(() => undefined, () => undefined)

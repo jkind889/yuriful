@@ -427,26 +427,35 @@ export class DomScene {
 
   /**
    * Drag lift (`feedbackLayer.ts`): an item Fabric would draw with a shadow (a proxy paints
-   * nothing, so it never shows one) is drawn lifted by the layer instead, with the same shadow:
-   * straight down by 4 and blurred by 11 at the board's zoom, whatever the item's own scale or
-   * rotation (the CSS shadow is given in the item's own units).
+   * nothing, so it never shows one) is drawn lifted by the layer instead, with that shadow as
+   * Fabric draws a non-scaling one: its offset and blur at the board's zoom, in screen directions,
+   * whatever the item's own scale or rotation (the CSS shadow is given in the item's own units).
+   *
+   * The blur is converted, not copied: the two blurs are defined differently. A canvas shadow's
+   * Gaussian has a standard deviation of half its `shadowBlur` (HTML canvas spec), and Chromium
+   * draws a CSS `drop-shadow` whose blur length is half the canvas's `shadowBlur` as the same
+   * shadow. Measured against canvas shadows of blur 5.5 to 33 device pixels at device pixel
+   * ratios 1 and 2: every pixel of the profile within 1.7 per channel (the blur length unhalved
+   * is up to 8 lighter, the shadow spreading farther).
    */
   private syncLifted(objs: readonly FabricObject[]) {
     for (const o of objs) {
       const id = idOf(o)
       const el = id ? this.layer.elementOf(id) : undefined
       if (!el) continue
-      const on = !!o.shadow && !isFrame(o)
+      const shadow = isFrame(o) ? null : o.shadow
+      const on = !!shadow
       if (el.classList.contains('is-lifted') !== on) el.classList.toggle('is-lifted', on)
-      if (!on) continue
+      if (!shadow) continue
       const m = o.calcTransformMatrix()
       const det = m[0] * m[3] - m[1] * m[2]
       if (!(Math.abs(det) > 1e-9)) continue
-      // The offset (0, 4) and blur at the board's zoom, in the item's own units: through the inverse of its linear part.
-      const dy = 4
-      el.style.setProperty('--lift-x', `${(-m[2] * dy) / det}px`)
-      el.style.setProperty('--lift-y', `${(m[0] * dy) / det}px`)
-      el.style.setProperty('--lift-blur', `${11 / Math.sqrt(Math.abs(det))}px`)
+      // The offset and blur at the board's zoom, in the item's own units: through the inverse of its linear part.
+      const { offsetX: dx, offsetY: dy } = shadow
+      el.style.setProperty('--lift-x', `${(m[3] * dx - m[2] * dy) / det}px`)
+      el.style.setProperty('--lift-y', `${(m[0] * dy - m[1] * dx) / det}px`)
+      el.style.setProperty('--lift-blur', `${shadow.blur / 2 / Math.sqrt(Math.abs(det))}px`)
+      el.style.setProperty('--lift-color', shadow.color)
     }
   }
 

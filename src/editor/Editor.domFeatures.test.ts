@@ -232,3 +232,27 @@ describe('the layer list on proxies', () => {
     ])
   })
 })
+
+describe('caption snapping rejects an ineligible text before reading anything', () => {
+  it('a rotated text: no position, size or image is read, on either renderer; an upright one is read', async () => {
+    for (const options of [{}, dom()]) {
+      const b = await open([], [img('i', 0, 0), txt('r', 0, 120, { angle: 15 }), txt('u', 0, 160)], options)
+      const text = (b.editor as unknown as { text: { findCaptionSnap: (o: unknown, objs: readonly unknown[], zoom: number, prev: null) => unknown } }).text
+      const reads: string[] = []
+      const watch = (o: FakeObject) => {
+        const w = o as unknown as Record<string, unknown>
+        w.getCenterPoint = () => (reads.push('centre'), { x: o.left + o.width / 2, y: o.top + o.height / 2 })
+        w.getScaledWidth = () => (reads.push('width'), o.width)
+        w.getScaledHeight = () => (reads.push('height'), o.height)
+      }
+      watch(b.obj('r'))
+      watch(b.obj('u'))
+      // Any read of the objects (the images and their captions) throws.
+      const untouchable = new Proxy([] as unknown[], { get: () => { throw new Error('objects were read') } })
+      expect(text.findCaptionSnap(b.obj('r'), untouchable, 1, null)).toBeNull()
+      expect(reads).toEqual([])
+      text.findCaptionSnap(b.obj('u'), b.canvas.objects, 1, null)
+      expect(reads).toEqual(['centre', 'width', 'height'])
+    }
+  })
+})

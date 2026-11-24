@@ -1,5 +1,5 @@
 import { clampCrop } from '../model/crop.ts'
-import type { FrameRecord, ImageRecord, Scene, TextRecord } from '../model/types.ts'
+import type { FrameRecord, ImageRecord, ObjectRecord, Scene, TextRecord } from '../model/types.ts'
 import type { Size } from '../model/viewport.ts'
 import { FRAME_FILL } from './objects.ts'
 import { DomCardMeasurer, effectiveCardWidth, renderCardBody } from './sceneLayer.ts'
@@ -240,6 +240,62 @@ export interface FrameBitmapOptions {
   size?: Size
   /** Sizes the text cards; by default a `DomCardMeasurer`. */
   measurer?: CardMeasurer
+  /**
+   * A text card's size as already laid out elsewhere (the scene layer's), if known: a card that
+   * lies outside the frame by it is then not even laid out. Unknown, it is laid out and checked.
+   */
+  cardSize?(rec: TextRecord): Size | undefined
+}
+
+interface Point2 {
+  x: number
+  y: number
+}
+
+/** The corners of a record's box (`size` before rotation, turned by its angle about its top-left), grown by `margin` on every side. */
+function boxCorners(rec: Pick<ObjectRecord, 'left' | 'top' | 'angle'>, size: Size, margin = 0): Point2[] {
+  const r = (rec.angle * Math.PI) / 180
+  const cos = Math.cos(r)
+  const sin = Math.sin(r)
+  return [
+    [-margin, -margin],
+    [size.width + margin, -margin],
+    [size.width + margin, size.height + margin],
+    [-margin, size.height + margin],
+  ].map(([x, y]) => ({ x: rec.left + x! * cos - y! * sin, y: rec.top + x! * sin + y! * cos }))
+}
+
+/**
+ * Whether a box (its four corners, a rectangle at any angle) overlaps the frame's rectangle,
+ * touching included: separating axes, the frame's two and the box's two. This is what Fabric's
+ * own drawing asks before it draws an object on a canvas showing just the frame (`isOnScreen`),
+ * so what lies outside a frame never reaches its bitmap.
+ */
+export function overlapsFrame(corners: readonly Point2[], frame: Pick<FrameRecord, 'left' | 'top' | 'width' | 'height'>): boolean {
+  const rect = [
+    { x: frame.left, y: frame.top },
+    { x: frame.left + frame.width, y: frame.top },
+    { x: frame.left + frame.width, y: frame.top + frame.height },
+    { x: frame.left, y: frame.top + frame.height },
+  ]
+  const [a, b, , d] = corners
+  if (!a || !b || !d) return false
+  const axes = [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: b.x - a.x, y: b.y - a.y }, { x: d.x - a.x, y: d.y - a.y }]
+  for (const axis of axes) {
+    const project = (pts: readonly Point2[]) => pts.map((p) => p.x * axis.x + p.y * axis.y)
+    const box = project(corners)
+    const frm = project(rect)
+    if (Math.max(...box) < Math.min(...frm) || Math.max(...frm) < Math.min(...box)) return false
+  }
+  return true
+}
+
+/** An image's displayed box before rotation (its crop, clamped to the decoded picture, at its scale), or null when it cannot be drawn. */
+function imageSize(rec: ImageRecord, el: HTMLImageElement | undefined): Size | null {
+  if (!el) return null
+  const natural = { width: el.naturalWidth || el.width, height: el.naturalHeight || el.height }
+  const crop = clampCrop(rec.crop, natural) ?? natural
+  return { width: crop.width * rec.scaleX, height: crop.height * rec.scaleY }
 }
 
 interface DecodedCard {
@@ -250,10 +306,13 @@ interface DecodedCard {
 
 /**
  * Draws the frame's visible composition: frame paper over the whole bitmap, then every object
- * in `scene.objects` order, clipped at the bitmap's edges. Text cards are laid out in the
- * document (off screen) with the scene layer's own rules, at its effective width (a word wider
- * than its box widens it, as on the canvas), so a card wraps and sits exactly as it does on the
- * board. A card that still cannot be rasterized is left out; the rest of the frame is drawn.
+ * in `scene.objects` order, clipped at the bitmap's edges. Only what overlaps the frame is drawn
+ * (`overlapsFrame`: an image by its turned box, a text card by its turned box grown by the bleed
+ * its ink may need), so nothing outside a frame can change its bitmap or cost anything. Text
+ * cards are laid out in the document (off screen) with the scene layer's own rules, at its
+ * effective width (a word wider than its box widens it, as on the canvas), so a card wraps and
+ * sits exactly as it does on the board. A card that still cannot be rasterized is left out; the
+ * rest of the frame is drawn.
  */
 export async function renderFrameToCanvas(scene: Scene, frameId: string, opts: FrameBitmapOptions): Promise<HTMLCanvasElement> {
   const frame = scene.frames.find(({ id }) => id === frameId)
@@ -271,9 +330,17 @@ export async function renderFrameToCanvas(scene: Scene, frameId: string, opts: F
   host.style.cssText = 'position:absolute;left:-100000px;top:0;visibility:hidden;contain:layout style'
   doc.body.append(host)
   const pending: Array<Promise<[string, DecodedCard] | null>> = []
+  const images = new Set<string>()
   try {
     for (const rec of scene.objects) {
-      if (rec.type !== 'text' || isBlank(rec)) continue
+      if (rec.type === 'image') {
+        const size = imageSize(rec, opts.getImage(rec.assetId))
+        if (size && overlapsFrame(boxCorners(rec, size), frame)) images.add(rec.id)
+        continue
+      }
+      if (isBlank(rec)) continue
+      const known = opts.cardSize?.(rec)
+      if (known && !overlapsFrame(boxCorners(rec, known, cardBleed(rec)), frame)) continue
       try {
         const body = doc.createElement('div')
         body.className = 'scene-text-body'
@@ -283,6 +350,10 @@ export async function renderFrameToCanvas(scene: Scene, frameId: string, opts: F
         renderCardBody(body, rec)
         const size = { width: cardWidth, height: measurer.measureHeight(body, rec) }
         const bleed = Math.max(cardBleed(rec), Math.ceil(body.scrollWidth - cardWidth) + 2)
+        if (!overlapsFrame(boxCorners(rec, size, bleed), frame)) {
+          body.remove()
+          continue
+        }
         const svg = cardSvg(body, size, bleed, Math.max(scaleX, scaleY))
         pending.push(decodeSvg(svg, doc).then((img): [string, DecodedCard] => [rec.id, { img, bleed, size }], () => null))
       } catch {
@@ -303,6 +374,7 @@ export async function renderFrameToCanvas(scene: Scene, frameId: string, opts: F
   ctx.fillRect(0, 0, width, height)
   ctx.setTransform(scaleX, 0, 0, scaleY, -frame.left * scaleX, -frame.top * scaleY)
   for (const rec of scene.objects) {
+    if (rec.type === 'image' ? !images.has(rec.id) : !cards.has(rec.id)) continue
     ctx.save()
     ctx.translate(rec.left, rec.top)
     if (rec.angle) ctx.rotate((rec.angle * Math.PI) / 180)
