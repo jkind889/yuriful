@@ -5,7 +5,7 @@
  */
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import {
+import { APP_READY_MS,
   AUTOSAVE_QUIET_MS,
   dbVersion,
   drag,
@@ -105,7 +105,7 @@ test.describe('a board saved by milestone 1', () => {
 
     await waitSaved(page)
     await page.reload()
-    await expect(page.locator('.toolbar')).toBeVisible()
+    await expect(page.locator('.toolbar')).toBeVisible({ timeout: APP_READY_MS })
     await expect(status(page)).toContainText('Saved on this device')
     await expect(banner(page)).toHaveCount(0)
     expect(errors).toEqual([])
@@ -193,7 +193,7 @@ test.describe('two tabs on one board', () => {
     expect(await storedDoc(second)).toEqual(saved)
 
     await banner(second).getByRole('button', { name: 'Reload' }).click()
-    await expect(second.locator('.toolbar')).toBeVisible()
+    await expect(second.locator('.toolbar')).toBeVisible({ timeout: APP_READY_MS })
     await expect(status(second)).toContainText('Saved on this device')
     await expect(banner(second)).toHaveCount(0) // editable again, on the saved board
     await drag(second, at(500, 260), at(500, 300)) // the image is where the first tab left it
@@ -240,7 +240,7 @@ test.describe('two tabs on one board', () => {
     expect((await snapshotIdb(first)).assets).toEqual(original) // stored again: same length, same hash, same type
 
     await first.reload()
-    await expect(first.locator('.toolbar')).toBeVisible()
+    await expect(first.locator('.toolbar')).toBeVisible({ timeout: APP_READY_MS })
     await expect(status(first)).toContainText('Saved on this device')
     await expect(banner(first)).toHaveCount(0) // not "1 saved image could not be loaded"
     await first.keyboard.press('Control+a')
@@ -275,7 +275,7 @@ test.describe('a read-only board that contains frames', () => {
     const rowBefore = await rawRow(page)
 
     await page.goto('/')
-    await expect(page.locator('.toolbar')).toBeVisible()
+    await expect(page.locator('.toolbar')).toBeVisible({ timeout: APP_READY_MS })
     await expect(banner(page)).toContainText('1 saved image could not be loaded')
     await expect(banner(page).getByRole('button', { name: 'Reload' })).toHaveCount(0) // reloading would not help here
     await expect(page.getByRole('button', { name: 'Frame', exact: true })).toBeDisabled()
@@ -314,7 +314,7 @@ test.describe('storage that refuses or stalls', () => {
     await seedRaw(page, 4, { version: 1, title: 'From the future', objects: [TEXT], viewport: UNIT })
     const before = await snapshotIdb(page)
     await page.goto('/')
-    await expect(page.locator('.toolbar')).toBeVisible()
+    await expect(page.locator('.toolbar')).toBeVisible({ timeout: APP_READY_MS })
     await expect(banner(page)).toContainText('newer yuriful')
     await expect(status(page)).toContainText('Not saving')
     await page.keyboard.press('t')
@@ -433,7 +433,7 @@ test.describe('rich text from a later build', () => {
     const rowBefore = await rawRow(page)
 
     await page.goto('/')
-    await expect(page.locator('.toolbar')).toBeVisible()
+    await expect(page.locator('.toolbar')).toBeVisible({ timeout: APP_READY_MS })
     await expect(status(page)).toContainText('Saved on this device')
     await expect(banner(page)).toHaveCount(0)
     await expect(page.locator('.scene-text[data-id="rev-1"]')).toHaveClass(/has-paper/)
@@ -472,7 +472,7 @@ test.describe('rich text from a later build', () => {
     const before = await snapshotIdb(page)
 
     await page.goto('/')
-    await expect(page.locator('.toolbar')).toBeVisible()
+    await expect(page.locator('.toolbar')).toBeVisible({ timeout: APP_READY_MS })
     await expect(banner(page)).toContainText('could not be read')
     await expect(status(page)).toContainText('Not saving')
     await tryToEdit(page)
@@ -559,7 +559,7 @@ test.describe('rich text from a later build', () => {
 
     // Reloaded, it opens the rich board, editable (this build edits every rich field), and writes nothing.
     await banner(app).getByRole('button', { name: 'Reload' }).click()
-    await expect(app.locator('.toolbar')).toBeVisible()
+    await expect(app.locator('.toolbar')).toBeVisible({ timeout: APP_READY_MS })
     await expect(status(app)).toContainText('Saved on this device')
     await expect(banner(app)).toHaveCount(0)
     await app.waitForTimeout(AUTOSAVE_QUIET_MS)

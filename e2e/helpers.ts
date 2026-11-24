@@ -25,6 +25,13 @@ export async function fetchRetrying(route: Route, tries = 4): Promise<APIRespons
 /** The autosave debounce is 500ms; "nothing was written" checks wait well past it. */
 export const AUTOSAVE_QUIET_MS = 1500
 
+/**
+ * How long a test waits for the app to appear after a page is opened or reloaded. Several browser
+ * suites running at once on one machine can make the dev server slow to answer; the default five
+ * seconds then fails a test that has nothing wrong with it.
+ */
+export const APP_READY_MS = 20_000
+
 // ---- deterministic image fixtures (no binary files in the repo) -------------------------
 
 function crc32(buf: Buffer): number {
@@ -442,7 +449,7 @@ export async function drag(page: Page, from: { x: number; y: number }, to: { x: 
 /** Loads the app on a seeded board and waits until it is editable. */
 export async function openApp(page: Page) {
   await page.goto('/')
-  await expect(page.locator('.toolbar')).toBeVisible()
+  await expect(page.locator('.toolbar')).toBeVisible({ timeout: APP_READY_MS })
   await expect(status(page)).toContainText('Saved on this device')
 }
 
