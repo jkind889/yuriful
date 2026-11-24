@@ -167,11 +167,12 @@ describe('hydrateBoard: rich text this build cannot edit', () => {
   }
   const newer = 'This board was saved by a newer yuriful. It is read-only here so that nothing in it is lost.'
 
-  it('rich-board-opens-read-only-until-its-slice: paper, alone or beside blocks or a fixed height, makes the board read-only like a newer database, with nothing shown and nothing decoded or written', async () => {
+  it('rich-board-opens-read-only-until-its-slice: a field a build does not edit (here paper, for a build that edits only blocks and a fixed height) makes the board read-only like a newer database, with nothing shown and nothing decoded or written', async () => {
+    const older = new Set(['blocks', 'height'] as const)
     for (const extra of [{ surface: 'card' as const }, { height: 200, surface: 'card' as const }, { blocks: [{ type: 'divider' as const }], surface: 'card' as const }]) {
       const decoded: string[] = []
       const { s, writes } = store(async () => rich(extra))
-      const out = await hydrateBoard(s, async (a) => void decoded.push(a.id))
+      const out = await hydrateBoard(s, async (a) => void decoded.push(a.id), older)
       expect(out).toEqual({ kind: 'blocked', partial: null, message: newer })
       expect(writes).toEqual([])
       expect(decoded).toEqual([])
@@ -189,6 +190,14 @@ describe('hydrateBoard: rich text this build cannot edit', () => {
       const out = await hydrateBoard(s, decodeAll)
       expect(out.kind).toBe('restored')
       expect(writes).not.toContain('save') // loading never rewrites the board
+    }
+  })
+
+  it('a board with paper restores: this build edits it', async () => {
+    for (const extra of [{ surface: 'card' as const }, { text: '', blocks: [{ type: 'divider' as const }], height: 200, surface: 'card' as const }]) {
+      const { s, writes } = store(async () => rich(extra))
+      expect((await hydrateBoard(s, decodeAll)).kind).toBe('restored')
+      expect(writes).not.toContain('save')
     }
   })
 

@@ -125,7 +125,7 @@ const lockMeta = (rec: { locked?: true }): { locked?: true } => (rec.locked === 
 // what it draws changes, so the editor can tell by identity which items the layer must draw again.
 
 /** What a text proxy's card shows: the record's text, size, wrap width, fixed height (if any) and canonical formatting. */
-export type TextData = Pick<TextRecord, 'text' | 'fontSize' | 'width' | 'minHeight' | 'height' | 'font' | 'align' | 'color' | 'spans' | 'headings' | 'blocks' | 'captionBackground'>
+export type TextData = Pick<TextRecord, 'text' | 'fontSize' | 'width' | 'minHeight' | 'height' | 'font' | 'align' | 'color' | 'spans' | 'headings' | 'blocks' | 'captionBackground' | 'surface'>
 
 /** What an image proxy shows: the picture's own size and the crop's top-left (its size is the proxy's). */
 export interface ImageData {
@@ -162,14 +162,15 @@ export const FIX_HEIGHT_ACTION = 'resizeHeight'
 
 /**
  * Fabric's own height change (`changeObjectHeight`: the pointer's distance from the top edge, never
- * past it), then held to at least `minFixedHeight` of the text's size, so a line always shows.
+ * past it), then held to at least `minFixedHeight` of the text's size (and its paper's padding), so a
+ * line always shows.
  */
 const changeTextHeight: TransformActionHandler = (e, transform, x, y) => {
   const target = transform.target
   const before = target.height
   controlsUtils.changeObjectHeight(e, transform, x, y)
   const td = proxyText.get(target)
-  const min = td ? minFixedHeight(td.fontSize) : 1
+  const min = td ? minFixedHeight(td.fontSize, td.surface) : 1
   if (target.height < min) target.set({ height: min })
   return target.height !== before
 }
@@ -219,6 +220,7 @@ export function textDataFrom(rec: TextRecord): TextData {
     ...(rec.height !== undefined && { height: rec.height }),
     ...fmt,
     ...(rec.captionBackground && { captionBackground: rec.captionBackground }),
+    ...(rec.surface === 'card' && { surface: 'card' as const }),
   }
 }
 
@@ -308,6 +310,7 @@ function proxyTextRecord(td: TextData, m: Meta, base: { id: string; left: number
       ...(m.captionPosition !== undefined && { captionPosition: m.captionPosition }),
     }),
     ...(td.captionBackground && { captionBackground: td.captionBackground }),
+    ...(td.surface === 'card' && { surface: 'card' as const }),
   }
 }
 

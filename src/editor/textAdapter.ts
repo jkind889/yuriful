@@ -22,6 +22,7 @@ import { boxOf, contentFromDoc, docFromText, plainTextOfDoc, textOffsetAt, textb
 import { createEditSession } from './textSession.ts'
 import type { EditSession } from './textSession.ts'
 import { isBlankTextDoc } from '../model/textDoc.ts'
+import { innerText, paperPad, paperToggle } from '../model/paper.ts'
 import type { TextContent } from '../model/textDoc.ts'
 
 const NO_FRAMES: ReadonlySet<string> = new Set()
@@ -88,6 +89,8 @@ export interface TextAdapter {
   drawnCaptionOf(obj: FabricObject): FabricObject | null
   /** The text has a fixed height (its bottom handle was dragged): its words scroll inside it. */
   hasFixedHeight(obj: FabricObject): boolean
+  /** The text sits on paper (`surface: 'card'`). */
+  hasPaper(obj: FabricObject): boolean
 
   // ---- the text being edited, and the formatting commands
   /** This object is the text being edited. */
@@ -124,6 +127,8 @@ export interface TextAdapter {
   setColor(color: string): void
   /** Auto height: the selected text grows with its words again (its fixed height goes, its top edge stays). */
   clearHeight(): void
+  /** Paper on or off for the selected text: the box grows or shrinks by the padding round its words, which stay where they are. */
+  setPaper(on: boolean): void
   revertShortcut(): void
   /** A keydown that reached the window listener and that the edited text claims (Esc or Tab that has just ended it, in-edit Undo and Redo). True when claimed. */
   onKeyDown(e: KeyboardEvent): boolean
@@ -153,6 +158,7 @@ function withContent(td: TextData, c: TextContent): TextData {
     ...(c.headings !== undefined && { headings: c.headings }),
     ...(c.blocks !== undefined && { blocks: c.blocks }),
     ...(td.captionBackground && { captionBackground: td.captionBackground }),
+    ...(td.surface === 'card' && { surface: 'card' as const }),
   }
 }
 
@@ -421,6 +427,10 @@ export class DomTextAdapter implements TextAdapter {
     return textDataOf(obj)?.height !== undefined
   }
 
+  hasPaper(obj: FabricObject): boolean {
+    return textDataOf(obj)?.surface === 'card'
+  }
+
   /** The scene layer's flush point for a text's card; the edited card's decorations follow a new width or size. */
   private syncCard(obj: FabricObject, sync: CardSync = {}) {
     const edit = this.edit?.target === obj && !this.finishing ? this.edit : null
@@ -656,7 +666,11 @@ export class DomTextAdapter implements TextAdapter {
     const edit = this.edit
     const card = edit && this.scene.layer.elementOf(edit.id)
     const view = edit?.session.view
-    if (!edit || !card || !view || (e.target instanceof Node && card.contains(e.target))) return false
+    // In the text itself, or on its scroll thumb: the browser's and the view's (or the thumb's). On
+    // the paper round the words (its padding), or anywhere else the browser would not route into the
+    // text: placed here.
+    const own = e.target instanceof Node && (edit?.body.contains(e.target) || (e.target instanceof Element && !!e.target.closest('.scene-text-thumb') && !!card?.contains(e.target)))
+    if (!edit || !card || !view || own) return false
     const at = this.offsetNear(edit, view, e)
     const anchor = e.shiftKey ? edit.session.selection().anchor : at
     if (anchor !== null && at !== null) edit.session.select(anchor, at)
@@ -697,7 +711,11 @@ export class DomTextAdapter implements TextAdapter {
     const cx = r.left + v[0] * ctr.x + v[4]
     const cy = r.top + v[3] * ctr.y + v[5]
     const len = Math.hypot(cx - at.clientX, cy - at.clientY) || 1
-    for (let step = 0; step <= 8; step++) {
+    // Up to 8 screen pixels in, and across the paper's padding too (on screen) when the text has paper.
+    const td = textDataOf(edit.target)
+    const pad = td ? paperPad(td) : { x: 0, y: 0 }
+    const reach = Math.min(len, 8 + Math.ceil(Math.max(pad.x, pad.y) * Math.abs(v[0])))
+    for (let step = 0; step <= reach; step++) {
       const pos = posAt(view, { clientX: at.clientX + ((cx - at.clientX) / len) * step, clientY: at.clientY + ((cy - at.clientY) / len) * step })
       if (pos !== null) return textOffsetAt(edit.session.state.doc, pos, -1)
     }
@@ -764,7 +782,8 @@ export class DomTextAdapter implements TextAdapter {
     if (!td) return DecorationSet.empty
     this.decorated = this.decorationBasis(td)
     const content = contentFromDoc(doc, boxOf(td))
-    const ranges = noWrapRanges({ ...td, text: content.text, spans: content.spans, headings: content.headings, blocks: content.blocks }, this.scene.layer.root.ownerDocument)
+    // Worked out for the words' own box: inside the paper's padding, as the static card's.
+    const ranges = noWrapRanges(innerText({ ...td, text: content.text, spans: content.spans, headings: content.headings, blocks: content.blocks }), this.scene.layer.root.ownerDocument)
     const out: Decoration[] = []
     textblocksOf(doc).forEach(({ node: block, pos }, i) => {
       const start = pos + 1
@@ -1095,6 +1114,40 @@ export class DomTextAdapter implements TextAdapter {
     const next: TextData = { ...td }
     delete next.height
     setTextData(obj, next)
+    this.syncCard(obj)
+    this.host.canvas.requestRenderAll()
+    if (!this.isEditing(obj)) {
+      this.host.commit()
+      return
+    }
+    if (isBlankTextDoc(td)) return // a text that is blank right now is not in the scene
+    if (captionOf(obj)) this.host.syncCaptions(obj)
+    this.host.markDirty()
+    this.host.syncState()
+  }
+
+  /**
+   * Paper on or off for the one selected text (`paperToggle`): the box keeps its centre and grows by
+   * the padding on every side, or shrinks by it, so the words keep their own box and do not move or
+   * re-wrap (a drawn minimum height and a fixed height follow; a fixed-height text stays where it was
+   * scrolled, as its words' box has not changed). A whole-box setting like alignment: on a selected
+   * box an undo step of its own; while the text is edited it is saved at once and part of the edit's
+   * one step. It never changes ownership.
+   */
+  setPaper(on: boolean) {
+    const obj = this.formatTarget()
+    const td = obj ? textDataOf(obj) : undefined
+    const rec = obj ? toRecord(obj) : null
+    if (!obj || !td || rec?.type !== 'text' || (td.surface === 'card') === on) return
+    const next = paperToggle({ left: rec.left, top: rec.top, angle: rec.angle, width: td.width, minHeight: td.minHeight, height: td.height, fontSize: td.fontSize }, on)
+    const data: TextData = { ...td, width: next.width }
+    if (next.minHeight !== undefined) data.minHeight = next.minHeight
+    if (next.height !== undefined) data.height = next.height
+    if (on) data.surface = 'card'
+    else delete data.surface
+    setTextData(obj, data)
+    // The proxy's origin is its (turned) top-left corner: the toggle's corner, then the card's new size.
+    obj.set({ left: next.left, top: next.top })
     this.syncCard(obj)
     this.host.canvas.requestRenderAll()
     if (!this.isEditing(obj)) {

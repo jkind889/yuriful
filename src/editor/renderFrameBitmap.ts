@@ -3,7 +3,9 @@ import { isBlankTextDoc } from '../model/textDoc.ts'
 import type { BlockNode, FrameRecord, ImageRecord, ObjectRecord, Scene, TextRecord } from '../model/types.ts'
 import type { Size } from '../model/viewport.ts'
 import { FRAME_FILL } from './objects.ts'
-import { DomCardMeasurer, effectiveCardWidth, renderCardBody } from './sceneLayer.ts'
+import { DomCardMeasurer, effectiveCardWidth, paperWidth, renderCardBody } from './sceneLayer.ts'
+import { innerText, paperPad } from '../model/paper.ts'
+import type { PaperPad } from '../model/paper.ts'
 import type { CardMeasurer } from './sceneLayer.ts'
 
 /**
@@ -395,7 +397,32 @@ export function xmlSafe(text: string): string {
  * times larger in pixels, so its text is rasterized at the bitmap's resolution. Characters XML
  * cannot hold are shown as U+FFFD (`xmlSafe`).
  */
-export function cardSvg(body: HTMLElement, size: Size, bleed: number, scale = 1): string {
+/** How a paper card is drawn in a bitmap: its padding and the sheet's look (`paperLook`). */
+export interface PaperSheet {
+  pad: PaperPad
+  fill: string
+  edge: string
+  shadow: string
+  radius: string
+}
+
+/** Room (scene units) a paper card's shadow needs past its sheet (`--paper-shadow` stays within it). */
+export const PAPER_BLEED = 16
+
+/**
+ * The sheet's look as the page's stylesheet has it (`--paper-*` on the root), so the bitmap draws the
+ * same paper as the board: a caption background fills it instead of the paper's colour, and white ink
+ * gets the dark sheet. Fallbacks only where the stylesheet is not loaded.
+ */
+export function paperLook(rec: Pick<TextRecord, 'fontSize' | 'surface' | 'captionBackground' | 'color'>, doc: Document = document): PaperSheet | undefined {
+  if (rec.surface !== 'card') return undefined
+  const root = doc.defaultView?.getComputedStyle(doc.documentElement)
+  const v = (name: string, fallback: string) => root?.getPropertyValue(name).trim() || fallback
+  const fill = rec.captionBackground || (rec.color === '#ffffff' ? v('--paper-fill-dark', '#2b2f38') : v('--paper-fill', '#fffdf8'))
+  return { pad: paperPad(rec), fill, edge: v('--paper-edge', 'none'), shadow: v('--paper-shadow', 'none'), radius: v('--paper-radius', '0') }
+}
+
+export function cardSvg(body: HTMLElement, size: Size, bleed: number, scale = 1, paper?: PaperSheet): string {
   const doc = body.ownerDocument
   const w = size.width + 2 * bleed
   const h = size.height + 2 * bleed
@@ -404,14 +431,22 @@ export function cardSvg(body: HTMLElement, size: Size, bleed: number, scale = 1)
   const style = doc.createElementNS(XHTML_NS, 'style')
   style.textContent = PROSE_CSS
   const card = body.cloneNode(true) as HTMLElement
-  card.style.width = `${size.width}px`
+  card.style.width = `${size.width - 2 * (paper?.pad.x ?? 0)}px`
   const walker = doc.createTreeWalker(card, NodeFilter.SHOW_TEXT)
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     const t = n as Text
     const safe = xmlSafe(t.data)
     if (safe !== t.data) t.data = safe
   }
-  root.append(style, card)
+  if (paper) {
+    // The sheet round the words, as on the board: its fill (or a caption background) is the sheet's.
+    card.style.backgroundColor = ''
+    const sheet = doc.createElementNS(XHTML_NS, 'div')
+    const shadow = [paper.edge, paper.shadow].filter((s) => s && s !== 'none').join(', ') || 'none'
+    sheet.setAttribute('style', `box-sizing:border-box;width:${size.width}px;height:${size.height}px;padding:${paper.pad.y}px ${paper.pad.x}px;background:${paper.fill};border-radius:${paper.radius};box-shadow:${shadow}`)
+    sheet.append(card)
+    root.append(style, sheet)
+  } else root.append(style, card)
   const xhtml = new XMLSerializer().serializeToString(root)
   const svg = doc.createElementNS(SVG_NS, 'svg')
   svg.setAttribute('width', String(w * scale))
@@ -544,21 +579,26 @@ export async function renderFrameToCanvas(scene: Scene, frameId: string, opts: F
       }
       if (isBlank(rec)) continue
       const known = opts.cardSize?.(rec)
-      if (known && !overlapsFrame(boxCorners(rec, known, Math.max(cardBleed(rec), numberReach(rec))), frame)) continue
+      const sheetBleed = rec.surface === 'card' ? PAPER_BLEED : 0
+      if (known && !overlapsFrame(boxCorners(rec, known, Math.max(cardBleed(rec), numberReach(rec), sheetBleed)), frame)) continue
       try {
         const body = doc.createElement('div')
         body.className = 'scene-text-body'
-        const cardWidth = effectiveCardWidth(rec, doc)
-        body.style.width = `${cardWidth}px`
+        // On paper the words are laid out as their own box, inside the sheet's padding.
+        const pad = paperPad(rec)
+        const inner = innerText(rec)
+        const cardWidth = paperWidth(rec, doc, effectiveCardWidth)
+        const innerWidth = cardWidth - 2 * pad.x
+        body.style.width = `${innerWidth}px`
         host.append(body)
-        renderCardBody(body, rec)
-        const size = { width: cardWidth, height: measurer.measureHeight(body, rec) }
-        const bleed = Math.max(cardBleed(rec), Math.ceil(body.scrollWidth - cardWidth) + 2, Math.ceil(numberOverhang(body)) + 2)
+        renderCardBody(body, inner)
+        const size = { width: cardWidth, height: measurer.measureHeight(body, inner) + 2 * pad.y }
+        const bleed = Math.max(cardBleed(rec), Math.ceil(body.scrollWidth - innerWidth) + 2, Math.ceil(numberOverhang(body)) + 2, sheetBleed)
         if (!overlapsFrame(boxCorners(rec, size, bleed), frame)) {
           body.remove()
           continue
         }
-        const svg = cardSvg(body, size, bleed, Math.max(scaleX, scaleY))
+        const svg = cardSvg(body, size, bleed, Math.max(scaleX, scaleY), paperLook(rec, doc))
         pending.push(decodeSvg(svg, doc).then((img): [string, DecodedCard] => [rec.id, { img, bleed, size }], () => null))
       } catch {
         // This card alone is left out.

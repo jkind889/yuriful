@@ -15,6 +15,18 @@
   --shadow: 0 1px 2px rgba(25, 32, 60, 0.06), 0 4px 14px rgba(25, 32, 60, 0.06);
   --header-h: 52px;
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Paper (src/model/paper.ts): every visual value of a paper text box, here and nowhere else (the
+     frame preview reads them from here too). A sheet of good paper on a desk, not a UI card: barely
+     warm white, a hairline edge that holds it on white frame paper, and a low, soft shadow that
+     lifts it off the board. White ink sits on the dark sheet. The shadow reaches at most 16 px past
+     the sheet (the frame preview leaves that much room); for no shadow write 0 0 #0000, not none (the
+     two are drawn as one list). The padding is not here: it is frozen in PAPER_PAD_X_EM /
+     PAPER_PAD_Y_EM. */
+  --paper-fill: #fffdf8;
+  --paper-fill-dark: #2b2f38;
+  --paper-edge: 0 0 0 1px rgb(29 34 48 / 0.09);
+  --paper-shadow: 0 1px 1.5px rgb(29 34 48 / 0.06), 0 6px 14px -8px rgb(29 34 48 / 0.22);
+  --paper-radius: 2px;
   font-family: var(--font);
   font-size: 13px;
   line-height: 1.4;
@@ -529,6 +541,11 @@ button:disabled {
 }
 .choice-btn:disabled {
   color: #aab0c0;
+}
+.paper-btn {
+  min-width: 52px;
+  padding: 0 12px;
+  border-color: var(--border);
 }
 .font-btn {
   font-size: 15px;
@@ -1381,4 +1398,24 @@ button:disabled {
   .scene-text-thumb {
     transition: none;
   }
+}
+
+/* Paper (src/model/paper.ts): the card itself is the sheet. Its padding is set from PAPER_PAD_X_EM and
+   PAPER_PAD_Y_EM (in the text's base size, so it scales with it); the words are its body, inside the
+   padding, so the fades of a fixed-height text stay on the words and the sheet never fades. A caption
+   background, when the text has one, fills the sheet instead (an inline background colour). */
+.scene-text.has-paper {
+  background: var(--paper-fill);
+  border-radius: var(--paper-radius);
+  box-shadow: var(--paper-edge), var(--paper-shadow);
+}
+.scene-text.has-paper.is-light-ink {
+  background: var(--paper-fill-dark);
+}
+.scene-text.has-paper.is-editing > .scene-text-body {
+  outline: none;
+}
+.scene-text.has-paper.is-editing {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 2px;
 }

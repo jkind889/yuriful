@@ -404,6 +404,21 @@ function TextPanel({ editor, selection, text, blocks, locked }: { editor: Editor
         ))}
       </div>
 
+      {/* Paper: the box sits on a padded sheet. Turning it on or off leaves the words where they are. */}
+      <div className="inspector-row">
+        <span id={`${id}-paper`}>Paper</span>
+        <button
+          type="button"
+          className="choice-btn paper-btn"
+          aria-labelledby={`${id}-paper`}
+          aria-pressed={selection.textPaper === true}
+          disabled={locked}
+          onClick={() => editor.setTextPaper(selection.textPaper !== true)}
+        >
+          {selection.textPaper ? 'On' : 'Off'}
+        </button>
+      </div>
+
       {/* A fixed height comes from dragging the bottom handle; this takes the box back to growing with its words. */}
       {selection.textHeight === 'fixed' && (
         <button type="button" className="secondary-btn inspector-btn" disabled={locked} onClick={() => editor.setTextAutoHeight()}>

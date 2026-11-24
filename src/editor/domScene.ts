@@ -5,7 +5,8 @@ import type { FrameRecord, ImageRecord, ObjectRecord, Scene, TextRecord } from '
 import type { Size } from '../model/viewport.ts'
 import type { AssetSource } from './assets.ts'
 import type { FrameCanvas } from './FrameCanvas.ts'
-import { SceneLayer, effectiveCardWidth, liveCardWidth, minCardWidth, renderCardBody } from './sceneLayer.ts'
+import { SceneLayer, effectiveCardWidth, liveCardWidth, minCardWidth, paperWidth, renderCardBody } from './sceneLayer.ts'
+import { innerText, paperPad } from '../model/paper.ts'
 import type { CardMeasurer } from './sceneLayer.ts'
 import { canAnimate, stillFrame } from './stillImage.ts'
 import { FIX_HEIGHT_ACTION, ProxyRect, frameNameOf, idOf, imageCropOf, imageDataOf, isFrame, setTextData, textDataOf, toRecord } from './objects.ts'
@@ -235,7 +236,10 @@ export class DomScene {
     const id = idOf(obj)
     const body = id ? this.layer.bodyOf(id) : undefined
     const td = textDataOf(obj)
-    return body && id && td ? this.layer.measurer.measureMinWidth(body, this.textRecord(id, td)) : 0
+    if (!body || !id || !td) return 0
+    // On paper: the words' floor, plus the padding on both sides.
+    const rec = this.textRecord(id, td)
+    return this.layer.measurer.measureMinWidth(body, innerText(rec)) + 2 * paperPad(rec).x
   }
 
   /**
@@ -251,11 +255,11 @@ export class DomScene {
     if (live === undefined || height === undefined) return undefined
     let width = Math.max(live, rec.width)
     if (rec.minHeight === undefined) {
-      const key = `${rec.fontSize}|${rec.text}`
+      const key = `${rec.fontSize}|${rec.surface ?? ''}|${rec.text}`
       let plain = this.plainWords.get(key)
       if (plain === undefined) {
         if (this.plainWords.size > 500) this.plainWords.clear()
-        plain = minCardWidth({ text: rec.text, fontSize: rec.fontSize, width: 0 }, this.host.ownerDocument)
+        plain = minCardWidth({ text: rec.text, fontSize: rec.fontSize, width: 0 }, this.host.ownerDocument) + 2 * paperPad(rec).x
         this.plainWords.set(key, plain)
       }
       width = Math.max(width, plain)
@@ -270,11 +274,14 @@ export class DomScene {
    */
   measureRecord(rec: TextRecord): Size {
     const doc = this.host.ownerDocument
-    const width = effectiveCardWidth(rec, doc)
+    const width = paperWidth(rec, doc, effectiveCardWidth)
+    // The words' own box, laid out alone: the paper's padding goes round it.
+    const inner = innerText(rec)
+    const pad = paperPad(rec)
     const body = this.probeBody()
-    body.style.width = `${width}px`
-    renderCardBody(body, rec)
-    return { width, height: this.layer.measurer.measureHeight(body, rec) }
+    body.style.width = `${width - 2 * pad.x}px`
+    renderCardBody(body, inner)
+    return { width, height: this.layer.measurer.measureHeight(body, inner) + 2 * pad.y }
   }
 
   /**
@@ -404,7 +411,7 @@ export class DomScene {
     if (!id) return
     const built = textDataOf(o)
     if (build && built) {
-      const width = effectiveCardWidth(this.textRecord(id, built), this.host.ownerDocument)
+      const width = paperWidth(this.textRecord(id, built), this.host.ownerDocument, effectiveCardWidth)
       if (width > built.width) {
         const held = { ...built, width }
         setTextData(o, held)

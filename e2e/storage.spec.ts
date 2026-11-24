@@ -388,7 +388,7 @@ test.describe('storage that refuses or stalls', () => {
   })
 })
 
-/** A review card that uses rich blocks and a fixed height, which this build edits, and paper, which only a later build can make. */
+/** A review card that uses rich blocks, a fixed height and paper: every rich field, all of which this build edits. */
 const RICH_CARD = {
   type: 'text',
   id: 'rev-1',
@@ -423,22 +423,21 @@ async function tryToEdit(page: Page) {
 }
 
 test.describe('rich text from a later build', () => {
-  test('rich-board-opens-read-only-until-its-slice: a board with a paper card opens read-only as from a newer build; nothing is written or pruned', async ({ page }) => {
+  // A board using a rich field this build cannot edit opens read-only like a newer database: every
+  // rich field is editable now, so that is pinned where a build that does not know a field can be
+  // stood in for (hydrate.test.ts, Editor.hydration.test.ts). Here: the card with all of them opens editable.
+  test('a board with a paper card (and blocks and a fixed height) opens editable now; loading leaves the row as it was', async ({ page }) => {
     const errors = errorsOf(page)
     await openBlank(page)
     await seedRaw(page, 3, { version: 3, title: 'Reviews', frames: [], objects: [IMAGE, RICH_CARD], viewport: UNIT }, [PIC, ORPHAN])
-    const before = await snapshotIdb(page)
     const rowBefore = await rawRow(page)
 
     await page.goto('/')
     await expect(page.locator('.toolbar')).toBeVisible()
-    await expect(banner(page)).toContainText('newer yuriful')
-    await expect(status(page)).toContainText('Not saving')
-    await tryToEdit(page)
-    await expect(page.locator('.inspector')).toHaveCount(0) // nothing was ever selected
-
-    expect(await snapshotIdb(page)).toEqual(before) // same row, same timestamp, and the unused image is still there
-    expect(await rawRow(page)).toEqual(rowBefore)
+    await expect(status(page)).toContainText('Saved on this device')
+    await expect(banner(page)).toHaveCount(0)
+    await expect(page.locator('.scene-text[data-id="rev-1"]')).toHaveClass(/has-paper/)
+    expect(await rawRow(page)).toEqual(rowBefore) // loading never rewrites the board
     expect(await dbVersion(page)).toBe(3)
     expect(errors).toEqual([])
   })
@@ -558,10 +557,11 @@ test.describe('rich text from a later build', () => {
     await expect(banner(app)).toContainText('changed in another tab')
     expect(await snapshotIdb(app)).toEqual(after)
 
-    // Reloaded, it opens the rich board read-only, because it cannot edit the card's paper yet.
+    // Reloaded, it opens the rich board, editable (this build edits every rich field), and writes nothing.
     await banner(app).getByRole('button', { name: 'Reload' }).click()
     await expect(app.locator('.toolbar')).toBeVisible()
-    await expect(banner(app)).toContainText('newer yuriful')
+    await expect(status(app)).toContainText('Saved on this device')
+    await expect(banner(app)).toHaveCount(0)
     await app.waitForTimeout(AUTOSAVE_QUIET_MS)
     expect(await snapshotIdb(app)).toEqual(after)
     expect(await dbVersion(app)).toBe(3)

@@ -343,13 +343,23 @@ describe('rich fields and the storage fence', () => {
     expect(needsRichFence({ objects: [{ ...text, surface: 'card' }] })).toBe(true)
   })
 
-  it('this build edits blocks and a fixed height; paper not yet', () => {
-    expect([...EDITABLE_RICH_FIELDS]).toEqual(['blocks', 'height'])
+  it('this build edits every rich field: blocks, a fixed height and paper', () => {
+    expect([...EDITABLE_RICH_FIELDS]).toEqual(['blocks', 'height', 'surface'])
     expect(uneditableRichFields({ objects: [text] }).size).toBe(0)
     expect(uneditableRichFields({ objects: [{ ...text, blocks: [{ type: 'divider' }] }] }).size).toBe(0)
-    expect(uneditableRichFields({ objects: [{ ...text, height: 40 }, { ...text, id: 'b', blocks: [{ type: 'divider' }], height: 90 }] }).size).toBe(0)
-    const all = uneditableRichFields({ objects: [{ ...text, height: 40 }, { ...text, id: 'b', blocks: [{ type: 'divider' }], surface: 'card' }] })
-    expect([...all].sort()).toEqual(['surface'])
+    expect(uneditableRichFields({ objects: [{ ...text, height: 40 }, { ...text, id: 'b', blocks: [{ type: 'divider' }], surface: 'card' }] }).size).toBe(0)
+  })
+
+  it('the fence still names what a build that does not edit a field would have to refuse (the next field will need it)', () => {
+    const older = new Set(['blocks', 'height'] as const)
+    const all = uneditableRichFields({ objects: [{ ...text, height: 40 }, { ...text, id: 'b', blocks: [{ type: 'divider' }], surface: 'card' }] }, older)
+    expect([...all]).toEqual(['surface'])
+    expect(uneditableRichFields({ objects: [{ ...text, surface: 'card' }] }, new Set()).size).toBe(1)
+  })
+
+  it('the least fixed height of a paper text adds the padding above and below', () => {
+    expect(minFixedHeight(20, 'card')).toBe(Math.round(20 * (1.5 + 2 * 0.75)))
+    expect(minFixedHeight(20, 'card')).toBeGreaterThan(minFixedHeight(20))
   })
 
   it('a bottom-handle drag keeps at least one and a half font sizes, at least 1', () => {

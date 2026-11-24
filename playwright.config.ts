@@ -23,6 +23,11 @@ export default defineConfig({
   outputDir: 'test-results',
   use: {
     baseURL,
+    // The browser tests written before paper (Slice 5) create text boxes with the Text tool and check
+    // the sizes and places of bare ones: in every test's browser a new text box is bare, as it was when
+    // they were written (BARE_NEW_TEXT_KEY in src/editor/Editor.ts, read by development builds only).
+    // e2e/paper.spec.ts starts from an empty storage state to test paper itself.
+    storageState: { cookies: [], origins: [{ origin: baseURL, localStorage: [{ name: 'yuriful:test:bare-new-text', value: '1' }] }] },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

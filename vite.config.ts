@@ -12,5 +12,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    // Tests from before paper make bare text boxes, as when they were written (see the file).
+    setupFiles: ['src/editor/testing/bareNewText.ts'],
   },
 })

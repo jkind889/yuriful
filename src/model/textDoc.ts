@@ -1,5 +1,6 @@
 import { DEFAULT_FONT, FONT_IDS, MARKS, canonicalHeadings, canonicalSpans, canonicalTextFormatting, isHeadingLevel, paragraphsOf } from './richText.ts'
 import type { TextFormatting } from './richText.ts'
+import { PAPER_PAD_Y_EM } from './paper.ts'
 import type { BlockNode, FontId, InlineRun, ListItemNode, ObjectRecord, TaskItemNode, TextMark, TextRecord, TextSpan } from './types.ts'
 
 /**
@@ -35,10 +36,11 @@ export const RICH_FIELDS: readonly RichField[] = ['blocks', 'height', 'surface']
 /**
  * The rich fields this build can draw, edit and save back unchanged. A board that uses any
  * other one opens read-only, as if it came from a newer build, so that nothing in it is
- * dropped by a save. `blocks` (lists, checklists, quotes, code, dividers) and a fixed `height`
- * are editable; paper joins this set with the change that lets the canvas edit it.
+ * dropped by a save. Every rich field is editable now: `blocks` (lists, checklists, quotes, code,
+ * dividers), a fixed `height` and paper (`surface`). The mechanism stays for the next field: a
+ * build that cannot edit one passes its own set (`uneditableRichFields`, `hydrateBoard`).
  */
-export const EDITABLE_RICH_FIELDS: ReadonlySet<RichField> = new Set<RichField>(['blocks', 'height'])
+export const EDITABLE_RICH_FIELDS: ReadonlySet<RichField> = new Set<RichField>(['blocks', 'height', 'surface'])
 
 const RUN_MARKS: readonly TextMark[] = [...MARKS, 'code']
 
@@ -362,8 +364,9 @@ export function canonicalTextContent(raw: Record<string, unknown>): TextContent 
  * one and a half font sizes, so a line of body text always shows whole (a text's last line is 1.13
  * font sizes tall). Only the drag is held to it; a stored height is read as it is.
  */
-export function minFixedHeight(fontSize: number): number {
-  return Math.max(1, Math.round(fontSize * 1.5))
+export function minFixedHeight(fontSize: number, surface?: 'card'): number {
+  // On paper, the line is inside the padding: the sheet is that much taller.
+  return Math.max(1, Math.round(fontSize * (1.5 + (surface === 'card' ? 2 * PAPER_PAD_Y_EM : 0))))
 }
 
 /** A fixed height, kept only when it is a finite number above zero. */
@@ -387,12 +390,12 @@ export function needsRichFence(doc: { objects: readonly ObjectRecord[] }): boole
   return doc.objects.some((o) => o.type === 'text' && richFieldsOf(o).length > 0)
 }
 
-/** The rich fields the board uses that this build cannot edit (see `EDITABLE_RICH_FIELDS`). */
-export function uneditableRichFields(doc: { objects: readonly ObjectRecord[] }): Set<RichField> {
+/** The rich fields the board uses that a build which edits `editable` cannot edit (by default this build's, `EDITABLE_RICH_FIELDS`). */
+export function uneditableRichFields(doc: { objects: readonly ObjectRecord[] }, editable: ReadonlySet<RichField> = EDITABLE_RICH_FIELDS): Set<RichField> {
   const out = new Set<RichField>()
   for (const o of doc.objects) {
     if (o.type !== 'text') continue
-    for (const f of richFieldsOf(o)) if (!EDITABLE_RICH_FIELDS.has(f)) out.add(f)
+    for (const f of richFieldsOf(o)) if (!editable.has(f)) out.add(f)
   }
   return out
 }

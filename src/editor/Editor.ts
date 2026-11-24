@@ -53,6 +53,8 @@ import type { Mark, MarkState, TextAlign } from '../model/richText.ts'
 import type { BlockKind } from './textRules.ts'
 export type { BlockKind } from './textRules.ts'
 import { isBlankTextDoc } from '../model/textDoc.ts'
+import type { RichField } from '../model/textDoc.ts'
+import { paperPad } from '../model/paper.ts'
 import { canReorderLayered, reorderLayered } from '../model/layers.ts'
 import type { LayerDropSide, LayerOp } from '../model/layers.ts'
 import { DEFAULT_TITLE, DOC_VERSION } from '../model/types.ts'
@@ -142,6 +144,8 @@ export interface SelectionInfo {
   caption: { edit: 'add' | 'edit' | null; canEdit: boolean; attached: boolean; canDetach: boolean; canMake: boolean; canStyle: boolean; background?: string }
   /** Only for a single text: whether it has a fixed height (its words scroll inside it) or grows with its words. */
   textHeight: 'fixed' | 'auto' | null
+  /** Only for a single text: whether it sits on paper. */
+  textPaper: boolean | null
   /** Only for a single text: what the formatting controls show. */
   text: TextFormatInfo | null
   /** The block controls of the one selected text (see `TextBlockInfo`), or null. */
@@ -292,6 +296,30 @@ interface ReplaceJob {
 /** How the editor is built: `measurer` sizes text cards (tests inject one; jsdom lays nothing out). */
 export interface EditorOptions {
   measurer?: CardMeasurer
+  /**
+   * The rich text fields this build edits (default `EDITABLE_RICH_FIELDS`, every one). A test passes a
+   * smaller set to stand for a build that does not know a field yet: a board using it opens read-only.
+   */
+  editableRichFields?: ReadonlySet<RichField>
+}
+
+/**
+ * Test support, in development builds only: the browser and unit tests written before paper set this
+ * in the page's storage so that a new text box is bare, as it was when they were written (their
+ * sizes and positions are those of a bare box). A production build never reads it.
+ */
+export const BARE_NEW_TEXT_KEY = 'yuriful:test:bare-new-text'
+
+/** What a new text box made with the Text tool (or Add text) sits on: paper (Owner Decision 10), unless a test from before paper asks otherwise. */
+function newTextSurface(): 'card' | undefined {
+  if (import.meta.env.DEV) {
+    try {
+      if (globalThis.localStorage?.getItem(BARE_NEW_TEXT_KEY) === '1') return undefined
+    } catch {
+      /* no storage: paper */
+    }
+  }
+  return 'card'
 }
 
 /** A Frame- or Text-tool press that moves less than this many screen pixels is a click (default-sized frame or text). */
@@ -361,6 +389,7 @@ export class Editor {
   private primaryDown = false
   private pan: { button: number; end: () => void } | null = null
   private crop: CropSession | null = null
+  private readonly editableRichFields: ReadonlySet<RichField> | undefined
   /** Who the wheel gesture in progress belongs to: the board, or the fixed-height text it started on (plan Section 4). */
   private readonly wheel = new WheelLatch()
   /** The last press on the canvas applied a crop (so the double-click it may begin does not reopen one). */
@@ -379,6 +408,7 @@ export class Editor {
     readonly getPrefs: () => CanvasPrefs = canvasPrefs.get,
     options: EditorOptions = {},
   ) {
+    this.editableRichFields = options.editableRichFields
     this.canvasEl = document.createElement('canvas')
     host.appendChild(this.canvasEl)
     const { width, height } = host.getBoundingClientRect()
@@ -508,7 +538,7 @@ export class Editor {
   }
 
   async init(): Promise<void> {
-    const outcome = await hydrateBoard(this.store, (asset) => this.assets.load(asset))
+    const outcome = await hydrateBoard(this.store, (asset) => this.assets.load(asset), this.editableRichFields)
     if (this.disposed) return
 
     switch (outcome.kind) {
@@ -811,6 +841,7 @@ export class Editor {
         background: (styled ? this.text.backgroundOf(styled) : undefined) || undefined,
       },
       textHeight: this.text.isText(single) ? (this.text.hasFixedHeight(single) ? 'fixed' : 'auto') : null,
+      textPaper: this.text.isText(single) ? this.text.hasPaper(single) : null,
       text: this.text.isText(single) ? this.text.formatInfo(single) : null,
       textBlocks: this.text.isText(single) ? this.text.blockInfo(single) : null,
     }
@@ -2427,7 +2458,11 @@ export class Editor {
     const fontSize = this.newTextFontSize()
     const box = dragTo ? rectFromDrag(at, dragTo) : undefined
     const drag = box && box.width >= fontSize * MIN_TEXT_DRAG_EMS ? box : undefined
-    const width = drag?.width ?? fontSize * 10
+    // On paper, a drawn rectangle is the sheet; a click puts the words, not the sheet, at the press
+    // point, and the words still wrap at ten font sizes (the sheet is the padding wider).
+    const surface = newTextSurface()
+    const pad = paperPad({ fontSize, surface })
+    const width = drag?.width ?? fontSize * 10 + 2 * pad.x
     const rec: TextRecord = {
       id: newId(),
       type: 'text',
@@ -2436,8 +2471,9 @@ export class Editor {
       width,
       ...(drag && { minHeight: drag.height }),
       angle: 0,
-      left: drag?.left ?? (anchor === 'center' ? at.x - width / 2 : at.x),
-      top: drag?.top ?? (anchor === 'center' ? at.y - fontSize * 0.625 : at.y),
+      left: drag?.left ?? (anchor === 'center' ? at.x - width / 2 : at.x - pad.x),
+      top: drag?.top ?? (anchor === 'center' ? at.y - fontSize * 0.625 - pad.y : at.y - pad.y),
+      ...(surface && { surface }),
     }
     const obj = this.build(rec, () => undefined)
     if (!this.text.isText(obj)) return
@@ -2721,6 +2757,15 @@ export class Editor {
    */
   setTextAutoHeight() {
     this.text.clearHeight()
+  }
+
+  /**
+   * Paper on or off for the one selected text: the box keeps its centre and grows or shrinks by the
+   * padding round its words, which stay exactly where they are. One undo step on a selected box; part
+   * of the edit's step while it is edited. It never changes which frame owns the text.
+   */
+  setTextPaper(on: boolean) {
+    this.text.setPaper(on)
   }
 
   /** Duplicates selected objects and the contents of selected frames as one undo step. */

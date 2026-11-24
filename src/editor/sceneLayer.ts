@@ -6,6 +6,8 @@ import type { CropRect, FontId, FrameRecord, ImageRecord, ObjectRecord, Scene, T
 import type { Size } from '../model/viewport.ts'
 import { FONT_STACKS } from './fonts.ts'
 import { canScroll } from './wheelGesture.ts'
+import { innerText, paperPad } from '../model/paper.ts'
+import type { PaperPad } from '../model/paper.ts'
 import { docFromText, isListType, nodes, renderStatic, textblocksOf } from './textSchema.ts'
 
 /**
@@ -806,7 +808,7 @@ export function noWrapRanges(rec: CardSource, doc: Document = document): NoWrapR
 // ---- a text card's body ---------------------------------------------------------------------
 
 /** The fields of a text record that decide how its card looks. */
-export type CardSource = Pick<TextRecord, 'text' | 'fontSize' | 'width' | 'minHeight' | 'height' | 'font' | 'align' | 'color' | 'spans' | 'headings' | 'blocks' | 'captionBackground'>
+export type CardSource = Pick<TextRecord, 'text' | 'fontSize' | 'width' | 'minHeight' | 'height' | 'font' | 'align' | 'color' | 'spans' | 'headings' | 'blocks' | 'captionBackground' | 'surface'>
 
 /** A drawn box (`minHeight` set) wraps inside overlong words; a click-created one only between words. */
 const isDrawn = (rec: Pick<TextRecord, 'minHeight'>): boolean => rec.minHeight !== undefined
@@ -1083,6 +1085,16 @@ interface ItemState {
   scrollMax?: number
   /** Texts with a fixed height: the position the page showed when the layer last set or took it (any other position: something else moved it). */
   pageTop?: number
+  /** Texts: the paper's padding (zero without paper): the body, where the words are, sits inside it. */
+  pad?: PaperPad
+}
+
+/**
+ * The width a paper or bare text is drawn at, from `fn` (one of `effectiveCardWidth`, `liveCardWidth`,
+ * `minCardWidth`): worked out for the words' own box (`innerText`), plus the paper's padding.
+ */
+export function paperWidth(rec: CardSource, doc: Document, fn: (rec: CardSource, doc: Document) => number): number {
+  return fn(innerText(rec), doc) + 2 * paperPad(rec).x
 }
 
 // ---- fixed height: scrolling, its cues and its thumb ----------------------------------------------
@@ -1094,6 +1106,9 @@ interface ItemState {
 // `fade-bottom` on the card, a mask on its body), and a thin thumb on the right edge, shown while the
 // text scrolls and faded out `THUMB_FADE_MS` after the last scroll; while the text is edited it can
 // be dragged. The thumb keeps its size on screen whatever the zoom.
+
+/** White ink: on paper it gets the dark sheet (`is-light-ink`), so every text colour reads on paper. */
+const LIGHT_INK = '#ffffff'
 
 /** How long after the last scroll the thumb starts to fade (ms). */
 export const THUMB_FADE_MS = 800
@@ -1359,8 +1374,9 @@ export class SceneLayer {
     try {
       const body = item.el.firstElementChild as HTMLElement
       const rec = item.rec as TextRecord
-      const minWidth = this.measurer.measureMinWidth(body, rec)
-      item.h = this.measurer.measureHeight(body, rec)
+      const pad = paperPad(rec)
+      const minWidth = this.measurer.measureMinWidth(body, innerText(rec)) + 2 * pad.x
+      item.h = this.measurer.measureHeight(body, innerText(rec)) + 2 * pad.y
       return { height: item.h, minWidth, width: item.w }
     } finally {
       if (culled) this.setCulled(item, true)
@@ -1650,7 +1666,8 @@ export class SceneLayer {
     s.width = `${THUMB_PX / z}px`
     s.height = `${length}px`
     s.right = `${inset}px`
-    s.transform = `translateY(${inset + (max > 0 ? (travel * top) / max : 0)}px)`
+    // The track runs beside the body, inside the paper's padding when there is paper.
+    s.transform = `translateY(${(item.pad?.y ?? 0) + inset + (max > 0 ? (travel * top) / max : 0)}px)`
     s.color = body.style.color || DEFAULT_TEXT_COLOR
     s.setProperty('--thumb-px', `${1 / z}px`)
   }
@@ -1834,22 +1851,30 @@ export class SceneLayer {
       const owner = item
       body.addEventListener('scroll', () => this.onScroll(owner), { passive: true })
     }
-    const width = this.cardWidth(rec, this.doc)
+    // On paper the card is the sheet, padded; its body, where the words are, is laid out as the words'
+    // own box (`innerText`). Without paper the two are the same.
+    const pad = paperPad(rec)
+    const inner = innerText(rec)
+    item.pad = pad
+    const width = this.cardWidth(inner, this.doc) + 2 * pad.x
     el.style.width = `${width}px`
+    el.classList.toggle('has-paper', rec.surface === 'card')
+    el.classList.toggle('is-light-ink', rec.surface === 'card' && rec.color === LIGHT_INK)
+    el.style.padding = rec.surface === 'card' ? `${pad.y}px ${pad.x}px` : ''
     if (item.editing) {
       // The live editor owns the children: only box-level styles follow the record.
-      applyCardStyle(body, rec)
+      applyCardStyle(body, inner)
       delete item.shown
     } else {
       // A new width alone (a side-handle resize) renders the body again only when it changes a
       // drawn box's no-wrap ranges. A new fixed height alone never does.
-      const ranges = noWrapRanges(rec, this.doc)
-      const shown = JSON.stringify([cardLook(rec), ranges])
+      const ranges = noWrapRanges(inner, this.doc)
+      const shown = JSON.stringify([cardLook(inner), ranges])
       if (item.shown !== shown) {
-        renderCardBody(body, rec, ranges)
+        renderCardBody(body, inner, ranges)
         item.shown = shown
       }
-      applyCardHeight(body, rec)
+      applyCardHeight(body, inner)
     }
     item.w = width
     this.place(item, recordMatrix(rec.left, rec.top, rec.angle))
@@ -1865,11 +1890,15 @@ export class SceneLayer {
    * caret). Then its fades follow.
    */
   private fixHeight(item: ItemState, body: HTMLElement, rec: TextRecord) {
-    const fixed = rec.height
+    // The body's own fixed height: inside the paper's padding.
+    const fixed = innerText(rec).height
     const id = rec.id
     item.el.classList.toggle('is-fixed', fixed !== undefined)
-    item.el.style.backgroundColor = fixed !== undefined ? (rec.captionBackground ?? '') : ''
-    body.style.backgroundColor = fixed !== undefined ? '' : (rec.captionBackground ?? '')
+    // A caption background fills the sheet on paper (over the paper's own colour), and the card of a
+    // fixed-height text (its body fades); otherwise the body, as before.
+    const onCard = fixed !== undefined || rec.surface === 'card'
+    item.el.style.backgroundColor = onCard ? (rec.captionBackground ?? '') : ''
+    body.style.backgroundColor = onCard ? '' : (rec.captionBackground ?? '')
     if (item.fixed !== fixed) {
       item.fixed = fixed
       this.scrollTops.delete(id)
@@ -1887,14 +1916,14 @@ export class SceneLayer {
 
   private remeasure(item: ItemState) {
     if (item.kind !== 'text') return
+    const rec = item.rec as TextRecord
     if (!this.root.isConnected) {
-      const rec = item.rec as TextRecord
-      item.h = rec.height ?? rec.minHeight ?? 0
+      item.h = rec.height ?? rec.minHeight ?? 2 * paperPad(rec).y
       return
     }
     const culled = item.culled
     if (culled) this.setCulled(item, false)
-    item.h = this.measurer.measureHeight(item.el.firstElementChild as HTMLElement, item.rec as TextRecord)
+    item.h = this.measurer.measureHeight(item.el.firstElementChild as HTMLElement, innerText(rec)) + 2 * paperPad(rec).y
     if (culled) this.setCulled(item, true)
   }
 }

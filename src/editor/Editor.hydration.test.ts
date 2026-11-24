@@ -30,8 +30,8 @@ const key = (k: string, init: KeyboardEventInit = {}) => new KeyboardEvent('keyd
 
 let host: HTMLDivElement
 const editors: Editor[] = []
-const make = (store: ConstructorParameters<typeof Editor>[1], assets: ConstructorParameters<typeof Editor>[2]) => {
-  const e = new Editor(host, store, assets, undefined, { measurer: new FakeCardMeasurer() })
+const make = (store: ConstructorParameters<typeof Editor>[1], assets: ConstructorParameters<typeof Editor>[2], editableRichFields?: ReadonlySet<'blocks' | 'height' | 'surface'>) => {
+  const e = new Editor(host, store, assets, undefined, { measurer: new FakeCardMeasurer(), editableRichFields })
   editors.push(e)
   return e
 }
@@ -431,12 +431,13 @@ describe('Editor: a stored board with rich text this build cannot edit yet', () 
   }
 
   it('rich-board-opens-read-only-until-its-slice: opens read-only with the newer-build reason; nothing is shown, selected, saved or pruned', async () => {
-    // Rich blocks and a fixed height are editable now; paper is not yet, alone or beside either.
+    // Every rich field is editable in this build; a build that edits only blocks and a fixed height
+    // stands for one that does not know the next field: paper, alone or beside either, makes it read-only.
     for (const extra of [{ height: 240, surface: 'card' as const }, { surface: 'card' as const }, { blocks: [{ type: 'divider' as const }], surface: 'card' as const }]) {
       const doc = storedDoc()
       const store = new SpyStore({ doc: { ...doc, objects: doc.objects.map((o) => (o.type === 'text' ? { ...o, ...extra } : o)) }, assets: storedAssets() })
       store.holdLoad = false
-      const editor = make(store, new FakeAssets())
+      const editor = make(store, new FakeAssets(), new Set(['blocks', 'height']))
       await editor.init()
       expect(editor.getState()).toMatchObject({ ready: true, tool: 'hand', objectCount: 0, selection: null, save: { kind: 'unavailable' } })
       expect(editor.getState().readOnly).toMatch(/newer yuriful.*read-only/)
