@@ -357,6 +357,13 @@ describe('the scan of what stays as written, settled rules', () => {
     expect(md("[a](it's-*here*) *yes*")).toStrictEqual(yes("[a](it's-*here*) ")) // a quote not after a space opens no title
   })
 
+  it('rule 1: inside a title a backslash escapes the next character, so an escaped quote does not end it', () => {
+    expect(md('[a](u "Mix (\\"live\\") *draft*") *yes*')).toStrictEqual(yes('[a](u "Mix (\\"live\\") *draft*") '))
+    expect(md("[a](u 'It\\'s (rough) today) *draft*') *yes*")).toStrictEqual(yes("[a](u 'It\\'s (rough) today) *draft*') "))
+    // An escaped backslash escapes nothing after it: the quote after it ends the title.
+    expect(md('[a](u "t\\\\") *yes*')).toStrictEqual(yes('[a](u "t\\\\") '))
+  })
+
   it('rule 1: a `[` with no balanced `](…)` after it on the line is a character', () => {
     expect(md('[aside *yes* [a](u)')).toStrictEqual([p('[aside ', r('yes', I), ' [a](u)')])
     expect(md('[*yes*] (u)')).toStrictEqual([p('[', r('yes', I), '] (u)')])
@@ -383,6 +390,13 @@ describe('the scan of what stays as written, settled rules', () => {
     expect(md('<!-- never closed *yes*')).toStrictEqual(yes('<!-- never closed '))
   })
 
+  it('rule 2: spaces or tabs may sit on either side of the `=` before a quoted value', () => {
+    expect(md('<span title= "> *secret*"> *yes*')).toStrictEqual(yes('<span title= "> *secret*"> '))
+    expect(md('<a title = "> *x*"> *yes*')).toStrictEqual(yes('<a title = "> *x*"> '))
+    expect(md("<b title=\t'< *secret* >'> *yes*")).toStrictEqual(yes("<b title=\t'< *secret* >'> "))
+    expect(md("<b title \t=  '> *secret*'> *yes*")).toStrictEqual(yes("<b title \t=  '> *secret*'> "))
+  })
+
   it('rule 3: a code span found first wins over a link or tag it swallows, and a link keeps a code span inside it', () => {
     expect(md('`see [*a*](url)` *yes*')).toStrictEqual([p(r('see [*a*](url)', C), ' ', r('yes', I))])
     expect(md('`show [a](url)` *yes*')).toStrictEqual([p(r('show [a](url)', C), ' ', r('yes', I))])
@@ -399,8 +413,24 @@ describe('the scan of what stays as written, settled rules', () => {
     expect(md('*👩\uD800*\uDC69')).toBeNull()
     expect(md('`👩\uD800`\uDC69')).toBeNull()
     expect(md('**\uD83D**')).toBeNull()
+    // Either half, on either side of the marker, for `*`, backticks and the space of a block marker.
+    // (Before an opener nothing but a space or an opening bracket or quote is allowed anyway.)
+    expect(md('*a*\uD800')).toBeNull()
+    expect(md('*a\uDC00*')).toBeNull()
+    expect(md('*\uDBFFa*')).toBeNull()
+    expect(md('*\uDC00a*')).toBeNull()
+    expect(md('`a`\uD800')).toBeNull()
+    expect(md('`a\uDC00`')).toBeNull()
+    expect(md('`\uDC00a`')).toBeNull()
+    expect(md('# \uDC00x')).toBeNull()
+    expect(md('# \uD800')).toBeNull()
+    expect(md('- \uDC00x')).toBeNull()
+    expect(md('> \uD800x')).toBeNull()
     // Whole surrogate pairs are characters like any other.
     expect(md('*😀*😀')).toStrictEqual([p(r('😀', I), '😀')])
+    expect(md('*a*😀')).toStrictEqual([p(r('a', I), '😀')])
+    expect(md('*a😀*')).toStrictEqual([p(r('a😀', I))])
+    expect(md('`a😀`')).toStrictEqual([p(r('a😀', C))])
   })
 })
 
@@ -641,6 +671,9 @@ describe('performance', () => {
       `*a* ${'<!'.repeat(249_998)}`,
       `*a* ${'"'.repeat(249_998)}${"'".repeat(249_998)}`,
       `*a* ${'[x [y] *z*](u "t (v)") <b c="> *d*"> '.repeat(12_500)}`,
+      // A tag whose quoted values each hold a `<` that the scan meets again as an opener: quadratic unless tag ends are memoised.
+      `*ok* <a${' x="<b word"'.repeat(Math.ceil(500_000 / 12))}`.slice(0, 500_000),
+      `*ok* <a${' x = "<b word"'.repeat(Math.ceil(500_000 / 14))}`.slice(0, 500_000),
     ]
     for (const text of cases) {
       const { ms } = timed(text)
@@ -812,6 +845,10 @@ describe('randomised: protected spans and blank lines between lists', () => {
               `[a \\] *P${id}*](u\\) *v*)`,
               `[t](u '(*P${id}*)')`,
               `[t](u "x) *P${id}*")`,
+              `[t](u "a \\"(*P${id}*\\" b")`,
+              `[t](u 'it\\'s (*P${id}*')`,
+              `<i title = "> *P${id}*">`,
+              `<i title=\t'> *P${id}*'>`,
               `<b title="> *P${id}*" data-x='>'>`,
               `<!-- > *P${id}* -->`,
               `<!DOCTYPE *P${id}*>`,

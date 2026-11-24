@@ -177,9 +177,32 @@ function bracketPairs(s: string): Int32Array {
 const UNKNOWN = -2
 
 /**
+ * For every unit of `s` (and its end), the first `ch` at or after it that no backslash escapes (an
+ * even run of backslashes, or none, before it); -1 for none. Inside a title a backslash escapes the
+ * next character, and the run of backslashes before a closing quote never reaches past the opening one.
+ */
+function nextUnescaped(s: string, ch: number): Int32Array {
+  const len = s.length
+  const escaped = new Uint8Array(len)
+  let run = 0
+  for (let i = 0; i < len; i++) {
+    escaped[i] = run % 2
+    run = s.charCodeAt(i) === BACKSLASH ? run + 1 : 0
+  }
+  const out = new Int32Array(len + 2).fill(-1)
+  let n = -1
+  for (let i = len - 1; i >= 0; i--) {
+    if (s.charCodeAt(i) === ch && !escaped[i]) n = i
+    out[i] = n
+  }
+  return out
+}
+
+/**
  * A finder for the `)` that ends a link target whose first unit is `start` (just after its `(`): the
  * target's parentheses balance, a backslash escapes the punctuation after it, and a quoted title
- * (`"…"` or `'…'` after a space or tab) is skipped whole. -1 when the line ends first.
+ * (`"…"` or `'…'` after a space or tab, in which a backslash escapes the next character) is skipped
+ * whole. -1 when the line ends first.
  *
  * Every call walks the same position-determined path from where it starts, so the answer for every
  * unit a walk passes at its own depth is the walk's answer: each unit is walked once over all calls
@@ -188,8 +211,8 @@ const UNKNOWN = -2
 function targetCloser(s: string): (start: number) => number {
   const len = s.length
   const memo = new Int32Array(len + 1).fill(UNKNOWN)
-  const dq = nextOf(s, 34 /* " */)
-  const sq = nextOf(s, 39 /* ' */)
+  const dq = nextUnescaped(s, 34 /* " */)
+  const sq = nextUnescaped(s, 39 /* ' */)
   return (start) => {
     /** The units walked, and where each open parenthesis's own walk starts in it. */
     const walked: number[] = []
@@ -212,6 +235,7 @@ function targetCloser(s: string): (start: number) => number {
           continue
         }
         if ((c === 34 || c === 39) && (s[r - 1] === ' ' || s[r - 1] === '\t')) {
+          // The title ends at the next quote of its kind that no backslash escapes.
           const q = (c === 34 ? dq : sq)[r + 1] as number
           r = q >= 0 ? q + 1 : r + 1
           continue
@@ -237,14 +261,21 @@ function targetCloser(s: string): (start: number) => number {
 
 /**
  * A finder for the `>` that ends an HTML tag whose name starts at `start` (just after its `<`): the
- * next `>` outside a quoted attribute value (`"…"` or `'…'` straight after `=`); -1 when a `<` outside
- * quotes or the end of the line comes first. Memoised like `targetCloser`: linear over all calls.
+ * next `>` outside a quoted attribute value (`"…"` or `'…'` after `=`, spaces or tabs allowed
+ * between); -1 when a `<` outside quotes or the end of the line comes first. Memoised like
+ * `targetCloser`: linear over all calls.
  */
 function tagCloser(s: string): (start: number) => number {
   const len = s.length
   const memo = new Int32Array(len + 1).fill(UNKNOWN)
   const dq = nextOf(s, 34)
   const sq = nextOf(s, 39)
+  /** Whether the quote at `r` opens a value: an `=` before it, spaces and tabs allowed between (each quote looks back over its own run of them). */
+  const afterEquals = (r: number) => {
+    let k = r - 1
+    while (k >= 0 && (s.charCodeAt(k) === 32 || s.charCodeAt(k) === 9)) k--
+    return s.charCodeAt(k) === 61 /* = */
+  }
   return (start) => {
     const walked: number[] = []
     let r = start
@@ -268,7 +299,7 @@ function tagCloser(s: string): (start: number) => number {
         res = -1
         break
       }
-      if ((c === 34 || c === 39) && s.charCodeAt(r - 1) === 61 /* = */) {
+      if ((c === 34 || c === 39) && afterEquals(r)) {
         const q = (c === 34 ? dq : sq)[r + 1] as number
         if (q < 0) {
           res = -1
@@ -286,8 +317,18 @@ function tagCloser(s: string): (start: number) => number {
 
 const isHighSurrogate = (c: number) => c >= 0xd800 && c <= 0xdbff
 const isLowSurrogate = (c: number) => c >= 0xdc00 && c <= 0xdfff
-/** A unit beside half of a surrogate pair: taking it out could put the two halves of one character on either side of a formatting boundary. */
-const besideHalf = (s: string, i: number) => isHighSurrogate(s.charCodeAt(i - 1)) || isLowSurrogate(s.charCodeAt(i + 1))
+/** Whether the unit at `j` is half of a surrogate pair without its other half. */
+function unpairedAt(s: string, j: number): boolean {
+  const c = s.charCodeAt(j)
+  if (isHighSurrogate(c)) return !isLowSurrogate(s.charCodeAt(j + 1))
+  if (isLowSurrogate(c)) return !isHighSurrogate(s.charCodeAt(j - 1))
+  return false
+}
+/**
+ * A unit beside an unpaired surrogate half, on either side: taking it out could put the two halves
+ * of one character on either side of a formatting boundary, so it is never a marker.
+ */
+const besideHalf = (s: string, i: number) => unpairedAt(s, i - 1) || unpairedAt(s, i + 1)
 
 // ---- inline marks -------------------------------------------------------------------------------
 
