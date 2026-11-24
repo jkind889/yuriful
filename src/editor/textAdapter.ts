@@ -1,5 +1,4 @@
 import type { FabricObject } from 'fabric'
-import { EditorState } from 'prosemirror-state'
 import type { Command, Transaction } from 'prosemirror-state'
 import type { Node as PMNode } from 'prosemirror-model'
 import { Decoration, DecorationSet } from 'prosemirror-view'
@@ -16,10 +15,10 @@ import type { TextBlockInfo, TextFormatInfo } from './Editor.ts'
 import type { FrameCanvas } from './FrameCanvas.ts'
 import { ProxyRect, captionOf, captionSideOf, centerOf, createProxy, idOf, isLocked, ownerOf, setOwner, setTextData, textDataOf, toRecord } from './objects.ts'
 import type { TextData } from './objects.ts'
-import { BLOCK_KINDS, allText, boxBlocks, boxFormat, clearRangeFonts, setBoxLevel, toggleBoxMark, toggleCodeBlock, toggleList, toggleQuote } from './textRules.ts'
+import { BLOCK_KINDS, boxBlocks, boxCommandContent, boxFormat, clearRangeFonts, setBoxLevel, toggleBlockKind, toggleBoxMark } from './textRules.ts'
 import type { BlockKind } from './textRules.ts'
 import { noWrapRanges } from './sceneLayer.ts'
-import { boxOf, contentFromDoc, docFromText, exceedsBounds, plainTextOfDoc, textOffsetAt, textblocksOf } from './textSchema.ts'
+import { boxOf, contentFromDoc, docFromText, plainTextOfDoc, textOffsetAt, textblocksOf } from './textSchema.ts'
 import { createEditSession } from './textSession.ts'
 import type { EditSession } from './textSession.ts'
 import { isBlankTextDoc } from '../model/textDoc.ts'
@@ -955,29 +954,9 @@ export class DomTextAdapter implements TextAdapter {
    */
   private formatBox(obj: FabricObject, kind: string, change?: (tr: Transaction) => unknown, box?: (fmt: TextFormatting) => TextFormatting, command?: Command) {
     const td = textDataOf(obj)
-    const read = td ? docFromText(td) : null
-    if (!td || !read) return
-    const before = contentFromDoc(read.doc, read.box)
-    let doc = read.doc
-    if (change) {
-      const tr = EditorState.create({ doc: read.doc }).tr
-      change(tr)
-      doc = tr.doc
-    }
-    if (command) {
-      // As in an edit with all the text selected.
-      const state = EditorState.create({ doc: read.doc, selection: allText(read.doc) ?? undefined })
-      command(state, (tr) => {
-        doc = tr.doc
-      })
-    }
-    const nextBox = box ? boxOf(box(read.box)) : read.box
-    // Nothing over a bound is written: a whole-box command whose result a load would refuse (a list
-    // around lines already nested to the depth bound) changes nothing, records nothing, saves nothing,
-    // exactly as the edit session refuses it while editing.
-    if (exceedsBounds(doc, nextBox.font ?? 'sans')) return
-    const after = contentFromDoc(doc, nextBox)
-    if (JSON.stringify(after) === JSON.stringify(before)) return
+    // Nothing over a bound is written, and nothing changes, records or saves when the text would stay as it is.
+    const after = td ? boxCommandContent(td, { change, box, command }) : null
+    if (!td || !after) return
     const anchor = alignAnchor(td.align)
     setTextData(obj, withContent(td, after))
     this.syncCard(obj, { widen: anchor })
@@ -996,14 +975,13 @@ export class DomTextAdapter implements TextAdapter {
   }
 
   /**
-   * A block on the selected lines while editing; on a selected box, the same command with all of its
-   * text selected (every line), as an undo step of its own.
+   * A block on the selected lines while editing; on a selected box, the same command on every line of
+   * the text, empty ones and the last included (what `boxBlocks` reads), as an undo step of its own.
    */
   toggleBlock(kind: BlockKind) {
     const obj = this.formatTarget()
     if (!obj || this.inEdit(obj, (s) => s.toggleBlock(kind))) return
-    const command = kind === 'blockquote' ? toggleQuote : kind === 'codeBlock' ? toggleCodeBlock : toggleList(kind)
-    this.formatBox(obj, `block-${kind}`, undefined, undefined, command)
+    this.formatBox(obj, `block-${kind}`, undefined, undefined, toggleBlockKind(kind, { wholeBox: true }))
   }
 
   /** A divider at the caret while editing. A selected box has no caret, so nothing happens there. */

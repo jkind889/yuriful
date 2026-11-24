@@ -328,7 +328,7 @@ export class EditSession {
   private plainPaste: { text: string; from: number; to: number; pending: Pending | null } | null = null
   /** Where a drop in progress lands (from the drop event), for the destination font. */
   private dropPos: number | null = null
-  private cached: { state: EditorState; box: TextFormatting; content: TextContent } | null = null
+  private cached: { state: EditorState; box: TextFormatting; start: EditSession['imeStart']; content: TextContent } | null = null
   /**
    * A stored text with "\r\n" line breaks keeps them until its text is changed: today the
    * editing textarea turns them into "\n" only on the first keystroke, so formatting alone
@@ -464,17 +464,29 @@ export class EditSession {
    * ranges' marks, canonical form), computed without touching the document.
    */
   content(): TextContent {
-    const doc = this.composed.length > 0 ? this.followUpTransaction(this.current).doc : this.current.doc
-    if (doc === this.initial.doc && JSON.stringify(this.box) === JSON.stringify(this.initial.box)) return this.initial.content
     const c = this.cached
-    if (c && c.state === this.current && c.box === this.box) return c.content
-    let content = contentFromDoc(doc, this.box)
-    const stored = this.storedBreaks
-    if (stored !== null && !content.blocks && stored.replace(/\r\n/g, '\n') === content.text) {
-      const spans = content.spans?.map((sp) => ({ ...sp, start: storedOffset(stored, sp.start), end: storedOffset(stored, sp.end) }))
-      content = { text: stored, ...canonicalTextFormatting(stored, { ...this.box, spans, headings: content.headings }) }
+    if (c && c.state === this.current && c.box === this.box && c.start === this.imeStart) return c.content
+    const start = this.imeStart
+    let doc = this.composed.length > 0 ? this.followUpTransaction(this.current).doc : this.current.doc
+    let stored = this.storedBreaks
+    // The one place the session hands its content out: a composition that has the text over a bound
+    // the store enforces (open, or ended and not yet followed up) never reaches a record. Until it is
+    // taken back, the content is what the session held just before it (`imeStart`).
+    if (start && exceedsBounds(doc, this.baseFont)) {
+      doc = start.state.doc
+      stored = start.storedBreaks
     }
-    this.cached = { state: this.current, box: this.box, content }
+    let content: TextContent
+    if (doc === this.initial.doc && JSON.stringify(this.box) === JSON.stringify(this.initial.box)) content = this.initial.content
+    else {
+      content = contentFromDoc(doc, this.box)
+      if (stored !== null && !content.blocks && stored.replace(/\r\n/g, '\n') === content.text) {
+        const breaks = stored
+        const spans = content.spans?.map((sp) => ({ ...sp, start: storedOffset(breaks, sp.start), end: storedOffset(breaks, sp.end) }))
+        content = { text: breaks, ...canonicalTextFormatting(breaks, { ...this.box, spans, headings: content.headings }) }
+      }
+    }
+    this.cached = { state: this.current, box: this.box, start, content }
     return content
   }
 
@@ -505,7 +517,7 @@ export class EditSession {
     this.trackHistory(before, state, transactions)
     for (const t of transactions) if (t.getMeta('composition') !== undefined) this.lastComposition = t.getMeta('composition')
     this.mounted?.view.updateState(state)
-    if (transactions.some((t) => t.steps.some((st) => st instanceof ReplaceStep))) this.storedBreaks = null // the text was typed into
+    if (this.storedBreaks !== null && transactions.some((t) => t.steps.some((st) => st instanceof ReplaceStep)) && !this.keepsText(tr, before, state)) this.storedBreaks = null // the text was typed into
     // Any change of the text or move of the caret ends "straight after a shortcut" (in-edit
     // undo included), except the shortcut's own conversion.
     if ((tr.docChanged || tr.selectionSet) && tr.getMeta(META.shortcutApplied) !== true) this.revert = null
@@ -537,6 +549,16 @@ export class EditSession {
         r.from = from
       }
     }
+  }
+
+  /**
+   * A change that leaves every character where it was, so the text was not typed into and keeps its
+   * stored line breaks: a block button (`META.keepsText`), or an in-edit undo or redo that gives back
+   * the same characters (of a block button: undoing typing gives back other characters).
+   */
+  private keepsText(tr: Transaction, before: EditorState, after: EditorState): boolean {
+    if (tr.getMeta(META.keepsText) === true) return true
+    return isHistoryTransaction(tr) && plainTextOfDoc(before.doc) === plainTextOfDoc(after.doc)
   }
 
   /** Tells `onChange` about the content, only when it differs from what it was last told (or the stored record). */
@@ -849,8 +871,10 @@ export class EditSession {
       // session is put back as it was just before it (`imeStart`: the text and the selection it
       // replaced, the pending choices, the history), so what was typed before it stays, and it is not
       // on the redo side either, so redo never brings it back. Undo grouping is not touched.
+      // Also when the edit can no longer change the board (it went read-only, or is finishing): the
+      // session never keeps a text over a bound.
       this.composed = []
-      if (start && this.editable) {
+      if (start) {
         this.current = start.state
         this.conversions = start.conversions
         this.storedBreaks = start.storedBreaks

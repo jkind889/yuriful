@@ -3,12 +3,14 @@ import { closeHistory, isHistoryTransaction, redo, undo, undoDepth } from 'prose
 import { Fragment, Mark as PMMark } from 'prosemirror-model'
 import type { Node as PMNode, NodeType, ResolvedPos } from 'prosemirror-model'
 import { liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list'
-import { AllSelection, EditorState, Plugin, PluginKey, TextSelection } from 'prosemirror-state'
+import { AllSelection, EditorState, NodeSelection, Plugin, PluginKey, TextSelection } from 'prosemirror-state'
 import type { Command, Transaction } from 'prosemirror-state'
 import { AddMarkStep, RemoveMarkStep, canJoin, findWrapping, liftTarget } from 'prosemirror-transform'
 import { MARKS, canonicalTextFormatting, headingsAfterEdit, isHeadingLevel, markMask, spansFromCharStyles, splitGraphemes, textAfterEdit, withPendingMarks } from '../model/richText.ts'
-import type { CharStyle, HeadingLevel, Mark, MarkState, PendingTextStyle, RangeFormat } from '../model/richText.ts'
-import { RUN_MARKS, blockOf, blockTypeFor, fontOf, isItemType, isListType, levelOf, marks, marksOfRun, nodes, posAtTextOffset, runKey, textOffsetAt, textSchema, textblocksOf } from './textSchema.ts'
+import type { CharStyle, HeadingLevel, Mark, MarkState, PendingTextStyle, RangeFormat, TextFormatting } from '../model/richText.ts'
+import { RUN_MARKS, blockOf, blockTypeFor, boxOf, contentFromDoc, docFromText, exceedsBounds, fontOf, isItemType, isListType, levelOf, marks, marksOfRun, nodes, posAtTextOffset, runKey, textOffsetAt, textSchema, textblocksOf } from './textSchema.ts'
+import type { TextSource } from './textSchema.ts'
+import type { TextContent } from '../model/textDoc.ts'
 import { blocksToLegacy, isListStart, legacyToBlocks, parseBlocks } from '../model/textDoc.ts'
 import type { FontId, InlineRun, TextSpan } from '../model/types.ts'
 
@@ -34,6 +36,8 @@ export const META = {
    * result as today's canvas does (`plainPasteContent`).
    */
   replaced: 'yuriful/replaced',
+  /** The transaction changes the blocks around the text but never a character of it (a block button): the text was not typed into. */
+  keepsText: 'yuriful/keepsText',
 } as const
 
 /** A selection about to be replaced by `text`, for `META.replaced`. */
@@ -206,29 +210,31 @@ type AnyShortcut = { line: LineShortcut } | { block: BlockShortcut }
 
 /**
  * The shortcut that typing `inserted` completes on the textblock at `$at` whose text is now `line`
- * with the caret at `caret`; `inCode`: the typed character is inline code. Nothing fires in a code
+ * with the caret at `caret`; `inCode`: the typed character is inline code; `isCode(i)`: the line's
+ * UTF-16 unit `i` is inline code (asked only for the markers of a shortcut that otherwise matched,
+ * so a keystroke that completes nothing never looks at the line's marks). Nothing fires in a code
  * block or for a character typed inside inline code; block shortcuts fire only where
  * `blockShortcutAllowed` says.
  */
-function shortcutAt($at: ResolvedPos, line: string, caret: number, inserted: string, inCode: boolean, code: readonly boolean[]): AnyShortcut | null {
+function shortcutAt($at: ResolvedPos, line: string, caret: number, inserted: string, inCode: boolean, isCode: (unit: number) => boolean): AnyShortcut | null {
   // Nothing fires in a code block, nor for a character typed inside inline code: code is literal.
   if (!$at.parent.isTextblock || $at.parent.type.spec.code || inCode) return null
   // Nor when any of its marker characters is inline code: code characters never count as a marker.
-  const anyCode = (from: number, to: number) => code.slice(from, to).some(Boolean)
+  const anyCode = (from: number, to: number) => {
+    for (let i = from; i < to; i++) if (isCode(i)) return true
+    return false
+  }
   const block = matchBlockShortcut(line, caret, inserted)
   if (block) return blockShortcutAllowed(block, lineContext($at)) && !anyCode(0, block.end) ? { block } : null
   const sc = matchShortcut(line, caret, inserted) ?? matchCodeShortcut(line, caret, inserted)
   return sc && !sc.remove.some((r) => anyCode(r.start, r.end)) ? { line: sc } : null
 }
 
-/** For each UTF-16 unit of a textblock's text: it is inline code. */
-function codeUnits(block: PMNode): boolean[] {
-  const out: boolean[] = []
-  block.forEach((child) => {
-    const on = marks.code.isInSet(child.marks) !== undefined
-    for (let i = 0; i < (child.text ?? '').length; i++) out.push(on)
-  })
-  return out
+/** Whether the UTF-16 unit `unit` of a textblock's text is inline code. */
+function codeUnitAt(block: PMNode, unit: number): boolean {
+  if (unit < 0 || unit >= block.content.size) return false
+  const child = block.childAfter(unit).node
+  return child !== null && marks.code.isInSet(child.marks) !== undefined
 }
 
 /** Whether inserting `text` at `from` (nothing replaced) would complete a typing shortcut. */
@@ -239,9 +245,9 @@ export function completesShortcut(state: EditorState, from: number, text: string
   const off = $from.parentOffset
   const pending = pendingOf(state)
   const inCode = pending?.code ?? marks.code.isInSet($from.marks()) !== undefined
-  const code = codeUnits($from.parent)
-  const withTyped = [...code.slice(0, off), ...Array.from(text, () => inCode), ...code.slice(off)]
-  return shortcutAt($from, line.slice(0, off) + text + line.slice(off), off + text.length, text, inCode, withTyped) !== null
+  const block = $from.parent
+  const isCode = (i: number) => (i < off ? codeUnitAt(block, i) : i < off + text.length ? inCode : codeUnitAt(block, i - text.length))
+  return shortcutAt($from, line.slice(0, off) + text + line.slice(off), off + text.length, text, inCode, isCode) !== null
 }
 
 /**
@@ -259,7 +265,7 @@ export function shortcutTransaction(state: EditorState, inserted: string): Trans
   const $c = sel instanceof TextSelection ? sel.$cursor : null
   if (!$c || !$c.parent.isTextblock) return null
   const typed = $c.nodeBefore
-  const found = shortcutAt($c, $c.parent.textContent, $c.parentOffset, inserted, typed ? marks.code.isInSet(typed.marks) !== undefined : false, codeUnits($c.parent))
+  const found = shortcutAt($c, $c.parent.textContent, $c.parentOffset, inserted, typed ? marks.code.isInSet(typed.marks) !== undefined : false, (i) => codeUnitAt($c.parent, i))
   if (!found) return null
   const pending = pendingOf(state)
   if ('block' in found) {
@@ -871,6 +877,23 @@ export function linesOfSelection(doc: PMNode, from: number, to: number): { first
   return { first, last: Math.max(first, last) }
 }
 
+/**
+ * The lines a block button acts on while editing: those the selection touches (`linesOfSelection`);
+ * none (null) when the selection holds no line at all, as when only a divider is selected.
+ */
+export function linesOfState(state: EditorState): { first: number; last: number } | null {
+  const sel = state.selection
+  if (sel instanceof NodeSelection && !sel.node.isTextblock) {
+    let any = false
+    sel.node.descendants((n) => {
+      if (n.isTextblock) any = true
+      return !any
+    })
+    if (!any) return null
+  }
+  return linesOfSelection(state.doc, sel.from, sel.to)
+}
+
 /** The last line a whole-box heading counts: every line but an empty last one, unless the text has no character at all. */
 export function lastBoxLine(doc: PMNode): number {
   const tbs = textblocksOf(doc)
@@ -964,8 +987,9 @@ export function selectionBlocks(state: EditorState): BlockReadout {
     return { code: on ? 'on' : 'off', blocks: blocksOf(state.doc, line, line) }
   }
   const { from, to } = state.selection
-  const { first, last } = linesOfSelection(state.doc, from, to)
-  return { code: codeOf(state.doc, from, to), blocks: blocksOf(state.doc, first, last) }
+  const lines = linesOfState(state)
+  if (!lines) return { code: 'off', blocks: Object.fromEntries(BLOCK_KINDS.map((k) => [k, 'off'])) as Record<BlockKind, MarkState> }
+  return { code: codeOf(state.doc, from, to), blocks: blocksOf(state.doc, lines.first, lines.last) }
 }
 
 /** The marks the next character typed at the caret would have without pending choices, with bold implied on a heading line. */
@@ -1150,6 +1174,8 @@ interface Frame {
   item: number
   checked: boolean
   start: number
+  /** A numbered list's item as the text had it: the number it was painted with (null otherwise, or for an item a button made). */
+  number: number | null
 }
 
 /** A leaf of the document (a line, or a divider) with the blocks around it, outermost first. */
@@ -1158,6 +1184,8 @@ interface Leaf {
   frames: Frame[]
   /** Its line index (textblocks only). */
   line: number | null
+  /** It is a line the button acts on. */
+  selected: boolean
 }
 
 const frameKey = (f: Frame) => `${f.kind}:${f.id}:${f.item}`
@@ -1173,24 +1201,34 @@ function flatten(doc: PMNode, next: () => number): Leaf[] {
   const walk = (node: PMNode, frames: Frame[]) => {
     node.forEach((child) => {
       const t = child.type
-      if (t === nodes.blockquote) walk(child, [...frames, { kind: 'blockquote', id: next(), item: 0, checked: false, start: 1 }])
+      if (t === nodes.blockquote) walk(child, [...frames, { kind: 'blockquote', id: next(), item: 0, checked: false, start: 1, number: null }])
       else if (isListType(t)) {
         const id = next()
         const start = (child.attrs.start as number | undefined) ?? 1
-        child.forEach((item) => walk(item, [...frames, { kind: t.name as ContainerKind, id, item: next(), checked: item.attrs.checked === true, start }]))
-      } else out.push({ node: child, frames, line: child.isTextblock ? line++ : null })
+        const numbered = t === nodes.orderedList
+        child.forEach((item, _offset, index) =>
+          walk(item, [...frames, { kind: t.name as ContainerKind, id, item: next(), checked: item.attrs.checked === true, start, number: numbered ? start + index : null }]),
+        )
+      } else out.push({ node: child, frames, line: child.isTextblock ? line++ : null, selected: false })
     })
   }
   walk(doc, [])
   return out
 }
 
+/** A numbered list would have to start at a number that cannot be stored (`isListStart`): the button changes nothing. */
+class UnstorableStart extends Error {}
+
 /**
  * The blocks of a sequence of leaves: consecutive leaves in the same container share it (and in a
- * list, consecutive leaves in the same item share the item). A numbered list cut in two by leaves
- * that left it goes on counting from where its first part stopped.
+ * list, consecutive leaves in the same item share the item). Every item of a numbered list keeps the
+ * number it was painted with while its first line here is one the button does not act on: a part of
+ * a list cut in two starts at its first item's number, and a list is cut where counting on would
+ * paint such an item with another number. Other items count on from the item before (a new list from
+ * 1). A start that cannot be stored throws `UnstorableStart`.
  */
 function rebuild(leaves: readonly Leaf[]): PMNode[] {
+  /** For each numbered list, the number its next item would be painted with. */
   const counted = new Map<number, number>()
   const build = (group: readonly Leaf[], depth: number): PMNode[] => {
     const out: PMNode[] = []
@@ -1207,20 +1245,37 @@ function rebuild(leaves: readonly Leaf[]): PMNode[] {
       const run = group.slice(i, j)
       if (f.kind === 'blockquote') out.push(nodes.blockquote.create(null, build(run, depth + 1)))
       else {
-        const items: PMNode[] = []
+        const items: Array<{ node: PMNode; frame: Frame; kept: boolean }> = []
         let k = 0
         while (k < run.length) {
           const itemFrame = run[k]!.frames[depth]!
           let m = k + 1
           while (m < run.length && run[m]!.frames[depth]!.item === itemFrame.item) m++
           const content = build(run.slice(k, m), depth + 1)
-          items.push(f.kind === 'taskList' ? nodes.taskItem.create({ checked: itemFrame.checked }, content) : nodes.listItem.create(null, content))
+          const node = f.kind === 'taskList' ? nodes.taskItem.create({ checked: itemFrame.checked }, content) : nodes.listItem.create(null, content)
+          items.push({ node, frame: itemFrame, kept: itemFrame.number !== null && !run[k]!.selected })
           k = m
         }
-        const before = counted.get(f.id) ?? 0
-        counted.set(f.id, before + items.length)
-        const start = isListStart(f.start + before) ? f.start + before : f.start
-        out.push(nodes[f.kind].create(f.kind === 'orderedList' ? { start } : null, items))
+        if (f.kind !== 'orderedList') out.push(nodes[f.kind].create(null, items.map((it) => it.node)))
+        else {
+          let start = items[0]!.frame.number ?? counted.get(f.id) ?? f.start
+          let part: PMNode[] = []
+          const close = () => {
+            if (!isListStart(start)) throw new UnstorableStart()
+            out.push(nodes.orderedList.create({ start }, part))
+          }
+          items.forEach((it, n) => {
+            const painted = start + part.length
+            if (n > 0 && it.kept && it.frame.number !== painted) {
+              close()
+              start = it.frame.number!
+              part = []
+            }
+            part.push(it.node)
+          })
+          close()
+          counted.set(f.id, start + part.length)
+        }
       }
       i = j
     }
@@ -1250,6 +1305,13 @@ function listOn(leaves: readonly Leaf[], selected: (l: Leaf) => boolean, kind: C
   const out = leaves.map(copyLeaf)
   /** A list frame some selected line is nearest to (by its list and item) and what replaces it. */
   const replaced = new Map<string, Frame>()
+  /** Lists of this kind that a selected line just before them joins, and the list they join. */
+  const joined = new Map<number, number>()
+  const target = (id: number): number => {
+    let t = id
+    while (joined.has(t)) t = joined.get(t)!
+    return t
+  }
   let prev: { idx: number; key: string; list: number } | null = null
   out.forEach((l, idx) => {
     if (!selected(l)) return
@@ -1258,21 +1320,27 @@ function listOn(leaves: readonly Leaf[], selected: (l: Leaf) => boolean, kind: C
     const key = prefix.map(frameKey).join('/')
     const joins = prev !== null && prev.idx === idx - 1 && prev.key === key
     if (leafHas(l, kind)) {
-      prev = { idx, key, list: l.frames[i]!.id }
+      // Already in a list of this kind: a selected line just before it in the same place, in another
+      // list, makes them one list.
+      const own = target(l.frames[i]!.id)
+      if (joins && target(prev!.list) !== own) joined.set(own, target(prev!.list))
+      prev = { idx, key, list: target(own) }
       return
     }
-    const list = joins ? prev!.list : next()
+    const list = joins ? target(prev!.list) : next()
     if (i >= 0) {
       const old = l.frames[i]!
       const k = frameKey(old)
-      if (!replaced.has(k)) replaced.set(k, { kind, id: list, item: next(), checked: false, start: 1 })
+      if (!replaced.has(k)) replaced.set(k, { kind, id: list, item: next(), checked: false, start: 1, number: null })
       prev = { idx, key, list: replaced.get(k)!.id }
     } else {
-      l.frames.push({ kind, id: list, item: next(), checked: false, start: 1 })
+      l.frames.push({ kind, id: list, item: next(), checked: false, start: 1, number: null })
       prev = { idx, key, list }
     }
   })
-  return out.map((l) => (selected(l) ? { ...l, frames: l.frames.map((f) => (f.kind !== 'blockquote' && replaced.get(frameKey(f))) || f) } : l))
+  const kept = out.map((l) => (selected(l) ? { ...l, frames: l.frames.map((f) => (f.kind !== 'blockquote' && replaced.get(frameKey(f))) || f) } : l))
+  if (joined.size === 0) return kept
+  return kept.map((l) => ({ ...l, frames: l.frames.map((f) => (f.kind === kind && joined.has(f.id) ? { ...f, id: target(f.id) } : f)) }))
 }
 
 /** A list kind off: each selected line leaves every list of this kind it is nearest to, one after another outward. */
@@ -1307,7 +1375,7 @@ function quoteOn(leaves: readonly Leaf[], selected: (l: Leaf) => boolean, next: 
       while (k < common && k < l.frames.length && frameKey(l.frames[k]!) === frameKey(run[0]!.frames[k]!)) k++
       common = k
     }
-    const quote: Frame = { kind: 'blockquote', id: next(), item: 0, checked: false, start: 1 }
+    const quote: Frame = { kind: 'blockquote', id: next(), item: 0, checked: false, start: 1, number: null }
     for (const l of run) l.frames.splice(common, 0, quote)
     i = j
   }
@@ -1344,17 +1412,44 @@ function codeOff(leaves: readonly Leaf[], selected: (l: Leaf) => boolean): Leaf[
 }
 
 /**
- * A list, quote or code-block button on the lines the selection touches (outside an edit, every
- * line), by the rule above: off when every one of them already has the block, on otherwise. One
- * transaction that keeps the text and the selection. False when nothing would change.
+ * The document changed to `content` by replacing only the part that differs (from the first to the
+ * last block that changes, or less), so that what is keyed to positions outside it is untouched; the
+ * whole content only if ProseMirror could not fit that part exactly.
  */
-export function toggleBlockKind(kind: BlockKind): Command {
+function replaceChanged(state: EditorState, content: Fragment): Transaction {
+  const old = state.doc.content
+  const whole = () => state.tr.replaceWith(0, old.size, content)
+  const start = old.findDiffStart(content)
+  const end = old.findDiffEnd(content)
+  if (start === null || !end) return whole()
+  let { a: endA, b: endB } = end
+  const overlap = start - Math.min(endA, endB)
+  if (overlap > 0) {
+    endA += overlap
+    endB += overlap
+  }
+  const want = state.doc.copy(content)
+  const tr = state.tr.replace(start, endA, want.slice(start, endB))
+  return tr.doc.eq(want) ? tr : whole()
+}
+
+/**
+ * A list, quote or code-block button, by the rule above: off when every line concerned already has
+ * the block, on otherwise. The lines concerned are those the selection touches (no line when only a
+ * divider is selected: nothing changes); with `wholeBox`, every line of the text, empty ones and the
+ * last included (a selected box). One transaction that keeps the text and the selection and changes
+ * only the blocks that change. False when nothing would change, or when a numbered list would need a
+ * start that cannot be stored.
+ */
+export function toggleBlockKind(kind: BlockKind, opts: { wholeBox?: boolean } = {}): Command {
   return (state, dispatch) => {
+    const range = opts.wholeBox ? { first: 0, last: textblocksOf(state.doc).length - 1 } : linesOfState(state)
+    if (!range || range.last < range.first) return false
     let ids = 0
     const next = () => ++ids
     const leaves = flatten(state.doc, next)
-    const { first, last } = linesOfSelection(state.doc, state.selection.from, state.selection.to)
-    const selected = (l: Leaf) => l.line !== null && l.line >= first && l.line <= last
+    for (const l of leaves) l.selected = l.line !== null && l.line >= range.first && l.line <= range.last
+    const selected = (l: Leaf) => l.selected
     const lines = leaves.filter(selected)
     if (lines.length === 0) return false
     const on = !lines.every((l) => leafHas(l, kind))
@@ -1362,11 +1457,50 @@ export function toggleBlockKind(kind: BlockKind): Command {
     if (kind === 'codeBlock') result = on ? codeOn(leaves, selected) : codeOff(leaves, selected)
     else if (kind === 'blockquote') result = on ? quoteOn(leaves, selected, next) : leaves.map((l) => (selected(l) ? { ...l, frames: l.frames.filter((f) => f.kind !== 'blockquote') } : l))
     else result = on ? listOn(leaves, selected, kind, next) : listOff(leaves, selected, kind)
-    const content = Fragment.fromArray(rebuild(result))
+    let content: Fragment
+    try {
+      content = Fragment.fromArray(rebuild(result))
+    } catch (e) {
+      if (e instanceof UnstorableStart) return false
+      throw e
+    }
     if (content.eq(state.doc.content)) return false
-    if (dispatch) dispatch(keepSelection(state)(state.tr.replaceWith(0, state.doc.content.size, content)).setMeta(META.levelsSet, true).scrollIntoView())
+    if (dispatch) dispatch(keepSelection(state)(replaceChanged(state, content)).setMeta(META.levelsSet, true).setMeta(META.keepsText, true).scrollIntoView())
     return true
   }
+}
+
+/**
+ * A whole-box formatting command on a stored text (a selected box, not being edited): its document
+ * changed by `change` (a transaction on the whole document) and by `command` (run as in an edit
+ * with all the text selected, or acting on every line itself), its box formatting by `box`; the
+ * canonical record after it (`contentFromDoc`). Null when that is what the text already was, or
+ * when the result is over a bound a load enforces (a list around lines already nested to the depth
+ * bound): nothing changes, records or saves, exactly as the edit session refuses it.
+ */
+export function boxCommandContent(
+  source: TextSource,
+  edits: { change?: (tr: Transaction) => unknown; box?: (fmt: TextFormatting) => TextFormatting; command?: Command },
+): TextContent | null {
+  const read = docFromText(source)
+  if (!read) return null
+  const before = contentFromDoc(read.doc, read.box)
+  let doc = read.doc
+  if (edits.change) {
+    const tr = EditorState.create({ doc: read.doc }).tr
+    edits.change(tr)
+    doc = tr.doc
+  }
+  if (edits.command) {
+    const state = EditorState.create({ doc: read.doc, selection: allText(read.doc) ?? undefined })
+    edits.command(state, (tr) => {
+      doc = tr.doc
+    })
+  }
+  const nextBox = edits.box ? boxOf(edits.box(read.box)) : read.box
+  if (exceedsBounds(doc, nextBox.font ?? 'sans')) return null
+  const after = contentFromDoc(doc, nextBox)
+  return JSON.stringify(after) === JSON.stringify(before) ? null : after
 }
 
 /** Bullet list, numbered list or checklist (`toggleBlockKind`). */

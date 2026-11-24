@@ -580,6 +580,20 @@ test('a frame preview shows the blocks where the page shows them', async ({ page
     expect(board, `${r.name} on the board`).toBeGreaterThan(0.02)
     expect(shown, `${r.name} in the preview (board ${board.toFixed(3)})`).toBeGreaterThan(board * 0.5)
   }
+  // The numbers themselves, not only their ink: across each number's width (a region twice as wide,
+  // reaching further left, so that a longer number is never cut), where its ink starts and ends, how
+  // much there is and where its middle lies are the board's, closely enough to tell one digit, or one
+  // digit fewer, from another.
+  for (const r of regions.filter((x) => x.name === 'number' || x.name === 'second number')) {
+    const wide = { ...r, left: r.left - r.width, width: 2 * r.width }
+    const board = inkShape(inkProfile(await screenPixels(page, wide.left, wide.top, wide.width, wide.height)), 1)
+    const shown = inkShape(inkProfile(previewCrop(png, scale, frame, wide)), scale)
+    const say = `${r.name}: board ${JSON.stringify(board)}, preview ${JSON.stringify(shown)}`
+    expect(Math.abs(shown.from - board.from), say).toBeLessThanOrEqual(1.5)
+    expect(Math.abs(shown.to - board.to), say).toBeLessThanOrEqual(1.5)
+    expect(Math.abs(shown.middle - board.middle), say).toBeLessThanOrEqual(1)
+    expect(Math.abs(shown.ink - board.ink) / board.ink, say).toBeLessThan(0.25)
+  }
   const li = await rectIn(page, 'ul:not(.yp-tasks) > li')
   expect(paper(px(li.left - 0.8 * li.em, li.top + 0.62 * li.em))).toBe(false) // the bullet
   expect(paper(px(li.left - 0.3 * li.em, li.top + 0.62 * li.em))).toBe(true)
@@ -777,6 +791,35 @@ function inkShare(img: { width: number; height: number; data: Uint8Array }, fain
     if (d > (faint ? 6 : 40)) ink++
   }
   return n === 0 ? 0 : ink / n
+}
+
+/** For each column of an image, the share of its rows that are ink. */
+function inkProfile(img: { width: number; height: number; data: Uint8Array }): number[] {
+  return Array.from({ length: img.width }, (_, x) => {
+    let n = 0
+    for (let y = 0; y < img.height; y++) {
+      const i = (y * img.width + x) * 4
+      if (Math.max(255 - img.data[i]!, 255 - img.data[i + 1]!, 255 - img.data[i + 2]!) > 60) n++
+    }
+    return img.height === 0 ? 0 : n / img.height
+  })
+}
+
+/**
+ * The shape of the ink in a profile, in scene units for `scale` pixels per unit: the first and last
+ * inked columns (a column inked when a twentieth of its rows are), the amount of ink (inked rows
+ * summed over the columns) and its middle (the ink-weighted mean column).
+ */
+function inkShape(profile: number[], scale: number): { from: number; to: number; ink: number; middle: number } {
+  const first = profile.findIndex((v) => v >= 0.05)
+  let last = -1
+  profile.forEach((v, x) => {
+    if (v >= 0.05) last = x
+  })
+  const ink = profile.reduce((a, v) => a + v, 0)
+  const middle = profile.reduce((a, v, x) => a + v * (x + 0.5), 0) / (ink || 1)
+  const r = (n: number) => +(n / scale).toFixed(2)
+  return { from: r(first), to: r(last + 1), ink: r(ink), middle: r(middle) }
 }
 
 /** The pixels of a scene region in a frame's preview bitmap. */
@@ -1204,5 +1247,88 @@ test('R6: a frame preview shows a list number that reaches into the frame from a
   const png = decodePng(Buffer.from(url.split(',')[1]!, 'base64'))
   const shown = inkShare(previewCrop(png, png.width / frame.width, frame, r))
   expect(shown, 'the preview shows it too').toBeGreaterThan(inkShare(board) * 0.5)
+  expect(errors).toEqual([])
+})
+
+test('S3: `Review`, `1. Album`, `Track`, all selected, Numbered list: one list 1 to 3, in an edit and on a box from Layers; Tab then nests `Album`', async ({ page }) => {
+  const seeded = [p('Review'), { type: 'orderedList', items: [{ blocks: [p('Album')] }, { blocks: [p('Track')] }] }]
+  const { errors, at } = await open(page, [textRec('L', 700, 300, { text: 'Review\nAlbum\nTrack', blocks: seeded })])
+  const btn = (name: string) => page.getByRole('button', { name, exact: true })
+  const one = [{ type: 'orderedList', items: [{ blocks: [p('Review')] }, { blocks: [p('Album')] }, { blocks: [p('Track')] }] }]
+  await newText(page, at, 80, 60)
+  await page.keyboard.type('Review\n1. Album\nTrack')
+  const typed = await storedWhen(page, (d) => texts(d).some((t) => t.id !== 'L' && JSON.stringify(t.blocks) === JSON.stringify(seeded)))
+  const id = texts(typed).find((t) => t.id !== 'L')!.id
+  await page.keyboard.press('Control+a')
+  await btn('Numbered list').click()
+  await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify(one))
+  await expect(btn('Numbered list')).toHaveAttribute('aria-pressed', 'true')
+  // The page paints one list, 1 to 3.
+  const reviewList = page.locator('.scene-layer ol', { hasText: 'Review' })
+  await expect(reviewList).toHaveCount(1)
+  await expect(reviewList.locator(':scope > li')).toHaveCount(3)
+  expect(await reviewList.getAttribute('start')).toBeNull()
+  // Tab on Album nests it under Review.
+  await page.keyboard.press('Control+Home')
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Tab')
+  const nested = [{ type: 'orderedList', items: [{ blocks: [p('Review'), { type: 'orderedList', items: [{ blocks: [p('Album')] }] }] }, { blocks: [p('Track')] }] }]
+  await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify(nested))
+  await page.keyboard.press('Escape')
+  // The same on a box selected from Layers.
+  await page.evaluate(() => window.__writing.select('L'))
+  await expect(btn('Numbered list')).toHaveAttribute('aria-pressed', 'mixed')
+  await btn('Numbered list').click()
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'L').blocks) === JSON.stringify(one))
+  await expect(btn('Numbered list')).toHaveAttribute('aria-pressed', 'true')
+  expect(errors).toEqual([])
+})
+
+test('S3: a numbered list from 999,999,999, Bulleted list on its middle item: refused, the list stays as it is, no undo step', async ({ page }) => {
+  const list = [{ type: 'orderedList', start: 999999999, items: [{ blocks: [p('alpha')] }, { blocks: [p('bravo')] }, { blocks: [p('charlie')] }] }]
+  const { errors, at } = await open(page, [textRec('m', 300, 100, { fontSize: 20, width: 300, text: 'alpha\nbravo\ncharlie', blocks: list })])
+  const btn = (name: string) => page.getByRole('button', { name, exact: true })
+  const before = byId(await storedDoc(page), 'm')
+  const li = await rectIn(page, 'ol > li', 1)
+  await page.mouse.dblclick(at(li.left + 0.5 * li.em, li.top + li.height / 2).x, at(li.left + 0.5 * li.em, li.top + li.height / 2).y)
+  await expect.poll(async () => (await editedText(page))?.focused).toBe(true)
+  await page.keyboard.press('End')
+  await btn('Bulleted list').click()
+  await expect(btn('Bulleted list')).toHaveAttribute('aria-pressed', 'false')
+  await expect(undoButton(page)).toBeDisabled()
+  await expect(page.locator('.scene-layer ol')).toHaveCount(1)
+  await expect(page.locator('.scene-layer ol > li')).toHaveCount(3)
+  expect(await page.locator('.scene-layer ol').getAttribute('start')).toBe('999999999')
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  expect(byId(await storedDoc(page), 'm').blocks).toEqual(before.blocks)
+  expect(errors).toEqual([])
+})
+
+test('S4: autosave while an over-limit candidate is open saves the last valid text: the status stays saved, and a reload has the typed A', async ({ page }) => {
+  const base = 'x'.repeat(499999)
+  const { errors, at } = await open(page, [textRec('c', 100, 100, { fontSize: 8, width: 1200, text: base, blocks: [{ type: 'codeBlock', text: base }] })])
+  await page.mouse.dblclick(at(110, 106).x, at(110, 106).y)
+  await expect.poll(async () => (await editedText(page))?.focused, { timeout: 15000 }).toBe(true)
+  await page.keyboard.press('Control+End')
+  await page.keyboard.type('A')
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.imeSetComposition', { text: 'か', selectionStart: 1, selectionEnd: 1 })
+  // The candidate stays open past the autosave delay.
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS + 1000)
+  await expect(status(page)).toContainText('Saved on this device')
+  const saved = byId(await storedDoc(page), 'c')
+  expect((saved.text as string).length).toBe(500000)
+  expect((saved.text as string).endsWith('xA')).toBe(true)
+  // The composition ends over the bound: it is taken back, the A stays.
+  await cdp.send('Input.insertText', { text: 'か' })
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  await expect(status(page)).toContainText('Saved on this device')
+  await page.reload()
+  await expect(status(page)).toContainText('Saved on this device')
+  const reloaded = byId(await storedDoc(page), 'c')
+  expect((reloaded.text as string).length).toBe(500000)
+  expect((reloaded.text as string).endsWith('xA')).toBe(true)
   expect(errors).toEqual([])
 })
