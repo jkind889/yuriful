@@ -3,6 +3,7 @@ import { markdownToBlocks } from '../model/markdownPaste.ts'
 import { LITERAL_CASES } from '../model/testing/literalCases.ts'
 import { canonicalTextContent } from '../model/textDoc.ts'
 import type { TextContent } from '../model/textDoc.ts'
+import type { BlockNode, InlineRun } from '../model/types.ts'
 import { open, type } from './testing/textHarness.ts'
 
 /**
@@ -52,30 +53,74 @@ describe('a single line converts the same typed and pasted', () => {
     // quotes
     '> quote', '> ', '> > nested', '> > > three', '> - in a quote', '> 1. numbered in a quote', '> 3. from three', '> [ ] task in a quote', '> - [x] ticked in a quote', '> # heading in a quote', '> **bold** in a quote',
     // inline
-    '**bold** and 2 * 3 * 4', '*it* `code` **b**', 'a `b` c', '**a *b* c**', '*x **y** z*', '`*a*`', '*`a`*', '(*x*) "**y**" [`z`]', '*a**b*', '**x*', '*a*b*', 'say **two words**', '`a` `b`', '`x `a` y`', '*a `b* c`', '`a *b` c*', '*a*é', '*é*', 'a*b* *c*', '*🙂*', '`🙂`',
+    '**bold** and 2 * 3 * 4', '*it* `code` **b**', 'a `b` c', '**a *b* c**', '*x **y** z*', '`*a*`', '*`a`*', '(*x*) "**y**" [`z`]', '*a**b*', '**x*', '*a*b*', 'say **two words**', '`a` `b`', '`a *b` c*', '*a*é', '*é*', 'a*b* *c*', '*🙂*', '`🙂`', '*🇺🇸*🇬🇧', '[*x*] and *y*',
     // code
     '```',
   ]
   it.each(SAME)('%j', (line) => {
     expect(pasted(line)).toStrictEqual(typed(line))
   })
+})
 
-  it('differs where the plan settled the pasted rule: `---x`, a language after the fence, and the line a divider leaves', () => {
-    // Typed, the third `-` converts while the line is still `---`; pasted, a divider is a line that is exactly `---`.
-    expect(pasted('---x')).toStrictEqual({ text: '---x' })
-    expect(typed('---x').blocks).toStrictEqual([{ type: 'divider' }, { type: 'paragraph', content: [{ text: 'x' }] }])
-    // Typed, what follows the third backtick is the code; pasted, it is the fence's language and goes.
-    expect(typed('```js').blocks).toStrictEqual([{ type: 'codeBlock', text: 'js' }])
-    expect(pasted('```js').blocks).toStrictEqual([{ type: 'codeBlock', text: '' }])
-    // Typed, a divider brings an empty line to go on typing in; pasted, every line is one block.
-    expect(typed('---').blocks).toStrictEqual([{ type: 'divider' }, { type: 'paragraph' }])
-    expect(pasted('---').blocks).toStrictEqual([{ type: 'divider' }])
-    expect(typed('> ---').blocks).toStrictEqual([{ type: 'blockquote', blocks: [{ type: 'divider' }, { type: 'paragraph' }] }])
-    expect(pasted('> ---').blocks).toStrictEqual([{ type: 'blockquote', blocks: [{ type: 'divider' }] }])
-  })
+/** A paragraph of runs: a string is a plain run, a pair is a run and its marks. */
+const para = (...runs: Array<string | [string, Partial<InlineRun>]>): BlockNode => ({ type: 'paragraph', content: runs.map((r) => (typeof r === 'string' ? { text: r } : { text: r[0], ...r[1] })) })
+const I = { italic: true } as const
+const C = { code: true } as const
+const bullet = (...items: BlockNode[][]): BlockNode => ({ type: 'bulletList', items: items.map((blocks) => ({ blocks })) })
 
-  it('differs for an indented list line, which a paste reads as a list and typing leaves as typed', () => {
-    expect(typed('  - x')).toStrictEqual({ text: '  - x' })
-    expect(pasted('  - x').blocks).toStrictEqual([{ type: 'bulletList', items: [{ blocks: [{ type: 'paragraph', content: [{ text: 'x' }] }] }] }])
+/**
+ * Every place where pasting a line gives something other than typing it key by key, on purpose
+ * (plan Section 11 and the rules settled in the review of the converter). Each row states the
+ * pasted result (null: the paste is literal) and checks that typing really differs, so a row goes
+ * stale loudly if the two rules ever come to agree.
+ */
+const DECLARED: Array<[string, BlockNode[] | null, string]> = [
+  // Lines and fences
+  ['---x', null, 'a divider is a line that is exactly `---`; typed, the third `-` converts while the line is still `---`'],
+  ['---', [{ type: 'divider' }], 'every pasted line is one block; typed, a divider brings an empty line to type on'],
+  ['> ---', [{ type: 'blockquote', blocks: [{ type: 'divider' }] }], 'the same, in a quote'],
+  ['```js', [{ type: 'codeBlock', text: '' }], 'pasted, what follows the opening backticks is a language and goes; typed, it is the code'],
+  ['  - x', [bullet([para('x')])], 'pasted, leading spaces before a list marker are nesting; typed, the marker must start the line'],
+  // P4: one numbered list
+  ['1. a\n1. b', [{ type: 'orderedList', items: [{ blocks: [para('a')] }, { blocks: [para('b')] }] }], 'consecutive numbered items are one list; typed, Enter continues the list and the second `1. ` stays as typed'],
+  ['3. a\n7. b', [{ type: 'orderedList', start: 3, items: [{ blocks: [para('a')] }, { blocks: [para('b')] }] }], 'numbered from the first item, whatever the later numbers'],
+  // P2: code spans first
+  ['`echo *demo*`', [para(['echo *demo*', C])], 'nothing converts inside a code span; typed, the stars convert before the closing backtick is typed'],
+  ['*a `b* c`', [para('*a ', ['b* c', C])], 'the code span is found first'],
+  ['`x `a` y`', [para('`x ', ['a', C], ' y`')], 'code spans are found left to right'],
+  // P1: kept as written inside too
+  ['[*mix*](u)', null, 'nothing converts inside a link'],
+  ['![*cover*](u)', null, 'nothing converts inside an image'],
+  ['<b title="*mix*">x</b>', null, 'nothing converts inside an HTML tag'],
+  ['| *mix* |', null, 'a table line stays as written'],
+  ['*a\\*', null, 'an escaped marker is no marker'],
+  ['**a\\*b**', [para(['a\\*b', { bold: true }])], 'an escaped `*` is a character, not the nearest marker'],
+  // Paste decides the block before the inline markers; typing re-checks the line after each conversion
+  ['*>* x', [para(['>', I], ' x')], 'typed, the italic `>` and the space make a quote'],
+  ['*3.* x', [para(['3.', I], ' x')], 'typed, a numbered list'],
+  ['*[]* x', [para(['[]', I], ' x')], 'typed, a checklist'],
+  ['- *[x]* x', [bullet([para(['[x]', I], ' x')])], 'typed, a ticked checklist item'],
+  ['*--*-', [para(['--', I], '-')], 'typed, a divider'],
+  ['*#* x', [para(['#', I], ' x')], 'typed, a heading'],
+  ['*-* x', [para(['-', I], ' x')], 'typed, a bullet'],
+  ['*``*`', [para(['``', I], '`')], 'typed, a code block'],
+  // A character that joins the one before it
+  ['# \u0301x', null, 'pasted, a combining mark joins the space of `# `, so it is no marker; typed, the space converts before the mark is typed'],
+  ['- \u0301x', null, 'the same for a bullet'],
+  ['> \u0301x', null, 'for a quote'],
+  ['1. \u0301x', null, 'for a numbered item'],
+  ['[] \u0301x', null, 'for a checkbox'],
+  ['- [ ] \u0301x', [bullet([para('[ ] \u0301x')])], 'for a checkbox after a bullet: the bullet converts, the box stays as written'],
+  ['```\u0301x', null, 'for a fence'],
+  ['`x`\u0301', null, 'for a closing backtick'],
+  ['*a*\u0301', null, 'for a closing `*`'],
+  ['- *🇺*🇸', [bullet([para('*🇺*🇸')])], 'removing the stars would join two regional indicators into one flag; typed, they go and the flag is plain'],
+]
+
+describe('declared differences from typing', () => {
+  it.each(DECLARED)('%j', (text, blocks) => {
+    const expected = blocks ? canonicalTextContent({ text: '', blocks }) : { text }
+    expect(pasted(text)).toStrictEqual(expected)
+    expect(typed(text)).not.toStrictEqual(expected)
   })
 })
