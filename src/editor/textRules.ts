@@ -1842,6 +1842,13 @@ export function toggleBlockKind(kind: BlockKind, opts: { wholeBox?: boolean } = 
   }
 }
 
+/** `content` without bold (what a heading's text never stores). */
+function withoutBold(content: Fragment): Fragment {
+  const out: PMNode[] = []
+  content.forEach((n) => out.push(n.isText ? n.mark(marks.bold.removeFromSet(n.marks)) : n))
+  return Fragment.fromArray(out)
+}
+
 /**
  * Blocks pasted at the caret of `state` (a caret in a line that is not a code block), as one
  * transaction; null when the caret is not in a line or the result could not be stored (a list
@@ -1863,15 +1870,21 @@ export function toggleBlockKind(kind: BlockKind, opts: { wholeBox?: boolean } = 
  * - Lists the paste keeps apart stay apart. A pasted divider has no empty line after it, unless it is
  *   the last thing in the text, or was pasted on an empty line (which then stays after it): the caret goes there.
  * - The caret ends after the pasted text (or, after a final divider, at the start of the line after it).
+ * - Yuriful's own copy across lines (`openStart`, `openEnd`: an edge of the copied selection fell
+ *   inside a line): that partial first line joins the text before the caret and that partial last
+ *   line the text after it, whatever kind of line they came from, taking the kind of the line they
+ *   join. Every other copied line is placed as it stood relative to the first copied line, which
+ *   stands where the caret's line is: in that line's item it goes in the caret's item; in another item of the same
+ *   list it becomes an item of the caret's list with its tick; deeper blocks around it come too;
+ *   blocks the joining line was in and it was not are left. The partial last line goes in its item
+ *   of the caret's list in the same way when it was in another item of the anchor's list (the text
+ *   after the caret goes with it), and otherwise in the line it joins. So a cut pasted back where it
+ *   was gives back the text exactly, and the blocks too when the two ends of the cut were lines of
+ *   one kind in the same blocks (a list's items aside). Whole lines of Yuriful's own copy pasted on
+ *   an empty line in blocks of the same kinds as the first copied line's take that line's place the
+ *   same way (where a cut of whole lines leaves the caret).
  */
-/** `content` without bold (what a heading's text never stores). */
-function withoutBold(content: Fragment): Fragment {
-  const out: PMNode[] = []
-  content.forEach((n) => out.push(n.isText ? n.mark(marks.bold.removeFromSet(n.marks)) : n))
-  return Fragment.fromArray(out)
-}
-
-export function pasteBlocks(state: EditorState, pasted: Fragment, opts: { inline?: boolean } = {}): Transaction | null {
+export function pasteBlocks(state: EditorState, pasted: Fragment, opts: { inline?: boolean; openStart?: boolean; openEnd?: boolean; own?: boolean } = {}): Transaction | null {
   const $c = state.selection.$from
   if (!state.selection.empty || !$c.parent.isTextblock || $c.parent.type.spec.code) return null
   const tr = state.tr
@@ -1895,7 +1908,55 @@ export function pasteBlocks(state: EditorState, pasted: Fragment, opts: { inline
   const inQuote = Lf.length > 0 && Lf[Lf.length - 1]!.kind === 'blockquote'
   const joinedItems = new Map<number, number>()
   const own = flatten(nodes.doc.create(null, pasted), next)
+  // Yuriful's own copy across lines with an edge inside a line: that line joins the caret's line and
+  // anchors where every other copied line goes (`placeByAnchor`).
+  const openStart = opts.openStart === true && own.length >= 2 && own[0]!.node.isTextblock
+  const openEnd = opts.openEnd === true && own.length >= 2 && own[own.length - 1]!.node.isTextblock
+  // Whole lines of Yuriful's own copy pasted on an empty line in blocks of the same kinds as the first
+  // copied line's (where a cut of them leaves the caret): the first line takes that line's place.
+  const first = own[0]
+  const inPlace = opts.own === true && !openStart && !openEnd && head.size === 0 && tail.size === 0 && first !== undefined && first.node.isTextblock && first.frames.length === Lf.length && first.frames.every((f, i) => f.kind === Lf[i]!.kind)
+  // The first copied line anchors: where a cut leaves the caret, the line there has the first line's blocks.
+  const anchor = (openStart || openEnd || inPlace) && first !== undefined && first.node.isTextblock ? first : null
+  const sameFrame = (a: Frame, b: Frame) => a.kind === b.kind && a.id === b.id && a.item === b.item
+  const freshIds = new Map<number, number>()
+  const freshItems = new Map<string, number>()
+  const freshStarts = new Map<number, number>()
+  const fresh = (f: Frame): Frame => {
+    if (!freshIds.has(f.id)) {
+      freshIds.set(f.id, next())
+      // A numbered list made again starts at the number its first item here was painted with.
+      freshStarts.set(f.id, f.kind === 'orderedList' && f.number !== null ? f.number : f.start)
+    }
+    const key = `${f.id}:${f.item}`
+    if (f.kind !== 'blockquote' && !freshItems.has(key)) freshItems.set(key, next())
+    return { ...f, id: freshIds.get(f.id)!, item: f.kind === 'blockquote' ? f.item : freshItems.get(key)!, start: freshStarts.get(f.id)!, number: null }
+  }
+  let siblings = false
+  /** Where a copied leaf goes relative to the anchor, which stands where the caret's line is; `near`: it is in the anchor's item, or in another item of the anchor's innermost list, with nothing more around it. */
+  const placeByAnchor = (X: Leaf): { frames: Frame[]; near: boolean } => {
+    const FA = anchor!.frames
+    let c = 0
+    while (c < X.frames.length && c < FA.length && sameFrame(X.frames[c]!, FA[c]!)) c++
+    const dl = Lf.length - (FA.length - c)
+    const rest = X.frames.slice(c)
+    if (dl < 0) return { frames: rest.map(fresh), near: false }
+    const base = Lf.slice(0, dl)
+    const r0 = rest[0]
+    const a0 = FA[c]
+    if (r0 && a0 && r0.kind !== 'blockquote' && r0.kind === a0.kind && r0.id === a0.id && Lf[dl] && Lf[dl]!.kind === r0.kind) {
+      // Another item of the anchor's list: an item of the caret's list, with its tick.
+      const key = `${r0.id}:${r0.item}`
+      if (!freshItems.has(key)) freshItems.set(key, next())
+      siblings = true
+      return { frames: [...base, { ...Lf[dl]!, item: freshItems.get(key)!, checked: r0.checked, number: null }, ...rest.slice(1).map(fresh)], near: FA.length - c === 1 && rest.length === 1 }
+    }
+    // A block of another kind than the caret's at that depth (another kind of list) nests in the caret's item.
+    if (r0 && Lf[dl] && Lf[dl]!.kind !== r0.kind && Lf[dl]!.kind !== 'blockquote') return { frames: [...Lf, ...rest.map(fresh)], near: false }
+    return { frames: [...base, ...rest.map(fresh)], near: FA.length - c === 0 && rest.length === 0 }
+  }
   const placed: Leaf[] = own.map((pl) => {
+    if (anchor) return { ...pl, frames: placeByAnchor(pl).frames, line: null, selected: true }
     const f0 = pl.frames[0]
     let frames: Frame[]
     if (f0 && f0.kind !== 'blockquote' && k >= 0 && Lf[k]!.kind === f0.kind) {
@@ -1906,21 +1967,31 @@ export function pasteBlocks(state: EditorState, pasted: Fragment, opts: { inline
     else frames = [...Lf, ...pl.frames]
     return { ...pl, frames, line: null, selected: true }
   })
+  // The last copied line, when it joins the text after the caret: in its own item of the caret's list when it was in another item of the anchor's list.
+  const lastNear = anchor && openEnd ? placeByAnchor(own[own.length - 1]!) : null
   const plainPara = (i: number) => own[i]!.frames.length === 0 && own[i]!.node.type === nodes.paragraph
-  const firstJoins = plainPara(0)
-  const lastJoins = placed.length >= 2 && plainPara(placed.length - 1)
+  const firstJoins = anchor ? openStart : plainPara(0)
+  const lastJoins = placed.length >= 2 && (anchor ? openEnd : plainPara(placed.length - 1))
   const out: Leaf[] = []
   let caret: { leaf: Leaf; offset: number } | null = null
+  /** The line holding the text after the caret, once placed. */
+  let tailHolder: Leaf | null = null
   // Both halves of the split line keep its kind (a heading its level; a heading stores no bold).
   const ofLine = (content: Fragment) => L.node.type.create(L.node.attrs, L.node.type === nodes.heading ? withoutBold(content) : content)
   // In a list, the half after the caret is a new unticked item when the line was split (as Enter
   // makes one), and the rest of the caret's item (its later paragraphs, nested lists) goes with it.
   // So does that rest when pasted items of the caret's list come between it and the caret's line,
   // with nothing after the caret: it is the item's continuation, after them.
+  // What came before the caret in its item (the caret's line before it, or earlier lines of the item)
+  // and what comes after it (the line after it, later lines of the item) are split apart when the line
+  // is split, or when pasted items of the caret's list come between them: then what comes after is a
+  // new unticked item, wherever in the item the caret was.
   const sameItem = (f: Frame | undefined) => k >= 0 && f !== undefined && f.kind === Lf[k]!.kind && f.id === Lf[k]!.id && f.item === Lf[k]!.item
   const restOfItem = k >= 0 && leaves.slice(li + 1).some((l) => sameItem(l.frames[k]))
-  const continues = tail.size > 0 || (restOfItem && joinedItems.size > 0)
-  const newItem = (head.size > 0 || firstJoins) && continues && k >= 0 ? { ...Lf[k]!, item: next(), checked: false, number: null } : null
+  const itemBefore = head.size > 0 || firstJoins || (k >= 0 && leaves.slice(0, li).some((l) => sameItem(l.frames[k])))
+  const lineSplit = (head.size > 0 || firstJoins) && tail.size > 0
+  const itemSplit = (joinedItems.size > 0 || siblings) && itemBefore && (tail.size > 0 || restOfItem)
+  const newItem = k >= 0 && (lineSplit || itemSplit) ? { ...Lf[k]!, item: next(), checked: false, number: null } : null
   const tailFrames = newItem ? Lf.map((f, i) => (i === k ? newItem : f)) : Lf
   if (firstJoins) out.push({ ...L, node: ofLine(head.append(placed[0]!.node.content)) })
   else if (head.size > 0) out.push({ ...L, node: L.node.copy(head) })
@@ -1928,8 +1999,11 @@ export function pasteBlocks(state: EditorState, pasted: Fragment, opts: { inline
   out.push(...middle)
   const lastPlaced = placed[placed.length - 1]!
   if (lastJoins) {
-    // The last pasted paragraph joins the text after the caret, in that half's line.
-    const leaf = tail.size > 0 ? { ...lastPlaced, node: ofLine(lastPlaced.node.content.append(tail)), frames: tailFrames } : lastPlaced
+    // The last pasted paragraph joins the text after the caret, in that half's line (Yuriful's own
+    // partial last line always does, in its item when `lastNear` places it there).
+    const frames = lastNear?.near ? lastPlaced.frames : tailFrames
+    const leaf = tail.size > 0 || anchor ? { ...lastPlaced, node: ofLine(lastPlaced.node.content.append(tail)), frames } : lastPlaced
+    if (tail.size > 0 || anchor) tailHolder = leaf
     out.push(leaf)
     caret = { leaf, offset: lastPlaced.node.content.size }
   } else {
@@ -1938,11 +2012,16 @@ export function pasteBlocks(state: EditorState, pasted: Fragment, opts: { inline
     if (tail.size > 0) {
       // The text after the caret: a line of the caret line's kind.
       const leaf: Leaf = { ...L, node: L.node.type.create(L.node.attrs, tail), frames: tailFrames }
+      tailHolder = leaf
       out.push(leaf)
       if (!caret) caret = { leaf, offset: 0 }
     }
   }
-  const after = leaves.slice(li + 1).map((l) => (newItem && sameItem(l.frames[k]) ? { ...l, frames: l.frames.map((f, i) => (i === k ? newItem : f)) } : l))
+  // The rest of the caret's item goes with what came after the caret, when that went to another item
+  // of the caret's list (with no text after the caret, to the new item when pasted items split the item).
+  const held = tailHolder ? (tailHolder as Leaf).frames[k] : undefined
+  const cont = !tailHolder ? newItem : k >= 0 && held && held.kind === Lf[k]!.kind && held.id === Lf[k]!.id && !sameItem(held) ? held : null
+  const after = leaves.slice(li + 1).map((l) => (cont && sameItem(l.frames[k]) ? { ...l, frames: l.frames.map((f, i) => (i === k ? cont : f)) } : l))
   if (!caret) {
     // The paste ends with a divider. Pasted on an empty line, that line stays, after it, with the caret
     // (no line of the text goes); otherwise the caret goes to the start of the next line, or to a new

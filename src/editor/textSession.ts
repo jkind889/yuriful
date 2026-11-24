@@ -165,12 +165,26 @@ const pasteParser = new KeepSpacesParser(textSchema, PMDOMParser.fromSchema(text
 
 /** What Yuriful puts on the clipboard: the schema's own HTML, its first element marked as Yuriful's copy (`YURIFUL_COPY`). */
 class YurifulClipboardSerializer extends DOMSerializer {
+  private depth = 0
   override serializeFragment(fragment: Fragment, options: { document?: Document } = {}, target?: HTMLElement | DocumentFragment): HTMLElement | DocumentFragment {
-    const out = super.serializeFragment(fragment, options, target)
-    out.firstElementChild?.setAttribute(YURIFUL_COPY, '')
+    // (It is called again for the content of every node: only the outermost call marks the copy.)
+    this.depth++
+    let out: HTMLElement | DocumentFragment
+    try {
+      out = super.serializeFragment(fragment, options, target)
+    } finally {
+      this.depth--
+    }
+    if (this.depth === 0) {
+      // Its value names the edges of a copy across lines that fell inside a line (`clipboardSlice`, just before).
+      out.firstElementChild?.setAttribute(YURIFUL_COPY, copyEdges)
+      copyEdges = ''
+    }
     return out
   }
 }
+/** The open edges of the copy being serialized (`open-start`, `open-end`), set by `clipboardSlice` for the serializer straight after it. */
+let copyEdges = ''
 const clipboardSerializer = new YurifulClipboardSerializer(DOMSerializer.fromSchema(textSchema).nodes, DOMSerializer.fromSchema(textSchema).marks)
 
 /** The words of pasted HTML as plain text, one line per line it shows (through the same inert sanitizer as an HTML paste). */
@@ -268,8 +282,11 @@ function storedOffset(stored: string, offset: number): number {
  * inline text, and text leaving a heading arrives bold, plan Section 11 point 4). A copy across lines is
  * closed, so the HTML holds every block around the copied lines (a quote, a list, an item and its
  * tick) rather than ProseMirror's context for them, and each numbered list on its left edge starts at
- * the number its first copied item was painted with. Every character carries the font it was shown in
- * (the box's `baseFont` where it has none of its own), so a paste into a box of another font keeps it.
+ * the number its first copied item was painted with; when that number cannot be stored, the copy
+ * carries its lines as plain lines instead (never a different number). An edge of a copy across
+ * lines that falls inside a line is open (`copyEdges`, read by `htmlToBlocks`): that partial line
+ * joins the line it is pasted into. Every character carries the font it was shown in (the box's
+ * `baseFont` where it has none of its own), so a paste into a box of another font keeps it.
  */
 export function clipboardSlice(slice: Slice, selection: Selection, baseFont: FontId): Slice {
   const shown = marks.font.create({ font: baseFont })
@@ -285,6 +302,7 @@ export function clipboardSlice(slice: Slice, selection: Selection, baseFont: Fon
   const { $from, $to } = selection
   if ($from.parent.isTextblock && $from.sameParent($to)) return slice
   if (slice.openStart !== $from.depth) return slice // not a selection's own content (with its parents): left as it is
+  let unstorable = false
   const edge = (frag: Fragment, d: number): Fragment => {
     const first = frag.firstChild
     if (!first || d > $from.depth) return frag
@@ -293,10 +311,33 @@ export function clipboardSlice(slice: Slice, selection: Selection, baseFont: Fon
     if (first.type === nodes.orderedList && ancestor.type === nodes.orderedList) {
       const painted = (ancestor.attrs.start as number) + $from.index(d)
       if (isListStart(painted)) attrs = { ...attrs, start: painted }
+      else unstorable = true
     }
     return frag.replaceChild(0, first.type.create(attrs, edge(first.content, d + 1), first.marks))
   }
-  return new Slice(edge(slice.content, 1), 0, 0)
+  const closed = edge(slice.content, 1)
+  if (unstorable) {
+    // A number that cannot be stored is never written as another: the lines go as plain lines.
+    // Each line its words, in the font they were shown in (a code block's lines each a line).
+    const lines: PMNode[] = []
+    closed.descendants((n) => {
+      if (!n.isTextblock) return true
+      if (n.type.spec.code) {
+        for (const part of n.textContent.split('\n')) lines.push(nodes.paragraph.create(null, part ? textSchema.text(part, [shown]) : null))
+        return false
+      }
+      const words: PMNode[] = []
+      n.forEach((c) => {
+        if (c.isText) words.push(c.mark(c.marks.filter((m) => m.type === marks.font)))
+      })
+      lines.push(nodes.paragraph.create(null, words))
+      return false
+    })
+    return new Slice(Fragment.fromArray(lines), 0, 0)
+  }
+  const open = [$from.parent.isTextblock && $from.parentOffset > 0 ? 'open-start' : '', $to.parent.isTextblock && $to.parentOffset < $to.parent.content.size ? 'open-end' : ''].filter(Boolean)
+  copyEdges = open.join(' ')
+  return new Slice(closed, 0, 0)
 }
 
 export function copiedSlice(slice: Slice): Slice {
@@ -621,7 +662,7 @@ export class EditSession {
   }
 
   /**
-   * Typing, Enter, a deletion or a paste over a selection always ends with exactly the new text in
+   * Typing, Enter, a deletion (a cut included) or a paste over a selection always ends with exactly the new text in
    * place of the selection and a collapsed caret after it, whatever blocks the selection crossed
    * (`settleReplacement`). An IME composition starts with such a deletion.
    */
@@ -633,6 +674,8 @@ export class EditSession {
     let input: ReplacementInput
     if (replaced) input = replaced.text === '' ? { kind: 'delete' } : replaced.text === '\n' ? { kind: 'enter' } : { kind: 'text', text: replaced.text }
     else if (tr.getMeta('paste') === true && slice) input = { kind: 'slice', slice }
+    // A cut deletes the selection as Delete does, so that pasting it back where it was gives it back.
+    else if (tr.getMeta('uiEvent') === 'cut') input = { kind: 'delete' }
     else return tr
     const settled = settleReplacement(this.current, tr, input, (doc) => !exceedsBounds(doc, this.baseFont))
     if (settled === tr || settled === null) return settled
@@ -1231,8 +1274,16 @@ export class EditSession {
     return this.unlessComposing(() => {
       // Its own undo step (two for a converted Markdown paste), however quickly typing or another
       // paste comes before or after it: undo after a paste never takes away what was there before it.
+      const was = this.current
       this.dispatch(closeHistory(this.current.tr))
       const done = this.pasteNow(data)
+      if (this.current.doc.eq(was.doc)) {
+        // Refused (or it put back exactly what it replaced): the record, the selection and how the
+        // typing around it groups for undo stay exactly as they were.
+        this.current = was
+        this.mounted?.view.updateState(was)
+        return done
+      }
       this.dispatch(closeHistory(this.current.tr))
       return done
     })
@@ -1247,8 +1298,9 @@ export class EditSession {
       if (!text) return false
       return this.pasteLiteral(text)
     }
-    if (this.codeAtPaste(this.current)) {
-      // Inline code chosen at the caret (or the caret in inline code): the plain text goes in literally, as code, whatever HTML came with it.
+    if (this.codePending(this.current)) {
+      // Inline code chosen at the caret: the plain text goes in literally, as code, whatever HTML came with it.
+      // (Plain text arriving in inline code text is never converted either, `codeAtPaste`; HTML pasted there keeps its blocks.)
       const text = data.text || (data.html !== undefined && !data.plain ? htmlPlainText(data.html) : '')
       if (!text) return false
       return this.pasteLiteral(text)
@@ -1294,6 +1346,11 @@ export class EditSession {
     return true
   }
 
+  /** Whether inline code is chosen at the caret (pending): then a paste is the clipboard's plain text, as code. */
+  private codePending(state: EditorState): boolean {
+    return applyPending([], pendingOf(state), this.baseFont).some((m) => m.type === marks.code)
+  }
+
   /** Whether the marks of the place a paste arrives at include inline code (pending, or the code text the caret is in): then plain text is never converted. */
   private codeAtPaste(state: EditorState): boolean {
     return this.placeMarks(state).some((m) => m.type === marks.code)
@@ -1332,7 +1389,7 @@ export class EditSession {
 
   /** Pasted HTML that keeps structure (headings, lists, quotes, code, dividers, fonts copied in Yuriful): one in-edit undo step; over a bound, pasted as lines with marks only (as before), and over a bound even so, nothing. */
   private pasteHtmlBlocks(read: PastedHtml, data: PasteData): boolean {
-    const target = this.pastedBlocks(this.current, read.blocks, read.inline, read.fromHeading, read.own)
+    const target = this.pastedBlocks(this.current, read.blocks, read.inline, read.fromHeading, read.own, { openStart: read.openStart, openEnd: read.openEnd, own: read.own })
     if (!target) {
       // It does not fit: the clipboard's plain text, literally (never converted again), arriving as HTML's
       // characters do; when that does not fit either, nothing changes.
@@ -1348,7 +1405,7 @@ export class EditSession {
    * by the settled rule for input over a selection), with their marks given (`pasteMarks`), placed
    * by `pasteBlocks`; null when it could not be stored, or the selection could not be deleted.
    */
-  private pastedBlocks(state: EditorState, blocks: BlockNode[], inline: boolean, fromHeading: boolean, ownFonts = false): Transaction | null {
+  private pastedBlocks(state: EditorState, blocks: BlockNode[], inline: boolean, fromHeading: boolean, ownFonts = false, edges: { openStart?: boolean; openEnd?: boolean; own?: boolean } = {}): Transaction | null {
     const valid = (doc: PMNode) => !exceedsBounds(doc, this.baseFont)
     const canonical = parseBlocks(blocks, this.baseFont)
     if (!canonical) return null
@@ -1367,7 +1424,7 @@ export class EditSession {
       blocksIn = Fragment.from(nodes.paragraph.create(null, (run as PMNode | null)?.content ?? Fragment.empty))
     }
     const content = this.pasteMarks(blocksIn, state, inline && fromHeading && !intoHeading, ownFonts)
-    const placed = pasteBlocks(at, content, { inline })
+    const placed = pasteBlocks(at, content, { inline, ...edges })
     if (!placed) return null
     for (const step of placed.steps) tr.step(step)
     tr.setSelection(TextSelection.create(tr.doc, placed.selection.anchor, placed.selection.head))
@@ -1709,7 +1766,10 @@ export class EditSession {
           return out
         },
         // What a copy or cut puts on the clipboard keeps the blocks, ticks, list starts and fonts, so a paste in Yuriful brings them back (a drop flattens it, `arriving`).
-        transformCopied: (slice, view) => (this.draggingOut ? slice : clipboardSlice(slice, view.state.selection, this.baseFont)),
+        transformCopied: (slice, view) => {
+          copyEdges = ''
+          return this.draggingOut ? slice : clipboardSlice(slice, view.state.selection, this.baseFont)
+        },
         clipboardSerializer,
         clipboardTextSerializer: (slice) => slice.content.textBetween(0, slice.content.size, '\n'),
       },

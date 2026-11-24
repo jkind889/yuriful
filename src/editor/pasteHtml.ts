@@ -58,6 +58,9 @@ export interface PastedHtml {
   plain: boolean
   /** It is Yuriful's own copy (`YURIFUL_COPY`): its fonts are read, each character's as it was shown. */
   own: boolean
+  /** Yuriful's own copy across lines whose first (last) edge fell inside a line: that partial line joins the line it is pasted into. */
+  openStart: boolean
+  openEnd: boolean
 }
 
 /**
@@ -111,11 +114,11 @@ function firstShown(node: Node): Node | null {
 function taskOf(li: Element, inTaskList: boolean): { checked: boolean } | null {
   const data = li.getAttribute('data-checked')
   if (data !== null) return { checked: data === 'true' }
-  if (li.getAttribute('data-type') === 'taskItem') return { checked: false }
   let first = firstShown(li)
   while (first && first.nodeType === 1 && ['p', 'label', 'span', 'div'].includes((first as Element).localName)) first = firstShown(first)
   const box = first && first.nodeType === 1 && (first as Element).localName === 'input' ? (first as Element) : null
   if (box && box.getAttribute('type')?.toLowerCase() === 'checkbox') return { checked: box.hasAttribute('checked') || box.getAttribute('aria-checked') === 'true' }
+  if (li.getAttribute('data-type') === 'taskItem') return { checked: false }
   return inTaskList ? { checked: false } : null
 }
 
@@ -123,7 +126,9 @@ function taskOf(li: Element, inTaskList: boolean): { checked: boolean } | null {
 export function htmlToBlocks(html: string): PastedHtml {
   const inert = new DOMParser().parseFromString(html, 'text/html')
   // Yuriful's own copy (its marker, not ProseMirror's generic `data-pm-slice`, which other editors write too).
-  const own = inert.body.querySelector(`[${YURIFUL_COPY}]`) !== null
+  const ownMarker = inert.body.querySelector(`[${YURIFUL_COPY}]`)
+  const own = ownMarker !== null
+  const edges = (ownMarker?.getAttribute(YURIFUL_COPY) ?? '').split(' ')
   let fromHeading = false
 
   /** A list of blocks being filled, with the depth its blocks are at (top level 1). */
@@ -265,17 +270,20 @@ export function htmlToBlocks(html: string): PastedHtml {
   walk(inert.body, top, {}, false, false)
   const blocks = top.out.map(clean)
 
-  // What Yuriful copied from inside one line: ProseMirror marks the slice open at both ends.
+  // What Yuriful copied from inside one line: ProseMirror marks the slice open at both ends. It pastes
+  // as words, a code line's too (as plain words: a code block's text has no marks, and inline code is
+  // a mark of its own that the copy never had); a selection spanning code lines stays a code block.
   const slice = /^(\d+) (\d+)/.exec(inert.body.querySelector('[data-pm-slice]')?.getAttribute('data-pm-slice') ?? '')
   const lines = leaves(blocks)
   let inline = false
+  const oneCodeLine = (b: BlockNode | undefined) => b?.type === 'codeBlock' && !b.text.includes('\n')
   if (blocks.length === 1 && blocks[0]!.type === 'paragraph') inline = true
-  else if (slice && Number(slice[1]) > 0 && Number(slice[2]) > 0 && lines.length === 1 && lines[0]!.type !== 'codeBlock' && leafCount(blocks) === 1) {
+  else if (slice && Number(slice[1]) > 0 && Number(slice[2]) > 0 && lines.length === 1 && (lines[0]!.type !== 'codeBlock' || oneCodeLine(lines[0])) && leafCount(blocks) === 1) {
     inline = true
     fromHeading = lines[0]!.type === 'heading'
   }
   const plain = !own && blocks.every((b) => b.type === 'paragraph' && (b.content ?? []).every((r) => Object.keys(r).length === 1))
-  return { blocks, inline, fromHeading, plain, own }
+  return { blocks, inline, fromHeading, plain, own, openStart: own && edges.includes('open-start'), openEnd: own && edges.includes('open-end') }
 }
 
 /** Empty runs and empty content arrays go (a paragraph with no text has no `content`). */

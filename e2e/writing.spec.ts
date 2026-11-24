@@ -2010,3 +2010,58 @@ test('Z3: Shift+Left and Shift+Right with a clicked divider selected extend the 
   await expect.poll(span).toEqual([5, 7])
   expect(errors).toEqual([])
 })
+
+// ---- the re-review of ac0b28b ---------------------------------------------------------------------------------
+
+test('P1, P2: Ctrl+X across two lines and Ctrl+V straight back give the text back as it was, in a quote and across numbered items; a word of code pastes as words', async ({ page }) => {
+  const quoted = [{ type: 'blockquote', blocks: [p('First'), p('Second')] }]
+  const numberedLines = [{ type: 'orderedList', start: 5, items: [{ blocks: [p('North')] }, { blocks: [p('South')] }] }]
+  const { errors, at } = await open(page, [
+    textRec('q', 120, 60, { fontSize: 16, width: 300, text: 'First\nSecond', blocks: quoted }),
+    textRec('n', 120, 220, { fontSize: 16, width: 300, text: 'North\nSouth', blocks: numberedLines }),
+    textRec('c', 120, 380, { fontSize: 16, width: 300, text: 'const note = 1;', blocks: [{ type: 'codeBlock', text: 'const note = 1;' }] }),
+    textRec('r', 520, 380, { fontSize: 16, width: 300, text: 'Review' }),
+  ])
+  /** Selects from character `a` of the line reading `first` to character `b` of the line reading `last`, in the edited text. */
+  const select = (first: string, a: number, last: string, b: number) =>
+    page.evaluate(
+      ({ first, a, last, b }) => {
+        const lines = Array.from(document.querySelectorAll('.scene-layer [contenteditable="true"].ProseMirror p, .scene-layer [contenteditable="true"].ProseMirror pre code'))
+        const textOf = (text: string) => {
+          const el = lines.find((l) => l.textContent === text)!
+          const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+          return walker.nextNode() as Text
+        }
+        const range = document.createRange()
+        range.setStart(textOf(first), a)
+        range.setEnd(textOf(last), b)
+        getSelection()!.removeAllRanges()
+        getSelection()!.addRange(range)
+      },
+      { first, a, last, b },
+    )
+  for (const [id, y, first, last, blocks] of [['q', 72, 'First', 'Second', quoted], ['n', 232, 'North', 'South', numberedLines]] as const) {
+    await editAtEnd(page, at(150, y))
+    await select(first, 2, last, 3)
+    await expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }, { message: `${id}: the selection` }).toEqual([2, first.length + 1 + 3])
+    await page.keyboard.press('Control+x')
+    await expect.poll(async () => (await editedText(page))?.value, { message: `${id}: the cut` }).toBe(`${first.slice(0, 2)}${last.slice(3)}`)
+    // (The cut stored first, so that the record checked next cannot be the one from before it.)
+    await storedWhen(page, (d) => byId(d, id).text === `${first.slice(0, 2)}${last.slice(3)}`)
+    await page.keyboard.press('Control+v')
+    await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify(blocks) && byId(d, id).text === `${first}\n${last}`)
+    await page.keyboard.press('Escape')
+  }
+  await editAtEnd(page, at(150, 392))
+  await select('const note = 1;', 6, 'const note = 1;', 10)
+  await page.waitForTimeout(100)
+  await page.keyboard.press('Control+c')
+  await page.keyboard.press('Escape')
+  await editAtEnd(page, at(530, 392))
+  await page.keyboard.press('Home')
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('Control+v')
+  const done = await storedWhen(page, (d) => byId(d, 'r').text === 'Revnoteiew')
+  expect(byId(done, 'r').blocks).toBeUndefined()
+  expect(errors).toEqual([])
+})

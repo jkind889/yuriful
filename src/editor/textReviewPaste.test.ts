@@ -5,7 +5,7 @@
  * fallback, and the sanitizer's smaller cases. Each case is the reviewer's input, with the outcome the
  * rule asks for.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { NodeSelection, TextSelection } from 'prosemirror-state'
 import type { Node as PMNode } from 'prosemirror-model'
 import { MAX_TEXT_LENGTH, canonicalTextContent, parseBlocks } from '../model/textDoc.ts'
@@ -15,6 +15,10 @@ import type { EditSession } from './textSession.ts'
 import { htmlToBlocks } from './pasteHtml.ts'
 import { textblocksOf } from './textSchema.ts'
 import { insert, open, press, type } from './testing/textHarness.ts'
+
+// The matrices here run thousands of cases and take several seconds; on a busy machine they must not
+// fail for being slow.
+vi.setConfig({ testTimeout: 60_000 })
 
 const p = (text?: string, extra: Partial<InlineRun> = {}): BlockNode => (text ? { type: 'paragraph', content: [{ text, ...extra }] } : { type: 'paragraph' })
 const h = (level: 1 | 2 | 3, text: string): BlockNode => ({ type: 'heading', level, content: [{ text }] })
@@ -527,5 +531,193 @@ describe('Z3: Shift+Left and Shift+Right with a clicked divider selected extend 
     const last = withDivider([p('Album'), hr])
     press(last, 'ArrowRight', { shiftKey: true })
     expect(last.state.selection).toBeInstanceOf(NodeSelection)
+  })
+})
+
+// ---- the re-review of ac0b28b (P1 to P6) ---------------------------------------------------------------------
+
+/** Cuts the UTF-16 range [a, b) of a text holding `blocks` (as Ctrl/Cmd+X does) and pastes it back at the caret; the session, the clipboard and the record before. */
+function cutAndPasteBack(blocks: BlockNode[], a: number, b: number) {
+  const s = open({ text: '', blocks })
+  const el = document.body.appendChild(document.createElement('div'))
+  s.mount(el)
+  s.select(a, b)
+  const before = s.content()
+  const clip = s.view!.serializeForClipboard(s.state.selection.content())
+  const data = { html: clip.dom.innerHTML, text: clip.text }
+  s.dispatch(s.state.tr.deleteSelection().scrollIntoView().setMeta('uiEvent', 'cut'))
+  s.paste(data)
+  return { s, data, before, done: () => (s.finish(), el.remove()) }
+}
+
+describe('P1: a cut across lines pastes back where it was; its partial lines join the lines they are pasted into', () => {
+  it("the reviewer's cases: in a quote, rst through Sec; across numbered items, rth through Sou: cut and pasted back, the text comes back exactly; one undo of each gives back the original", () => {
+    for (const [blocks, a, b] of [
+      [[quote(p('First'), p('Second'))], 2, 9],
+      [[numbered(5, [p('North')], [p('South')])], 2, 9],
+    ] as Array<[BlockNode[], number, number]>) {
+      const { s, before, done } = cutAndPasteBack(blocks, a, b)
+      expect(stored(s)).toStrictEqual(before)
+      s.undo()
+      s.undo()
+      expect(stored(s)).toStrictEqual(before)
+      done()
+    }
+  })
+
+  it('every shape comes back: inside one line, partial lines in one item, across ticked items, inside one code block, across block kinds with whole lines between', () => {
+    const shapes: Array<[string, BlockNode[], number, number]> = [
+      ['inside one line', [p('Album cover')], 2, 7],
+      ['two paragraphs of one ticked item', [tasks([true, [p('First'), p('Second')]])], 2, 9],
+      ['an unticked item into a ticked one', [tasks([false, [p('First')]], [true, [p('Second')]])], 2, 9],
+      ['inside one code block, across its lines', [code('alpha\nbeta\ngamma')], 2, 13],
+      ['whole lines between, in a list', [numbered(3, [p('one')], [p('two')], [p('three')])], 1, 11],
+      ['out of a quote and back into it', [quote(p('First')), p('Between'), quote(p('Second'))], 2, 17],
+      // A cut deletes as Delete does (the line the selection starts on keeps its blocks and tick):
+      ['from the start of an unticked item into a ticked one', [tasks([false, [p('gh')]], [true, [hr, p('ij k')]])], 0, 4],
+      ['from the start of an item after a code block, into the next item', [code('alpha'), numbered(7, [p('beta')], [p('next')])], 6, 14],
+    ]
+    for (const [name, blocks, a, b] of shapes) {
+      const { s, before, done } = cutAndPasteBack(blocks, a, b)
+      expect(stored(s), name).toStrictEqual(before)
+      done()
+    }
+  })
+
+  it('the same clipboard elsewhere: the partial first line joins the words before the caret, the partial last line the words after it, in the kind of the line they join; whole lines between arrive as their blocks', () => {
+    const clip = copyText([quote(p('First'), p('Second'))], 2, 9)
+    const prose = open({ text: 'XY' }, { caret: 1 })
+    prose.paste(clip)
+    expect(stored(prose)).toStrictEqual({ text: 'Xrst\nSecY' })
+    const heading = open({ text: 'XY', headings: [2] }, { caret: 1 })
+    heading.paste(clip)
+    expect(stored(heading)).toStrictEqual({ text: 'Xrst\nSecY', headings: [2, 2] })
+    const between = copyText([numbered(3, [p('one')], [p('two')], [p('three')])], 1, 11)
+    const into = open({ text: '', blocks: [bullets([p('XY')])] }, { caret: 1 })
+    into.paste(between)
+    expect(stored(into).blocks).toStrictEqual([bullets([p('Xne'), numbered(4, [p('two')])], [p('thrY')])])
+  })
+})
+
+describe('P2: a word copied from a code line pastes as words', () => {
+  it('"note" from "const note = 1;" pasted into "Review" after "Rev": one line, plain words; lines of code copied together stay a code block', () => {
+    const word = copyText([code('const note = 1;')], 6, 10)
+    const s = open({ text: 'Review' }, { caret: 3 })
+    s.paste(word)
+    expect(stored(s)).toStrictEqual({ text: 'Revnoteiew' })
+    const lines = copyText([code('const a\nconst b')], 2, 12)
+    const t = open({ text: 'Review' }, { caret: 3 })
+    t.paste(lines)
+    expect(stored(t).blocks).toStrictEqual([p('Rev'), code('nst a\ncons'), p('iew')])
+  })
+})
+
+describe('P3: what comes after the caret becomes a new unticked item, wherever in the item the caret is', () => {
+  it("the reviewer's case: one ticked task holding First, Second and Third, the caret at the start of Second, an unticked task pasted", () => {
+    const s = open({ text: '', blocks: [tasks([true, [p('First'), p('Second'), p('Third')]])] }, { caret: 6 })
+    s.paste({ html: '<ul><li data-checked="false">Fresh</li></ul>', text: 'Fresh' })
+    expect(stored(s).blocks).toStrictEqual([tasks([true, [p('First')]], [false, [p('Fresh')]], [false, [p('Second'), p('Third')]])])
+  })
+
+  it("the reviewer's split matrix: every line kind (an item with a line before the caret's included), every caret place, every first and last pasted block (5,082 cases)", () => {
+    const par = (t: string): BlockNode => ({ type: 'paragraph', content: [{ text: t, italic: true }] })
+    const listOf = (type: 'bulletList' | 'orderedList' | 'taskList', blocks: BlockNode[], checked = false): BlockNode =>
+      type === 'taskList' ? { type, items: [{ checked, blocks }] } : type === 'orderedList' ? { type, start: 7, items: [{ blocks }] } : { type, items: [{ blocks }] }
+    const html: Record<string, (t: string) => string> = { p: (t) => `<p>${t}</p>`, h1: (t) => `<h1>${t}</h1>`, h2: (t) => `<h2>${t}</h2>`, h3: (t) => `<h3>${t}</h3>`, ul: (t) => `<ul><li>${t}</li></ul>`, ol: (t) => `<ol><li>${t}</li></ol>`, ck: (t) => `<ul><li data-checked="true">${t}</li></ul>`, un: (t) => `<ul><li data-checked="false">${t}</li></ul>`, q: (t) => `<blockquote>${t}</blockquote>`, code: (t) => `<pre>${t}</pre>`, hr: () => '<hr>' }
+    const docs: Record<string, BlockNode[]> = { p: [par('AB')], h1: [{ type: 'heading', level: 1, content: [{ text: 'AB', italic: true }] }], h2: [{ type: 'heading', level: 2, content: [{ text: 'AB', italic: true }] }], h3: [{ type: 'heading', level: 3, content: [{ text: 'AB', italic: true }] }], quote: [quote(par('AB'))], code: [code('AB')] }
+    for (const [k, t, c] of [['bullet', 'bulletList', false], ['number', 'orderedList', false], ['checked', 'taskList', true], ['unchecked', 'taskList', false]] as const) for (const lead of [false, true]) docs[`${k}${lead}`] = [listOf(t, [...(lead ? [par('Q')] : []), par('AB'), par('N'), listOf('bulletList', [par('T')])], c)]
+    /** Where each of the letters A, B, N, T and Q is: its line's kind and level, its marks, and the blocks around it. */
+    const where = (doc: PMNode) => {
+      const out: Array<{ ch: string; line: string; level: number | null; marks: string; frames: Array<{ kind: string; at: number; checked: boolean | null }> }> = []
+      doc.descendants((n, pos) => {
+        if (!n.isText) return
+        for (let i = 0; i < n.text!.length; i++) {
+          const ch = n.text![i]!
+          if (!'ABNTQ'.includes(ch)) continue
+          const $ = doc.resolve(pos + i)
+          out.push({ ch, line: $.parent.type.name, level: ($.parent.attrs.level as number | undefined) ?? null, marks: JSON.stringify(n.marks.map((m) => m.toJSON())), frames: Array.from({ length: $.depth - 1 }, (_, d) => ({ kind: $.node(d + 1).type.name, at: $.before(d + 1), checked: ($.node(d + 1).attrs.checked as boolean | undefined) ?? null })) })
+        }
+      })
+      return out
+    }
+    const failures: string[] = []
+    let cases = 0
+    for (const [src, doc] of Object.entries(docs)) {
+      for (const off of [0, 1, 2]) {
+        for (const [a, fa] of Object.entries(html)) {
+          for (const [b, fb] of Object.entries(html)) {
+            const s = open({ text: '', blocks: doc })
+            const line = textblocksOf(s.state.doc).find((x) => x.node.textContent === 'AB')!
+            s.dispatch(s.state.tr.setSelection(TextSelection.create(s.state.doc, line.pos + 1 + off)))
+            const was = s.content()
+            const before = where(s.state.doc)
+            const words = [...(a === 'hr' ? [] : ['x']), ...(b === 'hr' ? [] : ['y'])].join('\n')
+            s.paste({ text: words, html: fa('x') + fb('y') })
+            const snapshot = s.content()
+            const after = where(s.state.doc)
+            const key = `${src}:${off}:${a}:${b}`
+            cases++
+            const flat = (t: string) => t.replace(/\n/g, '')
+            if (flat(was.text.replace('AB', 'AB'.slice(0, off) + words.replace(/\n/g, '') + 'AB'.slice(off))) !== flat(snapshot.text) && !(src === 'code' && a === 'hr' && b === 'hr')) failures.push(`characters ${key}`)
+            for (const orig of before) {
+              const x = after.find((y) => y.ch === orig.ch)
+              if (!x || orig.line !== x.line || orig.level !== x.level || orig.marks !== x.marks || orig.frames.map((f) => f.kind).join('/') !== x.frames.map((f) => f.kind).join('/')) failures.push(`kind, blocks or marks of ${orig.ch} ${key}`)
+            }
+            const item = (c: string) => after.find((y) => y.ch === c)?.frames.find((f) => f.kind === 'taskItem' || f.kind === 'listItem')
+            const tail = item('B')
+            const head = item('A')
+            const note = item('N')
+            const nested = item('T')
+            if (tail && off < 2 && note && (tail.at !== note.at || tail.at !== nested?.at)) failures.push(`rest of the item left behind ${key}`)
+            if (off === 1 && tail && head && !(a === 'p' && b === 'p') && (tail.at === head.at || tail.checked === true)) failures.push(`the half after the caret not a new unticked item ${key}`)
+            if (src.startsWith('checked') && src.endsWith('true') && off === 0 && tail && item('Q')?.at !== tail.at && tail.checked === true) failures.push(`ticked twice ${key}`)
+            if (JSON.stringify(was) !== JSON.stringify(snapshot)) {
+              s.undo()
+              if (JSON.stringify(s.content()) !== JSON.stringify(was)) failures.push(`undo ${key}`)
+              s.redo()
+              if (JSON.stringify(s.content()) !== JSON.stringify(snapshot)) failures.push(`redo ${key}`)
+            }
+          }
+        }
+      }
+    }
+    expect(failures.slice(0, 8), failures[0]).toEqual([])
+    expect(cases).toBe(5082)
+  })
+})
+
+describe('P4: a task item takes its tick from data-checked, or else from a checkbox that is the first thing in it', () => {
+  it('Tiptap, GitHub, Notion-style and Yuriful\'s own markup, ticked and unticked; a checkbox after words is still no marker', () => {
+    const tick = (html: string) => (htmlToBlocks(html).blocks[0] as { items: Array<{ checked?: boolean }> }).items.map((it) => it.checked)
+    expect(tick('<ul data-type="taskList"><li data-type="taskItem"><input type="checkbox" checked>Done</li><li data-type="taskItem"><input type="checkbox">Open</li></ul>')).toStrictEqual([true, false])
+    expect(tick('<ul class="contains-task-list"><li class="task-list-item"><input type="checkbox" checked disabled> x</li><li class="task-list-item"><input type="checkbox" disabled> y</li></ul>')).toStrictEqual([true, false])
+    expect(tick('<ul data-type="taskList"><li data-type="taskItem" data-checked="true"><label><input type="checkbox" checked><span></span></label><div><p>x</p></div></li><li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label><div><p>y</p></div></li></ul>')).toStrictEqual([true, false])
+    expect(tick('<ul class="yp-tasks"><li class="yp-task" data-checked="true"><span class="yp-check" contenteditable="false"></span><div class="yp-task-body"><p>x</p></div></li><li class="yp-task" data-checked="false"><span class="yp-check" contenteditable="false"></span><div class="yp-task-body"><p>y</p></div></li></ul>')).toStrictEqual([true, false])
+    expect(htmlToBlocks('<ul><li>Lyrics <input type="checkbox" checked> verified</li></ul>').blocks[0]!.type).toBe('bulletList')
+  })
+})
+
+describe('P5: a partial numbered copy whose number cannot be stored carries plain lines', () => {
+  it('b and c of a list starting at 999,999,999 (b was painted 1,000,000,000) paste as plain lines; a and b keep their list', () => {
+    const list = [numbered(999_999_999, [p('a')], [p('b')], [p('c')])]
+    const s = open({ text: '' })
+    s.paste(copyText(list, 2, 5))
+    expect(stored(s)).toStrictEqual({ text: 'b\nc' })
+    const t = open({ text: '' })
+    t.paste(copyText(list, 0, 3))
+    expect(stored(t).blocks).toStrictEqual([numbered(999_999_999, [p('a')], [p('b')])])
+  })
+})
+
+describe('P6: a refused paste leaves the undo grouping as it was', () => {
+  it('in a quote ending "note": type A, paste 500,001 characters (refused), type B, one undo gives "note"', () => {
+    const s = open({ text: '', blocks: [quote(p('note'))] })
+    s.select(4, 4)
+    type(s, 'A')
+    s.paste({ text: 'x'.repeat(MAX_TEXT_LENGTH + 1) })
+    expect(stored(s).text).toBe('noteA')
+    type(s, 'B')
+    s.undo()
+    expect(stored(s).text).toBe('note')
   })
 })

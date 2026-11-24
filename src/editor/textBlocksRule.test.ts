@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { DOMSerializer, Fragment, Slice as SliceClass } from 'prosemirror-model'
 import type { Node as PMNode, Slice } from 'prosemirror-model'
-import { EditorState, NodeSelection, TextSelection } from 'prosemirror-state'
+import { EditorState, NodeSelection, Selection, TextSelection } from 'prosemirror-state'
 import type { Transaction } from 'prosemirror-state'
 import type { MarkState } from '../model/richText.ts'
 import { canonicalTextContent, MAX_BLOCK_DEPTH, MAX_LIST_START, MAX_TEXT_LENGTH, parseBlocks } from '../model/textDoc.ts'
@@ -2037,5 +2037,109 @@ describe('R5: a code block is always Mono', () => {
     s.select(0, 12)
     expect(s.setFont('serif')).toBe(true)
     expect(content(s).blocks).toStrictEqual([{ type: 'codeBlock', text: 'coXnst' }, p('prose', { font: 'serif' })])
+  })
+})
+
+// ---- a cut pasted back where it was (P1) ----------------------------------------------------------------------
+
+describe('a cut pasted back where it was, seeded and randomised', () => {
+  /**
+   * Whether a cut of [from, to) pasted back can give back the blocks exactly, not only the text: the
+   * two ends are in one line, or are lines of one kind (not code) in the same blocks, except that they
+   * may be in two items of one list (the last line then the last thing in its item), and the selection
+   * does not end at the start of a line. Otherwise the cut has made the two ends one line of the first
+   * end's kind, which the paste keeps (or, ending at a line's start, joined nothing).
+   */
+  const blocksComeBack = (doc: PMNode, from: number, to: number): boolean => {
+    const $a = doc.resolve(from)
+    const $b = doc.resolve(to)
+    if ($a.sameParent($b)) return true
+    // A selection that ends at the very start of a line removes whole lines and joins nothing: the
+    // caret is left in the line it ended at, so the first copied line has no line of its own to stand on.
+    if ($b.parentOffset === 0) return false
+    // A copy whose first item was painted with a number storage cannot keep carries plain lines (P5).
+    for (let d = 1; d < $a.depth; d++) if ($a.node(d).type === nodes.orderedList && ($a.node(d).attrs.start as number) + $a.index(d) > MAX_LIST_START) return false
+    const A = $a.parent
+    const B = $b.parent
+    if (A.type !== B.type || A.type.spec.code || A.attrs.level !== B.attrs.level || $a.depth !== $b.depth) return false
+    let d = 1
+    while (d < $a.depth && $a.node(d) === $b.node(d)) d++
+    if (d === $a.depth) return true
+    // Two items of one list, each line straight in its item, the last line the last thing in its item.
+    return d === $a.depth - 1 && isItemType($a.node(d).type) && $a.node(d - 1) === $b.node(d - 1) && $b.index(d) === $b.node(d).childCount - 1
+  }
+  it('cut then paste at the caret, and copy then paste over the selection, give back the original; undo of the paste and the cut too (seeded)', () => {
+    const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env
+    const SEED = Number(env?.PASTE_RULE_SEED ?? 0x5a5a)
+    const r = random(SEED + 7)
+    const failures: string[] = []
+    let cases = 0
+    let exact = 0
+    const el = document.createElement('div')
+    document.body.appendChild(el)
+    for (let d = 0; d < 160 && failures.length < 5; d++) {
+      const source = r.int(6) === 0 ? compactText(r) : richSource(r)
+      if (!source || !docFromText(source)) continue
+      const doc0 = open(source).state.doc
+      const size = doc0.content.size
+      let a = Selection.near(doc0.resolve(r.int(size + 1))).from
+      let b = Selection.near(doc0.resolve(r.int(size + 1))).from
+      if (a === b) continue
+      if (a > b) [a, b] = [b, a]
+      for (const how of ['cut', 'copy over'] as const) {
+        const s = open(source)
+        s.mount(el)
+        let broken: string | null = null
+        try {
+          s.dispatch(s.state.tr.setSelection(TextSelection.between(s.state.doc.resolve(a), s.state.doc.resolve(b))))
+          if (s.state.selection.empty || !(s.state.selection instanceof TextSelection)) {
+            s.finish()
+            continue
+          }
+          const { from, to } = s.state.selection
+          const before = s.content()
+          const doc0 = s.state.doc
+          const text0 = plainTextOfDoc(doc0)
+          // (A lone carriage return inside a line, possible only in an old stored text, arrives as a space through HTML;
+          // a cut from a code block into another line leaves the code's emptied line and a line of its own for the
+          // rest, by the settled rule for a replacement, so neither text nor blocks can come back exactly there.)
+          const textBack = !/\r(?!\n)/.test(text0) && !(doc0.resolve(from).parent.type.spec.code && !doc0.resolve(from).sameParent(doc0.resolve(to)))
+          const whole = textBack && blocksComeBack(doc0, from, to)
+          // (An old text's stored "\r\n" breaks go once it is edited, as before: there the documents are compared.)
+          const same = (c: TextContent, doc: PMNode, want: TextContent, wantDoc: PMNode) => (JSON.stringify(want).includes('\\r') ? doc.eq(wantDoc) : JSON.stringify(c) === JSON.stringify(want))
+          const clip = s.view!.serializeForClipboard(s.state.selection.content())
+          const data = { html: clip.dom.innerHTML, text: clip.text }
+          if (how === 'cut') s.dispatch(s.state.tr.deleteSelection().scrollIntoView().setMeta('uiEvent', 'cut'))
+          const cutDone = how === 'cut' ? s.content() : null
+          const cutDoc = s.state.doc
+          s.paste(data)
+          cases++
+          const after = s.content()
+          if (canonicalTextContent(after as unknown as Record<string, unknown>) === null) broken = 'the result does not load'
+          else if (textBack && plainTextOfDoc(s.state.doc) !== text0) broken = `the text is ${JSON.stringify(plainTextOfDoc(s.state.doc))}, not ${JSON.stringify(text0)}`
+          else if (whole) {
+            exact++
+            if (!same(after, s.state.doc, before, doc0)) broken = `the blocks are ${JSON.stringify(after)}, not ${JSON.stringify(before)}`
+          }
+          if (!broken) {
+            // (A paste that changed nothing has no undo step of its own.)
+            if (how === 'cut' && !same(after, s.state.doc, cutDone!, cutDoc)) s.undo()
+            if (how === 'copy over') s.undo()
+            if (how === 'cut' && !same(s.content(), s.state.doc, cutDone!, cutDoc)) broken = `undo of the paste gives ${JSON.stringify(s.content())}, not the cut ${JSON.stringify(cutDone)}`
+            if (how === 'cut' && !broken) s.undo()
+            if (!broken && !same(s.content(), s.state.doc, before, doc0)) broken = `undo gives ${JSON.stringify(s.content())}, not the original`
+          }
+        } catch (e) {
+          broken = `threw ${String(e)}`
+        }
+        s.finish()
+        if (broken) failures.push(`seed ${SEED}, document ${d}, ${how} [${a}, ${b}]: ${broken}\n  source: ${JSON.stringify(source)}`)
+      }
+    }
+    el.remove()
+    if (failures.length > 0) console.log(failures.join('\n'))
+    console.log(`cut and paste back: ${cases} cases (seed ${SEED}), ${exact} with the blocks compared too`)
+    expect(failures, failures[0]).toEqual([])
+    expect(cases).toBeGreaterThan(150)
   })
 })
