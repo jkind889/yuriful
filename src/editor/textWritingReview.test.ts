@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { canonicalTextContent, MAX_TEXT_LENGTH } from '../model/textDoc.ts'
+import { canonicalTextContent, MAX_LIST_START, MAX_TEXT_LENGTH, parseBlocks } from '../model/textDoc.ts'
 import type { BlockNode } from '../model/types.ts'
 import type { TextContent } from '../model/textDoc.ts'
 import type { EditSession } from './textSession.ts'
-import { plainTextOfDoc, textblocksOf } from './textSchema.ts'
+import { plainTextOfDoc, textSchema, textblocksOf } from './textSchema.ts'
 import { matchBlockShortcut } from './textRules.ts'
 import { insert, open, press, type } from './testing/textHarness.ts'
 
@@ -235,17 +235,25 @@ describe('10. no shortcut fires inside inline code', () => {
   })
 })
 
-describe('11. a numbered list starts at any number storage accepts', () => {
-  it('the largest exact whole number converts; the next one stays as typed', () => {
-    const big = Number.MAX_SAFE_INTEGER
+describe('11 and R4. a numbered list starts at any number from 1 to 999,999,999, for the shortcut and storage alike', () => {
+  it('999,999,999 converts; 1,000,000,000 stays as typed; so does 0', () => {
+    expect(MAX_LIST_START).toBe(999_999_999)
     const s = open({ text: '' })
-    type(s, `${big}. `)
-    expect(content(s).blocks).toStrictEqual([{ type: 'orderedList', start: big, items: [{ blocks: [p()] }] }])
+    type(s, '999999999. ')
+    expect(content(s).blocks).toStrictEqual([{ type: 'orderedList', start: 999_999_999, items: [{ blocks: [p()] }] }])
     const t = open({ text: '' })
-    type(t, `${big + 1}. `)
-    expect(content(t)).toStrictEqual({ text: `${big + 1}. ` })
-    expect(matchBlockShortcut('1000000000. ', 12, ' ')).toEqual({ kind: 'orderedList', start: 1000000000, end: 12 })
+    type(t, '1000000000. ')
+    expect(content(t)).toStrictEqual({ text: '1000000000. ' })
+    expect(matchBlockShortcut('999999999. ', 11, ' ')).toEqual({ kind: 'orderedList', start: 999_999_999, end: 11 })
+    expect(matchBlockShortcut('1000000000. ', 12, ' ')).toBeNull()
     expect(matchBlockShortcut('0. ', 3, ' ')).toBeNull()
+  })
+
+  it('the validator does not take a stored start over the limit (it is read as 1, as any other invalid start is), and the schema refuses it', () => {
+    const list = (start: number) => [{ type: 'orderedList', start, items: [{ blocks: [{ type: 'paragraph', content: [{ text: 'a' }] }] }] }]
+    expect(parseBlocks(list(999_999_999))).toStrictEqual(list(999_999_999))
+    expect(parseBlocks(list(1_000_000_000))).toStrictEqual([{ type: 'orderedList', items: [{ blocks: [{ type: 'paragraph', content: [{ text: 'a' }] }] }] }])
+    expect(() => textSchema.nodes.orderedList!.create({ start: 1_000_000_000 }, textSchema.nodes.listItem!.create(null, textSchema.nodes.paragraph!.create()))).toThrow()
   })
 })
 

@@ -1,6 +1,6 @@
 import { clampCrop } from '../model/crop.ts'
 import { isBlankTextDoc } from '../model/textDoc.ts'
-import type { FrameRecord, ImageRecord, ObjectRecord, Scene, TextRecord } from '../model/types.ts'
+import type { BlockNode, FrameRecord, ImageRecord, ObjectRecord, Scene, TextRecord } from '../model/types.ts'
 import type { Size } from '../model/viewport.ts'
 import { FRAME_FILL } from './objects.ts'
 import { DomCardMeasurer, effectiveCardWidth, renderCardBody } from './sceneLayer.ts'
@@ -314,6 +314,25 @@ export function frameBitmapSize(frame: Pick<FrameRecord, 'width' | 'height'>, ma
 export const cardBleed = (rec: Pick<TextRecord, 'fontSize'>): number => Math.ceil(rec.fontSize * 2)
 
 /**
+ * A bound, from the record alone, on how far a card's list numbers can reach left of its box: each
+ * numbered list's last number, its digits and the full stop at most 0.7 of the font size each (no
+ * font has wider figures), less nothing for the gutter. Used to decide, before laying a card out,
+ * whether its ink can reach a frame (`numberOverhang` measures it once laid out).
+ */
+export function numberReach(rec: Pick<TextRecord, 'fontSize' | 'blocks'>): number {
+  let digits = 0
+  const walk = (blocks: readonly BlockNode[]) => {
+    for (const b of blocks) {
+      if (b.type === 'orderedList') digits = Math.max(digits, String((b.start ?? 1) + b.items.length - 1).length)
+      if (b.type === 'blockquote') walk(b.blocks)
+      if (b.type === 'bulletList' || b.type === 'orderedList' || b.type === 'taskList') for (const i of b.items) walk(i.blocks)
+    }
+  }
+  walk(rec.blocks ?? [])
+  return digits === 0 ? 0 : Math.ceil(rec.fontSize * 0.7 * (digits + 1))
+}
+
+/**
  * How far, in scene units, the numbers of a card's numbered lists reach left of its box (0 when none
  * does): a number sits in its item's gutter, ending a little before the words, and a long one (`100.`,
  * `123456789.`) runs out past the box's left edge, where the board shows it too. Measured on the laid
@@ -521,7 +540,7 @@ export async function renderFrameToCanvas(scene: Scene, frameId: string, opts: F
       }
       if (isBlank(rec)) continue
       const known = opts.cardSize?.(rec)
-      if (known && !overlapsFrame(boxCorners(rec, known, cardBleed(rec)), frame)) continue
+      if (known && !overlapsFrame(boxCorners(rec, known, Math.max(cardBleed(rec), numberReach(rec))), frame)) continue
       try {
         const body = doc.createElement('div')
         body.className = 'scene-text-body'

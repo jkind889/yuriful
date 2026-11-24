@@ -42,8 +42,15 @@ export const EDITABLE_RICH_FIELDS: ReadonlySet<RichField> = new Set<RichField>([
 
 const RUN_MARKS: readonly TextMark[] = [...MARKS, 'code']
 
-/** A numbered list may start at any whole number from 1 that is exactly representable (stored only when above 1). */
-export const isListStart = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 1
+/**
+ * The largest number a numbered list may start at. Every number such a list can reach (its start
+ * plus up to `MAX_NODES` items) stays below 2^31 - 1, the largest number a browser's list counters
+ * paint, so a list is always painted as stored.
+ */
+export const MAX_LIST_START = 999_999_999
+
+/** A numbered list may start at any whole number from 1 to `MAX_LIST_START` (stored only when above 1; any other start is read as 1). */
+export const isListStart = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 1 && (v as number) <= MAX_LIST_START
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 const isFont = (v: unknown): v is FontId => FONT_IDS.includes(v as FontId)

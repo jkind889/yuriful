@@ -235,27 +235,28 @@ const CODE_PLAIN = 'Code blocks are plain text'
  */
 function TextPanel({ editor, selection, text, blocks, locked }: { editor: Editor; selection: SelectionInfo; text: TextFormatInfo; blocks: TextBlockInfo; locked: boolean }) {
   const id = useId()
-  // Every line concerned is a code block: it holds plain text, so the marks do not apply there.
+  // Every line concerned is a code block: it holds plain text in Mono, so the marks and fonts do not apply there.
   const inCode = blocks.blocks.codeBlock === 'on'
   const colourName = TEXT_PALETTE.find((p) => p.color === text.color)?.name ?? text.color
   return (
     <>
       <div className="inspector-row">
         <span id={`${id}-font`}>Font</span>
-        <span className="inspector-value">{text.font === 'mixed' ? 'Mixed' : FONT_LABELS[text.font]}</span>
+        <span className="inspector-value">{inCode ? 'Mono' : text.font === 'mixed' ? 'Mixed' : FONT_LABELS[text.font]}</span>
       </div>
       <div className="choice-row" role="group" aria-labelledby={`${id}-font`}>
         {FONT_IDS.map((f) => (
           <button
             key={f}
             type="button"
-            className="choice-btn font-btn"
             style={{ fontFamily: FONT_STACKS[f] }}
             aria-label={FONT_LABELS[f]}
-            aria-pressed={text.font === f}
-            data-tip={FONT_LABELS[f]}
+            aria-pressed={!inCode && text.font === f}
+            data-tip={inCode ? `${FONT_LABELS[f]}: code blocks are always Mono` : FONT_LABELS[f]}
             data-tip-side="bottom"
-            disabled={locked}
+            className={inCode ? 'choice-btn font-btn tip-always' : 'choice-btn font-btn'}
+            aria-description={inCode ? 'Code blocks are always Mono' : undefined}
+            disabled={locked || inCode}
             onClick={() => editor.setTextFont(f)}
           >
             Aa

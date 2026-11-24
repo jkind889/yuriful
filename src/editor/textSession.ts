@@ -275,6 +275,13 @@ export class EditSession {
   private mounted: { view: EditorView; el: HTMLElement; attrs: Array<[string, string]> } | null = null
   private done = false
   private composingHeadless = false
+  /**
+   * Everything the session holds that a composition can change (its state, history included, the
+   * conversions kept beside the history, the stored line breaks), as it was just before the
+   * composition awaiting its follow-up changed anything (`beginComposition`): a composition refused
+   * at a bound puts it all back (`followUp`). Until that follow-up.
+   */
+  private imeStart: { state: EditorState; conversions: Map<number, Pending | null>; storedBreaks: string | null } | null = null
   /** Headless compositions are numbered like ProseMirror's (its `composition` transaction metadata), so that each one and its follow-up are one history step. */
   private headlessCompositions = 0
   /** The character a key is about to type (`typedCharacter`), from its keydown until it arrives or the key comes up. */
@@ -751,10 +758,12 @@ export class EditSession {
         // stored marks at `compositionstart` would send ProseMirror down its mark-cursor path,
         // which a fast IME can break. ProseMirror's own deletion of a selection across blocks at
         // `compositionstart` comes after that check, so stores none either.
+        this.imeStart ??= { state, conversions: new Map(this.conversions), storedBreaks: this.storedBreaks }
         deleteSelected(state, (tr) => this.dispatch(tr.setStoredMarks(null)))
         if (this.current !== state) this.deletion = { before: state, after: this.current, delivered: false }
       }
     }
+    this.imeStart ??= { state, conversions: new Map(this.conversions), storedBreaks: this.storedBreaks }
     const at = from === to ? from : this.current.selection.from
     const carried = from === to ? this.composed.find((r) => r.to === at && r.to > r.from) : undefined
     if (carried) carried.open = true
@@ -829,13 +838,26 @@ export class EditSession {
    * since the composition (`mapComposed` forgets the ranges then).
    */
   private followUp() {
-    if (this.composing || this.composed.length === 0) return
+    if (this.composing) return
+    const start = this.imeStart
+    this.imeStart = null
+    if (this.composed.length === 0) return
     const tr = this.followUpTransaction(this.current)
     if (exceedsBounds(tr.doc, this.baseFont)) {
       // The composition took the text over a bound the store enforces (the bounds filter stands aside
-      // while the browser owns the text): its own step is undone, so what is kept can be stored.
+      // while the browser owns the text). Everything it changed is taken back and nothing else: the
+      // session is put back as it was just before it (`imeStart`: the text and the selection it
+      // replaced, the pending choices, the history), so what was typed before it stays, and it is not
+      // on the redo side either, so redo never brings it back. Undo grouping is not touched.
       this.composed = []
-      if (this.editable) undo(this.current, (t) => this.dispatch(t))
+      if (start && this.editable) {
+        this.current = start.state
+        this.conversions = start.conversions
+        this.storedBreaks = start.storedBreaks
+        this.mounted?.view.updateState(start.state)
+        this.reportChange()
+        this.hooks.onSelectionChange?.(this)
+      }
       return
     }
     // The selection the browser shows: ProseMirror has not read its last move yet (it collapses
@@ -935,7 +957,8 @@ export class EditSession {
     this.revert = null
     if (!this.editable) return false
     const sel = this.current.selection
-    if (sel instanceof TextSelection && sel.$cursor) return this.setPending({ ...this.pending, font })
+    // A code block is always Mono: no font is chosen for what is typed there.
+    if (sel instanceof TextSelection && sel.$cursor) return sel.$cursor.parent.type.spec.code ? false : this.setPending({ ...this.pending, font })
     const tr = this.current.tr
     if (!setRangeFont(tr, sel.from, sel.to, font, this.baseFont)) return false
     this.dispatch(tr)

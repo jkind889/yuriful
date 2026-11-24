@@ -1543,6 +1543,12 @@ export class Editor {
         }),
       )
     }
+    // A press on a disabled control gets no `mousedown` either, so nothing can keep its default from
+    // taking the keyboard away from the text being edited: its `pointerdown` default is prevented
+    // instead (a disabled control does nothing with a press anyway; its hover tip still shows).
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.target instanceof Element && e.target.closest(':disabled')) e.preventDefault()
+    }
     // A native drag (e.g. dragging selected text) ends with `dragend` and no `mouseup` at all.
     const onDragEnd = () => this.healPrimaryDown(0)
     const onMouseDown = (e: MouseEvent) => this.healPrimaryDown(e.button === 0 ? 0 : e.buttons)
@@ -1552,8 +1558,10 @@ export class Editor {
     window.addEventListener('mousemove', onMouseMove, { capture: true })
     window.addEventListener('dragend', onDragEnd, { capture: true })
     window.addEventListener('pointerup', onPointerUp, { capture: true })
+    window.addEventListener('pointerdown', onPointerDown, { capture: true })
     this.cleanups.push(() => {
       window.removeEventListener('pointerup', onPointerUp, { capture: true })
+      window.removeEventListener('pointerdown', onPointerDown, { capture: true })
       window.removeEventListener('mousedown', onMouseDown, { capture: true })
       window.removeEventListener('mouseup', onMouseUp, { capture: true })
       window.removeEventListener('dragend', onDragEnd, { capture: true })
