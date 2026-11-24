@@ -1624,16 +1624,18 @@ export class SceneLayer {
   /**
    * The thumb's geometry in the card's own units, for the zoom now: its inset, its length (at most
    * half its track, so it always has room to move: a drag from one end of the track to the other
-   * covers the whole text) and how far it can travel.
+   * covers the whole text) and how far it can travel. From the box's exact height (its fixed height,
+   * not the page's rounded `clientHeight`), so the track is exactly what is drawn: a thumb shows
+   * exactly when that track is at least `THUMB_MIN_TRACK_PX` on screen.
    */
-  private thumbGeometry(body: HTMLElement): { z: number; inset: number; length: number; travel: number; roomy: boolean } {
+  private thumbGeometry(item: ItemState, body: HTMLElement): { z: number; inset: number; length: number; travel: number; roomy: boolean } {
     const z = this.view.zoom > 0 ? this.view.zoom : 1
-    const view = body.clientHeight
-    const full = body.scrollHeight
+    const view = item.fixed ?? body.clientHeight
+    const full = view + this.scrollMax(item, body)
     const inset = THUMB_INSET_PX / z
     const track = Math.max(0, view - 2 * inset)
     const length = Math.min(track / 2, Math.max(THUMB_MIN_PX / z, full > 0 ? (track * view) / full : track))
-    return { z, inset, length, travel: track - length, roomy: track * z >= THUMB_MIN_TRACK_PX }
+    return { z, inset, length, travel: track - length, roomy: track * z >= THUMB_MIN_TRACK_PX - 1e-6 }
   }
 
   /** Sizes and places the thumb on the card's right edge, in screen pixels whatever the zoom. */
@@ -1641,7 +1643,7 @@ export class SceneLayer {
     const body = this.textBody(item)
     const thumb = item.thumb
     if (!body || !thumb) return
-    const { z, inset, length, travel, roomy } = this.thumbGeometry(body)
+    const { z, inset, length, travel, roomy } = this.thumbGeometry(item, body)
     if (!roomy) return this.hideThumb(item, true)
     const { top, max } = this.scrollState(item)
     const s = thumb.style
@@ -1659,7 +1661,7 @@ export class SceneLayer {
     if (!body || item.fixed === undefined) return
     const scroll = this.scrollState(item)
     if (!canScroll(scroll, 1) && !canScroll(scroll, -1)) return
-    if (!this.thumbGeometry(body).roomy) return this.hideThumb(item, true)
+    if (!this.thumbGeometry(item, body).roomy) return this.hideThumb(item, true)
     const thumb = this.thumbOf(item)
     this.placeThumb(item)
     thumb.classList.add('is-shown')
@@ -1691,7 +1693,7 @@ export class SceneLayer {
     if (!body || !thumb || e.button !== 0 || !item.editing || item.fixed === undefined) return
     e.preventDefault()
     e.stopPropagation()
-    const { z, travel, roomy } = this.thumbGeometry(body)
+    const { z, travel, roomy } = this.thumbGeometry(item, body)
     if (!roomy) return
     // The card's own vertical axis on the page (the matrix's second column, times the zoom).
     const ax = item.matrix[2] * z

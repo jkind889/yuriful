@@ -1423,3 +1423,121 @@ test('whenever the page shows another position than the layer gave it, the page 
   }
   expect(errors).toEqual([])
 })
+
+// ---- found by the third review (8afb65f) --------------------------------------------------------------
+
+for (const zoom of [0.75, 1]) {
+  for (const track of [11.75, 12, 12.043, 13]) {
+    test(`a thumb shows exactly when its track is at least 12 screen pixels, from the box's exact height (track ${track} px at ${zoom * 100}%)`, async ({ page }) => {
+      // The track is the box's height on screen less the thumb's 2 px inset at each end.
+      const height = (track + 4) / zoom
+      const view = { zoom, panX: 400 - 200 * zoom, panY: 190 - 100 * zoom }
+      const { errors } = await open(page, [textRec('c', 200, 100, { height, fontSize: 8, width: 200 })], { view })
+      const p = await pt(page, 250, 100 + height / 2)
+      await editAt(page, p)
+      await wheel(page, at(p, 10, 1))
+      expect(await scrollOf(page, 'c')).toMatchObject({ fadeTop: true, fadeBottom: true })
+      const thumb = page.locator('.scene-text[data-id="c"] .scene-text-thumb.is-shown')
+      const shown = await thumb.count()
+      expect(shown, `track ${track}`).toBe(track >= 12 ? 1 : 0)
+      if (!shown) return
+      const box = (await thumb.boundingBox())!
+      expect(box.width).toBeCloseTo(6, 1)
+      expect(box.height).toBeLessThanOrEqual(track / 2 + 0.01) // at most half the exact track
+      const top = (await exactOf(page, 'c')).top
+      const c = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+      await drag(page, c, { x: c.x, y: c.y + 4 }, { steps: 4 })
+      expect((await exactOf(page, 'c')).top).toBeGreaterThan(top)
+      expect(errors).toEqual([])
+    })
+  }
+}
+
+test('a press that began in the edited text never outlives itself: released elsewhere, or followed by another button, the wheel goes to the board', async ({ page, context }) => {
+  const { errors } = await open(page, [textRec('c', 260, 180, { height: 160 })])
+  const p = await pt(page, 302, 218)
+  await editAt(page, p)
+  await wheel(page, at(p, 75, 1))
+  await page.waitForTimeout(NEW_GESTURE_MS)
+  const cdp = await context.newCDPSession(page)
+  const panY = async () => (await probe(page)).viewport.panY
+  /** A wheel over the text with `buttons` held: the board pans and the text stays where it is. */
+  const pans = async (what: string, buttons: number) => {
+    const before = (await exactOf(page, 'c')).top
+    const y = await panY()
+    await wheel(page, [{ ...p, dy: -8, buttons }])
+    expect(await panY(), what).toBe(y + 8)
+    expect((await exactOf(page, 'c')).top, what).toBe(before)
+    await page.waitForTimeout(NEW_GESTURE_MS)
+  }
+
+  // The second button: a press in the text, released; then the right button held over the text.
+  await page.mouse.move(p.x, p.y)
+  await page.mouse.down()
+  await page.mouse.up()
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: p.x, y: p.y, button: 'right', buttons: 2, clickCount: 1 })
+  await pans('right button after a press in the text', 2)
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p.x, y: p.y, button: 'right', buttons: 0, clickCount: 1 })
+
+  // The lost release: a press in the text whose release happens in another window; back with no button
+  // held; then a press on a disabled panel button (Chromium sends no mousedown for it) dragged over the text.
+  const disabled = await page.evaluate(() => {
+    const b = Array.from(document.querySelectorAll<HTMLButtonElement>('button:disabled')).find((b) => b.offsetWidth > 0)!
+    const r = b.getBoundingClientRect()
+    for (let x = r.left + 2; x < r.right - 1; x++) for (let y = r.top + 2; y < r.bottom - 1; y++) if (document.elementFromPoint(x, y) === b) return { x, y }
+    return null
+  })
+  expect(disabled).not.toBeNull()
+  await page.mouse.move(p.x, p.y)
+  await page.mouse.down()
+  const other = await context.newPage()
+  await other.setContent('<button>Another window</button>')
+  await other.bringToFront()
+  await other.mouse.up()
+  await page.bringToFront()
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p.x, y: p.y, buttons: 0 })
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: disabled!.x, y: disabled!.y, buttons: 0 })
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: disabled!.x, y: disabled!.y, button: 'left', buttons: 1, clickCount: 1 })
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p.x, y: p.y, buttons: 1 })
+  await pans('a press on a disabled button after a release lost in another window', 1)
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p.x, y: p.y, button: 'left', buttons: 0, clickCount: 1 })
+  // And a press that did begin in the text still scrolls it.
+  await page.mouse.move(p.x, p.y)
+  await page.mouse.down()
+  const before = (await exactOf(page, 'c')).top
+  await wheel(page, [{ ...p, dy: -8, buttons: 1 }])
+  expect((await exactOf(page, 'c')).top).toBe(before - 8)
+  await page.mouse.up()
+  expect(errors).toEqual([])
+})
+
+for (const zoom of [0.5, 1, 2]) {
+  test(`a card's scroll end is what the browser's own layout gives for it (zoom ${zoom})`, async ({ page }) => {
+    const view = { zoom, panX: 400 - 300 * zoom, panY: 200 - 100 * zoom }
+    const heights = [100, 133.23, 160.5]
+    const { errors } = await open(page, heights.map((height, i) => textRec(`c${i}`, 100 + i * 300, 100, { height, width: 260, text: lines(12 + 6 * i) })), { view })
+    for (const [i, height] of heights.entries()) {
+      // Measured here, independently: the text's own height from a copy of the card's body left to
+      // grow, then where the browser lets the body scroll to for the text's end, and at most.
+      const browser = await page.evaluate(({ id, height }) => {
+        const body = document.querySelector<HTMLElement>(`.scene-text[data-id="${id}"] > .scene-text-body`)!
+        const copy = body.cloneNode(true) as HTMLElement
+        copy.style.height = 'auto'
+        copy.style.overflow = 'visible'
+        body.parentElement!.append(copy)
+        const natural = parseFloat(getComputedStyle(copy).height)
+        copy.remove()
+        const keep = body.scrollTop
+        body.scrollTop = natural - height
+        const end = body.scrollTop
+        body.scrollTop = 1e7
+        const most = body.scrollTop
+        body.scrollTop = keep
+        return { natural, end: Math.max(0, Math.min(end, most)) }
+      }, { id: `c${i}`, height })
+      expect(browser.natural).toBeGreaterThan(height)
+      expect((await exactOf(page, `c${i}`)).max, `height ${height}`).toBe(browser.end)
+    }
+    expect(errors).toEqual([])
+  })
+}

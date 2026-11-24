@@ -362,7 +362,8 @@ export class Editor {
   /**
    * The primary press now held began inside the text being edited (not on its scroll thumb): the one
    * press during which the wheel keeps its ordinary rule, so the text can scroll while words are
-   * selected in it. Cleared by every press and every primary release.
+   * selected in it. Cleared by every press, by any mouse or pointer event that reports the primary
+   * button up (`primaryReleased`), and when the window loses focus.
    */
   private editPress = false
   private pan: { button: number; end: () => void } | null = null
@@ -1151,6 +1152,15 @@ export class Editor {
     })
   }
 
+  /**
+   * Any mouse or pointer event that reports the primary button up ends the press recorded as begun in
+   * the edited text (`editPress`), so that it can never outlive its press: a release in another
+   * window, then a move back, says so.
+   */
+  private primaryReleased(e: MouseEvent) {
+    if ((e.buttons & 1) === 0) this.editPress = false
+  }
+
   /** The handle of a selected object under a pointer event (`'mb'`, `'tl'`...), or undefined. */
   private handleUnder(obj: FabricObject, e: Event): string | undefined {
     if (!(e instanceof MouseEvent) || typeof obj.findControl !== 'function') return undefined
@@ -1571,6 +1581,7 @@ export class Editor {
     // One permanent release listener. Capture on window runs before Fabric's own
     // (bubble-phase, document) listener, so it can keep non-primary releases from it.
     const onMouseUp = (e: MouseEvent) => {
+      this.primaryReleased(e)
       if (e.button === 0) {
         this.primaryDown = false
         this.editPress = false
@@ -1589,6 +1600,7 @@ export class Editor {
     // the control's enabled parent, so it reaches the window and the document like any other; nothing
     // is clicked (no `mousedown` went with it) and the control does not act.
     const onPointerUp = (e: PointerEvent) => {
+      this.primaryReleased(e)
       if (e.pointerType !== 'mouse' || !(e.target instanceof Element)) return
       const disabled = e.target.closest(':disabled')
       if (!disabled) return
@@ -1616,15 +1628,24 @@ export class Editor {
     // taking the keyboard away from the text being edited: its `pointerdown` default is prevented
     // instead (a disabled control does nothing with a press anyway; its hover tip still shows).
     const onPointerDown = (e: PointerEvent) => {
+      // Every press starts afresh (one on a disabled control gets no `mousedown`); a press inside the
+      // edited text records itself afterwards (`editingPress`, on its `mousedown`).
+      this.editPress = false
       if (e.pointerType === 'mouse' && e.target instanceof Element && e.target.closest(':disabled')) e.preventDefault()
     }
     // A native drag (e.g. dragging selected text) ends with `dragend` and no `mouseup` at all.
-    const onDragEnd = () => this.healPrimaryDown(0)
+    const onDragEnd = () => {
+      this.editPress = false
+      this.healPrimaryDown(0)
+    }
     const onMouseDown = (e: MouseEvent) => {
       this.editPress = false // a press inside the edited text sets it again (`editingPress`), after this
       this.healPrimaryDown(e.button === 0 ? 0 : e.buttons)
     }
-    const onMouseMove = (e: MouseEvent) => this.healPrimaryDown(e.buttons)
+    const onMouseMove = (e: MouseEvent) => {
+      this.primaryReleased(e)
+      this.healPrimaryDown(e.buttons)
+    }
     window.addEventListener('mousedown', onMouseDown, { capture: true })
     window.addEventListener('mouseup', onMouseUp, { capture: true })
     window.addEventListener('mousemove', onMouseMove, { capture: true })
@@ -1705,6 +1726,7 @@ export class Editor {
       }
     }
     const onBlur = () => {
+      this.editPress = false // its release may come in another window
       if (this.spaceHeld) {
         this.spaceHeld = false
         this.applyToolState()
