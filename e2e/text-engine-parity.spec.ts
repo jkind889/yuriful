@@ -142,7 +142,7 @@ test('an IME composition or a keyless insertion over every selection gives the e
         await cdp.send('Input.imeSetComposition', { text: 'ka', selectionStart: 2, selectionEnd: 2 })
         await cdp.send('Input.insertText', { text: 'カ' })
       } else await cdp.send('Input.insertText', { text: 'カ' })
-      await page.waitForTimeout(60) // the follow-up runs 30 ms after a composition ends
+      await page.waitForTimeout(60)
       const result = await page.evaluate(async ([src, a, b]) => {
         const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
         const { createObject, reconcileTextFormatting, toRecord } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
@@ -199,19 +199,20 @@ test('an IME composition or a keyless insertion over every selection gives the e
 /**
  * Real IME compositions (CDP `Input.imeSetComposition` updates, `Input.insertText` commits) on
  * a mounted view. A composition never starts over a selection: the selection is deleted at
- * `compositionstart` (N1). While a composition is open the browser and ProseMirror own the
- * text, and a session command issued while one is open, or before ProseMirror has finished
- * ending it, is refused and never runs later (N3). Text and caret must equal the shipped canvas
- * fed the same input: each composition update an input of Fabric's real `onInput` (the textarea
- * holding the candidate, its caret after it), keys and pastes likewise, with the editor's
+ * `compositionstart`, and given back when the composition delivers nothing. While a composition
+ * is open the browser and ProseMirror own the text and session commands are refused; as soon
+ * as it has ended they work. Text and caret must equal the shipped canvas fed the same input:
+ * each composition update an input of Fabric's real `onInput` (the textarea holding the
+ * candidate, its caret after it), keys and pastes likewise, with the editor's
  * `reconcileTextFormatting` after each. Marks and levels: at a plain caret compared with that
  * same canvas record; over a selection, rule R5 (the composed text takes the marks of the
  * first selected character, levels by today's rule) asserted directly; after input that
- * followed a composition at once, text and caret only. After every scenario (N5): the last
- * record `onChange` reported equals `content()`, equals the canonical form of the live document
- * and has exactly its text; and in-edit undo steps back to the record the scenario started from
- * (redo forward to its end). Every scenario runs twice: each command awaited, and all commands
- * sent at once without awaiting.
+ * followed a composition at once, text and caret only. After every scenario: the last record
+ * `onChange` reported equals `content()`, equals the canonical form of the live document and
+ * has exactly its text; and in-edit undo, step by step, walks back to the record the scenario
+ * started from and redo forward to its end, every step's text and caret one the canvas had on
+ * the way (its forward records). Every scenario runs twice: each command awaited, and all
+ * commands sent at once without awaiting.
  */
 test('real IME compositions keep exactly the text and caret the canvas keeps, and a canonical record, on a mounted view', async ({ page }) => {
   test.setTimeout(600_000)
@@ -221,12 +222,17 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
   type Step =
     | { ime: string; at?: number }
     | { commit: string }
+    | { commitKey: [string, string] }
     | { cancel: true }
     | { key: string }
     | { clip: string }
     | { wait: number }
     | { cmd: 'bold' | 'h2' | 'undo' | 'paste' }
     | { finish: true }
+    | { start: true }
+    | { end: true }
+    | { blur: true }
+    | { focusOffOnStart: true }
   type Source = { text: string; spans?: Array<Record<string, unknown>>; headings?: number[] }
   type Scenario = { name: string; src: Source; a: number; b: number; steps: Step[]; pending?: { italic?: boolean; font?: string }; marks: 'canvas' | 'r5' | 'none'; caret?: false }
   const compose = (updates: string[], commit: string): Step[] => [...updates.map((u) => ({ ime: u })), { commit }]
@@ -270,6 +276,7 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
     ['Ctrl+A, then x', [{ key: 'Control+a' }, { key: 'x' }]],
     ['ArrowLeft, then x', [{ key: 'ArrowLeft' }, { key: 'x' }]],
     ['Ctrl+Z, then Ctrl+Y', [{ key: 'Control+z' }, { key: 'Control+y' }]],
+    ['Ctrl+Z, 100 ms, then Ctrl+Y', [{ key: 'Control+z' }, { wait: 100 }, { key: 'Control+y' }]],
     ['Ctrl+Z', [{ key: 'Control+z' }]],
   ]
   const bcD: Source = { text: 'bcD', spans: [{ start: 0, end: 1, bold: true }, { start: 2, end: 3, underline: true }] }
@@ -280,22 +287,41 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
     ['an arrow key, then a typed character', [{ key: 'ArrowLeft' }, { key: 'x' }]],
     ['a typed character', [{ key: 'x' }]],
     ['a native clipboard paste', [{ clip: 'P' }]],
-    ['a formatting command (refused), then a typed character', [{ cmd: 'bold' }, { key: 'x' }]],
-    ['a heading command (refused)', [{ cmd: 'h2' }]],
-    ['a paste through the session (refused), then a typed character', [{ cmd: 'paste' }, { key: 'x' }]],
-    ['in-edit undo through the session (refused)', [{ cmd: 'undo' }]],
+    ['a formatting command, then a typed character', [{ cmd: 'bold' }, { key: 'x' }]],
+    ['a heading command', [{ cmd: 'h2' }]],
+    ['a paste through the session, then a typed character', [{ cmd: 'paste' }, { key: 'x' }]],
+    ['in-edit undo through the session', [{ cmd: 'undo' }]],
     ['finish()', [{ finish: true }]],
   ]
   const korean = Array.from('한국어로음악리뷰를쓰는중입니다오늘은좋아')
   const initial = (syllable: string) => 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'[Math.floor((syllable.charCodeAt(0) - 0xac00) / 588)]!
   const kana = 'きょうはあたらしいれこーどをききながらながいぶんしょう'
+  const abcd: Source = { text: 'abcd' }
+  const runs3: Step[] = [...compose(['か', 'かな'], '仮名'), { key: 'ArrowLeft' }, { key: 'x' }, { key: 'End' }, ...compose(['ㄱ', '가'], '가'), { key: 'Shift+ArrowLeft' }, ...compose(['な'], '名'), { key: 'y' }]
   const scenarios: Scenario[] = [
+    // The reviewers' scenarios.
     { name: 'case 1: `A|なZ`, `か` → `かな`, commit `か`, then a character typed at once', src: { text: 'AなZ' }, a: 1, b: 1, steps: [...compose(['か', 'かな'], 'か'), { key: 'x' }], marks: 'canvas' },
     { name: 'case 3: a heading command during the preedit (refused)', src: bcD, a: 1, b: 2, steps: [{ ime: 'か' }, { cmd: 'h2' }, { ime: 'かな' }, { commit: '仮名' }], marks: 'r5' },
     { name: 'a formatting command during the preedit (refused)', src: bcD, a: 1, b: 2, steps: [{ ime: 'か' }, { cmd: 'bold' }, { ime: 'かな' }, { commit: '仮名' }], marks: 'r5' },
     { name: 'a heading command during the preedit on line one (refused), commit, then ArrowDown', src: { text: 'a\nbc' }, a: 1, b: 1, steps: [{ ime: 'か' }, { cmd: 'h2' }, { commit: '仮' }, { key: 'ArrowDown' }], marks: 'canvas', caret: false },
-    { name: '`a|b`, commit `仮`, a paste through the session (refused), then x before the follow-up', src: { text: 'ab' }, a: 1, b: 1, steps: [{ ime: 'か' }, { commit: '仮' }, { cmd: 'paste' }, { key: 'x' }], marks: 'canvas' },
+    { name: '`a|b`, commit `仮`, a paste through the session at once (it runs), then x', src: { text: 'ab' }, a: 1, b: 1, steps: [{ ime: 'か' }, { commit: '仮' }, { cmd: 'paste' }, { key: 'x' }], marks: 'canvas' },
     { name: 'over the selection across marks, commit, Ctrl+A at once, 75 ms, then x', src: mixed, a: 0, b: 2, steps: [...compose(['ㄱ', '가', '각'], '가'), { key: 'Control+a' }, { wait: 75 }, { key: 'x' }], marks: 'none' },
+    { name: 'B2 (b): `pqABcd`, `AB` italic monospace selected, `かな` → `か`, commit, Left, x, 75 ms, undo, redo, 75 ms, x', src: { text: 'pqABcd', spans: [{ start: 2, end: 4, italic: true, font: 'mono' }] }, a: 2, b: 4, steps: [...compose(['かな', 'か'], 'か'), { key: 'ArrowLeft' }, { key: 'x' }, { wait: 75 }, { key: 'Control+z' }, { key: 'Control+y' }, { wait: 75 }, { key: 'x' }], marks: 'none' },
+    ...(['Control+b', 'Control+i', 'Control+u'] as const).map((k): Scenario => ({ name: `A2: \`ab|cd\`, commit \`가\`, ${k} at once, then x`, src: abcd, a: 2, b: 2, steps: [...compose(['ㄱ', '가'], '가'), { key: k }, { key: 'x' }], marks: 'canvas' })),
+    // Committed by a key arriving in the same instant as the commit, as with a real IME.
+    ...(['ArrowLeft', 'Enter', 'Space', 'Control+z'] as const).flatMap((k): Scenario[] => [
+      { name: `committed by ${k}, at a caret`, src: bold, a: 2, b: 2, steps: [...compose(['か'], ''), { commitKey: ['かな', k] }], marks: k === 'Control+z' ? 'none' : 'canvas' },
+      { name: `committed by ${k}, over the selection across marks`, src: mixed, a: 0, b: 2, steps: [{ ime: 'ㄱ' }, { ime: '가' }, { commitKey: ['가', k] }], marks: 'none' },
+    ]).map((s) => ({ ...s, steps: s.steps.filter((st) => !('commit' in st && st.commit === '')) })),
+    // Undo and redo walks after runs of compositions over selections with keys in between.
+    { name: 'compositions over selections with keys between, then Ctrl+Z three times and Ctrl+Y twice', src: mixed, a: 0, b: 2, steps: [...runs3, { key: 'Control+z' }, { key: 'Control+z' }, { key: 'Control+z' }, { key: 'Control+y' }, { key: 'Control+y' }], marks: 'none' },
+    { name: 'compositions over selections with keys between', src: twoLines, a: 1, b: 4, steps: runs3, marks: 'none' },
+    // A composition that composes nothing.
+    { name: 'compositionstart with nothing composed, then the edit loses focus', src: mixed, a: 0, b: 2, steps: [{ start: true }, { blur: true }], marks: 'canvas' },
+    { name: 'compositionstart with nothing composed, then finish()', src: mixed, a: 0, b: 2, steps: [{ start: true }, { finish: true }], marks: 'canvas' },
+    { name: 'compositionstart and compositionend with nothing composed, then a normal composition', src: mixed, a: 0, b: 2, steps: [{ start: true }, { end: true }, ...compose(['か'], '名')], marks: 'r5' },
+    { name: 'a composition whose start moves focus out of the edit', src: mixed, a: 0, b: 2, steps: [{ focusOffOnStart: true }, { ime: 'か' }, { wait: 80 }], marks: 'canvas' },
+    // Other compositions.
     { name: '`XY`, `X` selected, `か` → `かな`, commit `な`', src: { text: 'XY' }, a: 0, b: 1, steps: compose(['か', 'かな'], 'な'), marks: 'r5' },
     { name: 'the IME’s caret inside a character of the candidate (`e` and an accent, the caret between)', src: plain, a: 5, b: 5, steps: [{ ime: 'e' }, { ime: 'é', at: 1 }, { ime: 'éx', at: 1 }, { commit: 'éx' }, { key: 'y' }], marks: 'canvas' },
     { name: 'a composition cancelled and restarted', src: bold, a: 2, b: 2, steps: [{ ime: 'か' }, { ime: 'かな' }, { cancel: true }, ...compose(['な'], '名')], marks: 'canvas' },
@@ -303,48 +329,44 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
     { name: 'a 20-syllable Korean sentence', src: plain, a: 10, b: 10, steps: korean.flatMap((s) => compose([initial(s), s], s)), marks: 'canvas' },
     { name: 'a 30-character Japanese sentence', src: plain, a: 10, b: 10, steps: compose(Array.from(kana).map((_, i) => kana.slice(0, i + 1)), '今日は新しいレコードを聴きながら長い文章'), marks: 'canvas' },
     ...places.flatMap((p) => shapes.map(([shape, steps]): Scenario => ({ name: `${shape}, ${p.name}`, src: p.src, a: p.a, b: p.b, steps, marks: p.marks }))),
-    ...after.map(([what, steps]): Scenario => ({ name: `a composition followed at once by ${what}`, src: bold, a: 2, b: 2, steps: [...compose(['か', 'かな'], '仮名'), ...steps], marks: 'canvas' })),
+    ...after.map(([what, steps]): Scenario => ({ name: `a composition followed at once by ${what}`, src: bold, a: 2, b: 2, steps: [...compose(['か', 'かな'], '仮名'), ...steps], marks: steps.some((st) => 'cmd' in st) ? 'none' : 'canvas' })),
     ...([['across marks', mixed], ['inside one mark', sameMark]] as const).flatMap(([where, src]) =>
       overSelection.flatMap(([shape, steps]): Scenario[] => [
         { name: `${shape}, over the selection ${where}`, src, a: 0, b: 2, steps, marks: 'r5' },
-        ...followers.map(([what, more]): Scenario => {
-          // ArrowLeft from the second character of a text to its start is lost in a mounted
-          // ProseMirror view on this page whatever came before (no composition needed): those
-          // runs start one plain character into the text.
-          if (!what.startsWith('ArrowLeft')) return { name: `${shape}, over the selection ${where}, then ${what} at once`, src, a: 0, b: 2, steps: [...steps, ...more], marks: 'none' }
-          const shifted = { text: `q${src.text}`, spans: src.spans?.map((sp) => ({ ...sp, start: (sp.start as number) + 1, end: (sp.end as number) + 1 })) }
-          return { name: `${shape}, over the selection ${where} (after a q), then ${what} at once`, src: shifted, a: 1, b: 3, steps: [...steps, ...more], marks: 'none' }
-        }),
+        ...followers.map(([what, more]): Scenario => ({ name: `${shape}, over the selection ${where}, then ${what} at once`, src, a: 0, b: 2, steps: [...steps, ...more], marks: 'none' })),
       ]),
     ),
   ]
 
   const fails: unknown[] = []
   let runs = 0
-  let refusedCommands = 0
-  const gaps: Array<[number, boolean]> = []
+  let refused = 0
+  let ran = 0
+  const gaps: number[] = []
   for (const scenario of scenarios) {
     for (const mode of ['awaited', 'at once'] as const) {
       const clip = scenario.steps.find((st): st is { clip: string } => 'clip' in st)?.clip
       await page.evaluate(async ([src, a, b, pending, clip]) => {
         const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
         const { createEditSession } = (await load('/src/editor/textSession.ts')) as typeof import('../src/editor/textSession.ts')
-        const w = window as unknown as { ss?: { finish(): void }; reported?: unknown; commands: unknown[]; times: { end: number; gaps: Array<[number, boolean]> } }
+        const w = window as unknown as { ss?: { finish(): void }; reported?: unknown; commands: unknown[]; times: { end: number; gaps: number[] } }
         w.ss?.finish()
         document.body.replaceChildren()
         const el = document.createElement('div')
         el.style.whiteSpace = 'pre-wrap'
-        document.body.append(el)
+        const outside = document.createElement('textarea')
+        outside.id = 'outside'
+        document.body.append(el, outside)
         w.reported = undefined
         w.commands = []
         w.times = { end: 0, gaps: [] }
         const s = createEditSession(src as never, { onChange: (c) => (w.reported = c) })!
         ;(window as unknown as { ss: unknown }).ss = s
         s.mount(el).focus()
-        // How soon after a commit the next key arrives, and whether the follow-up was still owed then.
+        // How soon after a commit the next key arrives.
         el.addEventListener('compositionend', () => (w.times.end = performance.now()))
         el.addEventListener('keydown', () => {
-          if (w.times.end > 0) w.times.gaps.push([performance.now() - w.times.end, (s as { settling?: boolean }).settling ?? true])
+          if (w.times.end > 0) w.times.gaps.push(performance.now() - w.times.end)
           w.times.end = 0
         })
         s.select(a as number, b as number)
@@ -353,6 +375,8 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
         if (p?.font) s.setFont(p.font as never)
         if (clip !== undefined) await navigator.clipboard.writeText(clip as string)
       }, [scenario.src, scenario.a, scenario.b, scenario.pending, clip] as const)
+      // ProseMirror puts its own selection back 20 ms after gaining focus if the browser's is unchanged: no one types that soon.
+      await page.waitForTimeout(40)
       const sent: Array<Promise<unknown>> = []
       const send = async (p: Promise<unknown>) => {
         if (mode === 'awaited') await p
@@ -361,12 +385,14 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
       for (const step of scenario.steps) {
         if ('ime' in step) await send(cdp.send('Input.imeSetComposition', { text: step.ime, selectionStart: step.at ?? step.ime.length, selectionEnd: step.at ?? step.ime.length }))
         else if ('commit' in step) await send(cdp.send('Input.insertText', { text: step.commit }))
-        else if ('cancel' in step) {
+        else if ('commitKey' in step) {
+          // The commit and the key that ends the composition, in the same instant.
+          await Promise.all([...sent.splice(0), cdp.send('Input.insertText', { text: step.commitKey[0] }), page.keyboard.press(step.commitKey[1])])
+        } else if ('cancel' in step) {
           // No CDP command cancels a composition: an empty candidate, then an empty commit.
           await send(cdp.send('Input.imeSetComposition', { text: '', selectionStart: 0, selectionEnd: 0 }))
           await send(cdp.send('Input.insertText', { text: '' }))
-        }
-        else {
+        } else {
           // Keys and session commands come in order after what was sent before them.
           await Promise.all(sent.splice(0))
           if ('key' in step) await page.keyboard.press(step.key)
@@ -376,8 +402,12 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
             await page.evaluate((st: Record<string, unknown>) => {
               const w = window as unknown as { ss: import('../src/editor/textSession.ts').EditSession; commands: unknown[] }
               const s = w.ss
+              const el = s.view?.dom as HTMLElement | undefined
               if ('finish' in st) return s.finish()
-              const settling = (s as { settling?: boolean }).settling ?? true
+              if ('start' in st || 'end' in st) return void el?.dispatchEvent(new CompositionEvent('start' in st ? 'compositionstart' : 'compositionend', { bubbles: true, data: '' }))
+              if ('blur' in st) return document.getElementById('outside')!.focus()
+              if ('focusOffOnStart' in st) return el?.addEventListener('compositionstart', () => document.getElementById('outside')!.focus(), { once: true })
+              const settling = s.settling
               const before = JSON.stringify(s.content())
               const ret = st.cmd === 'bold' ? s.toggleMark('bold') : st.cmd === 'h2' ? s.setHeading(2) : st.cmd === 'undo' ? s.undo() : s.paste({ text: 'P' })
               w.commands.push({ cmd: st.cmd, settling, ret, changed: JSON.stringify(s.content()) !== before })
@@ -385,17 +415,17 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
         }
       }
       await Promise.all(sent.splice(0))
-      await page.waitForTimeout(60) // the follow-up runs 30 ms after the last composition ends
+      await page.waitForTimeout(40)
       const result = await page.evaluate(async ([src, a, b, steps, pending]) => {
         const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
         const { createObject, reconcileTextFormatting, toRecord } = (await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')
         const { canonicalTextContent } = (await load('/src/model/textDoc.ts')) as typeof import('../src/model/textDoc.ts')
         const { docFromText, contentFromDoc, plainTextOfDoc } = (await load('/src/editor/textSchema.ts')) as typeof import('../src/editor/textSchema.ts')
         const { splitGraphemes, canonicalTextFormatting, headingsAfterEdit } = (await load('/src/model/richText.ts')) as typeof import('../src/model/richText.ts')
-        const w = window as unknown as { ss: import('../src/editor/textSession.ts').EditSession; reported?: unknown; commands: Array<{ cmd: string; settling: boolean; ret: boolean; changed: boolean }>; times: { gaps: Array<[number, boolean]> } }
+        const w = window as unknown as { ss: import('../src/editor/textSession.ts').EditSession; reported?: unknown; commands: Array<{ cmd: string; settling: boolean; ret: boolean; changed: boolean }>; times: { gaps: number[] } }
         const s = w.ss
         const source = src as { text: string; spans?: Array<Record<string, unknown>>; headings?: number[] }
-        // ---- the canvas fed the same input (session commands are refused: they change nothing)
+        // ---- the canvas fed the same input
         const obj = createObject({ type: 'text', id: 't', left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...source } as never, () => undefined) as unknown as {
           isEditing: boolean
           inCompositionMode: boolean
@@ -411,9 +441,9 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
         obj.hiddenTextarea = document.createElement('textarea')
         obj.selectionStart = g(value, a as number)
         obj.selectionEnd = g(value, b as number)
-        // The editor's pending choices go to what the canvas inserts (\`reconcileTextFormatting\`'s \`pending\`).
+        // The editor's pending choices go to what the canvas inserts (\`reconcileTextFormatting\`'s \`pending\`); Ctrl+B, I or U at a caret adds to them.
         const p = pending as { italic?: boolean; font?: string } | undefined
-        const pend: Record<string, unknown> | undefined = p ? { ...(p.italic ? { italic: true } : {}), ...(p.font ? { font: p.font } : {}) } : undefined
+        let pend: Record<string, unknown> | undefined = p ? { ...(p.italic ? { italic: true } : {}), ...(p.font ? { font: p.font } : {}) } : undefined
         const input = (next: string, caret: number, type: string) => {
           value = next
           obj.hiddenTextarea.value = next
@@ -427,12 +457,17 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
           const to = off(value, obj.selectionEnd)
           input(value.slice(0, from) + text + value.slice(to), from + text.length, type)
         }
+        const records: Array<[string, number]> = [[value, off(value, obj.selectionEnd)]]
+        const commands = [...w.commands]
         let comp: { before: string; after: string; first: boolean; selected: boolean } | null = null
-        const list = steps as Array<Record<string, unknown>>
-        // Keyboard undo on its own takes back the compositions (one history step): the text and selection from before them.
-        const undoneByKey = list.some((st, i) => st.key === 'Control+z' && list[i + 1]?.key !== 'Control+y')
+        let away = false
+        let undos = 0
+        const list = (steps as Array<Record<string, unknown>>).flatMap((st) => ('commitKey' in st ? [{ commit: (st.commitKey as string[])[0] }, { key: (st.commitKey as string[])[1] }] : [st]))
         for (const st of list) {
-          if ('ime' in st || 'commit' in st || 'cancel' in st) {
+          if ('focusOffOnStart' in st) away = true
+          else if (away && ('ime' in st || 'commit' in st)) {
+            // The composition went to the element focus moved to.
+          } else if ('ime' in st || 'commit' in st || 'cancel' in st) {
             if (!comp) {
               const from = off(value, obj.selectionStart)
               const to = off(value, obj.selectionEnd)
@@ -450,28 +485,42 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
           } else if ('key' in st) {
             const from = off(value, obj.selectionStart)
             const to = off(value, obj.selectionEnd)
-            if (st.key === 'Enter') replace('\n', 'insertLineBreak')
-            else if (st.key === 'Backspace' || st.key === 'Delete') {
+            const key = st.key as string
+            if (key === 'Enter') replace('\n', 'insertLineBreak')
+            else if (key === 'Space') replace(' ', 'insertText')
+            else if (key === 'Backspace' || key === 'Delete') {
               if (from !== to) replace('', 'deleteContentBackward')
-              else if (st.key === 'Backspace') {
+              else if (key === 'Backspace') {
                 const gone = splitGraphemes(value.slice(0, from)).pop() ?? ''
                 input(value.slice(0, from - gone.length) + value.slice(from), from - gone.length, 'deleteContentBackward')
               } else {
                 const gone = splitGraphemes(value.slice(from))[0] ?? ''
                 input(value.slice(0, from) + value.slice(from + gone.length), from, 'deleteContentForward')
               }
-            } else if (st.key === 'ArrowLeft') obj.selectionStart = obj.selectionEnd = from !== to ? obj.selectionStart : Math.max(0, obj.selectionEnd - 1)
-            else if (st.key === 'ArrowDown') obj.selectionStart = obj.selectionEnd = splitGraphemes(value).length
-            else if (st.key === 'Control+a') {
+            } else if (key === 'ArrowLeft') obj.selectionStart = obj.selectionEnd = from !== to ? obj.selectionStart : Math.max(0, obj.selectionEnd - 1)
+            else if (key === 'Shift+ArrowLeft') obj.selectionStart = Math.max(0, obj.selectionStart - 1)
+            else if (key === 'ArrowDown') obj.selectionStart = obj.selectionEnd = splitGraphemes(value).length
+            else if (key === 'End') {
+              const lineEnd = value.indexOf('\n', to)
+              obj.selectionStart = obj.selectionEnd = g(value, lineEnd < 0 ? value.length : lineEnd)
+            } else if (key === 'Control+a') {
               obj.selectionStart = 0
               obj.selectionEnd = splitGraphemes(value).length
-            } else if (st.key === 'Control+z' || st.key === 'Control+y') {
-              // Undo then redo: back where it was.
-            } else replace(st.key as string, 'insertText')
+            } else if (key === 'Control+b' || key === 'Control+i' || key === 'Control+u') pend = { ...pend, [key === 'Control+b' ? 'bold' : key === 'Control+i' ? 'italic' : 'underline']: true }
+            else if (key === 'Control+z') undos++
+            else if (key === 'Control+y') undos--
+            else replace(key, 'insertText')
           } else if ('clip' in st) replace(st.clip as string, 'insertFromPaste')
+          else if ('cmd' in st) {
+            const c = commands.shift()
+            if (c && !c.settling && st.cmd === 'paste') replace('P', 'insertFromPaste')
+            if (c && !c.settling && st.cmd === 'undo') undos++
+          }
+          const now: [string, number] = [value, off(value, obj.selectionEnd)]
+          if (!records.some(([t, c]) => t === now[0] && c === now[1])) records.push(now)
         }
-        const canvas = undoneByKey ? canonicalTextContent(source as never)! : canonicalTextContent(toRecord(obj as never) as never)!
-        const canvasCaret = undoneByKey ? (b as number) : off(value, obj.selectionEnd)
+        const canvas = canonicalTextContent(toRecord(obj as never) as never)!
+        const canvasCaret = off(value, obj.selectionEnd)
         // ---- rule R5 for a run of compositions over a selection
         const text = source.text
         const r5 = (() => {
@@ -494,18 +543,20 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
         const got = s.content()
         const gotCaret = s.selection().head
         const live = docFromText(got)!.doc.eq(s.state.doc)
-        // ---- N5: the last record reported, content(), the canonical form of the live document, its text
+        // ---- the last record reported, content(), the canonical form of the live document, its text
         const reported = JSON.stringify(w.reported ?? canonicalTextContent(source as never))
         const liveContent = contentFromDoc(s.state.doc, got)
         const n5 = reported === JSON.stringify(got) && JSON.stringify(got) === JSON.stringify(canonicalTextContent(liveContent as never)) && got.text === plainTextOfDoc(s.state.doc)
-        // ---- in-edit undo back to the start, redo forward to the end
-        let undoOk = true
-        if (!s.finished && !s.composing && !undoneByKey) {
-          const end = JSON.stringify(got)
-          for (let i = 0; i < 500 && s.canUndo && s.undo(); i++);
-          undoOk = JSON.stringify(s.content()) === JSON.stringify(canonicalTextContent(source as never))
-          for (let i = 0; i < 500 && s.canRedo && s.redo(); i++);
-          undoOk &&= JSON.stringify(s.content()) === end
+        // ---- in-edit undo back to the start, redo forward to the end: every step a forward record
+        const known = (t: string, c: number) => records.some(([rt, rc]) => rt === t && rc === c)
+        const offRecord: string[] = []
+        let walk = true
+        if (!s.finished && !s.composing) {
+          const at = () => [s.content().text, s.selection().head] as const
+          for (let i = 0; i < 500 && s.canUndo && s.undo(); i++) if (!known(...at())) offRecord.push(`undo ${JSON.stringify(at())}`)
+          walk = s.content().text === source.text
+          for (let i = 0; i < 500 && s.canRedo && s.redo(); i++) if (!known(...at())) offRecord.push(`redo ${JSON.stringify(at())}`)
+          walk &&= s.content().text === value
         }
         return {
           got,
@@ -513,13 +564,16 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
           canvas,
           canvasCaret,
           r5,
+          undone: undos > 0,
+          onRecord: known(got.text, gotCaret),
           finished: s.finished,
           composing: s.composing,
+          settling: s.settling,
           canonical: JSON.stringify(got) === JSON.stringify(canonicalTextContent(got as never)),
           live,
           n5,
-          reported,
-          undoOk,
+          walk,
+          offRecord,
           commands: w.commands,
           gaps: w.times.gaps,
         }
@@ -527,26 +581,168 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
       runs++
       gaps.push(...result.gaps)
       const problems: string[] = []
-      if (result.got.text !== result.canvas.text) problems.push('text')
-      if (!result.finished && scenario.caret !== false && result.gotCaret !== result.canvasCaret) problems.push('caret')
-      if (scenario.marks === 'canvas' && JSON.stringify(result.got) !== JSON.stringify(result.canvas)) problems.push('marks and levels (canvas)')
-      if (scenario.marks === 'r5' && JSON.stringify(result.got) !== JSON.stringify(result.r5)) problems.push('marks and levels (R5)')
-      for (const c of result.commands) {
-        if (!c.settling) problems.push(`${c.cmd} issued after the composition had settled (timing)`)
-        else if (c.ret !== false || c.changed) problems.push(`${c.cmd} not refused`)
-        else refusedCommands++
+      if (result.undone) {
+        // Undone with the keyboard: some earlier state the canvas had, and redo leads back to the end.
+        if (!result.onRecord) problems.push('undo left a state the canvas never had')
+      } else {
+        if (result.got.text !== result.canvas.text) problems.push('text')
+        if (!result.finished && scenario.caret !== false && result.gotCaret !== result.canvasCaret) problems.push('caret')
+        if (scenario.marks === 'canvas' && JSON.stringify(result.got) !== JSON.stringify(result.canvas)) problems.push('marks and levels (canvas)')
+        if (scenario.marks === 'r5' && JSON.stringify(result.got) !== JSON.stringify(result.r5)) problems.push('marks and levels (R5)')
       }
-      if (result.composing) problems.push('still composing')
+      for (const c of result.commands) {
+        if (c.settling) {
+          if (c.ret !== false || c.changed) problems.push(`${c.cmd} not refused during a composition`)
+          else refused++
+        } else if (c.ret !== true) problems.push(`${c.cmd} refused after the composition had ended`)
+        else ran++
+      }
+      if (result.composing || result.settling) problems.push('still composing')
       if (!result.canonical) problems.push('record not canonical')
       if (!result.live) problems.push('document is not the record')
-      if (!result.n5) problems.push('N5: reported record, content() and live document differ')
-      if (!result.undoOk) problems.push('undo/redo')
+      if (!result.n5) problems.push('reported record, content() and live document differ')
+      if (!result.walk) problems.push('undo/redo walk did not reach both ends')
+      if (result.offRecord.length) problems.push(`undo/redo off the forward records: ${result.offRecord.join(' ')}`)
       if (problems.length > 0) fails.push({ scenario: scenario.name, mode, problems, ...result })
     }
   }
-  console.log(`text engine compositions (real IME, mounted): ${scenarios.length} scenarios, ${runs} runs, ${fails.length} with problems; ${refusedCommands} session commands refused; ${gaps.length} keys straight after a commit, ${gaps.filter(([, owed]) => owed).length} of them before the follow-up, ${gaps.filter(([t]) => t <= 12).length} within 12 ms (median ${[...gaps].sort((x, y) => x[0] - y[0])[gaps.length >> 1]?.[0].toFixed(1)} ms, at most ${Math.max(...gaps.map(([t]) => t)).toFixed(1)} ms)`)
+  console.log(`text engine compositions (real IME, mounted): ${scenarios.length} scenarios, ${runs} runs, ${fails.length} with problems; ${refused} session commands refused during a composition, ${ran} run straight after one; ${gaps.length} keys straight after a commit, ${gaps.filter((t) => t <= 12).length} within 12 ms (median ${[...gaps].sort((x, y) => x - y)[gaps.length >> 1]?.toFixed(1)} ms)`)
   for (const f of fails as Array<{ scenario: string; mode: string; problems: string[]; got: { text: string }; gotCaret: number; canvas: { text: string }; canvasCaret: number }>)
     console.log(`  ${f.scenario} (${f.mode}): ${f.problems.join(', ')}; engine ${JSON.stringify(f.got.text)}@${f.gotCaret}, canvas ${JSON.stringify(f.canvas.text)}@${f.canvasCaret}`)
   expect(fails.slice(0, 4)).toEqual([])
   expect(runs).toBe(scenarios.length * 2)
+})
+
+/**
+ * Caret and selection keys on a mounted view, within 200 ms of the view taking focus (ProseMirror
+ * takes a caret at the start of the text then for the browser resetting the selection; the
+ * session keeps a key's own move there). The rule is the browser's own
+ * behaviour: each key is pressed in a plain contenteditable holding the same HTML, then in the
+ * engine, from the same starting selection. After each key the engine's selection, the
+ * selection the browser shows in it, and the native one must agree; a character typed then
+ * must give the native text. Starts: select-all, carets on each line, a backward selection.
+ */
+test('caret and selection keys do what the browser does, and what is typed lands where the selection is shown', async ({ page }) => {
+  test.setTimeout(300_000)
+  await openBlank(page)
+  const rec = { text: 'ab cd\nHead line\nef gh', headings: [0, 2, 0] }
+  const html = '<p>ab cd</p><h2>Head line</h2><p>ef gh</p>'
+  const starts: Array<[string, number, number]> = [['select-all', -1, -1], ['caret at the start', 0, 0], ['caret in line one', 4, 4], ['caret at the start of the heading', 6, 6], ['caret in the heading', 11, 11], ['caret at the end', 21, 21], ['backward selection', 13, 3]]
+  const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Shift+ArrowLeft', 'Shift+ArrowRight', 'Shift+ArrowUp', 'Shift+ArrowDown', 'Shift+Home', 'Shift+End', 'Control+ArrowLeft', 'Control+ArrowRight', 'Control+Shift+ArrowLeft', 'Control+Shift+ArrowRight', 'Control+Home', 'Control+End']
+  const sequences: string[][] = [...keys.map((k) => [k]), ['ArrowLeft', 'Shift+ArrowRight'], ['Home', 'Shift+ArrowRight'], ['ArrowUp', 'Shift+End']]
+  const setup = (kind: string, anchor: number, head: number) =>
+    page.evaluate(
+      async ([kind, rec, html, anchor, head]) => {
+        const { createEditSession } = (await import(/* @vite-ignore */ '/src/editor/textSession.ts' as string)) as typeof import('../src/editor/textSession.ts')
+        const w = window as unknown as { ss?: { finish(): void }; probe: () => { dom: [number, number]; state?: [number, number]; text: string } }
+        w.ss?.finish()
+        w.ss = undefined
+        document.body.replaceChildren()
+        const el = document.createElement('div')
+        el.style.whiteSpace = 'pre-wrap'
+        document.body.append(el)
+        /** A DOM point as a UTF-16 offset into the text (lines joined by "\n"). */
+        const offsetOf = (node: Node, offset: number): number => {
+          const blocks = Array.from(el.children)
+          if (node === el) return blocks.slice(0, offset).reduce((n, bl) => n + (bl.textContent ?? '').length + 1, 0) - (offset > 0 && offset === blocks.length ? 1 : 0)
+          const i = blocks.findIndex((bl) => bl.contains(node))
+          const range = document.createRange()
+          range.setStart(blocks[i]!, 0)
+          range.setEnd(node, offset)
+          return blocks.slice(0, i).reduce((n, bl) => n + (bl.textContent ?? '').length + 1, 0) + range.toString().length
+        }
+        const dom = (): [number, number] => {
+          const sel = getSelection()!
+          return [offsetOf(sel.anchorNode!, sel.anchorOffset), offsetOf(sel.focusNode!, sel.focusOffset)]
+        }
+        const text = () => Array.from(el.children, (c) => c.textContent).join('\n')
+        if (kind === 'native') {
+          el.contentEditable = 'true'
+          el.innerHTML = html as string
+          el.focus()
+          if ((anchor as number) >= 0) {
+            const at = (o: number): [Node, number] => {
+              const blocks = Array.from(el.children)
+              let rest = o
+              for (const bl of blocks) {
+                const len = (bl.textContent ?? '').length
+                if (rest <= len) return [bl.firstChild ?? bl, rest]
+                rest -= len + 1
+              }
+              return [el, blocks.length]
+            }
+            getSelection()!.setBaseAndExtent(...at(anchor as number), ...at(head as number))
+          }
+          w.probe = () => ({ dom: dom(), text: text() })
+        } else {
+          const s = createEditSession(rec as never)!
+          w.ss = s
+          s.mount(el).focus()
+          if ((anchor as number) >= 0) s.select(anchor as number, head as number)
+          w.probe = () => ({ dom: dom(), state: [s.selection().anchor, s.selection().head], text: s.content().text })
+        }
+      },
+      [kind, rec, html, anchor, head] as const,
+    )
+  const probe = () => page.evaluate(() => (window as unknown as { probe: () => { dom: [number, number]; state?: [number, number]; text: string } }).probe())
+  const fails: string[] = []
+  let count = 0
+  for (const [name, anchor, head] of starts) {
+    for (const seq of sequences) {
+      const seen: Record<string, Array<{ dom: [number, number]; state?: [number, number]; text: string }>> = {}
+      for (const kind of ['native', 'engine']) {
+        await setup(kind, anchor, head)
+        // ProseMirror puts its own selection back 20 ms after gaining focus if the browser's is unchanged: no one presses a key that soon.
+        await page.waitForTimeout(40)
+        if (anchor < 0) await page.keyboard.press('Control+a')
+        const steps: Array<{ dom: [number, number]; state?: [number, number]; text: string }> = []
+        for (const k of seq) {
+          await page.keyboard.press(k)
+          // The browser reports a key's move by `selectionchange` a moment later; a person's next key comes later than that.
+          await page.waitForTimeout(30)
+          steps.push(await probe())
+        }
+        await page.keyboard.press('x')
+        steps.push(await probe())
+        seen[kind] = steps
+      }
+      count++
+      const n = seen.native!
+      const e = seen.engine!
+      const where = `${name}, ${seq.join(' ')}`
+      seq.forEach((k, i) => {
+        if (JSON.stringify(e[i]!.dom) !== JSON.stringify(e[i]!.state)) fails.push(`${where}: after ${k} the engine has ${JSON.stringify(e[i]!.state)} but shows ${JSON.stringify(e[i]!.dom)}`)
+        if (JSON.stringify(e[i]!.dom) !== JSON.stringify(n[i]!.dom)) fails.push(`${where}: after ${k} the engine shows ${JSON.stringify(e[i]!.dom)}, the browser ${JSON.stringify(n[i]!.dom)}`)
+      })
+      if (e[seq.length]!.text !== n[seq.length]!.text) fails.push(`${where}, then x: engine ${JSON.stringify(e[seq.length]!.text)}, browser ${JSON.stringify(n[seq.length]!.text)}`)
+    }
+  }
+  console.log(`selection keys (mounted, within 200 ms of focus): ${count} sequences from ${starts.length} starts, ${fails.length} differences`)
+  for (const f of fails.slice(0, 20)) console.log('  ' + f)
+  expect(fails).toEqual([])
+  expect(count).toBe(starts.length * sequences.length)
+})
+
+/** The reviewer's case, against the canvas too: select-all, Left, Shift+Right, x replaces only the first character. */
+test('after select-all, Left and Shift+Right select the first character, and typing replaces only it, as on the canvas', async ({ page }) => {
+  await openBlank(page)
+  const out = await page.evaluate(async () => {
+    const { createEditSession } = (await import(/* @vite-ignore */ '/src/editor/textSession.ts' as string)) as typeof import('../src/editor/textSession.ts')
+    document.body.replaceChildren(Object.assign(document.createElement('h1'), { textContent: 'other content' }))
+    const el = document.createElement('div')
+    el.style.whiteSpace = 'pre-wrap'
+    document.body.append(el)
+    const s = createEditSession({ text: 'ab\nCD\nef', headings: [0, 2, 0] } as never)!
+    ;(window as unknown as { ss: unknown }).ss = s
+    s.mount(el).focus()
+    s.select(0)
+    return true
+  })
+  expect(out).toBe(true)
+  for (const k of ['Control+a', 'ArrowLeft', 'Shift+ArrowRight', 'x']) {
+    await page.keyboard.press(k)
+    await page.waitForTimeout(80)
+  }
+  const got = await page.evaluate(() => (window as unknown as { ss: import('../src/editor/textSession.ts').EditSession }).ss.content())
+  expect(got).toStrictEqual({ text: 'xb\nCD\nef', headings: [0, 2] })
 })

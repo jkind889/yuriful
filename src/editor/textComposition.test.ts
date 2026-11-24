@@ -7,13 +7,14 @@ import { insert, open } from './testing/textHarness.ts'
 import type { EditSession } from './textSession.ts'
 
 /**
- * IME composition, seventh review round: a composition never starts over a selection (the
- * selection is deleted at `compositionstart`, N1); nothing ever rewrites characters from a
- * model of what a composition should have produced (N2); a session command issued while a
- * composition is open, or before ProseMirror has finished ending it, is refused and never runs
- * later (N3); the follow-up only sets marks and the canonical form, and input that arrives
- * before it is never undone (N4); `content()` is a pure function of the live document and the
- * composed ranges, and the last record reported equals it (N5). `finish()` keeps the candidate
+ * IME composition: a composition never starts over a selection (the selection is deleted at
+ * `compositionstart`, N1, and given back when nothing is composed); nothing ever rewrites
+ * characters from a model of what a composition should have produced (N2); a session command
+ * issued while a composition is open is refused and never runs later, and works as soon as it
+ * has ended (N3); the follow-up runs straight after `compositionend`, only sets marks and the
+ * canonical form, and never runs once an undo or redo has come (N4); `content()` is a pure
+ * function of the live document and the composed ranges, and the last record reported equals
+ * it (N5). `finish()` keeps the candidate
  * (R4); composed text follows rule R5. Real compositions on a mounted view are in
  * `e2e/text-engine-parity.spec.ts`.
  */
@@ -131,7 +132,7 @@ describe('N1: a composition never starts over a selection', () => {
   })
 })
 
-describe('N3: session commands during a composition are refused and never run later', () => {
+describe('N3: session commands during a composition are refused and never run later; afterwards they work at once', () => {
   it('heading, mark, font, box font, paste, select, undo, redo and run return false and change nothing; after the composition nothing of them happens', () => {
     const w = watched({ text: 'ab' })
     const { s } = w
@@ -171,75 +172,134 @@ describe('N3: session commands during a composition are refused and never run la
     invariant(w)
   })
 
-  it('on a mounted view, commands stay refused after compositionend until ProseMirror has finished ending the composition, then work again', () => {
+  it('on a mounted view, commands and shortcuts work as soon as compositionend has come', () => {
     const m = mounted({ text: 'a\nbc' })
     m.s.select(1)
     m.start()
     m.candidate('か')
     expect(m.s.setHeading(2)).toBe(false)
     m.end('仮')
-    m.candidate('仮', 1)
     expect(m.s.composing).toBe(false)
-    expect(m.s.settling).toBe(true)
-    expect(m.s.setHeading(2)).toBe(false)
-    expect(m.s.paste({ text: 'P' })).toBe(false)
-    expect(m.s.toggleMark('bold')).toBe(false)
-    vi.advanceTimersByTime(40)
     expect(m.s.settling).toBe(false)
-    expect(m.s.content()).toStrictEqual({ text: 'a仮\nbc' }) // none of them ran
-    invariant(m)
     expect(m.s.setHeading(2)).toBe(true)
-    expect(m.s.content()).toStrictEqual({ text: 'a仮\nbc', headings: [2] })
+    // Ctrl+I straight after the commit: the key is claimed and has its effect.
+    const key = new KeyboardEvent('keydown', { key: 'i', ctrlKey: true, bubbles: true, cancelable: true })
+    m.view.dom.dispatchEvent(key)
+    expect(key.defaultPrevented).toBe(true)
+    expect(m.s.pending).toStrictEqual({ italic: true })
+    insert(m.s, 'x')
+    expect(m.s.content()).toStrictEqual({ text: 'aかx\nbc', spans: [{ start: 2, end: 3, italic: true }], headings: [2] })
   })
 })
 
-describe('N4: the follow-up only sets marks; input before it is never undone', () => {
-  it('a character typed straight after the commit stays where it was typed, with the marks typed text gets; the composed text gets its own', () => {
+/** Lets the follow-up a mounted view queues at `compositionend` run (microtasks). */
+const settle = async () => {
+  for (let i = 0; i < 4; i++) await Promise.resolve()
+}
+
+describe('the follow-up: right after compositionend, before any other input; never once an undo or redo has come', () => {
+  it('runs straight after the composition ends: the composed text has its marks before the next key, which keeps its place and takes the composed text’s marks', async () => {
     const m = mounted({ text: 'AなZ', spans: [{ start: 0, end: 1, bold: true }] })
     m.s.select(1)
     m.s.toggleMark('bold') // pending: bold off for what is typed (and composed) here
     m.start()
     m.candidate('か')
     m.candidate('かな', 1)
-    m.end('か')
     m.candidate('か', 2)
-    // ProseMirror has not finished ending the composition: a key typed now is inserted natively.
-    m.view.dispatch(m.view.state.tr.insertText('x'))
-    expect(plainTextOfDoc(m.s.state.doc)).toBe('AかxなZ')
+    m.end('か')
     invariant(m, false)
-    vi.advanceTimersByTime(40)
-    expect(plainTextOfDoc(m.s.state.doc)).toBe('AかxなZ')
+    await settle()
+    expect(m.s.content()).toStrictEqual({ text: 'AかなZ', spans: [{ start: 0, end: 1, bold: true }] })
+    invariant(m)
+    m.view.dispatch(m.view.state.tr.insertText('x'))
     expect(m.s.selection().head).toBe(3)
-    expect(m.s.content()).toStrictEqual({ text: 'AかxなZ', spans: [{ start: 0, end: 1, bold: true }, { start: 2, end: 3, bold: true }] })
+    expect(m.s.content()).toStrictEqual({ text: 'AかxなZ', spans: [{ start: 0, end: 1, bold: true }] })
     invariant(m)
   })
 
-  it('Enter, select-all and in-edit undo before the follow-up are kept as they were made', () => {
-    const m = mounted({ text: 'ab' })
-    m.s.select(1)
+  it('an undo before it runs drops it: redo then brings back the committed text, and the redo side is never cleared', async () => {
+    const m = mounted({ text: 'AbCD', spans: [{ start: 0, end: 1, bold: true }, { start: 3, end: 4, underline: true }] })
+    m.s.select(0, 2)
     m.start()
-    m.candidate('か')
-    m.end('か')
-    m.view.dispatch(m.view.state.tr.split(m.view.state.selection.from))
-    expect(plainTextOfDoc(m.s.state.doc)).toBe('aか\nb')
-    vi.advanceTimersByTime(40)
-    expect(plainTextOfDoc(m.s.state.doc)).toBe('aか\nb')
-    expect(m.s.selection().head).toBe(3)
+    m.candidate('ㄱ')
+    m.candidate('가', 1)
+    m.end('가')
+    // The keyboard's Ctrl+Z in the same instant as the commit.
+    m.view.someProp('handleKeyDown', (f) => f(m.view, new KeyboardEvent('keydown', { key: 'z', ctrlKey: true })))
+    await settle()
+    expect(m.s.content()).toStrictEqual({ text: 'AbCD', spans: [{ start: 0, end: 1, bold: true }, { start: 3, end: 4, underline: true }] })
+    expect(m.s.canRedo).toBe(true)
+    vi.advanceTimersByTime(100)
+    expect(m.s.redo()).toBe(true)
+    expect(plainTextOfDoc(m.s.state.doc)).toBe('가CD')
+    expect(m.s.selection().head).toBe(1)
     invariant(m)
+  })
 
-    const n = mounted({ text: 'ab' })
-    n.s.select(1)
-    n.start()
-    n.candidate('か')
-    n.end('か')
-    expect(n.s.undo()).toBe(false) // refused (N3); the keyboard's own undo is ProseMirror's history, handled at once
+  it('redo puts the caret back after the composed text, where composing left it', () => {
+    const w = watched({ text: 'plain text' }, { caret: 5 })
+    const { s } = w
+    compose(s, ['か', 'かな', 'な'])
+    s.compositionEnd()
+    expect(s.selection().head).toBe(6)
+    s.undo()
+    expect(s.selection().head).toBe(5)
+    s.redo()
+    expect(s.content().text).toBe('plainな text')
+    expect(s.selection().head).toBe(6)
+  })
+})
 
-    n.view.someProp('handleKeyDown', (f) => f(n.view, new KeyboardEvent('keydown', { key: 'z', ctrlKey: true })))
-    expect(plainTextOfDoc(n.s.state.doc)).toBe('ab')
-    vi.advanceTimersByTime(40)
-    expect(n.s.content()).toStrictEqual({ text: 'ab' })
-    expect(n.s.canRedo).toBe(true) // the follow-up recorded nothing over the redo side
-    invariant(n)
+describe('B1: a composition that composes nothing gives back the selection it deleted', () => {
+  const src = { text: 'AbCD', spans: [{ start: 0, end: 1, bold: true as const }, { start: 3, end: 4, underline: true as const }] }
+  const back = (w: ReturnType<typeof watched>) => {
+    expect(w.s.content()).toStrictEqual(w.initial)
+    expect(w.s.selection()).toStrictEqual({ anchor: 0, head: 2, from: 0, to: 2 })
+    expect(w.s.canUndo).toBe(false) // no undo step left behind
+    expect(w.s.composing).toBe(false)
+    expect(w.s.settling).toBe(false)
+    invariant(w)
+  }
+
+  it('compositionend with nothing delivered', () => {
+    const w = watched(src)
+    w.s.select(0, 2)
+    w.s.compositionStart()
+    expect(w.s.content().text).toBe('CD')
+    w.s.compositionEnd()
+    back(w)
+  })
+
+  it('the edit losing focus, with no compositionend from the browser', () => {
+    const m = mounted(src)
+    m.s.select(0, 2)
+    m.start()
+    expect(m.s.content().text).toBe('CD')
+    m.view.dom.dispatchEvent(new FocusEvent('blur'))
+    back(m)
+    expect(m.view.composing).toBe(false) // ProseMirror was told the composition ended too
+  })
+
+  it('finish() during it', () => {
+    const el = document.createElement('div')
+    document.body.appendChild(el)
+    hosts.push(el)
+    const w = watched(src)
+    w.s.mount(el)
+    w.s.select(0, 2)
+    el.dispatchEvent(new CompositionEvent('compositionstart', { data: '' }))
+    w.s.finish()
+    expect(w.s.content()).toStrictEqual(w.initial)
+    expect(el.innerHTML).toBe('<p><strong>A</strong>bC<u>D</u></p>')
+  })
+
+  it('a composition that delivered text and was then cancelled keeps the deletion, as the canvas does', () => {
+    const w = watched(src)
+    w.s.select(0, 2)
+    compose(w.s, ['ㄱ', ''])
+    w.s.compositionEnd()
+    expect(w.s.content()).toStrictEqual({ text: 'CD', spans: [{ start: 1, end: 2, underline: true }] })
+    invariant(w)
   })
 })
 
