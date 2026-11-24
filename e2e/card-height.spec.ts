@@ -1453,9 +1453,11 @@ for (const zoom of [0.75, 1]) {
   }
 }
 
-test('a press that began in the edited text never outlives itself: released elsewhere, or followed by another button, the wheel goes to the board', async ({ page, context }) => {
-  const { errors } = await open(page, [textRec('c', 260, 180, { height: 160 })])
+test('the wheel scrolls the edited text while only the left button is held over it, wherever that press began; any other button, or another text, gives it to the board', async ({ page, context }) => {
+  // Decided from the wheel event alone: nothing is remembered about where a press began, so nothing can outlive a press.
+  const { errors } = await open(page, [textRec('c', 260, 180, { height: 160 }), textRec('d', 620, 180, { height: 160 })])
   const p = await pt(page, 302, 218)
+  const q = await pt(page, 662, 218)
   await editAt(page, p)
   await wheel(page, at(p, 75, 1))
   await page.waitForTimeout(NEW_GESTURE_MS)
@@ -1479,8 +1481,20 @@ test('a press that began in the edited text never outlives itself: released else
   await pans('right button after a press in the text', 2)
   await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p.x, y: p.y, button: 'right', buttons: 0, clickCount: 1 })
 
-  // The lost release: a press in the text whose release happens in another window; back with no button
-  // held; then a press on a disabled panel button (Chromium sends no mousedown for it) dragged over the text.
+  // Both buttons held over the edited text: the board.
+  await pans('left and right buttons over the edited text', 3)
+  // The left button held over another scrollable text while this one is edited: the board, and that text stays at its top.
+  {
+    const y = await panY()
+    await wheel(page, [{ ...q, dy: 8, buttons: 1 }])
+    expect(await panY(), 'left button over another text').toBe(y - 8)
+    expect((await exactOf(page, 'd')).top).toBe(0)
+    await page.waitForTimeout(NEW_GESTURE_MS)
+  }
+
+  // A press in the text whose release happens in another window; back with no button held; then a press
+  // on a disabled panel button (Chromium sends no mousedown for it) dragged over the edited text: only the
+  // left button is held over the edited text, so it scrolls, exactly as if the press had begun in it.
   const disabled = await page.evaluate(() => {
     const b = Array.from(document.querySelectorAll<HTMLButtonElement>('button:disabled')).find((b) => b.offsetWidth > 0)!
     const r = b.getBoundingClientRect()
@@ -1499,9 +1513,23 @@ test('a press that began in the edited text never outlives itself: released else
   await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: disabled!.x, y: disabled!.y, buttons: 0 })
   await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: disabled!.x, y: disabled!.y, button: 'left', buttons: 1, clickCount: 1 })
   await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p.x, y: p.y, buttons: 1 })
-  await pans('a press on a disabled button after a release lost in another window', 1)
+  {
+    const before = (await exactOf(page, 'c')).top
+    const y = await panY()
+    await wheel(page, [{ ...p, dy: -8, buttons: 1 }])
+    expect((await exactOf(page, 'c')).top, 'left button held over the edited text, pressed elsewhere').toBe(before - 8)
+    expect(await panY()).toBe(y)
+    await page.waitForTimeout(NEW_GESTURE_MS)
+  }
   await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p.x, y: p.y, button: 'left', buttons: 0, clickCount: 1 })
-  // And a press that did begin in the text still scrolls it.
+  // With no button held the ordinary rule is back at once: the text scrolls.
+  {
+    const before = (await exactOf(page, 'c')).top
+    await wheel(page, [{ ...p, dy: -8, buttons: 0 }])
+    expect((await exactOf(page, 'c')).top, 'no button held').toBe(before - 8)
+    await page.waitForTimeout(NEW_GESTURE_MS)
+  }
+  // And a press that did begin in the text scrolls it too.
   await page.mouse.move(p.x, p.y)
   await page.mouse.down()
   const before = (await exactOf(page, 'c')).top
