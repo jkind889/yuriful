@@ -1102,6 +1102,10 @@ interface FeatureRecord {
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g
 
+/** Where a value holds a property set to `undefined`: JSON (and so `normalizeIds`) drops such a property, hiding it from an exact comparison. */
+const undefinedIn = (v: unknown, path: string): string[] =>
+  v && typeof v === 'object' ? Object.entries(v).flatMap(([k, x]) => (x === undefined ? [`${path}.${k}`] : undefinedIn(x, `${path}.${k}`))) : []
+
 /** Fresh ids replaced by `~1`, `~2`... in the order they first appear. */
 function normalizeIds<T>(value: T): T {
   const seen = new Map<string, string>()
@@ -1215,11 +1219,11 @@ async function runFeatureScript(browser: Browser, doc: StoredBoard, steps: reado
       await page.evaluate(() => window.dispatchEvent(new Event('blur')))
     }
     await frames(page, 2)
-    records.push({
-      step: JSON.stringify(step),
-      ...(await page.evaluate(() => ({ scene: window.__dom.scene(), history: window.__dom.history(), state: window.__dom.state() }))),
-      ...(feedback && { feedback: await page.evaluate(() => window.__dom.feedback()) }),
-    })
+    const read = await page.evaluate(() => ({ scene: window.__dom.scene(), history: window.__dom.history(), state: window.__dom.state() }))
+    const live = feedback ? await page.evaluate(() => window.__dom.feedback()) : undefined
+    // The one property that may hold `undefined`: the frame of a snap offered by a loose image (compared by value below).
+    expect(undefinedIn(live, 'feedback').filter((p) => p !== 'feedback.snap.frameId'), `after ${JSON.stringify(step)}`).toStrictEqual([])
+    records.push({ step: JSON.stringify(step), ...read, ...(live && { feedback: live }) })
   }
   await page.waitForTimeout(800)
   await expect(status(page)).toContainText('Saved on this device')
