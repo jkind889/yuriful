@@ -36,6 +36,11 @@ export const META = {
    * result as today's canvas does (`plainPasteContent`).
    */
   replaced: 'yuriful/replaced',
+  /**
+   * The characters an input over a selection put in, as `{ from, to }` positions in the transaction's
+   * document (`settleReplacement`): what a paste's formatting is given to, and nothing else.
+   */
+  inputRange: 'yuriful/inputRange',
   /** The transaction changes the blocks around the text but never a character of it (a block button): the text was not typed into. */
   keepsText: 'yuriful/keepsText',
 } as const
@@ -1229,7 +1234,7 @@ class UnstorableStart extends Error {}
  * paint such an item with another number. Other items count on from the item before (a new list from
  * 1). A start that cannot be stored throws `UnstorableStart`.
  */
-function rebuild(leaves: readonly Leaf[]): PMNode[] {
+function rebuild(leaves: readonly Leaf[], pinned?: ReadonlySet<number>): PMNode[] {
   /** For each numbered list, the number its next item would be painted with. */
   const counted = new Map<number, number>()
   const build = (group: readonly Leaf[], depth: number): PMNode[] => {
@@ -1258,7 +1263,9 @@ function rebuild(leaves: readonly Leaf[]): PMNode[] {
           // Pinned by the item's first line (a divider at its start does not count), or for an item of
           // dividers only, by the divider staying where it is.
           const firstLine = run.slice(k, m).find((x) => x.line !== null)
-          items.push({ node, frame: itemFrame, kept: itemFrame.number !== null && (firstLine ? !firstLine.selected : !run[k]!.carried) })
+          // (`pinned`: the lists whose items keep their numbers, whatever was acted on.)
+          const kept = pinned ? pinned.has(f.id) : firstLine ? !firstLine.selected : !(run[k]!.selected || run[k]!.carried)
+          items.push({ node, frame: itemFrame, kept: itemFrame.number !== null && kept })
           k = m
         }
         if (f.kind !== 'orderedList') out.push(nodes[f.kind].create(null, items.map((it) => it.node)))
@@ -1325,11 +1332,12 @@ function carryDividers(leaves: Leaf[], kind: BlockKind, span: { fromLine: number
       l.carried = inRange
       return
     }
-    // Its item (for Quote, its quote) holds no line the button does not act on: inside the range it goes
-    // with them, and outside it too when the item has lines at all. One that holds an unselected line stays.
+    // Inside the range it goes with the selected lines, unless its container is a list item that has
+    // lines and none of them is selected (a divider that begins an unselected item stays with it).
+    // Outside the range it goes only when every line of its container is selected.
     const c = counts.get(`${depth}|${frameKey(l.frames[depth]!)}`)
-    const full = c === undefined || c.chosen === c.all
-    l.carried = full && (inRange || (c !== undefined && c.all > 0))
+    const isItem = l.frames[depth]!.kind !== 'blockquote'
+    l.carried = inRange ? !(isItem && c !== undefined && c.chosen === 0) : c !== undefined && c.all > 0 && c.chosen === c.all
   })
 }
 
@@ -1477,6 +1485,11 @@ function replaceChanged(state: EditorState, content: Fragment): Transaction {
   return replaceChangedIn(state.tr, content)
 }
 
+/** The document of `tr` made `content`, by replacing only the part that differs (`replaceChanged`). */
+export function replaceDocument(tr: Transaction, content: Fragment): Transaction {
+  return replaceChangedIn(tr, content)
+}
+
 /** `replaceChanged` on a transaction under way: its document becomes `content`, by steps added to it. */
 function replaceChangedIn(tr: Transaction, content: Fragment): Transaction {
   const doc = tr.doc
@@ -1552,12 +1565,17 @@ function deleteAcrossLines(tr: Transaction, from: number, to: number): boolean {
   } catch {
     return false
   }
-  const out: Leaf[] = [...leaves.slice(0, ai), { ...leaves[ai]!, node: joined, selected: true }]
-  if (rest) out.push({ ...leaves[bi]!, node: rest })
-  out.push(...leaves.slice(bi + 1))
+  // Items keep the numbers they were painted with only in a list the second end is in and the first is
+  // not (what is left of it stays a list of its own); the list the first end is in numbers on.
+  const firstLists = new Set(leaves[ai]!.frames.filter((f) => f.kind !== 'blockquote').map((f) => f.id))
+  const kept = new Set(leaves[bi]!.frames.filter((f) => f.kind !== 'blockquote' && !firstLists.has(f.id)).map((f) => f.id))
+  const free = (l: Leaf): Leaf => ({ ...l, selected: !l.frames.some((f) => kept.has(f.id)) })
+  const out: Leaf[] = [...leaves.slice(0, ai).map(free), { ...leaves[ai]!, node: joined, selected: true }]
+  if (rest) out.push(free({ ...leaves[bi]!, node: rest }))
+  out.push(...leaves.slice(bi + 1).map(free))
   let content: Fragment
   try {
-    content = Fragment.fromArray(rebuild(out))
+    content = Fragment.fromArray(rebuild(out, kept))
   } catch (e) {
     if (e instanceof UnstorableStart) return false
     throw e
@@ -1580,7 +1598,7 @@ function selectedDivider(state: EditorState): NodeSelection | null {
  */
 function replaceDivider(state: EditorState, sel: NodeSelection, input: ReplacementInput, valid: (doc: PMNode) => boolean): Transaction | null {
   const tr = state.tr
-  if (input.kind === 'delete') {
+  if (input.kind === 'delete' && !dividerAlone(state, sel)) {
     tr.deleteRange(sel.from, sel.to)
     const at = Math.min(tr.mapping.map(sel.from), tr.doc.content.size)
     const $at = tr.doc.resolve(at)
@@ -1594,6 +1612,43 @@ function replaceDivider(state: EditorState, sel: NodeSelection, input: Replaceme
     else if (input.kind === 'slice') tr.replaceSelection(input.slice)
   }
   return valid(tr.doc) && !breakOutsideCode(tr.doc) ? tr : null
+}
+
+/**
+ * A selected divider with no line beside it to put the caret in once it goes: a divider on both
+ * sides, or first or last with a divider next to it. Backspace or Delete then leave an empty line in
+ * its place, with the caret (`replaceDivider`), so that what is typed next lands there.
+ */
+function dividerAlone(state: EditorState, sel: NodeSelection): boolean {
+  const $d = state.doc.resolve(sel.from)
+  const parent = $d.parent
+  const i = $d.index()
+  const before = i > 0 ? parent.child(i - 1) : null
+  const after = i + 1 < parent.childCount ? parent.child(i + 1) : null
+  const isDivider = (n: PMNode | null) => n !== null && n.type === nodes.divider
+  return (before === null || isDivider(before)) && (after === null || isDivider(after)) && (isDivider(before) || isDivider(after))
+}
+
+/**
+ * Shift+Left or Shift+Right with the selection's moving end at the edge of a line, a divider next to
+ * that line: the selection reaches past the divider to the next place in a line (the browser's own
+ * keys stop there; Shift+Up or Down and the mouse already cross it). False otherwise: the browser moves it.
+ */
+function extendPastDivider(dir: 1 | -1): Command {
+  return (state, dispatch) => {
+    const sel = state.selection
+    if (!(sel instanceof TextSelection)) return false
+    const $head = sel.$head
+    if (!$head.parent.isTextblock || $head.parentOffset !== (dir > 0 ? $head.parent.content.size : 0)) return false
+    const edge = dir > 0 ? $head.after() : $head.before()
+    const $edge = state.doc.resolve(edge)
+    const next = dir > 0 ? $edge.nodeAfter : $edge.nodeBefore
+    if (!next || next.type !== nodes.divider) return false
+    const found = Selection.findFrom(state.doc.resolve(dir > 0 ? edge + next.nodeSize : edge - next.nodeSize), dir, true)
+    if (!found) return false
+    dispatch?.(state.tr.setSelection(TextSelection.create(state.doc, sel.anchor, found.head)))
+    return true
+  }
 }
 
 /** Enter with a divider selected: an empty line in its place, with the caret (`replaceDivider`). */
@@ -1630,23 +1685,51 @@ export function settleReplacement(state: EditorState, tr: Transaction, input: Re
   // Where the selection started: its line's kind (a code block or not: a heading's level follows the
   // line-level rule, `lineLevels`) and the blocks around it, with a checklist item's tick and a
   // numbered item's painted number: the line the two ends become keeps them all.
-  const kindAt = ($p: ResolvedPos) => {
+  const kindAt = ($p: ResolvedPos, numbers = true) => {
     const parts = [$p.parent.type.spec.code ? 'code' : 'line']
     for (let d = 1; d < $p.depth; d++) {
       const n = $p.node(d)
       let part = n.type.name
       if (n.type === nodes.taskItem) part += n.attrs.checked ? ':ticked' : ':unticked'
-      if (n.type === nodes.listItem && $p.node(d - 1).type === nodes.orderedList) part += `:${($p.node(d - 1).attrs.start as number) + $p.index(d - 1)}`
+      if (numbers && n.type === nodes.listItem && $p.node(d - 1).type === nodes.orderedList) part += `:${($p.node(d - 1).attrs.start as number) + $p.index(d - 1)}`
       parts.push(part)
     }
     return parts.join('/')
   }
+  /** The position of the nearest list around a line (null in none): which list it is in. */
+  const listOf = ($p: ResolvedPos): number | null => {
+    for (let d = $p.depth - 1; d > 0; d--) if (isListType($p.node(d).type)) return $p.before(d)
+    return null
+  }
+  /** The number of the item a line is in, in its nearest list when that list is numbered (null otherwise). */
+  const numberOf = ($p: ResolvedPos): number | null => {
+    for (let d = $p.depth - 1; d > 0; d--) {
+      if (!isListType($p.node(d).type)) continue
+      return $p.node(d).type === nodes.orderedList ? ($p.node(d).attrs.start as number) + $p.index(d) : null
+    }
+    return null
+  }
+  /** The positions of every list around a line. */
+  const listsOf = ($p: ResolvedPos): Set<number> => {
+    const out = new Set<number>()
+    for (let d = $p.depth - 1; d > 0; d--) if (isListType($p.node(d).type)) out.add($p.before(d))
+    return out
+  }
   const startKind = kindAt(sel.$from)
-  // Every line after the selection, which no input touches: its kind, blocks, tick and painted number.
-  const linesAfter = (doc: PMNode, from: number) => textblocksOf(doc).slice(from).map(({ pos }) => kindAt(doc.resolve(pos + 1)))
+  // Every line after the selection, which no input touches: its kind, blocks and tick; whether it is
+  // in a list the line the selection started on is in (then it stays in it and is numbered as that
+  // list goes on; otherwise it stays out of it and keeps the number it was painted with).
+  const startLists = listsOf(sel.$from)
+  const linesAfter = (doc: PMNode, from: number) =>
+    textblocksOf(doc)
+      .slice(from)
+      .map(({ pos }) => {
+        const $l = doc.resolve(pos + 1)
+        return { kind: kindAt($l, false), number: numberOf($l), list: listOf($l) }
+      })
   const tbsBefore = textblocksOf(state.doc)
   const endLine = tbsBefore.findIndex((t) => t.pos === sel.$to.before())
-  const after = endLine >= 0 ? linesAfter(state.doc, endLine + 1) : []
+  const after = (endLine >= 0 ? linesAfter(state.doc, endLine + 1) : []).map((l) => ({ ...l, inStart: l.list === null ? startLists.size === 0 : startLists.has(l.list) }))
   const old = plainTextOfDoc(state.doc)
   const inserted = input.kind === 'text' ? input.text : input.kind === 'enter' ? '\n' : input.kind === 'slice' ? input.slice.content.textBetween(0, input.slice.content.size, '\n') : ''
   const meant = input.kind === 'enter' ? ['\n', ''] : [inserted]
@@ -1658,14 +1741,26 @@ export function settleReplacement(state: EditorState, tr: Transaction, input: Re
     // there). Enter is judged on its deletion (`enterOverItems`): after it, Enter's own rules at the
     // caret (an emptied item taken out a level) decide where that line sits.
     if (input.kind !== 'enter' && (textblocksOf(t.doc).length === 0 || kindAt(t.doc.resolve(posAtTextOffset(t.doc, range.from))) !== startKind)) return false
-    // The lines after the selection keep their blocks, ticks and numbers (Enter: its own rules may renumber them).
+    // The lines after the selection keep their blocks and ticks, and stay in the list they were in:
+    // in the joined line's list (numbered on from it), or out of it with their numbers (Enter: its own
+    // rules may renumber them).
     if (input.kind !== 'enter') {
       const now2 = textblocksOf(t.doc)
-      const tail = linesAfter(t.doc, Math.max(0, now2.length - after.length))
-      if (now2.length < after.length || tail.some((k, i) => k !== after[i])) return false
+      if (now2.length < after.length) return false
+      const joinedLists = listsOf(t.doc.resolve(posAtTextOffset(t.doc, range.from)))
+      const tail = linesAfter(t.doc, now2.length - after.length)
+      const moved = tail.some((l, i) => {
+        const was = after[i]!
+        if (l.kind !== was.kind) return true
+        const inJoined = l.list === null ? joinedLists.size === 0 : joinedLists.has(l.list)
+        return was.inStart ? !inJoined : inJoined || l.number !== was.number
+      })
+      if (moved) return false
     }
     const caret = range.from + which.length
     if (!(t.selection.empty && textOffsetAt(t.doc, t.selection.head, -1) === caret) && textblocksOf(t.doc).length > 0) t.setSelection(TextSelection.create(t.doc, posAtTextOffset(t.doc, caret)))
+    // The input's own characters, so that formatting given to them reaches nothing else (a rebuild replaces whole lines).
+    if (textblocksOf(t.doc).length > 0) t.setMeta(META.inputRange, { from: posAtTextOffset(t.doc, range.from), to: posAtTextOffset(t.doc, caret) })
     return true
   }
   if (settle(tr)) return tr
@@ -1725,6 +1820,119 @@ export function toggleBlockKind(kind: BlockKind, opts: { wholeBox?: boolean } = 
     if (dispatch) dispatch(keepSelection(state)(replaceChanged(state, content)).setMeta(META.levelsSet, true).setMeta(META.keepsText, true).scrollIntoView())
     return true
   }
+}
+
+/**
+ * Blocks pasted at the caret of `state` (a caret in a line that is not a code block), as one
+ * transaction; null when the caret is not in a line or the result could not be stored (a list
+ * would have to start past the largest number storage keeps). `pasted` is the pasted blocks, with
+ * their marks already given. Where they land (plan Section 11, settled in Slice 3b):
+ * - Pasted text that is one paragraph (or `inline`: a run copied from inside one line) joins the
+ *   caret's line, as a plain paste does.
+ * - Otherwise the caret's line is split around the paste: the text before the caret stays its line,
+ *   of its kind, and the text after it becomes a line of the same kind after the paste (a new item
+ *   of a list or checklist, unticked, like Enter). The existing line never takes the kind of a pasted
+ *   block. A pasted first block that is a plain paragraph joins the text before the caret, and a
+ *   pasted last one the text after it, as a plain paste of several lines does. At the start of a
+ *   line no empty line is left before the paste, and at its end none after it.
+ * - The pasted blocks go where the caret's line is: inside its list item or quote. Pasted items of a
+ *   list of the same kind as the caret's list become items of that list (numbered on from there,
+ *   the items after them numbered on too, as Enter does); any other pasted list nests in the item; a
+ *   pasted quote inside a quote joins it.
+ * - Lists the paste keeps apart stay apart. A pasted divider has no empty line after it, unless it is
+ *   the last thing in the text, or was pasted on an empty line (which then stays after it): the caret goes there.
+ * - The caret ends after the pasted text (or, after a final divider, at the start of the line after it).
+ */
+export function pasteBlocks(state: EditorState, pasted: Fragment, opts: { inline?: boolean } = {}): Transaction | null {
+  const $c = state.selection.$from
+  if (!state.selection.empty || !$c.parent.isTextblock || $c.parent.type.spec.code) return null
+  const tr = state.tr
+  const single = pasted.childCount === 1 && pasted.firstChild!.type === nodes.paragraph
+  if (single || opts.inline) {
+    const content = Fragment.from(pasted.firstChild ? pasted.firstChild.content : Fragment.empty)
+    tr.insert($c.pos, content)
+    return tr.setSelection(TextSelection.create(tr.doc, $c.pos + content.size))
+  }
+  let ids = 0
+  const next = () => ++ids
+  const leaves = flatten(state.doc, next).map((l) => ({ ...l, selected: true }))
+  const lineIdx = textblocksOf(state.doc).findIndex((t) => t.pos === $c.before())
+  const li = leaves.findIndex((l) => l.line === lineIdx)
+  if (li < 0) return null
+  const L = leaves[li]!
+  const head = L.node.content.cut(0, $c.parentOffset)
+  const tail = L.node.content.cut($c.parentOffset)
+  const Lf = L.frames
+  const k = lastListIndex(Lf)
+  const inQuote = Lf.length > 0 && Lf[Lf.length - 1]!.kind === 'blockquote'
+  const joinedItems = new Map<number, number>()
+  const own = flatten(nodes.doc.create(null, pasted), next)
+  const placed: Leaf[] = own.map((pl) => {
+    const f0 = pl.frames[0]
+    let frames: Frame[]
+    if (f0 && f0.kind !== 'blockquote' && k >= 0 && Lf[k]!.kind === f0.kind) {
+      // Items of a list of the caret's list's kind: items of that list, after the caret's item.
+      if (!joinedItems.has(f0.item)) joinedItems.set(f0.item, next())
+      frames = [...Lf.slice(0, k), { ...f0, id: Lf[k]!.id, item: joinedItems.get(f0.item)!, start: Lf[k]!.start, number: null }, ...pl.frames.slice(1)]
+    } else if (f0 && f0.kind === 'blockquote' && inQuote) frames = [...Lf, ...pl.frames.slice(1)]
+    else frames = [...Lf, ...pl.frames]
+    return { ...pl, frames, line: null, selected: true }
+  })
+  const plainPara = (i: number) => own[i]!.frames.length === 0 && own[i]!.node.type === nodes.paragraph
+  const firstJoins = plainPara(0)
+  const lastJoins = placed.length >= 2 && plainPara(placed.length - 1)
+  const out: Leaf[] = []
+  let caret: { leaf: Leaf; offset: number } | null = null
+  if (firstJoins) out.push({ ...L, node: L.node.copy(head.append(placed[0]!.node.content)) })
+  else if (head.size > 0) out.push({ ...L, node: L.node.copy(head) })
+  const middle = placed.slice(firstJoins ? 1 : 0, lastJoins ? placed.length - 1 : placed.length)
+  out.push(...middle)
+  const lastPlaced = placed[placed.length - 1]!
+  if (lastJoins) {
+    const leaf = { ...lastPlaced, node: lastPlaced.node.copy(lastPlaced.node.content.append(tail)) }
+    out.push(leaf)
+    caret = { leaf, offset: lastPlaced.node.content.size }
+  } else {
+    const lastOut = out[out.length - 1]
+    if (lastOut && lastOut.node.isTextblock) caret = { leaf: lastOut, offset: lastOut === out[0] && firstJoins ? head.size + placed[0]!.node.content.size : lastOut.node.content.size }
+    if (tail.size > 0) {
+      // The text after the caret: a line of the caret line's kind; in a list, a new item when the line was split.
+      const frames = head.size > 0 || firstJoins ? Lf.map((f, i) => (i === k ? { ...f, item: next(), checked: false, number: null } : f)) : Lf
+      const leaf: Leaf = { ...L, node: L.node.type.create(L.node.attrs, tail), frames }
+      out.push(leaf)
+      if (!caret) caret = { leaf, offset: 0 }
+    }
+  }
+  const after = leaves.slice(li + 1)
+  if (!caret) {
+    // The paste ends with a divider. Pasted on an empty line, that line stays, after it, with the caret
+    // (no line of the text goes); otherwise the caret goes to the start of the next line, or to a new
+    // empty line at the end of the text.
+    const nextLine = after.find((l) => l.node.isTextblock)
+    if (head.size === 0 && !firstJoins && tail.size === 0) {
+      const leaf: Leaf = { ...L, node: L.node.copy(Fragment.empty) }
+      out.push(leaf)
+      caret = { leaf, offset: 0 }
+    } else if (nextLine) caret = { leaf: nextLine, offset: 0 }
+    else {
+      const leaf: Leaf = { node: nodes.paragraph.create(), frames: lastPlaced.frames, line: null, selected: true }
+      out.push(leaf)
+      caret = { leaf, offset: 0 }
+    }
+  }
+  const all = [...leaves.slice(0, li), ...out, ...after]
+  let content: Fragment
+  try {
+    content = Fragment.fromArray(rebuild(all))
+  } catch (e) {
+    if (e instanceof UnstorableStart) return null
+    throw e
+  }
+  replaceChangedIn(tr, content)
+  const line = all.slice(0, all.indexOf(caret.leaf)).filter((l) => l.node.isTextblock).length
+  const at = textblocksOf(tr.doc)[line]
+  if (!at) return null
+  return tr.setSelection(TextSelection.create(tr.doc, at.pos + 1 + Math.min(caret.offset, at.node.content.size)))
 }
 
 /**
@@ -2016,6 +2224,8 @@ export const editKeys: Readonly<Record<string, Command>> = {
   'Mod-Backspace': chainCommands(deleteSelected, blockStartBackspace, joinBackward),
   'Mod-Delete': chainCommands(deleteSelected, deleteDividerAfter, joinForward),
   'Mod-a': selectAllText,
+  'Shift-ArrowLeft': extendPastDivider(-1),
+  'Shift-ArrowRight': extendPastDivider(1),
   'Mod-z': undo,
   'Shift-Mod-z': redo,
   'Mod-y': redo,

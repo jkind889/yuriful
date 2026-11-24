@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { Fragment, Slice as SliceClass } from 'prosemirror-model'
+import { DOMSerializer, Fragment, Slice as SliceClass } from 'prosemirror-model'
 import type { Node as PMNode, Slice } from 'prosemirror-model'
 import { EditorState, NodeSelection, TextSelection } from 'prosemirror-state'
 import type { Transaction } from 'prosemirror-state'
@@ -8,8 +8,10 @@ import { canonicalTextContent, MAX_BLOCK_DEPTH, MAX_LIST_START, MAX_TEXT_LENGTH,
 import type { BlockNode, InlineRun } from '../model/types.ts'
 import type { TextContent } from '../model/textDoc.ts'
 import type { EditSession } from './textSession.ts'
-import { docFromText, exceedsBounds, isItemType, isListType, nodes, plainTextOfDoc, posAtTextOffset, textSchema, textblocksOf } from './textSchema.ts'
+import { docFromBlocks, docFromText, exceedsBounds, isItemType, isListType, nodes, plainTextOfDoc, posAtTextOffset, textSchema, textblocksOf } from './textSchema.ts'
 import type { TextSource } from './textSchema.ts'
+import { markdownToBlocks } from '../model/markdownPaste.ts'
+import { htmlToBlocks } from './pasteHtml.ts'
 import { BLOCK_KINDS, META, boxBlocks, boxCommandContent, completesShortcut, linesOfSelection, settleReplacement, shortcutTransaction, toggleBlockKind } from './textRules.ts'
 import type { BlockKind, ReplacementInput } from './textRules.ts'
 import { insert, open, press, type } from './testing/textHarness.ts'
@@ -163,36 +165,41 @@ interface Press {
 }
 
 /** Each divider of a document, in order: how many lines come before it, the lines of its list item and of its innermost block (null when in none), and the blocks around it. */
-function dividerFacts(doc: PMNode): Array<{ linesBefore: number; item: number[] | null; inner: number[] | null; quote: boolean; list: string | null }> {
+function dividerFacts(doc: PMNode): Array<{ linesBefore: number; item: number[] | null; inner: number[] | null; innerIsItem: boolean; quote: boolean; list: string | null }> {
   const tbs = textblocksOf(doc)
   const linesIn = (from: number, to: number) => tbs.flatMap((t, i) => (t.pos >= from && t.pos < to ? [i] : []))
-  const out: Array<{ linesBefore: number; item: number[] | null; inner: number[] | null; quote: boolean; list: string | null }> = []
+  const out: Array<{ linesBefore: number; item: number[] | null; inner: number[] | null; innerIsItem: boolean; quote: boolean; list: string | null }> = []
   doc.descendants((n, pos) => {
     if (n.type !== nodes.divider) return true
     const $p = doc.resolve(pos)
     let item: number[] | null = null
     let inner: number[] | null = null
+    let innerIsItem = false
     let quote = false
     let list: string | null = null
     for (let d = $p.depth; d > 0; d--) {
       const a = $p.node(d)
       const span = () => linesIn($p.before(d), $p.after(d))
-      if (inner === null && (isItemType(a.type) || a.type === nodes.blockquote)) inner = span()
+      if (inner === null && (isItemType(a.type) || a.type === nodes.blockquote)) {
+        inner = span()
+        innerIsItem = isItemType(a.type)
+      }
       if (item === null && isItemType(a.type)) item = span()
       if (a.type === nodes.blockquote) quote = true
       if (list === null && isListType(a.type)) list = a.type.name
     }
-    out.push({ linesBefore: tbs.filter((t) => t.pos < pos).length, item, inner, quote, list })
+    out.push({ linesBefore: tbs.filter((t) => t.pos < pos).length, item, inner, innerIsItem, quote, list })
     return false
   })
   return out
 }
 
 /**
- * A divider that goes with the lines a list or quote button acts on (inside the selected range, or in
- * a list item, for Quote its innermost block, whose lines are all selected; one in an item that also
- * holds an unselected line stays, and a list button moves a divider only with its item) gets what
- * they got: a list of that kind, or a quote, turned on or off. Null when it holds.
+ * The divider rule, stated by structure: a divider inside the selection's range goes with the selected
+ * lines, except that one whose innermost container (for a list button: its list item) is a list item
+ * with lines, none of them selected, stays with that item; a divider outside the range goes only when
+ * every line of its container is selected; a list button moves a divider only with its list item. One
+ * that goes gets what the lines got: a list of that kind, or a quote, turned on or off. Null when it holds.
  */
 function dividerRule(x: Press, on: boolean): string | null {
   if (x.kind === 'codeBlock' || !x.lines || x.toLine === undefined) return null
@@ -205,7 +212,9 @@ function dividerRule(x: Press, on: boolean): string | null {
     const d = was[k]!
     const inRange = x.toLine === 'all' || (d.linesBefore > first && d.linesBefore <= x.toLine)
     const container = x.kind === 'blockquote' ? d.inner : d.item
-    const goes = container === null ? x.kind === 'blockquote' && inRange : chosen(container) && (inRange || container.length > 0)
+    const isItem = x.kind === 'blockquote' ? d.innerIsItem : true
+    const noneChosen = (lines: number[]) => lines.every((i) => i < first || i > last)
+    const goes = container === null ? x.kind === 'blockquote' && inRange : inRange ? !(isItem && container.length > 0 && noneChosen(container)) : container.length > 0 && chosen(container)
     if (!goes) continue
     const has = x.kind === 'blockquote' ? is[k]!.quote : is[k]!.list === x.kind
     if (has !== on) return `divider ${k} did not go with the selected lines (${x.kind} ${on ? 'on' : 'off'}): ${JSON.stringify(is[k])}`
@@ -987,20 +996,85 @@ function checkDividerReplacement(s: EditSession, input: Input): string | null {
   const meant = apply(s, input)
   const after = s.content()
   if (canonicalTextContent(after as unknown as Record<string, unknown>) === null || (after.blocks && parseBlocks(after.blocks) === null)) return 'the result does not load'
-  const deleted = input === 'Backspace' || input === 'Delete'
-  const line = input === 'Enter' ? '' : meant[0]!
-  const want = deleted ? old : lineStart !== null ? `${old.slice(0, lineStart)}${line}\n${old.slice(lineStart)}` : `${old}\n${line}`
+  // W5: a divider with a divider (or nothing) on each side, and one at least, leaves an empty line when it goes.
+  const $d = doc.resolve(at)
+  const nb = (i: number) => (i >= 0 && i < $d.parent.childCount ? $d.parent.child(i) : null)
+  const isDiv = (n: PMNode | null) => n !== null && n.type === nodes.divider
+  const alone = (nb($d.index() - 1) === null || isDiv(nb($d.index() - 1))) && (nb($d.index() + 1) === null || isDiv(nb($d.index() + 1))) && (isDiv(nb($d.index() - 1)) || isDiv(nb($d.index() + 1)))
+  const deleted = (input === 'Backspace' || input === 'Delete') && !alone
+  const line = input === 'Enter' || input === 'Backspace' || input === 'Delete' ? '' : meant[0]!
+  const hasLines = textblocksOf(doc).length > 0
+  const want = deleted ? old : lineStart !== null ? `${old.slice(0, lineStart)}${line}\n${old.slice(lineStart)}` : hasLines ? `${old}\n${line}` : line
   const now = plainTextOfDoc(s.state.doc)
   if (now !== want) return `the text is ${JSON.stringify(now)}, not ${JSON.stringify(want)}`
   if (after.blocks && after.text !== now) return 'the stored text is not the text shown'
   if (dividers(s.state.doc).length !== count - 1) return 'the divider is still there'
+  const added = deleted ? 0 : line.length + 1
+  const marksBroken = survivorsKeepMarks(doc, s.state.doc, (i) => (lineStart === null || i < lineStart ? i : i + added))
+  if (marksBroken) return marksBroken
   const sel = s.selection()
   if (sel.anchor !== sel.head) return `the selection is ${sel.anchor} to ${sel.head}, not a caret`
-  const caret = deleted ? (lineStart ?? old.length) : (lineStart ?? old.length + 1) + line.length
+  const caret = deleted ? (lineStart ?? old.length) : (lineStart ?? (hasLines ? old.length + 1 : 0)) + line.length
   if (sel.head !== caret) return `the caret is at ${sel.head}, not ${caret}`
   s.undo()
   if (JSON.stringify(s.content()) !== JSON.stringify(before)) return `one undo did not give back the stored record: ${JSON.stringify(before)} -> ${JSON.stringify(s.content())}`
   if (dividers(s.state.doc).length !== count) return 'undo did not bring the divider back'
+  return null
+}
+
+/** For each line, the position of the nearest list around it (null in none): which list it is in. */
+function listPositions(doc: PMNode): Array<number | null> {
+  return textblocksOf(doc).map(({ pos }) => {
+    const $p = doc.resolve(pos + 1)
+    for (let d = $p.depth - 1; d > 0; d--) if (isListType($p.node(d).type)) return $p.before(d)
+    return null
+  })
+}
+
+/** The positions of every list around line `line`. */
+function allListPositions(doc: PMNode, line: number): number[] {
+  const t = textblocksOf(doc)[line]
+  if (!t) return []
+  const $p = doc.resolve(t.pos + 1)
+  const out: number[] = []
+  for (let d = $p.depth - 1; d > 0; d--) if (isListType($p.node(d).type)) out.push($p.before(d))
+  return out
+}
+
+/** For each UTF-16 unit of a document's text (null for a line break), its marks and font, and whether it sits in a code block or a heading. */
+function charMarks(doc: PMNode): Array<{ marks: string; code: boolean; heading: boolean } | null> {
+  const out: Array<{ marks: string; code: boolean; heading: boolean } | null> = []
+  textblocksOf(doc).forEach(({ node }, i) => {
+    if (i > 0) out.push(null)
+    node.forEach((child) => {
+      const marks = child.marks.map((m) => (m.type.name === 'font' ? `font:${m.attrs.font as string}` : m.type.name)).sort().join(',')
+      for (let k = 0; k < (child.text ?? '').length; k++) {
+        if (node.type.spec.code && child.text![k] === '\n') out.push(null)
+        else out.push({ marks, code: node.type.spec.code === true, heading: node.type === nodes.heading })
+      }
+    })
+  })
+  return out
+}
+
+/**
+ * W1: every character that was in the text before an input and is still there afterwards keeps exactly
+ * its marks and font (where it lands in a code block, it holds none; in a heading, no stored bold).
+ * `shift(i)`: where the character at `i` is afterwards (null: it went).
+ */
+function survivorsKeepMarks(before: PMNode, after: PMNode, shift: (i: number) => number | null): string | null {
+  const was = charMarks(before)
+  const is = charMarks(after)
+  for (let i = 0; i < was.length; i++) {
+    const a = was[i]
+    const j = shift(i)
+    if (!a || j === null) continue
+    const b = is[j]
+    if (!b) return `character ${i} is no longer a character at ${j}`
+    if (b.code) continue
+    const strip = (m: string, heading: boolean) => (heading ? m.split(',').filter((x) => x !== 'bold').join(',') : m)
+    if (strip(a.marks, b.heading) !== strip(b.marks, b.heading)) return `character ${i} changed its marks: ${a.marks} -> ${b.marks}`
+  }
   return null
 }
 
@@ -1034,6 +1108,11 @@ function checkReplacement(s: EditSession, input: Input): string | null {
   if (sel.anchor !== sel.head) return `the selection is ${sel.anchor} to ${sel.head}, not a caret`
   // Enter that takes an emptied nested item out of an item with no line of its own (ProseMirror then adds the line) leaves the caret before that line.
   if (sel.head !== from + which.length && !(input === 'Enter' && sel.head === from)) return `the caret is at ${sel.head}, not ${from + which.length}`
+  // W1: the characters outside the selection keep their marks and fonts (in a text with blocks: a text
+  // without them keeps the earlier canvas's styling of Enter and paste over a selection, U1).
+  const delta = which.length - (to - from)
+  const marksBroken = !rich ? null : survivorsKeepMarks(beforeDoc, s.state.doc, (i) => (i < from ? i : i >= to ? i + delta : null))
+  if (marksBroken) return marksBroken
   // In a text with blocks, the two ends become one line of the kind the selection started in, in its place.
   // (Enter is judged on its deletion: after it, Enter's own rules at the caret may move that line.)
   if (rich && input !== 'Enter' && kindAt(s.state.doc, from) !== startKind) return `the joined line is ${kindAt(s.state.doc, from)}, not ${startKind} where the selection started`
@@ -1060,11 +1139,23 @@ function checkReplacement(s: EditSession, input: Input): string | null {
       const a = was[startLine]!
       const b = is[startLine]
       if (!b || JSON.stringify(a.around) !== JSON.stringify(b.around) || a.painted !== b.painted) return `the joined line is not the line the selection started on: ${JSON.stringify(a)} -> ${JSON.stringify(b)}`
+      // Lines after the selection keep their blocks and ticks and stay in the list they were in: a line
+      // in the list the selection started in stays in the joined line's list (numbered on from it); any
+      // other stays out of it, with the number it was painted with.
+      const wasList = listPositions(beforeDoc)
+      const isList = listPositions(s.state.doc)
+      const startLists = new Set(allListPositions(beforeDoc, startLine))
+      const joinedLists = new Set(allListPositions(s.state.doc, startLine))
       const tail = was.length - 1 - endLine
       for (let k = 1; k <= tail; k++) {
         const x = was[was.length - k]!
         const y = is[is.length - k]
-        if (!same(x, y) || x.text !== y!.text || x.kind !== y!.kind) return `line ${was.length - k} after the selection changed: ${JSON.stringify(x)} -> ${JSON.stringify(y)}`
+        if (!y || JSON.stringify(x.around) !== JSON.stringify(y.around) || x.text !== y.text || x.kind !== y.kind) return `line ${was.length - k} after the selection changed: ${JSON.stringify(x)} -> ${JSON.stringify(y)}`
+        const w = wasList[was.length - k]!
+        const v = isList[is.length - k]!
+        const inStart = w === null ? startLists.size === 0 : startLists.has(w)
+        const inJoined = v === null ? joinedLists.size === 0 : joinedLists.has(v)
+        if (inStart ? !inJoined : (inJoined && v !== null) || (x.painted !== null && x.painted !== y.painted)) return `line ${was.length - k} after the selection left its list or its number: ${JSON.stringify(x)} -> ${JSON.stringify(y)}`
       }
     }
   }
@@ -1168,6 +1259,133 @@ describe('T1: typing, pasting, Enter, Backspace, Delete and a composition over a
     console.log(`replacement rule: ${applied} inputs over random selections (seed ${SEED}), ${atLineStart} selections ending at the start of a line, ${replacementsRefused} refused whole at a stored limit, ${dividerInputs} over a selected divider`)
     expect(failures, failures[0]).toEqual([])
     expect(applied).toBeGreaterThan(2000)
+  })
+})
+
+// ---- paste, seeded and randomised (Slice 3b) ---------------------------------------------------------------
+
+/** The plain text of blocks, as storage reads it. */
+const textOfBlocks = (blocks: BlockNode[]): string => (canonicalTextContent({ text: '', blocks } as unknown as Record<string, unknown>) as TextContent | null)?.text ?? ''
+
+describe('paste, seeded and randomised', () => {
+  it('holds for random pastes (Markdown, prose, HTML of random blocks, Yuriful\'s own copy) at random carets and selections (seeded)', () => {
+    const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env
+    const SEED = Number(env?.PASTE_RULE_SEED ?? 0x5a5a)
+    const r = random(SEED)
+    const snippets = ['# Title', '## Sub', '- one', '- [x] done', '- [ ] todo', '1. first', '3. third', '> quote', '---', '```\ncode\n```', '**bold** and *it*', '`code` span', 'plain words', '', '  - nested']
+    const prose = ['just words', 'a b c', '2 * 3', 'x', 'snake*case*']
+    const serializer = DOMSerializer.fromSchema(textSchema)
+    const failures: string[] = []
+    let pasted = 0
+    let converted = 0
+    let refused = 0
+    const el = document.createElement('div')
+    document.body.appendChild(el)
+    for (let d = 0; d < 150 && failures.length < 5; d++) {
+      const source = r.int(6) === 0 ? compactText(r) : richSource(r)
+      if (!source || !docFromText(source)) continue
+      const text0 = plainTextOfDoc(open(source).state.doc)
+      for (let k = 0; k < 3; k++) {
+        // The paste.
+        const kind = r.pick(['markdown', 'prose', 'html', 'copy'] as const)
+        let data: { text: string; html?: string }
+        if (kind === 'markdown') data = { text: Array.from({ length: 1 + r.int(4) }, () => r.pick(snippets)).join('\n') }
+        else if (kind === 'prose') data = { text: Array.from({ length: 1 + r.int(2) }, () => r.pick(prose)).join('\n') }
+        else if (kind === 'html') {
+          const raw = parseBlocks(blocks(r, 1, 0, 1 + r.int(3)))
+          if (!raw) continue
+          const box = document.createElement('div')
+          box.appendChild(serializer.serializeFragment(docFromBlocks(raw).content))
+          data = { html: box.innerHTML, text: textOfBlocks(raw) }
+        } else {
+          const other = richSource(r)
+          if (!other || !docFromText(other)) continue
+          const from = open(other)
+          from.mount(el)
+          const t = plainTextOfDoc(from.state.doc)
+          const a = r.int(t.length + 1)
+          const b = r.int(t.length + 1)
+          from.select(Math.min(a, b), Math.max(a, b))
+          if (from.state.selection.empty) {
+            from.finish()
+            continue
+          }
+          const copy = from.view!.serializeForClipboard(from.state.selection.content())
+          data = { html: copy.dom.innerHTML, text: copy.text }
+          from.finish()
+        }
+        // Where.
+        const s = open(source)
+        let a = r.int(text0.length + 1)
+        let b = r.int(2) === 0 ? a : r.int(text0.length + 1)
+        if (r.int(2) === 0) [a, b] = [b, a]
+        s.select(a, b)
+        const before = s.content()
+        const beforeDoc = s.state.doc
+        const rich = before.blocks !== undefined
+        const { from, to } = s.selection()
+        const old = plainTextOfDoc(beforeDoc)
+        const prefix = old.slice(0, from)
+        const suffix = old.slice(to)
+        let broken: string | null = null
+        try {
+          s.paste(data)
+          pasted++
+          const after = s.content()
+          if (canonicalTextContent(after as unknown as Record<string, unknown>) === null || (after.blocks && parseBlocks(after.blocks) === null)) broken = 'the result does not load'
+          const now = plainTextOfDoc(s.state.doc)
+          if (!broken && now === old && JSON.stringify(after) === JSON.stringify(before)) {
+            refused++
+            // Allowed for a paste that brings no characters, or at a stored limit.
+            const empty = data.text === '' && (data.html === undefined || textOfBlocks(htmlToBlocks(data.html).blocks) === '')
+            if (!empty && !nearListLimit(beforeDoc) && old.length + data.text.length < MAX_TEXT_LENGTH - 1000) broken = 'nothing changed'
+          } else if (!broken) {
+            // The characters: outside the selection unchanged; in between, the paste once and in order (with the line breaks its placement adds).
+            if (!now.startsWith(prefix) || !now.endsWith(suffix)) broken = 'the text outside the selection changed'
+            else {
+              const middle = now.slice(prefix.length, now.length - suffix.length)
+              const md = kind === 'markdown' || kind === 'prose' ? markdownToBlocks(data.text) : null
+              const read = data.html !== undefined ? htmlToBlocks(data.html) : null
+              const cores = new Set<string>([data.text.replace(/\r\n?/g, '\n')])
+              if (md) cores.add(textOfBlocks(md))
+              if (read) cores.add(read.inline ? (textOfBlocks(read.blocks).split('\n')[0] ?? '') : textOfBlocks(read.blocks))
+              const fits = [...cores].some((c) => ['', '\n'].some((lead) => ['', '\n', '\n\n'].some((tail) => middle === lead + c + tail)))
+              if (!fits) broken = `the pasted text is ${JSON.stringify(middle)}, not one of ${JSON.stringify([...cores])}`
+              const caret = s.selection()
+              if (!broken && caret.anchor !== caret.head) broken = 'the selection is not a caret'
+              if (!broken && (caret.head < prefix.length || caret.head > now.length - suffix.length + 1)) broken = `the caret is at ${caret.head}, outside the paste`
+              if (!broken && rich) broken = survivorsKeepMarks(beforeDoc, s.state.doc, (i) => (i < from ? i : i >= to ? i + now.length - old.length : null))
+              // Undo: one step, or two for a converted Markdown paste, with the literal text between them; redo brings it back.
+              if (!broken) {
+                const result = JSON.stringify(after)
+                // (An old text's stored "\r\n" breaks go once it is typed or pasted into, as before: there the document is compared.)
+                const back = () => (old.includes('\r') || JSON.stringify(before).includes('\\r') ? s.state.doc.eq(beforeDoc) : JSON.stringify(s.content()) === JSON.stringify(before))
+                s.undo()
+                let steps = 1
+                if (!back()) {
+                  steps = 2
+                  converted++
+                  const literal = plainTextOfDoc(s.state.doc)
+                  if (!literal.startsWith(prefix) || !literal.endsWith(suffix) || literal.slice(prefix.length, literal.length - suffix.length) !== data.text.replace(/\r\n?/g, '\n')) broken = `the first undo is not the literal paste: ${JSON.stringify(literal)}`
+                  s.undo()
+                }
+                if (!broken && !back()) broken = `undo did not give back the record: ${JSON.stringify(s.content())}`
+                for (let i = 0; i < steps && !broken; i++) s.redo()
+                if (!broken && JSON.stringify(s.content()) !== result) broken = 'redo did not give back the paste'
+              }
+            }
+          }
+        } catch (e) {
+          broken = `threw ${String(e)}`
+        }
+        if (broken) failures.push(`seed ${SEED}, document ${d}, ${kind} paste over [${a}, ${b}]: ${broken}\n  source: ${JSON.stringify(source)}\n  paste: ${JSON.stringify(data)}`)
+      }
+    }
+    el.remove()
+    if (failures.length > 0) console.log(failures.join('\n'))
+    console.log(`paste rule: ${pasted} pastes (seed ${SEED}), ${converted} converted in two steps, ${refused} refused whole`)
+    expect(failures, failures[0]).toEqual([])
+    expect(pasted).toBeGreaterThan(300)
   })
 })
 
@@ -1487,6 +1705,153 @@ describe('V4: deciding which dividers travel is one pass', () => {
     expect(s.toggleBlock('blockquote')).toBe(true)
     // About 1,000 ms here when every divider rescanned every line; a single pass takes a few milliseconds.
     expect(performance.now() - t0).toBeLessThan(250)
+  })
+})
+
+// ---- W1 to W5 -------------------------------------------------------------------------------------------------
+
+describe('W1: an input over a selection changes the formatting of its own characters only', () => {
+  it('the reviewer\'s case: a plain `X` pasted from `Al|bum` to `Co|ver` leaves `ver` bold Serif and `Tail` underlined Serif', () => {
+    const s = open({ text: '', blocks: [list('orderedList', [p('Album', { italic: true, font: 'mono' })], [p('Cover', { bold: true, font: 'serif' })], [p('Tail', { underline: true, font: 'serif' })])] })
+    s.select(2, 8)
+    s.paste({ text: 'X' })
+    expect(content(s).blocks).toStrictEqual([{ type: 'orderedList', items: [{ blocks: [{ type: 'paragraph', content: [{ text: 'AlX', italic: true, font: 'mono' }, { text: 'ver', bold: true, font: 'serif' }] }] }, { blocks: [p('Tail', { underline: true, font: 'serif' })] }] }])
+  })
+
+  it('the same where the replacement is rebuilt (two lists): only the pasted X takes formatting', () => {
+    const s = open({ text: '', blocks: [numbered(7, [p('Album', { italic: true, font: 'mono' })]), numbered(21, [p('Cover', { bold: true, font: 'serif' })], [p('Tail', { underline: true, font: 'serif' })])] })
+    s.select(2, 8)
+    s.paste({ text: 'X' })
+    expect(content(s).blocks).toStrictEqual([numbered(7, [{ type: 'paragraph', content: [{ text: 'AlX', italic: true, font: 'mono' }, { text: 'ver', bold: true, font: 'serif' }] }]), numbered(22, [p('Tail', { underline: true, font: 'serif' })])])
+  })
+})
+
+describe('W2: a cancelled composition gives everything back, with no undo step', () => {
+  const shapes: Record<string, BlockNode[]> = {
+    'the only divider': [p('a'), { type: 'divider' }],
+    'a divider between lines': [p('Album'), { type: 'divider' }, p('Cover')],
+    'a divider in a list item': [list('bulletList', [p('Album'), { type: 'divider' }], [p('Cover')])],
+    'a divider in a quote': [quote(p('Album'), { type: 'divider' }, p('Cover'))],
+  }
+  for (const [name, blocks] of Object.entries(shapes)) {
+    it(`over ${name}: a candidate, then cancelled`, () => {
+      const s = open({ text: '', blocks })
+      const at = dividers(s.state.doc)[0]!
+      selectDivider(s, at)
+      const before = s.content()
+      s.compositionStart()
+      insert(s, 'kana', true)
+      // Cancelled: the candidate goes again.
+      const { from } = s.state.selection
+      s.dispatch(s.state.tr.delete(from - 4, from))
+      s.compositionEnd()
+      expect(s.content()).toStrictEqual(before)
+      expect(s.state.selection).toBeInstanceOf(NodeSelection)
+      expect(s.canUndo).toBe(false)
+    })
+  }
+
+  it('over an ordinary selection in a text with blocks', () => {
+    const s = open({ text: '', blocks: [list('bulletList', [p('Album')], [p('Cover')])] })
+    s.select(2, 8)
+    const before = s.content()
+    s.compositionStart()
+    insert(s, 'kana', true)
+    const { from } = s.state.selection
+    s.dispatch(s.state.tr.delete(from - 4, from))
+    s.compositionEnd()
+    expect(s.content()).toStrictEqual(before)
+    expect(s.selection()).toMatchObject({ from: 2, to: 8 })
+    expect(s.canUndo).toBe(false)
+  })
+})
+
+describe('W3: lines after a selection stay in their list; one list numbers on, another keeps its numbers', () => {
+  it('`7. Album`, `8. Cover`, `9. Tail`, from the start of Album to the start of Cover: one list, `7. Cover` (or `7. ZCover`) and `8. Tail`, for every input', () => {
+    for (const input of INPUTS) {
+      const s = open({ text: '', blocks: [numbered(7, [p('Album')], [p('Cover')], [p('Tail')])] })
+      s.select(0, 6)
+      const meant = apply(s, input)
+      const blocks = content(s).blocks!
+      // One list (Enter adds an item, numbered on as well).
+      expect(blocks.length, input).toBe(1)
+      expect(blocks[0]!.type, input).toBe('orderedList')
+      expect(content(s).text, input).toBe(input === 'Enter' ? '\nCover\nTail' : `${meant[0]}Cover\nTail`)
+      // (A two-line paste puts its second line in the same item: no number beside it.)
+      expect(paintedOf(s.state.doc), input).toStrictEqual(input === 'Enter' ? [7, 8, 9] : input === 'paste lines' ? [7, null, 8] : [7, 8])
+    }
+  })
+
+  it('where the replacement is rebuilt (a code block joining an italic line), the list still numbers on: `7. ZCover`, `8. Tail`', () => {
+    for (const input of ['type', 'Backspace'] as const) {
+      const s = open({ text: '', blocks: [numbered(7, [{ type: 'codeBlock', text: 'Album' }], [p('Cover', { italic: true })], [p('Tail')])] })
+      s.select(0, 6)
+      apply(s, input)
+      expect(content(s).blocks, input).toStrictEqual([numbered(7, [{ type: 'codeBlock', text: input === 'type' ? 'QRSCover' : 'Cover' }], [p('Tail')])])
+    }
+  })
+
+  it('`7. Album`, then `21. Cover` and `22. Tail`: `7. ZCover`, and `22. Tail` a list of its own', () => {
+    const s = open({ text: '', blocks: [numbered(7, [p('Album')]), numbered(21, [p('Cover')], [p('Tail')])] })
+    s.select(0, 6)
+    type(s, 'Z')
+    expect(content(s).blocks).toStrictEqual([numbered(7, [p('ZCover')]), numbered(22, [p('Tail')])])
+  })
+
+  it('Enter over `lb` inside `7. Album` makes a new item: Cover and Tail become 9 and 10', () => {
+    const s = open({ text: '', blocks: [numbered(7, [p('Album')], [p('Cover')], [p('Tail')])] })
+    s.select(1, 3)
+    press(s, 'Enter')
+    expect(paintedOf(s.state.doc)).toStrictEqual([7, 8, 9, 10])
+  })
+})
+
+describe('W4: a divider inside the selected range goes with the selected lines, unless it begins an unselected item', () => {
+  it('one quote holding `Album`, a divider, `Cover`; from the start of Album to the start of Cover; Quote: Album and the divider leave the quote', () => {
+    const s = open({ text: '', blocks: [quote(p('Album'), { type: 'divider' }, p('Cover'))] })
+    s.select(0, 6)
+    expect(checkRule(s, 'blockquote')).toBeNull()
+    s.select(0, 6)
+    s.toggleBlock('blockquote')
+    expect(content(s).blocks).toStrictEqual([p('Album'), { type: 'divider' }, quote(p('Cover'))])
+  })
+
+  it('a list item holding `Album`, a divider, `Cover`: the kind changed from Album to the start of Cover takes the divider with Album', () => {
+    const s = open({ text: '', blocks: [list('bulletList', [p('Album'), { type: 'divider' }, p('Cover')])] })
+    s.select(0, 6)
+    expect(checkRule(s, 'orderedList')).toBeNull()
+    s.select(0, 6)
+    s.toggleBlock('orderedList')
+    expect(content(s).blocks).toStrictEqual([list('orderedList', [p('Album'), { type: 'divider' }]), list('bulletList', [p('Cover')])])
+  })
+})
+
+describe('W5: a divider with no line beside it, and Shift+arrows across a divider', () => {
+  it('three dividers and no text: the middle one selected, Delete or Backspace leaves an empty line with the caret; Z lands between two dividers', () => {
+    for (const key of ['Delete', 'Backspace']) {
+      const s = open({ text: '', blocks: [{ type: 'divider' }, { type: 'divider' }, { type: 'divider' }] })
+      selectDivider(s, dividers(s.state.doc)[1]!)
+      press(s, key)
+      type(s, 'Z')
+      expect(content(s).blocks, key).toStrictEqual([{ type: 'divider' }, p('Z'), { type: 'divider' }])
+    }
+    const first = open({ text: '', blocks: [{ type: 'divider' }, { type: 'divider' }, p('a')] })
+    selectDivider(first, dividers(first.state.doc)[0]!)
+    press(first, 'Delete')
+    type(first, 'Z')
+    expect(content(first).blocks).toStrictEqual([p('Z'), { type: 'divider' }, p('a')])
+  })
+
+  it('Shift+Right at the end of `Album` reaches past the divider to the start of `Cover`; Shift+Left back from the start of Cover reaches the end of Album', () => {
+    const s = open({ text: '', blocks: [p('Album'), { type: 'divider' }, p('Cover')] }, { caret: 5 })
+    press(s, 'ArrowRight', { shiftKey: true })
+    expect(s.selection()).toMatchObject({ anchor: 5, head: 6 })
+    const t = open({ text: '', blocks: [p('Album'), { type: 'divider' }, p('Cover')] }, { caret: 6 })
+    press(t, 'ArrowLeft', { shiftKey: true })
+    expect(t.selection()).toMatchObject({ anchor: 6, head: 5 })
+    // Away from a divider the browser moves it (nothing claimed).
+    const u = open({ text: '', blocks: [p('Album'), { type: 'divider' }, p('Cover')] }, { caret: 2 })
+    expect(press(u, 'ArrowRight', { shiftKey: true })).toBe(false)
   })
 })
 

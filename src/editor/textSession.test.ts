@@ -182,11 +182,22 @@ describe('keys the session claims', () => {
   })
 })
 
-describe('paste (the default allowlist, as today)', () => {
-  it('pasted plain text is literal, one line per line, "\\r\\n" one break; markers and blank lines stay', () => {
+describe('paste', () => {
+  it('literal pasted plain text (Ctrl/Cmd+Shift+V) is one line per line, "\\r\\n" one break; markers and blank lines stay', () => {
+    const s = open({ text: 'x' })
+    s.paste({ text: '# a\r\n\r\n**b** *c*', plain: true })
+    expect(s.content()).toStrictEqual({ text: 'x# a\n\n**b** *c*' })
+  })
+
+  it('pasted plain Markdown converts; the first undo gives back the literal lines, the second removes the paste', () => {
     const s = open({ text: 'x' })
     s.paste({ text: '# a\r\n\r\n**b** *c*' })
+    expect(s.content()).toStrictEqual({ text: 'x\na\n\nb c', spans: [{ start: 5, end: 6, bold: true }, { start: 7, end: 8, italic: true }], headings: [0, 1] })
+    expect(s.selection()).toMatchObject({ anchor: 8, head: 8 })
+    s.undo()
     expect(s.content()).toStrictEqual({ text: 'x# a\n\n**b** *c*' })
+    s.undo()
+    expect(s.content()).toStrictEqual({ text: 'x' })
   })
 
   it('takes the marks of the text at the paste point, then the pending choices', () => {
@@ -199,10 +210,10 @@ describe('paste (the default allowlist, as today)', () => {
     expect(s.content().spans).toEqual([{ start: 0, end: 3, bold: true }, { start: 3, end: 4, underline: true }])
   })
 
-  it('pasted HTML keeps bold, italic, underline and strikethrough; headings arrive bold at the normal size; never a size, colour or font', () => {
+  it('pasted HTML keeps bold, italic, underline and strikethrough and its headings; never a size or colour, and a font only from `data-font` (what Yuriful copies)', () => {
     const s = open()
-    s.paste({ html: '<h1 style="font-size:40px">Head</h1><p style="color:red"><b>B</b> <i>I</i> <u>U</u> <del>S</del> <span data-font="mono" style="font-family:serif">F</span></p>' })
-    expect(s.content()).toStrictEqual({ text: 'Head\nB I U S F', spans: [{ start: 0, end: 6, bold: true }, { start: 7, end: 8, italic: true }, { start: 9, end: 10, underline: true }, { start: 11, end: 12, strike: true }] })
+    s.paste({ html: '<h1 style="font-size:40px">Head</h1><p style="color:red"><b>B</b> <i>I</i> <u>U</u> <del>S</del> <span data-font="mono" style="font-family:serif">F</span> <span style="font-family:serif">G</span></p>' })
+    expect(s.content()).toStrictEqual({ text: 'Head\nB I U S F G', spans: [{ start: 5, end: 6, bold: true }, { start: 7, end: 8, italic: true }, { start: 9, end: 10, underline: true }, { start: 11, end: 12, strike: true }, { start: 13, end: 14, font: 'mono' }], headings: [1] })
   })
 
   it('pasted HTML never fires a typing shortcut and takes the pending choices', () => {
@@ -280,15 +291,17 @@ describe('with an EditorView mounted (jsdom)', () => {
     expect(wants).toHaveBeenCalledWith('escape', s)
   })
 
-  it("ProseMirror's own paste path goes through the same sanitizer, plain text parser and pending choices", () => {
+  it("ProseMirror's own paste path goes through the session's paste: structure kept, scripts never run, its plain-text paste literal with the pending choices", () => {
     const { s } = mounted({ text: 'go *i' })
     s.view!.pasteHTML('<h2>Head</h2><script>window.__pm = 1</script><p><i>x</i>*</p>', pasteEvent())
-    expect(s.content()).toStrictEqual({ text: 'go *iHead\nx*', spans: [{ start: 5, end: 9, bold: true }, { start: 10, end: 11, italic: true }] })
+    // A heading pasted at the end of a line: the line stays as it was, the heading follows, then the last paragraph.
+    expect(s.content()).toStrictEqual({ text: 'go *i\nHead\nx*', spans: [{ start: 11, end: 12, italic: true }], headings: [0, 2] })
     expect((window as unknown as { __pm?: number }).__pm).toBeUndefined()
     s.toggleMark('underline')
+    // ProseMirror's `pasteText` is a literal paste (it passes `plain`, as Ctrl/Cmd+Shift+V does): no conversion.
     s.view!.pasteText('# a\n\nb', pasteEvent())
-    expect(s.content().text).toBe('go *iHead\nx*# a\n\nb')
-    expect(s.content().spans).toContainEqual({ start: 12, end: 18, underline: true })
+    expect(s.content().text).toBe('go *i\nHead\nx*# a\n\nb')
+    expect(s.content().spans).toContainEqual({ start: 13, end: 19, underline: true })
   })
 
   it('focus leaving the text (a panel field, the window) never ends the edit or asks to', () => {

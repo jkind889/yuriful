@@ -1317,7 +1317,7 @@ test.describe('the DOM renderer while a text is edited (Slice 2c-ii)', () => {
     expect(errors).toEqual([])
   })
 
-  test('pasted-html-is-inert-and-keeps-marks-only: no request leaves the page, and a heading and bold text arrive bold at normal size', async ({ page }) => {
+  test('pasted-html-is-inert: no request leaves the page; a heading arrives a heading (Slice 3b) and bold text bold', async ({ page }) => {
     const errors = errorsOf(page)
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
     await openBoard(page, board([], [text('T', 100, 100, 'x', { width: 300 })]), ASSETS)
@@ -1338,8 +1338,7 @@ test.describe('the DOM renderer while a text is edited (Slice 2c-ii)', () => {
     expect(requests.filter((u) => u.includes('example.invalid'))).toEqual([])
     const t = (await sceneNow(page)).objects[0] as { text: string; spans?: unknown; headings?: unknown; fontSize: number }
     expect(t.text).toBe('Head\nok')
-    expect(t.spans).toEqual([{ start: 0, end: 7, bold: true }]) // canonical: one span across the line break
-    expect(t.headings).toBeUndefined()
+    expect({ spans: t.spans, headings: t.headings }).toEqual({ spans: [{ start: 5, end: 7, bold: true }], headings: [2] })
     expect(t.fontSize).toBe(24)
     expect(errors).toEqual([])
   })

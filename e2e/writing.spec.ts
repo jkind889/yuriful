@@ -1,8 +1,8 @@
 /**
  * Real-browser tests (real Fabric, real IndexedDB, the real text engine) for the writing blocks of
  * Slice 3a: bullet, numbered and check lists, quotes, dividers, inline code and code blocks, typed
- * with their Markdown-style shortcuts or made with the panel; Tab in lists; what is kept and what is
- * discarded; the storage upgrade; that entering and leaving an edit moves nothing; what the page and
+ * with their Markdown-style shortcuts or made with the panel; Tab in lists; pasting HTML and Markdown
+ * through the real clipboard (Slice 3b); what is kept and what is discarded; the storage upgrade; that entering and leaving an edit moves nothing; what the page and
  * a frame preview paint; transforms, captions and a board going read-only mid-edit. There is no
  * earlier canvas to compare these with: every expectation is stated here.
  */
@@ -266,10 +266,10 @@ test('pinned-literal-cases-empty-list-discard-and-backspace-revert', async ({ pa
   // Typed literal cases stay literal.
   await newText(page, at, 60, 60)
   await page.keyboard.type('2 * 3 * 4\nsnake*case*\n* item\n#tag\n#### four')
-  // Pasted `- item` stays literal.
+  // `- item` pasted with Ctrl+Shift+V stays literal (a plain Ctrl+V converts it: Slice 3b).
   await page.keyboard.press('Enter')
   await page.evaluate(() => navigator.clipboard.writeText('- item'))
-  await page.keyboard.press('Control+v')
+  await page.keyboard.press('Control+Shift+v')
   // An IME-composed `- ` stays literal.
   await page.keyboard.press('Enter')
   const cdp = await page.context().newCDPSession(page)
@@ -1533,4 +1533,197 @@ test('V1: a refused input leaves the page, the session and the selection as they
   await cdp.send('Input.insertText', { text: '仮' })
   await expect.poll(() => pageLines(page, '#edit')).toBe(before.text)
   expect((await session()).text).toBe(before.text)
+})
+
+test('W2: a composition cancelled over a selected divider, or over a selection in a text with blocks, leaves the text, the page and the selection as they were, through leaving and a reload', async ({ page }) => {
+  const div = { type: 'divider' }
+  const shapes: Array<[string, (i: number) => Block[], boolean]> = [
+    ['the only divider', (i) => [p(`A${i}x`), div], true],
+    ['a divider between lines', (i) => [p(`A${i}x`), div, p(`C${i}x`)], true],
+    ['a divider in a list item', (i) => [bullets([p(`A${i}x`), div], [p(`C${i}x`)])], true],
+    ['a divider in a quote', (i) => [{ type: 'blockquote', blocks: [p(`A${i}x`), div, p(`C${i}x`)] }], true],
+    ['a selection across two list items', (i) => [bullets([p(`A${i}x`)], [p(`C${i}x`)])], false],
+  ]
+  const records = shapes.map(([, make], i) => textRec(`w${i}`, 90 + i * 170, 80, { fontSize: 13, width: 140, text: '', blocks: make(i) }))
+  const { errors } = await open(page, records)
+  const seeded = await storedDoc(page)
+  const cdp = await page.context().newCDPSession(page)
+  for (const [i, [name, , onDivider]] of shapes.entries()) {
+    const line = (await page.locator('.scene-layer .scene-text-body p', { hasText: `A${i}x` }).first().boundingBox())!
+    await page.mouse.dblclick(line.x + 4, line.y + line.height / 2)
+    await expect.poll(async () => (await editedText(page))?.focused, { message: name }).toBe(true)
+    const before = (await editedText(page))!.value
+    if (onDivider) {
+      const hr = (await page.locator('.scene-layer [contenteditable="true"].ProseMirror hr').boundingBox())!
+      await page.mouse.click(hr.x + hr.width / 2, hr.y + hr.height / 2)
+      await expect(page.locator('.scene-layer .ProseMirror-selectednode'), name).toHaveCount(1)
+    } else {
+      await page.keyboard.press('Control+Home')
+      await page.keyboard.press('ArrowRight')
+      await page.keyboard.press('Shift+ArrowDown')
+    }
+    await cdp.send('Input.imeSetComposition', { text: 'kana', selectionStart: 4, selectionEnd: 4 })
+    await cdp.send('Input.imeSetComposition', { text: '', selectionStart: 0, selectionEnd: 0 })
+    await expect.poll(async () => (await editedText(page))?.value, { message: `${name}: the text` }).toBe(before)
+    if (onDivider) {
+      await expect(page.locator('.scene-layer [contenteditable="true"].ProseMirror hr'), `${name}: the divider`).toHaveCount(1)
+      await expect(page.locator('.scene-layer .ProseMirror-selectednode'), `${name}: still selected`).toHaveCount(1)
+    } else expect((await editedText(page))!.end! - (await editedText(page))!.start!, `${name}: still a selection`).toBeGreaterThan(0)
+    await expect(undoButton(page), `${name}: no undo step`).toBeDisabled()
+    await page.keyboard.press('Escape')
+  }
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  for (const i of shapes.keys()) expect(byId(await storedDoc(page), `w${i}`).blocks, shapes[i]![0]).toEqual(byId(seeded, `w${i}`).blocks)
+  await page.reload()
+  await expect(status(page)).toContainText('Saved on this device')
+  for (const i of shapes.keys()) expect(byId(await storedDoc(page), `w${i}`).blocks, `${shapes[i]![0]}, after a reload`).toEqual(byId(seeded, `w${i}`).blocks)
+  await expect(page.locator('.scene-layer hr')).toHaveCount(4)
+  expect(errors).toEqual([])
+})
+
+test('W5: Shift+Right and Shift+Left extend a selection across a divider', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('s', 200, 100, { fontSize: 18, width: 300, text: 'Album\nCover', blocks: [p('Album'), { type: 'divider' }, p('Cover')] })])
+  await editAtEnd(page, at(220, 112))
+  await page.keyboard.press('Control+Home')
+  await page.keyboard.press('End')
+  await page.keyboard.press('Shift+ArrowRight')
+  await expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }).toEqual([5, 6])
+  await page.keyboard.press('Shift+ArrowRight')
+  await expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }).toEqual([5, 7])
+  await page.keyboard.press('ArrowRight') // collapse after
+  await page.keyboard.press('Home')
+  await page.keyboard.press('Shift+ArrowLeft')
+  await expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }).toEqual([5, 6])
+  expect(errors).toEqual([])
+})
+
+/** Puts HTML (and its plain text) on the real clipboard. */
+async function clipHtml(page: Page, html: string, text: string) {
+  await page.evaluate(
+    async ({ html, text }) => {
+      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) })])
+    },
+    { html, text },
+  )
+}
+
+test('pasted-html-never-fetches-remote-resources', async ({ page }) => {
+  const outside: string[] = []
+  await page.route('**/*', (route) => {
+    const url = new URL(route.request().url())
+    if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') {
+      outside.push(url.href)
+      return route.abort()
+    }
+    return route.continue()
+  })
+  const { errors, at } = await open(page, [])
+  await newText(page, at, 120, 80)
+  await page.keyboard.type('x')
+  await page.keyboard.press('Control+b') // pending bold at the caret
+  const html = '<link rel="stylesheet" href="https://example.invalid/s.css"><style>@import url(https://example.invalid/i.css); p { background: url(https://example.invalid/b.png) }</style><h2>Head</h2><p>Body <img src="https://example.invalid/x.png"> text</p><ul><li>one</li><li>two</li></ul><img src="https://example.invalid/y.png" srcset="https://example.invalid/z.png 2x">'
+  await clipHtml(page, html, 'Head\nBody text\none\ntwo')
+  await page.keyboard.press('Control+v')
+  const saved = await storedWhen(page, (d) => texts(d).some((t) => (t.text as string).includes('two')))
+  const rec = texts(saved).find((t) => (t.text as string).includes('two'))!
+  expect(rec.blocks).toEqual([p('x'), { type: 'heading', level: 2, content: [{ text: 'Head' }] }, p('Body  text', { bold: true }), bullets([p('one', { bold: true })], [p('two', { bold: true })])])
+  await page.waitForTimeout(300)
+  expect(outside).toEqual([])
+  expect(errors).toEqual([])
+})
+
+test('pasted-markdown-converts-and-undo-returns-literal', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  const markdown = '# Title\n\n- one\n- [x] two\n> quote\n**bold** and 2 * 3 * 4'
+  const converted = [{ type: 'heading', level: 1, content: [{ text: 'Title' }] }, p(), bullets([p('one')]), tasks([true, [p('two')]]), { type: 'blockquote', blocks: [p('quote')] }, { type: 'paragraph', content: [{ text: 'bold', bold: true }, { text: ' and 2 * 3 * 4' }] }]
+  for (const how of ['keys', 'toolbar'] as const) {
+    await newText(page, at, 120, how === 'keys' ? 80 : 380)
+    await page.evaluate((t) => navigator.clipboard.writeText(t), markdown)
+    await page.keyboard.press('Control+v')
+    const saved = await storedWhen(page, (d) => texts(d).some((t) => JSON.stringify(t.blocks) === JSON.stringify(converted)))
+    const id = texts(saved).find((t) => JSON.stringify(t.blocks) === JSON.stringify(converted))!.id
+    // The first undo gives back the six literal lines, the second removes the paste.
+    if (how === 'keys') await page.keyboard.press('Control+z')
+    else await undoButton(page).click()
+    await storedWhen(page, (d) => byId(d, id).text === markdown && byId(d, id).blocks === undefined)
+    if (how === 'keys') await page.keyboard.press('Control+z')
+    else await undoButton(page).click()
+    await expect.poll(async () => (await editedText(page))?.value).toBe('')
+    await page.keyboard.type('kept')
+    await page.keyboard.press('Escape')
+  }
+  expect(errors).toEqual([])
+})
+
+test('literal-paste-shortcut-and-contexts-that-never-convert', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('c', 600, 80, { fontSize: 18, width: 300, text: 'code', blocks: [{ type: 'codeBlock', text: 'code' }] }), textRec('d', 600, 300, { fontSize: 18, width: 300, text: 'plain # x words' })])
+  const markdown = '# a\n- b'
+  // Ctrl+Shift+V: the clipboard's plain text, literally (no HTML, no conversion).
+  await newText(page, at, 120, 80)
+  await clipHtml(page, '<h1>a</h1><ul><li>b</li></ul>', markdown)
+  await page.keyboard.press('Control+Shift+v')
+  const literal = await storedWhen(page, (d) => texts(d).some((t) => t.text === markdown))
+  expect(texts(literal).find((t) => t.text === markdown)!.blocks).toBeUndefined()
+  await page.keyboard.press('Escape')
+  // Inside a code block: plain text as code.
+  await page.evaluate((t) => navigator.clipboard.writeText(t), markdown)
+  await editAtEnd(page, at(620, 92))
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'c').blocks) === JSON.stringify([{ type: 'codeBlock', text: `code${markdown}` }]))
+  await page.keyboard.press('Escape')
+  // Text dragged within the card stays literal.
+  await editAtEnd(page, at(620, 312))
+  await page.keyboard.press('Home')
+  for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight')
+  for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowRight') // "# x "
+  const sel = await page.evaluate(() => {
+    const r = getSelection()!.getRangeAt(0).getBoundingClientRect()
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+  })
+  const end = await page.evaluate(() => {
+    const p = document.querySelector('.scene-layer [contenteditable="true"].ProseMirror p')!
+    const r = p.getBoundingClientRect()
+    return { x: r.right - 2, y: r.top + r.height / 2 }
+  })
+  await page.mouse.move(sel.x, sel.y)
+  await page.mouse.down()
+  await page.mouse.move(end.x, end.y, { steps: 8 })
+  await page.mouse.up()
+  const dragged = await storedWhen(page, (d) => byId(d, 'd').text !== 'plain # x words')
+  expect(byId(dragged, 'd').blocks).toBeUndefined()
+  expect((byId(dragged, 'd').text as string).includes('# x')).toBe(true)
+  await page.keyboard.press('Escape')
+  // HTML that carries nothing (a code editor's colour spans): converted from its plain text.
+  await newText(page, at, 120, 380)
+  await clipHtml(page, '<div style="color:#d4d4d4;background:#1e1e1e"><div><span style="color:#569cd6"># </span><span>Title</span></div></div>', '# Title')
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => texts(d).some((t) => JSON.stringify(t.blocks ?? null) === 'null' && t.text === 'Title' && JSON.stringify(t.headings) === '[1]'))
+  expect(errors).toEqual([])
+})
+
+test('copy-then-paste: a selection holding every block comes back as the same blocks through the real clipboard', async ({ page }) => {
+  const every: Block[] = [
+    { type: 'heading', level: 2, content: [{ text: 'Head' }] },
+    { type: 'paragraph', content: [{ text: 'b', bold: true }, { text: 'i', italic: true }, { text: 'u', underline: true }, { text: 's', strike: true }, { text: 'c', code: true }, { text: 'f', font: 'serif' }] },
+    bullets([p('a'), bullets([p('n')])]),
+    { type: 'orderedList', start: 7, items: [{ blocks: [p('x')] }] },
+    tasks([true, [p('done')]], [false, [p('todo')]]),
+    { type: 'blockquote', blocks: [p('q')] },
+    { type: 'codeBlock', text: 'let a' },
+    { type: 'divider' },
+    p('end'),
+  ]
+  // The plain text the clipboard carries is the stored text, a line per line (a divider has none).
+  const lines = ['Head', 'biuscf', 'a', 'n', 'x', 'done', 'todo', 'q', 'let a', 'end'].join('\n')
+  const { errors, at } = await open(page, [textRec('src', 120, 60, { fontSize: 14, width: 320, text: lines, blocks: every })])
+  await editAtEnd(page, at(140, 72))
+  await page.keyboard.press('Control+a')
+  await page.keyboard.press('Control+c')
+  const plain = await page.evaluate(() => navigator.clipboard.readText())
+  expect(plain).toBe(lines)
+  await page.keyboard.press('Escape')
+  await newText(page, at, 700, 60)
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => texts(d).some((t) => t.id !== 'src' && JSON.stringify(t.blocks) === JSON.stringify(every)))
+  expect(errors).toEqual([])
 })

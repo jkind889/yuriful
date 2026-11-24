@@ -360,7 +360,7 @@ describe('text that leaves a heading by copy, cut or drag arrives bold at normal
     expect(s.content().spans).toEqual([{ start: 2, end: 6, font: 'hand' }, { start: 6, end: 10, bold: true, font: 'hand' }])
   })
 
-  it('copy and paste: the clipboard holds bold body text without the font; it arrives bold in the destination font', () => {
+  it('copy and paste: the clipboard holds the heading and its font; text from inside it arrives in a body line bold, with its font (Slice 3b: a copy inside Yuriful keeps fonts)', () => {
     const el = document.createElement('div')
     document.body.appendChild(el)
     hosts.push(el)
@@ -368,12 +368,12 @@ describe('text that leaves a heading by copy, cut or drag arrives bold at normal
     s.mount(el)
     s.select(1, 5)
     const copy = s.view!.serializeForClipboard(s.state.selection.content())
-    expect(copy.dom.innerHTML).not.toContain('h1')
-    expect(copy.dom.innerHTML).not.toContain('data-font')
-    expect(copy.dom.innerHTML).toContain('<strong>word</strong>')
+    expect(copy.dom.innerHTML).toContain('<h1')
+    expect(copy.dom.innerHTML).toContain('data-font="mono"')
+    expect(copy.dom.innerHTML).not.toContain('<strong>')
     s.select(10)
     s.paste({ html: copy.dom.innerHTML, text: copy.text })
-    expect(s.content()).toStrictEqual({ text: 'Hword\nbodyword', spans: [{ start: 1, end: 5, font: 'mono' }, { start: 10, end: 14, bold: true }], headings: [1] })
+    expect(s.content()).toStrictEqual({ text: 'Hword\nbodyword', spans: [{ start: 1, end: 5, font: 'mono' }, { start: 10, end: 14, bold: true, font: 'mono' }], headings: [1] })
   })
 })
 
@@ -464,10 +464,10 @@ describe('until something changes, the content is the record’s own', () => {
 
 // ---- 15: heading weight in pasted HTML ---------------------------------------------------------------------------
 
-describe('a pasted heading arrives bold whatever its own weight', () => {
-  it('`<h1 style="font-weight:normal">Title</h1>` is a bold normal paragraph', () => {
+describe('a pasted heading is a heading, whatever its own weight (Slice 3b)', () => {
+  it('`<h1 style="font-weight:normal">Title</h1>` is a level 1 heading, with no bold stored', () => {
     const s = open()
     s.paste({ html: '<h1 style="font-weight:normal">Title</h1>' })
-    expect(s.content()).toStrictEqual({ text: 'Title', spans: [{ start: 0, end: 5, bold: true }] })
+    expect(s.content()).toStrictEqual({ text: 'Title', headings: [1] })
   })
 })

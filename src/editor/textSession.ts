@@ -11,9 +11,12 @@ import { resolveEditingShortcut, typedCharacter } from '../input/shortcuts.ts'
 import type { KeyEventLike } from '../input/shortcuts.ts'
 import { DEFAULT_FONT, canonicalTextFormatting, splitGraphemes } from '../model/richText.ts'
 import type { Mark, TextFormatting } from '../model/richText.ts'
-import { legacyToBlocks } from '../model/textDoc.ts'
+import { legacyToBlocks, parseBlocks } from '../model/textDoc.ts'
+import { markdownToBlocks } from '../model/markdownPaste.ts'
 import type { TextContent } from '../model/textDoc.ts'
-import type { FontId } from '../model/types.ts'
+import type { BlockNode, FontId } from '../model/types.ts'
+import { DROPPED, htmlToBlocks } from './pasteHtml.ts'
+import type { PastedHtml } from './pasteHtml.ts'
 import { blockOf, boxOf, contentFromDoc, docFromBlocks, docFromText, exceedsBounds, fontOf, isCompactDoc, marks, nodes, plainTextOfDoc, posAtTextOffset, renderStaticInto, taskItemDOM, textOffsetAt, textSchema, textblocksOf } from './textSchema.ts'
 import type { TextSource } from './textSchema.ts'
 import {
@@ -51,6 +54,8 @@ import {
   typedMarks,
   replacedRange,
   settleReplacement,
+  pasteBlocks,
+  replaceDocument,
   selectionOnCharacters,
 } from './textRules.ts'
 import type { BlockKind, BlockReadout, CompactContent, FormatReadout, Pending, ReplacementInput } from './textRules.ts'
@@ -327,6 +332,10 @@ export class EditSession {
   private caretKeyAt = -Infinity
   /** ProseMirror's `composition` metadata on its last composition transaction (the follow-up joins that history step). */
   private lastComposition: unknown = undefined
+  /** What ProseMirror's clipboard hooks were given for the paste in progress: its HTML, or its plain text. */
+  private pasteIn: { html: string | null; text: string | null } | null = null
+  /** ProseMirror read the paste in progress as a literal one (`Ctrl/Cmd+Shift+V`, `clipboardTextParser`'s `plain`). */
+  private pastePlain = false
   /** What is being pasted (the slice as it arrives), for `settleSelectionReplacement`. */
   private pastedSlice: Slice | null = null
   /** A plain-text paste in progress: what it pastes, where, and with which pending choices. */
@@ -523,8 +532,8 @@ export class EditSession {
     this.plainPaste = null
     if (transactions.length === 0) return
     this.current = state
-    if (this.deletion && this.composing && transactions.some((t) => t.docChanged)) this.deletion.delivered = true
     this.mapComposed(transactions)
+    if (this.deletion && this.composing && transactions.some((t) => t.docChanged)) this.deletion.delivered = true
     this.trackHistory(before, state, transactions)
     for (const t of transactions) if (t.getMeta('composition') !== undefined) this.lastComposition = t.getMeta('composition')
     this.mounted?.view.updateState(state)
@@ -848,14 +857,26 @@ export class EditSession {
     this.imeOpen = false
     this.composingHeadless = false
     for (const r of this.composed) r.open = false
+    // (On a mounted view ProseMirror reads the composition's last change after this, so the follow-up looks again.)
+    this.giveBackDeleted()
+  }
+
+  /**
+   * A composition that composed nothing in the end (none, or a candidate then cancelled) leaves the
+   * text exactly as deleting the selection at its start left it: the selection comes back as it was
+   * (text, marks, a selected divider, the selection), with no undo step left. True when it did.
+   */
+  private giveBackDeleted(): boolean {
     const d = this.deletion
+    // (In a text without blocks a composition that delivered a candidate keeps the deletion, as the earlier canvas does.)
+    if (!d || (d.delivered && isCompactDoc(d.before.doc)) || !this.current.doc.eq(d.after.doc)) return false
     this.deletion = null
-    if (!d || d.delivered || !this.current.doc.eq(d.after.doc)) return
     this.composed = []
     this.current = d.before
     this.mounted?.view.updateState(d.before)
     this.reportChange()
     this.hooks.onSelectionChange?.(this)
+    return true
   }
 
   /** The selection the browser shows in the view, as document positions (`EditorView.posAtDOM`); null when it is not in the view. */
@@ -907,6 +928,13 @@ export class EditSession {
    */
   private followUp() {
     if (this.composing) return
+    const gaveBack = this.giveBackDeleted()
+    this.deletion = null
+    if (gaveBack) {
+      this.imeStart = null
+      this.imeRefused = false
+      return
+    }
     const start = this.imeStart
     const refused = this.imeRefused
     this.imeStart = null
@@ -1146,24 +1174,141 @@ export class EditSession {
   private pasteNow(data: PasteData): boolean {
     if (!this.editable) return false
     const sel = this.current.selection
-    let slice: Slice
     if (sel.$from.parent.type.spec.code) {
       // Into a code block: plain text, the clipboard's own or the words of its HTML. Nothing at all: nothing changes.
       const text = data.text || (data.html !== undefined ? htmlPlainText(data.html) : '')
       if (!text) return false
-      this.notePlainPaste(text, this.current)
-      slice = this.plainTextSlice(text, sel.$from)
-    } else if (data.html !== undefined && !data.plain) {
+      return this.pasteLiteral(text)
+    }
+    if (data.html !== undefined && !data.plain) {
+      const read = htmlToBlocks(data.html)
+      // HTML that carries nothing a paste keeps (as a code editor puts on the clipboard): its plain text, converted.
+      // HTML with no words at all is pasted as before (as the earlier canvas did: a blank line, whatever the plain text).
+      const words = read.blocks.some((b) => b.type === 'paragraph' && (b.content ?? []).some((r) => r.text !== ''))
+      if (read.plain && data.text && words) return this.pastePlainText(data.text)
+      const structural = read.blocks.some((b) => b.type !== 'paragraph' || (b.content ?? []).some((r) => r.font !== undefined || r.code === true))
+      if (structural) return this.pasteHtmlBlocks(read, data)
+      // Only lines with bold, italic, underline or strikethrough: as before.
       const body = new DOMParser().parseFromString(sanitizePastedHTML(data.html), 'text/html').body
-      slice = this.arriving(pasteParser.parseSlice(body, { context: sel.$from }), this.destinationFont(this.current))
+      const slice = this.arriving(pasteParser.parseSlice(body, { context: sel.$from }), this.destinationFont(this.current))
       if (slice.size === 0 && !data.text) return false // nothing to paste: the selection stays
-    } else if (data.text) {
-      this.notePlainPaste(data.text, this.current)
-      slice = this.plainTextSlice(data.text, sel.$from)
-    } else return false
+      this.pastedSlice = slice
+      this.dispatch(this.current.tr.replaceSelection(slice).scrollIntoView().setMeta('paste', true).setMeta('uiEvent', 'paste'))
+      return true
+    }
+    if (!data.text) return false
+    return data.plain ? this.pasteLiteral(data.text) : this.pastePlainText(data.text)
+  }
+
+  /** Plain text pasted literally, one line per line, styled exactly as before (`plainPasteContent`): `Ctrl/Cmd+Shift+V`, a code block, text with no Markdown. */
+  private pasteLiteral(text: string): boolean {
+    this.notePlainPaste(text, this.current)
+    const slice = this.plainTextSlice(text, this.current.selection.$from)
     this.pastedSlice = slice
     this.dispatch(this.current.tr.replaceSelection(slice).scrollIntoView().setMeta('paste', true).setMeta('uiEvent', 'paste'))
     return true
+  }
+
+  /** Whether the marks of the place a paste arrives at include inline code (pending, or the code text the caret is in): then plain text is never converted. */
+  private codeAtPaste(state: EditorState): boolean {
+    return this.placeMarks(state).some((m) => m.type === marks.code)
+  }
+
+  /** The marks plain text pasted at the selection of `state` takes: those of its first selected character, or the caret's, with the pending choices. */
+  private placeMarks(state: EditorState): readonly PMMark[] {
+    const { $from, empty } = state.selection
+    const first = !empty && $from.parent.isTextblock && $from.parentOffset < $from.parent.content.size ? $from.parent.childAfter($from.parentOffset).node : null
+    return applyPending(first?.isText ? first.marks : $from.marks(), pendingOf(state), this.baseFont)
+  }
+
+  /**
+   * Pasted plain text (plan Section 11): converted by `markdownToBlocks` unless inline code is where
+   * it arrives. A conversion is two in-edit undo steps: the literal lines, exactly as a plain paste
+   * puts them, then the conversion (`closeHistory` between them and after), so the first undo gives
+   * back the literal text and the second removes the paste. A conversion whose result could not be
+   * stored leaves the literal paste; one the bounds refuse even literally changes nothing.
+   */
+  private pastePlainText(text: string): boolean {
+    const before = this.current
+    const blocks = this.codeAtPaste(before) ? null : markdownToBlocks(normalBreaks(text))
+    this.pasteLiteral(text)
+    if (!blocks || this.current === before) return true
+    const target = this.pastedBlocks(before, blocks, 'markdown', false, false)
+    if (!target) return true
+    const tr = closeHistory(replaceDocument(this.current.tr, target.doc.content))
+    tr.setSelection(TextSelection.create(tr.doc, target.selection.anchor, target.selection.head))
+    this.dispatch(tr.setMeta(META.levelsSet, true).scrollIntoView())
+    this.dispatch(closeHistory(this.current.tr))
+    return true
+  }
+
+  /** Pasted HTML that keeps structure (headings, lists, quotes, code, dividers, fonts copied in Yuriful): one in-edit undo step; over a bound, pasted as lines with marks only (as before), and over a bound even so, nothing. */
+  private pasteHtmlBlocks(read: PastedHtml, data: PasteData): boolean {
+    const target = this.pastedBlocks(this.current, read.blocks, 'html', read.inline, read.fromHeading)
+    if (!target) return this.pasteNow({ ...data, html: `<div>${sanitizePastedHTML(data.html ?? '')}</div>` })
+    this.dispatch(target.setMeta(META.levelsSet, true).setMeta('uiEvent', 'paste').scrollIntoView())
+    return true
+  }
+
+  /**
+   * The transaction that pastes `blocks` at the selection of `state` (a selection is deleted first,
+   * by the settled rule for input over a selection), with their marks given (`pasteMarks`), placed
+   * by `pasteBlocks`; null when it could not be stored, or the selection could not be deleted.
+   */
+  private pastedBlocks(state: EditorState, blocks: BlockNode[], source: 'markdown' | 'html', inline: boolean, fromHeading: boolean): Transaction | null {
+    const valid = (doc: PMNode) => !exceedsBounds(doc, this.baseFont)
+    const canonical = parseBlocks(blocks, this.baseFont)
+    if (!canonical) return null
+    const tr = state.selection.empty ? state.tr : settleReplacement(state, state.tr.deleteSelection(), { kind: 'delete' }, valid)
+    if (!tr) return null
+    const at = EditorState.create({ doc: tr.doc, selection: TextSelection.create(tr.doc, tr.selection.from) })
+    const intoHeading = at.selection.$from.parent.type === nodes.heading
+    let blocksIn = docFromBlocks(canonical).content
+    if (inline) {
+      // A run from inside one line: its text, as a paragraph's (from a heading it arrives bold elsewhere).
+      let run: PMNode | null = null
+      blocksIn.descendants((n) => {
+        if (!run && n.isTextblock) run = n
+        return !run
+      })
+      blocksIn = Fragment.from(nodes.paragraph.create(null, (run as PMNode | null)?.content ?? Fragment.empty))
+    }
+    const content = this.pasteMarks(blocksIn, state, source, inline && fromHeading && !intoHeading)
+    const placed = pasteBlocks(at, content, { inline })
+    if (!placed) return null
+    for (const step of placed.steps) tr.step(step)
+    tr.setSelection(TextSelection.create(tr.doc, placed.selection.anchor, placed.selection.head))
+    return valid(tr.doc) ? tr : null
+  }
+
+  /**
+   * The marks pasted blocks take (plan Section 11 point 4): converted Markdown takes the marks of
+   * the place it arrives at, as plain text does, plus its own; HTML keeps its own and takes the
+   * place's font unless it brings one (only Yuriful's own copy does). Both get the pending choices.
+   * A heading stores no bold; a code block no marks. `bold`: a run from inside a heading arriving
+   * elsewhere arrives bold.
+   */
+  private pasteMarks(content: Fragment, state: EditorState, source: 'markdown' | 'html', bold: boolean): Fragment {
+    const pending = pendingOf(state)
+    const place = source === 'markdown' ? this.placeMarks(state) : []
+    const font = source === 'html' ? this.destinationFont(state) : undefined
+    const fontMark = font && font !== this.baseFont ? marks.font.create({ font }) : null
+    const restyle = (frag: Fragment, heading: boolean): Fragment => {
+      const out: PMNode[] = []
+      frag.forEach((n) => {
+        if (n.type.spec.code) return void out.push(n)
+        if (!n.isText) return void out.push(n.copy(restyle(n.content, n.type === nodes.heading)))
+        let set: readonly PMMark[] = n.marks
+        for (const m of place) if (m.type !== marks.font || !marks.font.isInSet(set)) set = m.addToSet(set)
+        if (fontMark && !marks.font.isInSet(set)) set = fontMark.addToSet(set)
+        if (bold) set = marks.bold.create().addToSet(set)
+        set = applyPending(set, pending, this.baseFont)
+        if (heading) set = marks.bold.removeFromSet(set)
+        out.push(n.mark(set))
+      })
+      return Fragment.fromArray(out)
+    }
+    return restyle(content, false)
   }
 
   /**
@@ -1272,11 +1417,15 @@ export class EditSession {
   private richPasteMarks(root: Transaction, oldState: EditorState, newState: EditorState, pending: Pending | null): Transaction | null {
     const step = root.steps.find((st): st is ReplaceStep => st instanceof ReplaceStep)
     if (!step) return null
-    const $at = oldState.doc.resolve(Math.min(step.from, oldState.doc.content.size))
-    const first = step.to > step.from && $at.parent.isTextblock && $at.parentOffset < $at.parent.content.size ? $at.parent.childAfter($at.parentOffset).node : null
+    // The place it arrives at: the first selected character, or the caret.
+    const sel = oldState.selection
+    const $at = sel.empty ? oldState.doc.resolve(Math.min(step.from, oldState.doc.content.size)) : sel.$from
+    const first = !sel.empty && $at.parent.isTextblock && $at.parentOffset < $at.parent.content.size ? $at.parent.childAfter($at.parentOffset).node : null
     const set = applyPending(first?.isText ? first.marks : $at.marks(), pending, this.baseFont)
     const tr = newState.tr
-    for (const r of insertedRanges([root])) {
+    // Over a selection the settled replacement names the pasted characters (a rebuild replaces whole lines, whose other text keeps its formatting).
+    const input = root.getMeta(META.inputRange) as { from: number; to: number } | undefined
+    for (const r of input ? [input] : insertedRanges([root])) {
       tr.removeMark(r.from, r.to)
       for (const m of set) tr.addMark(r.from, r.to, m)
     }
@@ -1418,21 +1567,36 @@ export class EditSession {
           },
         },
         // Into a code block, a paste is its plain text, whatever else the clipboard holds.
-        handlePaste: (view, e, slice) => {
-          const data = e.clipboardData
+        handlePaste: (_view, e, slice) => {
+          // Every paste goes through the session's own path (`paste`, as a paste without a view does);
+          // ProseMirror's `clipboardTextParser`, called first, tells it whether this is a literal paste
+          // (`Ctrl/Cmd+Shift+V` comes as `plain`, which this hook does not get).
+          const plain = this.pastePlain
+          const read = this.pasteIn
+          this.pastePlain = false
+          this.pasteIn = null
+          // What ProseMirror's hooks were given (a real paste, or `pasteHTML` and `pasteText`); with HTML, the clipboard's plain text beside it.
+          const html = read?.html ?? ''
+          const text = read?.text ?? e.clipboardData?.getData('text/plain') ?? ''
           // A paste with no text at all (an image copied from a page, an empty clipboard) changes nothing, the selection included.
-          if (slice.size === 0 && !data?.getData('text/plain')) return true
-          if (!view.state.selection.$from.parent.type.spec.code) return false
-          const html = data?.getData('text/html')
-          this.paste({ text: data?.getData('text/plain') ?? '', ...(html ? { html } : {}) })
+          if (slice.size === 0 && !text && !html) return true
+          this.paste({ text, ...(html && !plain ? { html } : {}), plain })
           return true // handled, even when there was nothing to paste: the selection stays
         },
         transformPastedHTML: (html) => {
           this.incoming = 'html'
+          this.pasteIn = { html, text: null }
+          // (What ProseMirror parses from this is used only for a drop: a paste is read by `paste`.)
           return sanitizePastedHTML(html)
         },
+        transformPastedText: (text) => {
+          this.pasteIn = { html: null, text }
+          return text
+        },
         clipboardParser: pasteParser,
-        clipboardTextParser: (text, $context, _plain, view) => {
+        clipboardTextParser: (text, $context, plain, view) => {
+          this.pastePlain = plain
+          this.pasteIn = { html: null, text }
           this.incoming = 'text'
           if (this.dropPos === null) this.notePlainPaste(text, view.state)
           else this.plainPaste = { text: normalBreaks(text), from: 0, to: 0, pending: pendingOf(view.state) }
@@ -1445,7 +1609,8 @@ export class EditSession {
           this.pastedSlice = out
           return out
         },
-        transformCopied: (slice) => copiedSlice(slice),
+        // What a copy or cut puts on the clipboard keeps the blocks, ticks, list starts and fonts, so a paste in Yuriful brings them back (a drop flattens it, `arriving`).
+        transformCopied: (slice) => slice,
         clipboardTextSerializer: (slice) => slice.content.textBetween(0, slice.content.size, '\n'),
       },
     })
@@ -1540,8 +1705,6 @@ export function createEditSession(source: TextSource, hooks: EditSessionHooks = 
 
 // ---- pasted HTML ------------------------------------------------------------------------------------
 
-/** Removed with everything inside them. */
-const DROPPED = new Set(['script', 'style', 'iframe', 'object', 'embed', 'link', 'meta', 'img', 'picture', 'source', 'video', 'audio', 'svg', 'canvas', 'form', 'template', 'noscript', 'title', 'head'])
 /** Start and end a line. */
 const BLOCKS = new Set([
   'p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'ul', 'ol', 'blockquote', 'pre', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'caption',

@@ -230,9 +230,9 @@ describe('typing shortcuts', () => {
       type(s, `\n${lit}`)
       expect(s.content(), lit).toStrictEqual({ text: `x\n${lit}` })
     }
-    // A pasted `**x**` stays literal, and so does a pasted `*` that would close a marker.
+    // A literal paste (Ctrl/Cmd+Shift+V) of `**x**` stays literal, and so does a pasted `*` that would close a marker.
     const pasted = open({ text: 'go ' })
-    pasted.paste({ text: '**x**' })
+    pasted.paste({ text: '**x**', plain: true })
     type(pasted, ' *i')
     pasted.paste({ text: '*' })
     expect(pasted.content()).toStrictEqual({ text: 'go **x** *i*' })

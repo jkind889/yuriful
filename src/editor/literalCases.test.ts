@@ -19,6 +19,31 @@ function typed(text: string): TextContent {
   return s.content()
 }
 
+/** The stored content after pasting `text` into a new, empty text through the edit session (its real paste path). */
+function sessionPasted(text: string): TextContent {
+  const s = open({ text: '' })
+  s.paste({ text })
+  return s.content()
+}
+
+/**
+ * What the session's paste stores, in a new empty text, for a paste the converter turns into
+ * `expected`: the same, except that when the paste ends with a divider the empty line it was pasted
+ * on stays after it for the caret (the wiring's own rule; the converter knows nothing of the caret).
+ */
+function withCaretLine(expected: TextContent): TextContent {
+  if (!expected.blocks) return expected
+  const lastIsDivider = (blocks: BlockNode[]): boolean => {
+    const last = blocks[blocks.length - 1]
+    if (!last) return false
+    if (last.type === 'divider') return true
+    if (last.type === 'blockquote') return lastIsDivider(last.blocks)
+    if (last.type === 'bulletList' || last.type === 'orderedList' || last.type === 'taskList') return lastIsDivider(last.items[last.items.length - 1]!.blocks)
+    return false
+  }
+  return lastIsDivider(expected.blocks) ? canonicalTextContent({ text: '', blocks: [...expected.blocks, { type: 'paragraph' }] })! : expected
+}
+
 /** The stored content of a new text holding only the paste of `text`. */
 function pasted(text: string): TextContent {
   const blocks = markdownToBlocks(text)
@@ -38,6 +63,7 @@ describe('markdown-paste-shares-the-typed-literal-cases', () => {
       expect(canonicalTextContent({ text: '', blocks })).toStrictEqual({ text })
     }
     expect(pasted(text)).toStrictEqual({ text })
+    expect(sessionPasted(text)).toStrictEqual({ text })
   })
 })
 
@@ -59,6 +85,7 @@ describe('a single line converts the same typed and pasted', () => {
   ]
   it.each(SAME)('%j', (line) => {
     expect(pasted(line)).toStrictEqual(typed(line))
+    expect(sessionPasted(line)).toStrictEqual(withCaretLine(pasted(line)))
   })
 })
 
@@ -121,6 +148,7 @@ describe('declared differences from typing', () => {
   it.each(DECLARED)('%j', (text, blocks) => {
     const expected = blocks ? canonicalTextContent({ text: '', blocks }) : { text }
     expect(pasted(text)).toStrictEqual(expected)
+    expect(sessionPasted(text)).toStrictEqual(withCaretLine(expected!))
     expect(typed(text)).not.toStrictEqual(expected)
   })
 })

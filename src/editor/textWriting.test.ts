@@ -216,8 +216,9 @@ describe('typing a block shortcut converts it, Backspace straight after puts the
   })
 
   it('a shortcut never fires on pasted text, nor on text that arrives without a key', () => {
+    // A literal paste stays literal (a converted Markdown paste is `markdownToBlocks`, never a typing shortcut).
     const s = open({ text: '' })
-    s.paste({ text: '- item\n> q\n---\n`c`' })
+    s.paste({ text: '- item\n> q\n---\n`c`', plain: true })
     expect(content(s)).toStrictEqual({ text: '- item\n> q\n---\n`c`' })
     const t = open({ text: '-' })
     insert(t, ' ') // no keydown typed it

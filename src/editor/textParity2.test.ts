@@ -230,10 +230,10 @@ describe('onChange fires only when the content really changed', () => {
 
 // ---- H: weight inside a pasted heading -------------------------------------------------------------------------
 
-describe('all text of a pasted heading arrives bold', () => {
-  it('`<h2><span style="font-weight:normal">Big</span></h2>` is bold', () => {
+describe('a pasted heading is a heading, its weight never stored (Slice 3b)', () => {
+  it('`<h2><span style="font-weight:normal">Big</span></h2>` is a level 2 heading', () => {
     const s = open()
     s.paste({ html: '<h2><span style="font-weight:normal">Big</span> <b style="font-weight:400">deal</b></h2><p><span style="font-weight:normal">x</span></p>' })
-    expect(s.content()).toStrictEqual({ text: 'Big deal\nx', spans: [{ start: 0, end: 8, bold: true }] })
+    expect(s.content()).toStrictEqual({ text: 'Big deal\nx', headings: [2] })
   })
 })
