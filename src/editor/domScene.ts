@@ -8,7 +8,7 @@ import type { FrameCanvas } from './FrameCanvas.ts'
 import { SceneLayer, effectiveCardWidth, liveCardWidth, minCardWidth, renderCardBody } from './sceneLayer.ts'
 import type { CardMeasurer } from './sceneLayer.ts'
 import { canAnimate, stillFrame } from './stillImage.ts'
-import { ProxyRect, frameNameOf, idOf, imageCropOf, imageDataOf, isFrame, setTextData, textDataOf, toRecord } from './objects.ts'
+import { FIX_HEIGHT_ACTION, ProxyRect, frameNameOf, idOf, imageCropOf, imageDataOf, isFrame, setTextData, textDataOf, toRecord } from './objects.ts'
 import type { TextData } from './objects.ts'
 
 /** Which point of a text's box stays where it is when its width changes: its alignment edge. */
@@ -117,12 +117,15 @@ export class DomScene {
       if (ctx === canvas.getContext()) this.render()
     })
     // A side handle changes a text's wrap width: the card wraps again and the proxy takes its
-    // height, keeping the handle's anchor where Fabric keeps it (flush point 5).
+    // height, keeping the handle's anchor where Fabric keeps it (flush point 5). The bottom handle
+    // fixes its height instead (Fabric has already held it to the least height a line needs): the
+    // card is that tall, its top edge staying put, and its words do not move.
     canvas.on('object:resizing', ({ transform }) => {
       const target = transform.target
       const td = textDataOf(target)
       if (!td) return
-      setTextData(target, { ...td, width: target.width })
+      if (transform.action === FIX_HEIGHT_ACTION) setTextData(target, { ...td, height: roundPositive(target.height) })
+      else setTextData(target, { ...td, width: target.width })
       this.syncCard(target, { hold: { x: transform.originX, y: transform.originY } })
     })
     // Whatever adds a text proxy (a rebuild, Make caption, ...), it is sized from its card before

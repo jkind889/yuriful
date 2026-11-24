@@ -51,6 +51,10 @@ export const PROSE_CSS = `
   white-space: break-spaces;
   overflow-wrap: anywhere;
 }
+.yuriful-prose.is-fixed {
+  /* a fixed height: the text is clipped to the box, from the top (the page scrolls it, see .scene-text-body) */
+  overflow: hidden;
+}
 .yuriful-prose.is-center {
   text-align: center;
 }

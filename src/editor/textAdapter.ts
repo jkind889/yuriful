@@ -86,6 +86,8 @@ export interface TextAdapter {
   findCaptionSnap(obj: FabricObject, objects: readonly FabricObject[], zoom: number, previous: CaptionSnapPreview | null): CaptionSnapPreview | null
   /** The text itself when it already wraps as a caption does (a drawn box), a drawn copy of it, or null. */
   drawnCaptionOf(obj: FabricObject): FabricObject | null
+  /** The text has a fixed height (its bottom handle was dragged): its words scroll inside it. */
+  hasFixedHeight(obj: FabricObject): boolean
 
   // ---- the text being edited, and the formatting commands
   /** This object is the text being edited. */
@@ -120,6 +122,8 @@ export interface TextAdapter {
   setFont(font: FontId): void
   setAlign(align: TextAlign): void
   setColor(color: string): void
+  /** Auto height: the selected text grows with its words again (its fixed height goes, its top edge stays). */
+  clearHeight(): void
   revertShortcut(): void
   /** A keydown that reached the window listener and that the edited text claims (Esc or Tab that has just ended it, in-edit Undo and Redo). True when claimed. */
   onKeyDown(e: KeyboardEvent): boolean
@@ -141,6 +145,7 @@ function withContent(td: TextData, c: TextContent): TextData {
     fontSize: td.fontSize,
     width: td.width,
     ...(td.minHeight !== undefined && { minHeight: td.minHeight }),
+    ...(td.height !== undefined && { height: td.height }),
     ...(c.font !== undefined && { font: c.font }),
     ...(c.align !== undefined && { align: c.align }),
     ...(c.color !== undefined && { color: c.color }),
@@ -174,6 +179,43 @@ export function fabricWordAt(graphemes: readonly string[], at: number): { start:
   }
   const start = boundary(at, -1)
   return { start, end: Math.max(start, boundary(at, 1)) }
+}
+
+/**
+ * The middle of the caret at `pos` on the page: the middle of the character before it (after it at
+ * the start of a line's text), which is the middle of that character's box however the card is
+ * turned; the engine's own caret rectangle where there is no character (an empty line). Null
+ * without layout.
+ */
+function caretCentre(view: EditorView, pos: number): { x: number; y: number } | null {
+  try {
+    const { node, offset } = view.domAtPos(pos)
+    if (node.nodeType === Node.TEXT_NODE && (node as Text).length > 0) {
+      const range = node.ownerDocument!.createRange()
+      const from = offset > 0 ? offset - 1 : 0
+      range.setStart(node, from)
+      range.setEnd(node, from + 1)
+      const rect = Array.from(range.getClientRects()).find((r) => r.width > 0 || r.height > 0)
+      if (rect) return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    }
+    const c = view.coordsAtPos(pos)
+    return { x: (c.left + c.right) / 2, y: (c.top + c.bottom) / 2 }
+  } catch {
+    return null
+  }
+}
+
+/** The line height (scene units) of the line holding `pos`: its own line box, untransformed. */
+function lineHeightAt(view: EditorView, pos: number): number {
+  let el: Element | null = view.dom
+  try {
+    const { node } = view.domAtPos(pos)
+    el = (node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement)?.closest('p, h1, h2, h3, pre') ?? view.dom
+  } catch {
+    /* the root's own line height */
+  }
+  const win = view.dom.ownerDocument.defaultView
+  return (win && parseFloat(win.getComputedStyle(el).lineHeight)) || 0
 }
 
 /** The document position under a point of the page, in the view's text; null when there is none (or no layout to ask). */
@@ -299,8 +341,8 @@ export class DomTextAdapter implements TextAdapter {
 
   /**
    * Folds a residual scale into the card exactly once, as `normalizeTextScale` does for a text
-   * box: font size and wrap width (and a drawn minimum height) times the scale, the scale back to
-   * 1, and the proxy sized from the card again. No limit of its own.
+   * box: font size and wrap width (and a drawn minimum height and a fixed height) times the scale,
+   * the scale back to 1, and the proxy sized from the card again. No limit of its own.
    */
   normalizeScale(obj: FabricObject): boolean {
     const td = textDataOf(obj)
@@ -314,6 +356,7 @@ export class DomTextAdapter implements TextAdapter {
       fontSize: roundPositive(td.fontSize * s, 2),
       width: roundPositive(td.width * sx, 2),
       ...(td.minHeight !== undefined && { minHeight: round(td.minHeight * sy) }),
+      ...(td.height !== undefined && { height: roundPositive(td.height * sy) }),
     })
     obj.set({ scaleX: 1, scaleY: 1 })
     // A larger size can make a word wider than the box: it widens, as a text box does, from its left edge.
@@ -372,6 +415,10 @@ export class DomTextAdapter implements TextAdapter {
     if (td.minHeight !== undefined) return obj
     const rec = toRecord(obj)
     return rec?.type === 'text' ? createProxy({ ...rec, minHeight: 0 }, () => undefined) : null
+  }
+
+  hasFixedHeight(obj: FabricObject): boolean {
+    return textDataOf(obj)?.height !== undefined
   }
 
   /** The scene layer's flush point for a text's card; the edited card's decorations follow a new width or size. */
@@ -459,8 +506,13 @@ export class DomTextAdapter implements TextAdapter {
     this.endedByKey = null
     this.scene.layer.setEditing(id)
     const view = session.mount(body)
-    // A text box to assistive technology, named as the text is everywhere else (the Text tool, the panel's title).
-    view.setProps({ attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Text' } })
+    // A text with a fixed height stays where it was scrolled: the caret goes on the word pressed.
+    this.scene.layer.restoreScroll(id)
+    view.setProps({
+      // A text box to assistive technology, named as the text is everywhere else (the Text tool, the panel's title).
+      attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Text' },
+      handleScrollToSelection: (v) => this.revealCaret(v),
+    })
     body.addEventListener('dblclick', this.onCardDblClick)
     body.addEventListener('mousedown', this.onCardMouseDown)
     // The canvas takes no presses now: the card and the items in front of it do (the editor's routing).
@@ -499,6 +551,8 @@ export class DomTextAdapter implements TextAdapter {
     e.body.removeEventListener('dblclick', this.onCardDblClick)
     e.body.removeEventListener('mousedown', this.onCardMouseDown)
     this.endTextDrag()
+    // Where a fixed-height text was scrolled to, before its static card replaces the live view.
+    this.scene.layer.captureScroll(e.id)
     try {
       e.session.finish()
     } finally {
@@ -534,6 +588,26 @@ export class DomTextAdapter implements TextAdapter {
       this.host.commit()
     }
     this.host.syncState()
+  }
+
+  /**
+   * Keeps the caret in view in a text with a fixed height, whenever the edit asks for it (typing,
+   * Enter, a paste, keys the engine handles, in-edit undo and redo...): the text scrolls just enough,
+   * worked out in the card's own coordinates (the caret's place on the page taken back through the
+   * viewport and the card's matrix), so a turned or zoomed card scrolls by the right amount. Nothing
+   * else scrolls: not the page, not the board. A text that grows with its words is left to the
+   * engine, as before (the editor puts back any ancestor the browser scrolls).
+   */
+  private revealCaret(view: EditorView): boolean {
+    const e = this.edit
+    if (!e || e.session.view !== view || textDataOf(e.target)?.height === undefined) return false
+    const head = view.state.selection.head
+    const at = caretCentre(view, head)
+    const local = at && this.scene.layer.toCard(e.id, at.x, at.y)
+    if (!local) return true
+    const line = lineHeightAt(view, head)
+    this.scene.layer.revealSpan(e.id, local.y - line / 2, local.y + line / 2)
+    return true
   }
 
   /** In-edit Undo and Redo (Owner Decision 11): the edit's own history; the edit stays open. Whole-box settings are not steps of it. */
@@ -1005,5 +1079,31 @@ export class DomTextAdapter implements TextAdapter {
   setColor(color: string) {
     const obj = this.formatTarget()
     if (obj && !this.inEdit(obj, (s) => s.setBox({ color }))) this.formatBox(obj, 'color', undefined, (fmt) => ({ ...fmt, color }))
+  }
+
+  /**
+   * Auto height (the panel's button, or a double-click on the bottom handle): the one selected text
+   * grows with its words again, its top edge where it was, and starts from its top. A whole-box
+   * setting like alignment: on a selected box an undo step of its own; while the text is edited it
+   * is saved at once and part of the edit's one step. A caption stays against its image. It never
+   * changes ownership.
+   */
+  clearHeight() {
+    const obj = this.formatTarget()
+    const td = obj ? textDataOf(obj) : undefined
+    if (!obj || !td || td.height === undefined) return
+    const next: TextData = { ...td }
+    delete next.height
+    setTextData(obj, next)
+    this.syncCard(obj)
+    this.host.canvas.requestRenderAll()
+    if (!this.isEditing(obj)) {
+      this.host.commit()
+      return
+    }
+    if (isBlankTextDoc(td)) return // a text that is blank right now is not in the scene
+    if (captionOf(obj)) this.host.syncCaptions(obj)
+    this.host.markDirty()
+    this.host.syncState()
   }
 }

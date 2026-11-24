@@ -10,6 +10,7 @@ import {
   canonicalTextContent,
   isBlankTextDoc,
   legacyToBlocks,
+  minFixedHeight,
   needsRichFence,
   parseBlocks,
   plainTextOf,
@@ -342,11 +343,19 @@ describe('rich fields and the storage fence', () => {
     expect(needsRichFence({ objects: [{ ...text, surface: 'card' }] })).toBe(true)
   })
 
-  it('this build edits blocks; a fixed height and paper not yet', () => {
-    expect([...EDITABLE_RICH_FIELDS]).toEqual(['blocks'])
+  it('this build edits blocks and a fixed height; paper not yet', () => {
+    expect([...EDITABLE_RICH_FIELDS]).toEqual(['blocks', 'height'])
     expect(uneditableRichFields({ objects: [text] }).size).toBe(0)
     expect(uneditableRichFields({ objects: [{ ...text, blocks: [{ type: 'divider' }] }] }).size).toBe(0)
+    expect(uneditableRichFields({ objects: [{ ...text, height: 40 }, { ...text, id: 'b', blocks: [{ type: 'divider' }], height: 90 }] }).size).toBe(0)
     const all = uneditableRichFields({ objects: [{ ...text, height: 40 }, { ...text, id: 'b', blocks: [{ type: 'divider' }], surface: 'card' }] })
-    expect([...all].sort()).toEqual(['height', 'surface'])
+    expect([...all].sort()).toEqual(['surface'])
+  })
+
+  it('a bottom-handle drag keeps at least one and a half font sizes, at least 1', () => {
+    expect(minFixedHeight(20)).toBe(30)
+    expect(minFixedHeight(6)).toBe(9)
+    expect(minFixedHeight(17)).toBe(26)
+    expect(minFixedHeight(0.2)).toBe(1)
   })
 })

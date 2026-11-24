@@ -1,8 +1,9 @@
-import { Rect, controlsUtils, util } from 'fabric'
-import type { FabricObject } from 'fabric'
+import { Control, Rect, controlsUtils, util } from 'fabric'
+import type { FabricObject, TransformActionHandler } from 'fabric'
 import { clampCrop, storedCrop } from '../model/crop.ts'
 import { round, roundPositive } from '../model/doc.ts'
 import { canonicalTextFormatting } from '../model/richText.ts'
+import { minFixedHeight } from '../model/textDoc.ts'
 import type { CaptionSide, CropRect, FrameRecord, ImageRecord, ObjectRecord, TextRecord } from '../model/types.ts'
 import type { Point, Size } from '../model/viewport.ts'
 
@@ -123,8 +124,8 @@ const lockMeta = (rec: { locked?: true }): { locked?: true } => (rec.locked === 
 // beside it, in `proxyText` and `proxyImage`. A data object is replaced, never changed, whenever
 // what it draws changes, so the editor can tell by identity which items the layer must draw again.
 
-/** What a text proxy's card shows: the record's text, size, wrap width and canonical formatting. */
-export type TextData = Pick<TextRecord, 'text' | 'fontSize' | 'width' | 'minHeight' | 'font' | 'align' | 'color' | 'spans' | 'headings' | 'blocks' | 'captionBackground'>
+/** What a text proxy's card shows: the record's text, size, wrap width, fixed height (if any) and canonical formatting. */
+export type TextData = Pick<TextRecord, 'text' | 'fontSize' | 'width' | 'minHeight' | 'height' | 'font' | 'align' | 'color' | 'spans' | 'headings' | 'blocks' | 'captionBackground'>
 
 /** What an image proxy shows: the picture's own size and the crop's top-left (its size is the proxy's). */
 export interface ImageData {
@@ -156,6 +157,38 @@ export class ProxyRect extends Rect {
 
 const PROXY_STYLE = { fill: 'transparent', strokeWidth: 0, objectCaching: false } as const
 
+/** The `action` of a text's bottom-handle drag (`Transform.action`): it fixes the text's height. */
+export const FIX_HEIGHT_ACTION = 'resizeHeight'
+
+/**
+ * Fabric's own height change (`changeObjectHeight`: the pointer's distance from the top edge, never
+ * past it), then held to at least `minFixedHeight` of the text's size, so a line always shows.
+ */
+const changeTextHeight: TransformActionHandler = (e, transform, x, y) => {
+  const target = transform.target
+  const before = target.height
+  controlsUtils.changeObjectHeight(e, transform, x, y)
+  const td = proxyText.get(target)
+  const min = td ? minFixedHeight(td.fontSize) : 1
+  if (target.height < min) target.set({ height: min })
+  return target.height !== before
+}
+
+/**
+ * A text's bottom handle (`mb`, plan Section 9): dragging it fixes the box's height, its top edge
+ * staying where it is. Fabric fires `object:resizing` as for a side handle; the scene layer tells the
+ * two apart by the transform's action (`FIX_HEIGHT_ACTION`) and stores the height (`domScene.ts`).
+ */
+function textHeightControl(): Control {
+  return new Control({
+    x: 0,
+    y: 0.5,
+    actionHandler: controlsUtils.wrapWithFireEvent('resizing', controlsUtils.wrapWithFixedAnchor(changeTextHeight)),
+    cursorStyleHandler: controlsUtils.scaleSkewCursorStyleHandler,
+    actionName: FIX_HEIGHT_ACTION,
+  })
+}
+
 /** A text proxy's card, or undefined for anything else. */
 export const textDataOf = (obj: FabricObject | null | undefined): TextData | undefined => (obj ? proxyText.get(obj) : undefined)
 
@@ -183,6 +216,7 @@ export function textDataFrom(rec: TextRecord): TextData {
     fontSize: rec.fontSize,
     width: rec.width,
     ...(rec.minHeight !== undefined && { minHeight: rec.minHeight }),
+    ...(rec.height !== undefined && { height: rec.height }),
     ...fmt,
     ...(rec.captionBackground && { captionBackground: rec.captionBackground }),
   }
@@ -191,8 +225,8 @@ export function textDataFrom(rec: TextRecord): TextData {
 /**
  * A transparent proxy for an image or a text record. An image
  * proxy is the size of its shown crop, scaled as stored; a text proxy is the stored width and
- * the drawn minimum height until the editor sizes it from the scene layer (its effective width
- * and measured height). Null for an image whose picture is not decoded.
+ * its fixed height (or the drawn minimum height) until the editor sizes it from the scene layer
+ * (its effective width and measured height, which is the fixed height when it has one). Null for an image whose picture is not decoded.
  */
 export function createProxy(rec: ObjectRecord, getImage: (assetId: string) => HTMLImageElement | undefined): FabricObject | null {
   if (rec.type === 'image') {
@@ -217,10 +251,11 @@ export function createProxy(rec: ObjectRecord, getImage: (assetId: string) => HT
     applyLockFlags(proxy, 'image', rec.locked === true)
     return proxy
   }
-  const proxy = new ProxyRect({ ...SELECTION_STYLE, ...PROXY_STYLE, left: rec.left, top: rec.top, angle: rec.angle, width: rec.width, height: rec.minHeight ?? 0 })
-  // A text box's handles: the sides change the wrap width (Fabric's `changeWidth`), the corners scale.
-  proxy.controls = controlsUtils.createTextboxDefaultControls()
-  proxy.setControlsVisibility({ mt: false, mb: false })
+  const proxy = new ProxyRect({ ...SELECTION_STYLE, ...PROXY_STYLE, left: rec.left, top: rec.top, angle: rec.angle, width: rec.width, height: rec.height ?? rec.minHeight ?? 0 })
+  // A text box's handles: the sides change the wrap width (Fabric's `changeWidth`), the bottom one
+  // fixes the height (`textHeightControl`), the corners scale.
+  proxy.controls = { ...controlsUtils.createTextboxDefaultControls(), mb: textHeightControl() }
+  proxy.setControlsVisibility({ mt: false })
   meta.set(proxy, { id: rec.id, kind: 'text', ...(rec.frameId !== undefined && { frameId: rec.frameId }), ...lockMeta(rec) })
   setCaption(proxy, rec.captionOf, rec.captionSide, rec.captionPosition)
   proxyText.set(proxy, textDataFrom(rec))
@@ -259,6 +294,7 @@ function proxyTextRecord(td: TextData, m: Meta, base: { id: string; left: number
     fontSize: roundPositive(td.fontSize * s, 2),
     width: roundPositive(td.width * sx),
     ...(td.minHeight !== undefined && { minHeight: round(td.minHeight * sy) }),
+    ...(td.height !== undefined && { height: roundPositive(td.height * sy) }),
     ...(font !== undefined && { font }),
     ...(align !== undefined && { align }),
     ...(color !== undefined && { color }),

@@ -318,9 +318,20 @@ export class Canvas {
   }
 }
 
-/** The one control factory the text proxies use (the fake has no controls of its own). */
+/** The control factories and handlers the text proxies use (the fake has no controls of its own: they are inert records). */
 export const controlsUtils = {
   createTextboxDefaultControls: () => ({}),
+  changeObjectHeight: () => false,
+  wrapWithFixedAnchor: <T>(handler: T): T => handler,
+  wrapWithFireEvent: <T>(_event: string, handler: T): T => handler,
+  scaleSkewCursorStyleHandler: () => 'ns-resize',
+}
+
+/** A handle: the options it was made with. */
+export class Control {
+  constructor(opts: Record<string, unknown> = {}) {
+    Object.assign(this, opts)
+  }
 }
 
 export const util = {

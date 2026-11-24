@@ -403,6 +403,13 @@ function TextPanel({ editor, selection, text, blocks, locked }: { editor: Editor
           />
         ))}
       </div>
+
+      {/* A fixed height comes from dragging the bottom handle; this takes the box back to growing with its words. */}
+      {selection.textHeight === 'fixed' && (
+        <button type="button" className="secondary-btn inspector-btn" disabled={locked} onClick={() => editor.setTextAutoHeight()}>
+          Auto height
+        </button>
+      )}
     </>
   )
 }

@@ -1036,6 +1036,10 @@ button:disabled {
   white-space: break-spaces;
   overflow-wrap: anywhere;
 }
+.yuriful-prose.is-fixed {
+  /* a fixed height: the text is clipped to the box, from the top (the page scrolls it, see .scene-text-body) */
+  overflow: hidden;
+}
 .yuriful-prose.is-center {
   text-align: center;
 }
@@ -1313,4 +1317,68 @@ button:disabled {
 }
 .yuriful-prose[contenteditable="true"] .yp-check {
   cursor: pointer;
+}
+
+/* A text with a fixed height (src/editor/sceneLayer.ts): its body is that tall and its text scrolls
+   inside it. The native scrollbar is hidden, so it never takes width from the text (the words wrap
+   exactly as they did before the text overflowed); a thin thumb drawn over the text's right edge
+   shows while it scrolls. The fades say there is more above or below: a mask on the text alone, so
+   a caption background (on the card for a fixed-height text) never fades, and nothing moves */
+.scene-text-body.is-fixed {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.scene-text-body.is-fixed::-webkit-scrollbar {
+  display: none;
+}
+.scene-text.fade-top > .scene-text-body {
+  mask-image: linear-gradient(to bottom, transparent, #000 20px);
+}
+.scene-text.fade-bottom > .scene-text-body {
+  mask-image: linear-gradient(to top, transparent, #000 20px);
+}
+.scene-text.fade-top.fade-bottom > .scene-text-body {
+  mask-image: linear-gradient(to bottom, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+}
+/* A mask clips an outline too: a fixed-height text being edited is outlined on the card instead */
+.scene-text.is-fixed.is-editing > .scene-text-body {
+  outline: none;
+}
+.scene-text.is-fixed.is-editing {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 2px;
+}
+/* The thumb takes the text's own colour, so it reads wherever the text does, with a hairline halo
+   of light and dark for the rest; its size is set in screen pixels whatever the zoom (--thumb-px) */
+.scene-text-thumb {
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow:
+    0 0 0 var(--thumb-px, 1px) rgb(255 255 255 / 0.55),
+    0 0 0 calc(2 * var(--thumb-px, 1px)) rgb(0 0 0 / 0.08);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease-out;
+}
+.scene-text-thumb.is-shown {
+  opacity: 0.42;
+  transition-duration: 90ms;
+}
+.scene-text.is-editing .scene-text-thumb.is-shown {
+  pointer-events: auto;
+  cursor: default;
+}
+.scene-text.is-editing .scene-text-thumb.is-shown:hover,
+.scene-text-thumb.is-dragging {
+  opacity: 0.62;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene-text-thumb {
+    transition: none;
+  }
 }

@@ -388,7 +388,7 @@ test.describe('storage that refuses or stalls', () => {
   })
 })
 
-/** A review card that uses rich blocks and a fixed height: only a later build can make one. */
+/** A review card that uses rich blocks and a fixed height, which this build edits, and paper, which only a later build can make. */
 const RICH_CARD = {
   type: 'text',
   id: 'rev-1',
@@ -399,6 +399,7 @@ const RICH_CARD = {
   fontSize: 18,
   width: 320,
   height: 200,
+  surface: 'card',
   blocks: [
     { type: 'heading', level: 1, content: [{ text: 'Blue Lines' }] },
     { type: 'taskList', items: [{ checked: false, blocks: [{ type: 'paragraph', content: [{ text: 'Check 2012 remaster' }] }] }] },
@@ -422,7 +423,7 @@ async function tryToEdit(page: Page) {
 }
 
 test.describe('rich text from a later build', () => {
-  test('rich-board-opens-read-only-until-its-slice: a board with a rich card opens read-only as from a newer build; nothing is written or pruned', async ({ page }) => {
+  test('rich-board-opens-read-only-until-its-slice: a board with a paper card opens read-only as from a newer build; nothing is written or pruned', async ({ page }) => {
     const errors = errorsOf(page)
     await openBlank(page)
     await seedRaw(page, 3, { version: 3, title: 'Reviews', frames: [], objects: [IMAGE, RICH_CARD], viewport: UNIT }, [PIC, ORPHAN])
@@ -438,6 +439,28 @@ test.describe('rich text from a later build', () => {
 
     expect(await snapshotIdb(page)).toEqual(before) // same row, same timestamp, and the unused image is still there
     expect(await rawRow(page)).toEqual(rowBefore)
+    expect(await dbVersion(page)).toBe(3)
+    expect(errors).toEqual([])
+  })
+
+  test('a board with a fixed-height card (and blocks) opens editable now: the card is shown, can be selected, and is saved back with its height', async ({ page }) => {
+    const errors = errorsOf(page)
+    const card = { ...RICH_CARD } as Record<string, unknown>
+    delete card.surface
+    await openBlank(page)
+    await seedRaw(page, 3, { version: 3, title: 'Reviews', frames: [], objects: [IMAGE, card], viewport: UNIT }, [PIC])
+    const rowBefore = await rawRow(page)
+    await openApp(page)
+    await expect(banner(page)).toHaveCount(0)
+    expect(await rawRow(page)).toEqual(rowBefore) // loading wrote nothing
+    await expect(page.locator('.scene-text[data-id="rev-1"]')).toHaveClass(/is-fixed/)
+    // A move is an ordinary edit: saved, the height and blocks kept as they were.
+    const at = await sceneToPage(page, UNIT)
+    await drag(page, at(640, 220), at(700, 260))
+    await expect.poll(async () => (await storedDoc(page)).objects.find((o) => o.id === 'rev-1')?.left).not.toBe(600)
+    const saved = (await storedDoc(page)).objects.find((o) => o.id === 'rev-1')!
+    expect(saved).toEqual({ ...card, left: saved.left, top: saved.top })
+    expect((await storedDoc(page)).version).toBe(3)
     expect(await dbVersion(page)).toBe(3)
     expect(errors).toEqual([])
   })
@@ -535,7 +558,7 @@ test.describe('rich text from a later build', () => {
     await expect(banner(app)).toContainText('changed in another tab')
     expect(await snapshotIdb(app)).toEqual(after)
 
-    // Reloaded, it opens the rich board read-only, because it cannot edit the card yet.
+    // Reloaded, it opens the rich board read-only, because it cannot edit the card's paper yet.
     await banner(app).getByRole('button', { name: 'Reload' }).click()
     await expect(app.locator('.toolbar')).toBeVisible()
     await expect(banner(app)).toContainText('newer yuriful')

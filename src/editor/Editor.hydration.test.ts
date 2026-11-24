@@ -431,8 +431,8 @@ describe('Editor: a stored board with rich text this build cannot edit yet', () 
   }
 
   it('rich-board-opens-read-only-until-its-slice: opens read-only with the newer-build reason; nothing is shown, selected, saved or pruned', async () => {
-    // Rich blocks are editable now; a fixed height and paper are not yet, alone or beside blocks.
-    for (const extra of [{ height: 240 }, { surface: 'card' as const }, { blocks: [{ type: 'divider' as const }], surface: 'card' as const }]) {
+    // Rich blocks and a fixed height are editable now; paper is not yet, alone or beside either.
+    for (const extra of [{ height: 240, surface: 'card' as const }, { surface: 'card' as const }, { blocks: [{ type: 'divider' as const }], surface: 'card' as const }]) {
       const doc = storedDoc()
       const store = new SpyStore({ doc: { ...doc, objects: doc.objects.map((o) => (o.type === 'text' ? { ...o, ...extra } : o)) }, assets: storedAssets() })
       store.holdLoad = false

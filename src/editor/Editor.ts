@@ -73,6 +73,8 @@ import type { CaptionSnapPreview } from './captionSnapLayer.ts'
 import { DomScene } from './domScene.ts'
 import { EdgePan } from './edgePan.ts'
 import { renderFrameToCanvas } from './renderFrameBitmap.ts'
+import { CANVAS_OWNER, WheelLatch, pickWheelOwner } from './wheelGesture.ts'
+import type { WheelOwner } from './wheelGesture.ts'
 import { FeedbackLayer } from './feedbackLayer.ts'
 import { FrameCanvas } from './FrameCanvas.ts'
 import type { AssetSource } from './assets.ts'
@@ -138,6 +140,8 @@ export interface SelectionInfo {
    */
   image: { cropped: boolean; canFit: boolean; canFill: boolean } | null
   caption: { edit: 'add' | 'edit' | null; canEdit: boolean; attached: boolean; canDetach: boolean; canMake: boolean; canStyle: boolean; background?: string }
+  /** Only for a single text: whether it has a fixed height (its words scroll inside it) or grows with its words. */
+  textHeight: 'fixed' | 'auto' | null
   /** Only for a single text: what the formatting controls show. */
   text: TextFormatInfo | null
   /** The block controls of the one selected text (see `TextBlockInfo`), or null. */
@@ -357,6 +361,8 @@ export class Editor {
   private primaryDown = false
   private pan: { button: number; end: () => void } | null = null
   private crop: CropSession | null = null
+  /** Who the wheel gesture in progress belongs to: the board, or the fixed-height text it started on (plan Section 4). */
+  private readonly wheel = new WheelLatch()
   /** The last press on the canvas applied a crop (so the double-click it may begin does not reopen one). */
   private pressAppliedCrop = false
   /** The press that began the current double-click followed a press that applied a crop. */
@@ -804,6 +810,7 @@ export class Editor {
         canStyle: canDetach || (styledText !== undefined && !locked),
         background: (styled ? this.text.backgroundOf(styled) : undefined) || undefined,
       },
+      textHeight: this.text.isText(single) ? (this.text.hasFixedHeight(single) ? 'fixed' : 'auto') : null,
       text: this.text.isText(single) ? this.text.formatInfo(single) : null,
       textBlocks: this.text.isText(single) ? this.text.blockInfo(single) : null,
     }
@@ -1043,6 +1050,13 @@ export class Editor {
     c.on('mouse:dblclick', (opt) => {
       const target = opt.target
       if (!this.editable || this.busy || this.crop || !target) return
+      // Double-clicking a text's bottom handle is Auto height: it grows with its words again.
+      if (this.text.isText(target) && !isLocked(target) && !this.text.isEditing(target) && c.getActiveObject() === target && this.handleUnder(target, opt.e) === 'mb') {
+        queueMicrotask(() => {
+          if (this.editable && !this.busy && c.getActiveObject() === target) this.text.clearHeight()
+        })
+        return
+      }
       if (isFrame(target)) {
         queueMicrotask(() => {
           if (this.editable && !this.busy && c.getActiveObject() === target) this.frameRenamer?.()
@@ -1087,6 +1101,44 @@ export class Editor {
       }
       this.queueIdle()
     })
+  }
+
+  /**
+   * Who a new wheel gesture belongs to (`pickWheelOwner`): the facts at the pointer. The board is
+   * free when no gesture, pan or crop is unsettled and neither the hand tool nor Space is in effect
+   * (a read-only board, whose only tool is the hand, still lets a long text be read). The front-most
+   * object whose box holds the pointer counts, locked or not: scrolling stores nothing, and a locked
+   * image in front still covers the text.
+   */
+  private wheelOwner(e: WheelEvent): WheelOwner {
+    const c = this.canvas
+    const free = !this.gesture && !this.pan && !this.crop && !this.spaceHeld && !(this.editable && this.state.tool === 'hand')
+    if (!free) return CANVAS_OWNER
+    const p = c.getScenePoint(e)
+    const objects = c.getObjects()
+    let front: FabricObject | undefined
+    for (let i = objects.length - 1; i >= 0; i--) {
+      const o = objects[i]!
+      if (o.visible && o.containsPoint(p)) {
+        front = o
+        break
+      }
+    }
+    const id = front && idOf(front)
+    return pickWheelOwner({
+      free,
+      shiftKey: e.shiftKey,
+      deltaX: e.deltaX,
+      deltaY: e.deltaY,
+      frameOverlay: !!c.frameOverlayAt(objects, p),
+      front: id ? { id, scroll: this.text.isText(front) ? this.scene.layer.scrollOf(id) : null } : null,
+    })
+  }
+
+  /** The handle of a selected object under a pointer event (`'mb'`, `'tl'`...), or undefined. */
+  private handleUnder(obj: FabricObject, e: Event): string | undefined {
+    if (!(e instanceof MouseEvent) || typeof obj.findControl !== 'function') return undefined
+    return obj.findControl(this.canvas.getViewportPoint(e))?.key
   }
 
   // ---- gestures ----------------------------------------------------------------------
@@ -1575,10 +1627,15 @@ export class Editor {
         e.preventDefault()
         if (!this.live) return
         const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? this.host.clientHeight : 1
-        if (e.ctrlKey || e.metaKey) {
+        // A wheel gesture belongs to whatever it started on (plan Section 4): a fixed-height text
+        // scrolls by as much as the board would have moved, and stops at its end; the board pans.
+        const owner = this.wheel.route(e.timeStamp, e.ctrlKey || e.metaKey, () => this.wheelOwner(e))
+        if (owner === 'zoom') {
           const rect = this.host.getBoundingClientRect()
           const at = { x: e.clientX - rect.left, y: e.clientY - rect.top }
           this.setViewport(zoomAround(this.getViewport(), at, this.getViewport().zoom * Math.exp((-e.deltaY * unit) / 300)))
+        } else if (owner.kind === 'card') {
+          this.scene.layer.scrollCardBy(owner.id, (e.deltaY * unit) / this.getViewport().zoom)
         } else {
           const vp = this.getViewport()
           const dx = (e.shiftKey && e.deltaX === 0 ? e.deltaY : e.deltaX) * unit
@@ -2643,6 +2700,14 @@ export class Editor {
   /** The colour (`#rrggbb`) of the whole box, also while it is being edited. The default ink is stored as no colour. */
   setTextColor(color: string) {
     this.text.setColor(color)
+  }
+
+  /**
+   * Auto height: the one selected text, which has a fixed height, grows with its words again (its
+   * top edge stays). One undo step on a selected box; part of the edit's step while it is edited.
+   */
+  setTextAutoHeight() {
+    this.text.clearHeight()
   }
 
   /** Duplicates selected objects and the contents of selected frames as one undo step. */

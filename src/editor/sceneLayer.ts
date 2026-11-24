@@ -1,6 +1,6 @@
 import type { Node as PMNode } from 'prosemirror-model'
 import { clampCrop } from '../model/crop.ts'
-import { HEADING_SCALE, splitGraphemes } from '../model/richText.ts'
+import { DEFAULT_TEXT_COLOR, HEADING_SCALE, splitGraphemes } from '../model/richText.ts'
 import type { HeadingLevel } from '../model/richText.ts'
 import type { CropRect, FontId, FrameRecord, ImageRecord, ObjectRecord, Scene, TextRecord, Viewport } from '../model/types.ts'
 import type { Size } from '../model/viewport.ts'
@@ -805,21 +805,33 @@ export function noWrapRanges(rec: CardSource, doc: Document = document): NoWrapR
 // ---- a text card's body ---------------------------------------------------------------------
 
 /** The fields of a text record that decide how its card looks. */
-export type CardSource = Pick<TextRecord, 'text' | 'fontSize' | 'width' | 'minHeight' | 'font' | 'align' | 'color' | 'spans' | 'headings' | 'blocks' | 'captionBackground'>
+export type CardSource = Pick<TextRecord, 'text' | 'fontSize' | 'width' | 'minHeight' | 'height' | 'font' | 'align' | 'color' | 'spans' | 'headings' | 'blocks' | 'captionBackground'>
 
 /** A drawn box (`minHeight` set) wraps inside overlong words; a click-created one only between words. */
 const isDrawn = (rec: Pick<TextRecord, 'minHeight'>): boolean => rec.minHeight !== undefined
 
-/** Only the fields of a record that decide how its card looks, the width left out. */
+/** Only the fields of a record that decide what its card's body holds: the width and a fixed height left out (see `applyCardHeight`). */
 function cardLook(rec: CardSource): Omit<CardSource, 'width'> {
   const { text, fontSize, minHeight, font, align, color, spans, headings, blocks, captionBackground } = rec
   return { text, fontSize, minHeight, font, align, color, spans, headings, blocks, captionBackground }
 }
 
 /**
+ * The height of a card's body: a fixed height (`is-fixed`: the body is that tall and its text
+ * scrolls inside it, the drawn minimum height then counting for nothing), or none, the body growing
+ * with its text from the drawn minimum height, if any. Safe on a card whose live editor is mounted.
+ */
+export function applyCardHeight(body: HTMLElement, rec: Pick<CardSource, 'minHeight' | 'height'>) {
+  const fixed = rec.height !== undefined
+  body.classList.toggle('is-fixed', fixed)
+  body.style.height = fixed ? `${rec.height}px` : ''
+  body.style.minHeight = !fixed && rec.minHeight !== undefined ? `${rec.minHeight}px` : ''
+}
+
+/**
  * Gives `body` the classes and styles of its card, leaving its children alone: font, size,
- * alignment, colour, caption background, drawn minimum height, wrapping kind, baseline shifts
- * and decoration thickness. Safe on a card whose live editor is mounted.
+ * alignment, colour, caption background, fixed height or drawn minimum height, wrapping kind,
+ * baseline shifts and decoration thickness. Safe on a card whose live editor is mounted.
  */
 export function applyCardStyle(body: HTMLElement, rec: CardSource) {
   const doc = body.ownerDocument
@@ -832,7 +844,7 @@ export function applyCardStyle(body: HTMLElement, rec: CardSource) {
   body.dataset.font = font
   const s = body.style
   s.fontSize = `${rec.fontSize}px`
-  s.minHeight = rec.minHeight !== undefined ? `${rec.minHeight}px` : ''
+  applyCardHeight(body, rec)
   s.color = read?.box.color ?? ''
   s.backgroundColor = rec.captionBackground ?? ''
   for (const level of LEVELS) s.setProperty(`--yp-shift-${level}`, `${baselineShift(font, rec.fontSize * levelScale(level), doc)}px`)
@@ -1057,7 +1069,35 @@ interface ItemState {
   natural?: Size
   /** Texts: what the body shows (the look without the width, and the no-wrap ranges). */
   shown?: string
+  /** Texts: the fixed height the card was last given (undefined: it grows with its text). Its scroll position belongs to it. */
+  fixed?: number
+  /** Texts with a fixed height: the overlay scroll thumb, made when first shown. */
+  thumb?: HTMLElement
+  /** The thumb's fade-out timer. */
+  thumbTimer?: ReturnType<typeof setTimeout>
+  /** The thumb is pressed (dragged) or hovered: it stays shown. */
+  thumbHeld?: boolean
+  thumbHover?: boolean
 }
+
+// ---- fixed height: scrolling, its cues and its thumb ----------------------------------------------
+//
+// A text with a fixed height scrolls inside its body (`overflow-y: auto`, the native scrollbar hidden
+// so it never takes width from the text: the words wrap exactly as before the text overflowed). The
+// scroll position is view state: kept per card while the board is open (`scrollTops`), never stored.
+// Two cues tell there is more: a fade at the top and at the bottom of the text (`fade-top`,
+// `fade-bottom` on the card, a mask on its body), and a thin thumb on the right edge, shown while the
+// text scrolls and faded out `THUMB_FADE_MS` after the last scroll; while the text is edited it can
+// be dragged. The thumb keeps its size on screen whatever the zoom.
+
+/** How long after the last scroll the thumb starts to fade (ms). */
+export const THUMB_FADE_MS = 800
+/** The thumb's width, its inset from the card's edges and its least length, in screen pixels. */
+const THUMB_PX = 6
+const THUMB_INSET_PX = 2
+const THUMB_MIN_PX = 24
+/** Room kept between the caret and the top or bottom of a scrolled text (scene units): the fade's length, so the caret's line is never under a fade. */
+const CARET_MARGIN = 20
 
 /**
  * The DOM scene. Build it, `mount` it under the canvas, give it the board with `setRecords`,
@@ -1078,6 +1118,8 @@ export class SceneLayer {
   private readonly getImage: (assetId: string) => HTMLImageElement | undefined
   private readonly getStill: ((assetId: string) => string | undefined) | undefined
   private readonly items = new Map<string, ItemState>()
+  /** Each fixed-height card's scroll position (scene units) while the board is open; absent: at the top. Never stored. */
+  private readonly scrollTops = new Map<string, number>()
   private view: Viewport = { zoom: 1, panX: 0, panY: 0 }
   private disposed = false
   private readonly onFontsLoaded = () => this.refreshTypography()
@@ -1123,7 +1165,9 @@ export class SceneLayer {
 
   dispose() {
     this.unmount()
+    for (const item of this.items.values()) clearTimeout(item.thumbTimer)
     this.items.clear()
+    this.scrollTops.clear()
     this.frames.replaceChildren()
     this.objects.replaceChildren()
     this.disposed = true
@@ -1180,7 +1224,9 @@ export class SceneLayer {
     for (const [id, item] of this.items) {
       if (seen.has(id)) continue
       item.el.remove()
+      clearTimeout(item.thumbTimer)
       this.items.delete(id)
+      this.scrollTops.delete(id)
     }
     this.order(this.frames, scene.frames)
     this.order(this.objects, scene.objects)
@@ -1311,12 +1357,268 @@ export class SceneLayer {
     }
   }
 
+  // ---- fixed height: scrolling ------------------------------------------------------------------
+
+  /**
+   * A fixed-height card's scroll: how far it is scrolled and how far it can be (scene units), or
+   * null for any other item (a text that grows with its text, an image, a frame, a culled card).
+   */
+  scrollOf(id: string): { top: number; max: number } | null {
+    const item = this.items.get(id)
+    const body = item && this.textBody(item)
+    if (!item || !body || item.fixed === undefined || item.culled || !this.root.isConnected) return null
+    return { top: body.scrollTop, max: Math.max(0, body.scrollHeight - body.clientHeight) }
+  }
+
+  /** Scrolls a fixed-height card by `dy` scene units (clamped to its text) and shows its thumb. True when it moved. */
+  scrollCardBy(id: string, dy: number): boolean {
+    const item = this.items.get(id)
+    const body = item && this.textBody(item)
+    if (!item || !body || item.fixed === undefined || item.culled || !Number.isFinite(dy)) return false
+    const before = body.scrollTop
+    this.setScroll(item, before + dy)
+    const moved = body.scrollTop !== before
+    if (moved) this.showThumb(item)
+    return moved
+  }
+
+  /**
+   * Takes a fixed-height card's scroll position from the page into the layer's memory: before the
+   * body's children are replaced by someone else (the live editor mounting or finishing).
+   */
+  captureScroll(id: string) {
+    const item = this.items.get(id)
+    const body = item && this.textBody(item)
+    if (!item || !body || item.fixed === undefined || item.culled || !this.root.isConnected) return
+    this.remember(id, body.scrollTop)
+  }
+
+  /** Puts a fixed-height card back at the scroll position the layer remembers for it (clamped to its text). */
+  restoreScroll(id: string) {
+    const item = this.items.get(id)
+    if (item) this.restore(item)
+  }
+
+  /**
+   * A point of the page in a card's own coordinates (its top-left corner at 0, 0, scene units, before
+   * scrolling), through the viewport and the card's matrix: never its transformed bounding box.
+   */
+  toCard(id: string, clientX: number, clientY: number): { x: number; y: number } | null {
+    const item = this.items.get(id)
+    if (!item) return null
+    const r = this.root.getBoundingClientRect()
+    const z = this.view.zoom || 1
+    const sx = (clientX - r.left - this.view.panX) / z
+    const sy = (clientY - r.top - this.view.panY) / z
+    const [a, b, c, d, e, f] = item.matrix
+    const det = a * d - b * c
+    if (!det) return null
+    const x = sx - e
+    const y = sy - f
+    return { x: (d * x - c * y) / det, y: (a * y - b * x) / det }
+  }
+
+  /**
+   * Scrolls a fixed-height card just enough to show the span from `top` to `bottom` (its own
+   * coordinates, as shown now: see `toCard`), with a little room above or below it.
+   */
+  revealSpan(id: string, top: number, bottom: number) {
+    const item = this.items.get(id)
+    const body = item && this.textBody(item)
+    if (!item || !body || item.fixed === undefined || item.culled) return
+    const view = body.clientHeight
+    const margin = Math.min(CARET_MARGIN, Math.max(0, (view - (bottom - top)) / 2))
+    const at = body.scrollTop
+    let next = at
+    if (top - margin < 0 || bottom - top > view) next = at + top - margin
+    else if (bottom + margin > view) next = at + bottom + margin - view
+    if (Math.abs(next - at) < 0.5) return
+    this.setScroll(item, next)
+    if (body.scrollTop !== at) this.showThumb(item)
+  }
+
   // ---- internals ----------------------------------------------------------------------------
 
   private setCulled(item: ItemState, on: boolean) {
     if (item.culled === on) return
     item.culled = on
     item.el.classList.toggle('is-culled', on)
+    // A card brought back is shown where it was scrolled to (a hidden one may have lost its position).
+    if (!on && item.fixed !== undefined) {
+      this.restore(item)
+      this.syncCues(item)
+    }
+  }
+
+  private textBody(item: ItemState): HTMLElement | null {
+    return item.kind === 'text' ? (item.el.firstElementChild as HTMLElement | null) : null
+  }
+
+  private remember(id: string, top: number) {
+    if (top > 0) this.scrollTops.set(id, top)
+    else this.scrollTops.delete(id)
+  }
+
+  /** Scrolls a fixed-height card to `top` (clamped by the browser to its text) and remembers where it ended up. */
+  private setScroll(item: ItemState, top: number) {
+    const body = this.textBody(item)
+    if (!body) return
+    body.scrollTop = Math.max(0, top)
+    const id = item.el.dataset.id ?? ''
+    this.remember(id, body.scrollTop)
+    this.syncCues(item)
+  }
+
+  /** The remembered scroll position put back on the page; what the browser clamps it to (the text got shorter) is remembered instead. */
+  private restore(item: ItemState) {
+    const body = this.textBody(item)
+    const id = item.el.dataset.id ?? ''
+    if (!body || item.fixed === undefined || item.culled || !this.root.isConnected) return
+    const want = this.scrollTops.get(id) ?? 0
+    if (Math.abs(body.scrollTop - want) > 0.01) body.scrollTop = want
+    this.remember(id, Math.min(want, body.scrollTop))
+  }
+
+  /** The page scrolled a card (the caret, keys, the thumb, the wheel): remembered, with its cues and thumb. */
+  private onScroll(item: ItemState) {
+    const body = this.textBody(item)
+    const id = item.el.dataset.id ?? ''
+    if (!body || item.fixed === undefined || item.culled || this.items.get(id) !== item) return
+    const top = body.scrollTop
+    if (top !== (this.scrollTops.get(id) ?? 0)) {
+      this.remember(id, top)
+      this.showThumb(item)
+    }
+    this.syncCues(item)
+  }
+
+  /**
+   * The fades (`fade-top` when the text is scrolled down, `fade-bottom` when more of it lies below)
+   * and the thumb's place, from the body's scroll. None on a card that grows with its text.
+   */
+  private syncCues(item: ItemState) {
+    const el = item.el
+    const body = this.textBody(item)
+    if (!body || item.fixed === undefined) {
+      el.classList.remove('fade-top', 'fade-bottom')
+      if (item.thumb) this.hideThumb(item, true)
+      return
+    }
+    if (item.culled || !this.root.isConnected) return
+    const top = body.scrollTop
+    const max = body.scrollHeight - body.clientHeight
+    el.classList.toggle('fade-top', top > 0.5)
+    el.classList.toggle('fade-bottom', max - top > 1)
+    if (item.thumb?.classList.contains('is-shown')) this.placeThumb(item)
+  }
+
+  private thumbOf(item: ItemState): HTMLElement {
+    if (item.thumb) return item.thumb
+    const thumb = this.doc.createElement('div')
+    thumb.className = 'scene-text-thumb'
+    thumb.setAttribute('aria-hidden', 'true')
+    thumb.addEventListener('mousedown', (e) => this.dragThumb(item, e))
+    thumb.addEventListener('mouseenter', () => {
+      item.thumbHover = true
+      clearTimeout(item.thumbTimer)
+    })
+    thumb.addEventListener('mouseleave', () => {
+      item.thumbHover = false
+      this.scheduleThumbFade(item)
+    })
+    item.el.append(thumb)
+    item.thumb = thumb
+    return thumb
+  }
+
+  /** Sizes and places the thumb on the card's right edge, in screen pixels whatever the zoom. */
+  private placeThumb(item: ItemState) {
+    const body = this.textBody(item)
+    const thumb = item.thumb
+    if (!body || !thumb) return
+    const z = this.view.zoom > 0 ? this.view.zoom : 1
+    const view = body.clientHeight
+    const full = body.scrollHeight
+    const max = full - view
+    const inset = THUMB_INSET_PX / z
+    const track = Math.max(0, view - 2 * inset)
+    const length = Math.min(track, Math.max(THUMB_MIN_PX / z, full > 0 ? (track * view) / full : track))
+    const at = inset + (max > 0 ? ((track - length) * body.scrollTop) / max : 0)
+    const s = thumb.style
+    s.width = `${THUMB_PX / z}px`
+    s.height = `${length}px`
+    s.right = `${inset}px`
+    s.transform = `translateY(${at}px)`
+    s.color = body.style.color || DEFAULT_TEXT_COLOR
+    s.setProperty('--thumb-px', `${1 / z}px`)
+  }
+
+  /** Shows the thumb of a card whose text is longer than its height, and fades it out after the last scroll. */
+  private showThumb(item: ItemState) {
+    const body = this.textBody(item)
+    if (!body || item.fixed === undefined || body.scrollHeight - body.clientHeight <= 1) return
+    const thumb = this.thumbOf(item)
+    this.placeThumb(item)
+    thumb.classList.add('is-shown')
+    this.scheduleThumbFade(item)
+  }
+
+  private scheduleThumbFade(item: ItemState) {
+    clearTimeout(item.thumbTimer)
+    if (item.thumbHeld || item.thumbHover) return
+    item.thumbTimer = setTimeout(() => this.hideThumb(item), THUMB_FADE_MS)
+  }
+
+  private hideThumb(item: ItemState, now = false) {
+    clearTimeout(item.thumbTimer)
+    item.thumbTimer = undefined
+    if (!now && (item.thumbHeld || item.thumbHover)) return
+    item.thumb?.classList.remove('is-shown', 'is-dragging')
+  }
+
+  /**
+   * Dragging the thumb while the text is edited (an idle card takes no presses): the text follows
+   * the pointer along the card's own vertical axis, through the card's matrix and the zoom, so a
+   * turned or zoomed card scrolls as its thumb is moved. The press never reaches the text, so the
+   * caret and the edit stay as they are.
+   */
+  private dragThumb(item: ItemState, e: MouseEvent) {
+    const body = this.textBody(item)
+    const thumb = item.thumb
+    if (!body || !thumb || e.button !== 0 || !item.editing || item.fixed === undefined) return
+    e.preventDefault()
+    e.stopPropagation()
+    const z = this.view.zoom > 0 ? this.view.zoom : 1
+    // The card's own vertical axis on the page (the matrix's second column, times the zoom).
+    const ax = item.matrix[2] * z
+    const ay = item.matrix[3] * z
+    const axis = ax * ax + ay * ay
+    if (!axis) return
+    const start = { x: e.clientX, y: e.clientY, top: body.scrollTop }
+    const view = body.clientHeight
+    const max = body.scrollHeight - view
+    const track = Math.max(0, view - (2 * THUMB_INSET_PX) / z)
+    const length = Math.min(track, Math.max(THUMB_MIN_PX / z, body.scrollHeight > 0 ? (track * view) / body.scrollHeight : track))
+    const ratio = track - length > 0 ? max / (track - length) : 0
+    item.thumbHeld = true
+    clearTimeout(item.thumbTimer)
+    thumb.classList.add('is-shown', 'is-dragging')
+    const win = this.doc.defaultView ?? window
+    const move = (m: MouseEvent) => {
+      if ((m.buttons & 1) === 0 || !item.editing) return stop()
+      m.preventDefault()
+      const along = ((m.clientX - start.x) * ax + (m.clientY - start.y) * ay) / axis
+      this.setScroll(item, start.top + along * ratio)
+    }
+    const stop = () => {
+      win.removeEventListener('mousemove', move, { capture: true })
+      win.removeEventListener('mouseup', stop, { capture: true })
+      item.thumbHeld = false
+      thumb.classList.remove('is-dragging')
+      this.scheduleThumbFade(item)
+    }
+    win.addEventListener('mousemove', move, { capture: true })
+    win.addEventListener('mouseup', stop, { capture: true })
   }
 
   private place(item: ItemState, m: Matrix) {
@@ -1339,7 +1641,9 @@ export class SceneLayer {
     let item = this.items.get(rec.id)
     if (item && item.kind !== kind) {
       item.el.remove()
+      clearTimeout(item.thumbTimer)
       this.items.delete(rec.id)
+      this.scrollTops.delete(rec.id)
       item = undefined
     }
     if (item && item.key === key) return
@@ -1422,7 +1726,9 @@ export class SceneLayer {
     if (!body) {
       body = this.doc.createElement('div')
       body.className = 'scene-text-body'
-      el.append(body)
+      el.prepend(body)
+      const owner = item
+      body.addEventListener('scroll', () => this.onScroll(owner), { passive: true })
     }
     const width = this.cardWidth(rec, this.doc)
     el.style.width = `${width}px`
@@ -1432,23 +1738,50 @@ export class SceneLayer {
       delete item.shown
     } else {
       // A new width alone (a side-handle resize) renders the body again only when it changes a
-      // drawn box's no-wrap ranges.
+      // drawn box's no-wrap ranges. A new fixed height alone never does.
       const ranges = noWrapRanges(rec, this.doc)
       const shown = JSON.stringify([cardLook(rec), ranges])
       if (item.shown !== shown) {
         renderCardBody(body, rec, ranges)
         item.shown = shown
       }
+      applyCardHeight(body, rec)
     }
     item.w = width
     this.place(item, recordMatrix(rec.left, rec.top, rec.angle))
     this.remeasure(item)
+    this.fixHeight(item, body, rec)
+  }
+
+  /**
+   * A fixed-height card (`is-fixed` on the card too) keeps its caption background on the card
+   * itself, because its body fades at the ends. A fixed height that changes, or goes, takes the
+   * card back to the top; otherwise the card stays where it was scrolled (put back after the body
+   * was rendered again, or, while it is edited, read from the page, which scrolls it to follow the
+   * caret). Then its fades follow.
+   */
+  private fixHeight(item: ItemState, body: HTMLElement, rec: TextRecord) {
+    const fixed = rec.height
+    const id = rec.id
+    item.el.classList.toggle('is-fixed', fixed !== undefined)
+    item.el.style.backgroundColor = fixed !== undefined ? (rec.captionBackground ?? '') : ''
+    body.style.backgroundColor = fixed !== undefined ? '' : (rec.captionBackground ?? '')
+    if (item.fixed !== fixed) {
+      item.fixed = fixed
+      this.scrollTops.delete(id)
+      if (body.scrollTop !== 0) body.scrollTop = 0
+    } else if (fixed !== undefined && !item.culled && this.root.isConnected) {
+      if (item.editing) this.remember(id, body.scrollTop)
+      else this.restore(item)
+    }
+    this.syncCues(item)
   }
 
   private remeasure(item: ItemState) {
     if (item.kind !== 'text') return
     if (!this.root.isConnected) {
-      item.h = (item.rec as TextRecord).minHeight ?? 0
+      const rec = item.rec as TextRecord
+      item.h = rec.height ?? rec.minHeight ?? 0
       return
     }
     const culled = item.culled

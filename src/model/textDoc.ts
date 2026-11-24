@@ -35,10 +35,10 @@ export const RICH_FIELDS: readonly RichField[] = ['blocks', 'height', 'surface']
 /**
  * The rich fields this build can draw, edit and save back unchanged. A board that uses any
  * other one opens read-only, as if it came from a newer build, so that nothing in it is
- * dropped by a save. `blocks` (lists, checklists, quotes, code, dividers) is editable; a fixed
- * height and paper each join this set with the change that lets the canvas edit them.
+ * dropped by a save. `blocks` (lists, checklists, quotes, code, dividers) and a fixed `height`
+ * are editable; paper joins this set with the change that lets the canvas edit it.
  */
-export const EDITABLE_RICH_FIELDS: ReadonlySet<RichField> = new Set<RichField>(['blocks'])
+export const EDITABLE_RICH_FIELDS: ReadonlySet<RichField> = new Set<RichField>(['blocks', 'height'])
 
 const RUN_MARKS: readonly TextMark[] = [...MARKS, 'code']
 
@@ -355,6 +355,15 @@ export function canonicalTextContent(raw: Record<string, unknown>): TextContent 
   const compact = blocksToLegacy(blocks, baseFont)
   if (compact) return { text: compact.text, ...canonicalTextFormatting(compact.text, { ...box, spans: compact.spans, headings: compact.headings }) }
   return { text: plainTextOf(blocks), ...box, blocks }
+}
+
+/**
+ * The least fixed height a bottom-handle drag gives a text of base size `fontSize` (scene units):
+ * one and a half font sizes, so a line of body text always shows whole (a text's last line is 1.13
+ * font sizes tall). Only the drag is held to it; a stored height is read as it is.
+ */
+export function minFixedHeight(fontSize: number): number {
+  return Math.max(1, Math.round(fontSize * 1.5))
 }
 
 /** A fixed height, kept only when it is a finite number above zero. */
