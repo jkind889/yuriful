@@ -175,7 +175,15 @@ When a primary `mousedown` hits outside unobstructed `T` (including a frame outl
 - **Nothing above a card may scroll:** besides `.scene-layer`, `.workspace` hides a few pixels the browser will scroll to follow a caret; on the DOM renderer any scrolled ancestor of the canvas host is put back before the frame paints.
 - **Listeners:** on the DOM renderer the capture `mousedown` and the wheel listener sit on the host element; on Fabric they stay on the canvas wrapper.
 - **Differences from Fabric that are the browser's own and are kept:** caret keys follow the browser (Fabric's `End` with a selection only collapses it); a click past the end of a wrapped line puts the caret after the wrapping space; a click within about 5px above a line boundary lands on the next line (the CSS line box sits that much higher than Fabric's line).
-- **Open on the DOM renderer, to settle before the flip:** a word wider than a drawn box whose first piece is split by marks does not start its own line in the live editor, and shows only its underline if it is both underlined and struck through; Shift+click on a selected text places a caret where Fabric extends the selection; `.scene-layer` is `aria-hidden` while a focusable editor sits inside it.
+- **Settled by the Slice 2c-ii review:**
+  - The press that ends an edit is forwarded to Fabric with the left text's handles still off, and "inside the edited text" is decided by Fabric's own target search, so a hidden handle can never be dragged and the box edge counts as Fabric counts it.
+  - ProseMirror gives up on dragging a selection when the pointer's first movement exceeds 8px before the browser starts its drag (`MouseDown.move`, prosemirror-view 1.43); for a press that starts inside selected text the adapter keeps the early moves from ProseMirror until the drag starts or the press ends, so a quick drag of a word works.
+  - A text remembers its caret as a Fabric text box does (0 when never edited, the selection start when an edit ends, the point of a press on the selected text), and Shift+click selects from it.
+  - An over-wide word's first cut piece starts and ends its own line in the live editor through zero-height block breaks, however marks split it.
+  - Accessibility: the layer as a whole is not `aria-hidden`; each idle item is (Fabric exposes no board content, and the layer list names every item), and the edited card is exposed as a multi-line text box named "Text".
+  - `will-change: transform` is not used on moving items after all: it bought nothing on a GPU and re-rasterized a following caption's text darker during a drag.
+  - On the DOM renderer a text created by an edit is known to be new from the moment that edit starts, so a font-size change during its first edit no longer stops its owner being decided again when the edit ends. The Fabric renderer has always got this wrong and is left as it is until it is deleted.
+- **Known limits on the DOM renderer:** a double-click or a side-handle press at mid-height of a two-line text can pick the other line, because the browser divides lines about 5px from where Fabric does; a caret key pressed within 200ms of opening an edit that moves the caret to the very start can be ignored when the machine is heavily loaded (seen once in a full test run; the press is visibly ignored, and what is shown and what is edited still agree).
 
 ---
 

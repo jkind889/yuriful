@@ -1640,7 +1640,8 @@ export class Editor {
 
   /**
    * A press while a text is edited on the DOM renderer (plan Section 4, the editing row of the
-   * routing table). Inside the card, where nothing covers it, it is the browser's and the view's:
+   * routing table). Inside the edited text, where nothing covers it (judged as the canvas judges a
+   * press, `pressInsideEdit`), it is the browser's and the view's:
    * the caret or a selection, a word on a double-click, the browser's own menu on the right button.
    * The middle button ends the edit and pans. Any other primary press (empty canvas, a frame's
    * interior, label or outline, another object, an unlocked object in front of the card) ends the
@@ -1659,15 +1660,31 @@ export class Editor {
       }
       return
     }
-    if (inside) return
+    if (inside) {
+      // In the edited text: the browser places the caret, unless it would not route this press there.
+      if (this.text.strayPressInEdit(e)) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+      return
+    }
     e.preventDefault()
     e.stopPropagation()
+    const left = this.text.editedTarget()
     this.finishEditing()
     if (this.text.editedTarget()) return // the edit could not end: nothing else happens
+    // Fabric hides an edited text's handles for the whole edit, the press that ends it included:
+    // that press never grabs a handle of the text it leaves (they come back once Fabric has taken it).
+    const controls = left?.hasControls === true
+    if (left && controls) left.hasControls = false
     const { clientX, clientY, screenX, screenY, button, buttons, shiftKey, ctrlKey, altKey, metaKey, detail } = e
-    this.canvas.upperCanvasEl.dispatchEvent(
-      new MouseEvent('mousedown', { bubbles: true, cancelable: true, composed: true, view: window, clientX, clientY, screenX, screenY, button, buttons, shiftKey, ctrlKey, altKey, metaKey, detail }),
-    )
+    try {
+      this.canvas.upperCanvasEl.dispatchEvent(
+        new MouseEvent('mousedown', { bubbles: true, cancelable: true, composed: true, view: window, clientX, clientY, screenX, screenY, button, buttons, shiftKey, ctrlKey, altKey, metaKey, detail }),
+      )
+    } finally {
+      if (left && controls) left.hasControls = true
+    }
   }
 
   /**

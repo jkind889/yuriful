@@ -183,6 +183,19 @@ describe('entering and leaving an edit on the DOM renderer', () => {
     expect(rec(id)!.frameId).toBeUndefined()
   })
 
+  it('a new text sized mid-edit (a history step of its own) still has its owner decided again when that first edit ends', async () => {
+    const { editor, rec, type, internals } = await open([F('F', 0, 0, 400, 40)], [])
+    ;(editor as unknown as { addTextAt: (p: { x: number; y: number }, a: string) => void }).addTextAt({ x: 10, y: 2 }, 'top-left')
+    const id = idOf(internals.text.editedTarget() as never)!
+    type('x')
+    editor.setFontSize(30) // committed: history now holds the text
+    expect(internals.history.current.objects.some((o) => o.id === id)).toBe(true)
+    expect(rec(id)!.frameId).toBe('F')
+    type('\nsecond\nthird')
+    editor.setTool('select')
+    expect(rec(id)!.frameId).toBeUndefined() // its centre is far below the frame now
+  })
+
   it('a text emptied mid-edit is out of the scene; leaving it discards it as one step, and undo brings it back', async () => {
     const { editor, canvas, obj, rec, internals, session } = await open([], [txt('t', 0, 0, { text: 'gone' })])
     canvas.setActiveObject(obj('t'))

@@ -52,6 +52,10 @@ interface EditProbe {
   run: (method: string, ...args: unknown[]) => unknown
   /** The DOM renderer's card for an id: its body's computed height, whether it holds the live editor, its HTML. */
   card: (id: string) => { height: number; live: boolean; html: string } | null
+  /** Every text's box height (scene units): the proxy's on the DOM renderer, the text box's on Fabric. */
+  boxes: () => Record<string, number>
+  /** An object's handle positions (Fabric's `oCoords`) in page pixels, shown or not. */
+  handles: (id: string) => Record<string, Corner> | null
 }
 
 declare global {
@@ -119,6 +123,20 @@ async function installProbe(page: Page) {
             return [[-w, -h], [w, -h], [w, h], [-w, h]].map(([x, y]) => toPage(m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]))
           },
           run: (method, ...args) => ed[method](...args),
+          boxes: () => {
+            const out = {}
+            for (const o of ed.canvas.getObjects()) if (ed.text.isText(o) && !ed.text.isBlank(o)) out[probeIdOf(o) ?? ''] = Math.round(o.height * o.scaleY * 100) / 100
+            return out
+          },
+          handles: (id) => {
+            const o = find(id)
+            if (!o) return null
+            o.setCoords()
+            const r = ed.canvas.upperCanvasEl.getBoundingClientRect()
+            const out = {}
+            for (const [k, c] of Object.entries(o.oCoords)) out[k] = { x: r.left + c.x, y: r.top + c.y }
+            return out
+          },
           card: (id) => {
             const el = document.querySelector('.scene-layer [data-id="' + id + '"]')
             const body = el && el.firstElementChild
@@ -252,6 +270,12 @@ type BaseStep =
   | { ime: string }
   | { commit: string }
   | { commitKey: [string, string] }
+  /** A press inside an object, then the pointer moved by each (dx, dy) screen pixels in turn from the press point, then released. */
+  | { pressMove: string; at?: [number, number]; moves: Array<[number, number]> }
+  /** A press at one of an object's handles (shown or hidden), `offset` screen pixels from it, dragged by `by`. */
+  | { handlePress: string; handle: string; offset?: [number, number]; by: [number, number] }
+  /** A pause, as a person makes between gestures. */
+  | { wait: number }
   | { run: string; args?: unknown[] }
 
 interface StepRecord {
@@ -260,6 +284,7 @@ interface StepRecord {
   history: { current: Scene; index: number; length: number }
   state: ProbeState
   edit: EditInfo | null
+  boxes: Record<string, number>
 }
 
 async function runStep(page: Page, step: Step, frameRects: Map<string, StoredFrame>, cdp: CDPSession) {
@@ -295,6 +320,22 @@ async function runStep(page: Page, step: Step, frameRects: Map<string, StoredFra
     await page.mouse.move(a.x, a.y)
     await page.mouse.down()
     await page.mouse.move(a.x + step.dx, a.y + step.dy, { steps: 8 })
+    await page.mouse.up()
+  } else if ('wait' in step) {
+    await page.waitForTimeout(step.wait)
+  } else if ('pressMove' in step) {
+    const a = await pointIn(page, step.pressMove, step.at)
+    await page.mouse.move(a.x, a.y)
+    await page.mouse.down()
+    for (const [dx, dy] of step.moves) await page.mouse.move(a.x + dx, a.y + dy)
+    await page.mouse.up()
+  } else if ('handlePress' in step) {
+    const h = (await page.evaluate((id) => window.__edit.handles(id), step.handlePress))?.[step.handle]
+    if (!h) throw new Error(`no ${step.handle} handle on ${step.handlePress}`)
+    const [ox, oy] = step.offset ?? [0, 0]
+    await page.mouse.move(h.x + ox, h.y + oy)
+    await page.mouse.down()
+    await page.mouse.move(h.x + ox + step.by[0], h.y + oy + step.by[1], { steps: 6 })
     await page.mouse.up()
   } else if ('label' in step) {
     const f = frameRects.get(step.label)!
@@ -344,7 +385,7 @@ async function runScript(browser: Browser, renderer: 'dom' | 'fabric', doc: Stor
     await runStep(page, step, frameRects, cdp)
     records.push({
       step: JSON.stringify(step),
-      ...(await page.evaluate(() => ({ scene: window.__edit.scene(), history: window.__edit.history(), state: window.__edit.state(), edit: window.__edit.edit() }))),
+      ...(await page.evaluate(() => ({ scene: window.__edit.scene(), history: window.__edit.history(), state: window.__edit.state(), edit: window.__edit.edit(), boxes: window.__edit.boxes() }))),
     })
   }
   // Leave any edit open at the end as it is: typing is saved as it happens.
@@ -362,7 +403,18 @@ async function runScript(browser: Browser, renderer: 'dom' | 'fabric', doc: Stor
 const GEOMETRY_TOLERANCE = 0.1
 const MEASURED = new Set(['left', 'top', 'width'])
 
-function expectSameRecords(dom: readonly Record<string, unknown>[], fabric: readonly Record<string, unknown>[], where: string): number {
+/** Record fields not compared (`id.key`): a difference between the renderers named where it is declared. */
+type Omitted = ReadonlySet<string>
+
+function without(r: Record<string, unknown>, omit: Omitted): Record<string, unknown> {
+  const out = { ...r }
+  for (const k of Object.keys(out)) if (omit.has(`${String(r.id)}.${k}`)) delete out[k]
+  return out
+}
+
+function expectSameRecords(domIn: readonly Record<string, unknown>[], fabricIn: readonly Record<string, unknown>[], where: string, omit: Omitted = new Set()): number {
+  const dom = domIn.map((r) => without(r, omit))
+  const fabric = fabricIn.map((r) => without(r, omit))
   expect(dom.map((r) => r.id), where).toEqual(fabric.map((r) => r.id))
   let worst = 0
   dom.forEach((d, i) => {
@@ -389,7 +441,14 @@ function expectSameRecords(dom: readonly Record<string, unknown>[], fabric: read
  * readout and layer list; Undo and Redo's availability only outside an edit (inside one the DOM
  * renderer offers the edit's own history: Owner Decision 11). Then the same stored board.
  */
-async function expectPaired(browser: Browser, doc: StoredBoard, steps: readonly Step[], opts: { assets?: SeedAsset[]; clipboard?: boolean } = {}) {
+/**
+ * Box heights: Fabric's text box and the DOM card agree within 0.08 px per line box (plan Section 6);
+ * a box of many lines gathers a little more.
+ */
+const BOX_TOLERANCE = 1
+
+async function expectPaired(browser: Browser, doc: StoredBoard, steps: readonly Step[], opts: { assets?: SeedAsset[]; clipboard?: boolean; omit?: Omitted } = {}) {
+  const omit = opts.omit ?? new Set<string>()
   const fabric = await runScript(browser, 'fabric', doc, steps, opts.assets, opts.clipboard)
   const dom = await runScript(browser, 'dom', doc, steps, opts.assets, opts.clipboard)
   let worst = 0
@@ -402,9 +461,12 @@ async function expectPaired(browser: Browser, doc: StoredBoard, steps: readonly 
   fabric.records.forEach((f, i) => {
     const d = dom.records[i]!
     const where = `after step ${i} ${f.step}`
-    worst = Math.max(worst, expectSameRecords(d.scene.objects as never, f.scene.objects as never, where))
+    worst = Math.max(worst, expectSameRecords(d.scene.objects as never, f.scene.objects as never, where, omit))
     expect(d.scene.frames, `frames ${where}`).toEqual(f.scene.frames)
-    worst = Math.max(worst, expectSameRecords(d.history.current.objects as never, f.history.current.objects as never, `history ${where}`))
+    worst = Math.max(worst, expectSameRecords(d.history.current.objects as never, f.history.current.objects as never, `history ${where}`, omit))
+    // What is drawn while editing as well as after: every text box is as tall as on Fabric.
+    expect(Object.keys(d.boxes).sort(), `boxes ${where}`).toEqual(Object.keys(f.boxes).sort())
+    for (const [id, h] of Object.entries(f.boxes)) expect(Math.abs(d.boxes[id]! - h), `${where} ${id} box height: dom ${d.boxes[id]}, fabric ${h}`).toBeLessThanOrEqual(BOX_TOLERANCE)
     expect([d.history.index, d.history.length], `history position ${where}`).toEqual([f.history.index, f.history.length])
     // A selection as its two ends: Fabric keeps a stale direction after select-all (its `_selectionDirection`).
     const ends = (e: EditInfo | null) => e && { id: e.id, text: e.text, from: Math.min(e.anchor, e.head), to: Math.max(e.anchor, e.head), focused: e.focused }
@@ -416,7 +478,7 @@ async function expectPaired(browser: Browser, doc: StoredBoard, steps: readonly 
     expect(dState, `state ${where}`).toEqual(fState)
     if (!f.state.editing) expect([du, dr], `undo and redo ${where}`).toEqual([fu, fr])
   })
-  worst = Math.max(worst, expectSameRecords(dom.saved.objects as never, fabric.saved.objects as never, 'saved'))
+  worst = Math.max(worst, expectSameRecords(dom.saved.objects as never, fabric.saved.objects as never, 'saved', omit))
   expect(dom.saved.frames, 'saved frames').toEqual(fabric.saved.frames)
   expect(dom.saved.version).toBe(fabric.saved.version)
   return { worst, fabric, dom }
@@ -663,7 +725,7 @@ test.describe('text edited on the DOM renderer saves and records what the Fabric
       { button: 'Text' },
       { clickAt: [480, 170] },
       { type: 'sized' },
-      { fontSize: 60 }, // a step of its own, mid-edit, as on the Fabric renderer: history now holds the text
+      { fontSize: 60 }, // a step of its own, mid-edit, as on the Fabric renderer: history now holds the text (`~3`)
       { clickAt: [486, 200] },
       { key: 'Control+a' },
       { key: 'ArrowRight' },
@@ -678,8 +740,12 @@ test.describe('text edited on the DOM renderer saves and records what the Fabric
       { type: ' and longer' },
       { clickAt: [900, 650] },
     ]
-    const { worst, dom } = await expectPaired(browser, doc, steps)
-    expect(dom.saved.objects.map((o) => o.frameId ?? null)).toEqual(['F', null, null, 'F', 'F'])
+    // A named difference: the text sized mid-edit (`~3`) grows far below the frame. The settled rule
+    // decides a new text's owner again when its first edit ends: the DOM renderer does (it is loose);
+    // Fabric judges "new" from history, which the size change has put it in, and keeps the frame.
+    const { worst, dom, fabric } = await expectPaired(browser, doc, steps, { omit: new Set(['~3.frameId']) })
+    expect(dom.saved.objects.map((o) => o.frameId ?? null)).toEqual(['F', null, null, 'F', null])
+    expect(fabric.saved.objects.map((o) => o.frameId ?? null)).toEqual(['F', null, null, 'F', 'F'])
     console.log(`ownership: largest geometry difference ${worst.toFixed(3)}`)
   })
 
@@ -1158,6 +1224,84 @@ test.describe('the DOM renderer while a text is edited (Slice 2c-ii)', () => {
     expect(errors).toEqual([])
   })
 
+  test('entering and leaving an edit moves nothing for words wider than their box with a mark on any part of them: bold, italic, underline, strike and both, on drawn and click-created boxes', async ({ page }) => {
+    test.setTimeout(180_000)
+    const errors = errorsOf(page)
+    // `. ` then a word of emoji and accented letters, and a long Latin word: each wider than a 62-unit box.
+    const words = [
+      { text: '. 🎧é🔥🎧é🔥🎧é🔥🎧é🔥', parts: [[2, 4], [4, 5], [5, 7], [7, 9], [12, 14], [15, 17]] },
+      { text: 'Ab supercalifragilistic end', parts: [[3, 4], [4, 8], [7, 9], [12, 20], [19, 23]] },
+    ]
+    const marks: Array<Record<string, true>> = [{ bold: true }, { italic: true }, { underline: true }, { strike: true }, { underline: true, strike: true }]
+    const cards: StoredObject[] = []
+    for (const w of words) {
+      for (const [start, end] of w.parts) {
+        for (const m of marks) {
+          for (const drawn of [true, false]) {
+            if (!drawn && Object.keys(m).length > 1) continue
+            for (const fontSize of [18, 24]) cards.push(text(`c${cards.length}`, 0, 0, w.text, { width: 62, fontSize, ...(drawn && { minHeight: 0 }), spans: [{ start, end, ...m }] }))
+          }
+        }
+      }
+    }
+    const shape = (id: string) =>
+      page.evaluate((id) => {
+        const body = document.querySelector(`.scene-layer [data-id="${id}"] > .scene-text-body`) as HTMLElement
+        const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT)
+        const chars: string[] = []
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          for (let i = 0; i < (n as Text).data.length; i++) {
+            const r = document.createRange()
+            r.setStart(n, i)
+            r.setEnd(n, i + 1)
+            const b = r.getBoundingClientRect()
+            chars.push(`${Math.round(b.left)},${Math.round(b.top)}`)
+          }
+        }
+        // The decorations drawn on each character: an underline or strike lost in the live editor shows here.
+        const decos: string[] = []
+        const w2 = document.createTreeWalker(body, NodeFilter.SHOW_TEXT)
+        for (let n = w2.nextNode(); n; n = w2.nextNode()) {
+          let u = false
+          let s = false
+          for (let el = n.parentElement; el && el !== body; el = el.parentElement) {
+            const st = getComputedStyle(el)
+            if (st.textDecorationLine.includes('underline') && el.localName === 'u') u = true
+            if (st.textDecorationLine.includes('underline') && el.localName === 's') s = true
+            if (st.display === 'inline-block') break // an inline block is not decorated by its ancestors
+          }
+          decos.push(`${u ? 'u' : ''}${s ? 's' : ''}x${(n as Text).data.length}`)
+        }
+        return { height: parseFloat(getComputedStyle(body).height), chars: chars.join(' '), decos: decos.join(' ') }
+      }, id)
+    const perBoard = 8
+    let checked = 0
+    for (let b = 0; b < cards.length; b += perBoard) {
+      const batch = cards.slice(b, b + perBoard).map((c, i) => ({ ...c, left: 110 + (i % 4) * 225, top: 60 + Math.floor(i / 4) * 330 }))
+      await openBoard(page, board([], batch))
+      for (const c of batch) {
+        const idle = await shape(c.id)
+        await dblclickIn(page, c.id, [0.5, 0.03])
+        expect((await page.evaluate((id) => window.__edit.card(id), c.id))!.live, c.id).toBe(true)
+        const live = await shape(c.id)
+        await page.keyboard.press('Escape')
+        await frames(page)
+        const after = await shape(c.id)
+        const what = `${c.id} ${JSON.stringify((c as { spans: unknown }).spans)} ${(c as { minHeight?: number }).minHeight === 0 ? 'drawn' : 'click-created'}`
+        for (const [k, v] of Object.entries({ live, after })) {
+          expect(Math.abs(v.height - idle.height), `${what} height ${k}`).toBeLessThanOrEqual(0.5)
+          expect(v.chars, `${what} where every character sits ${k}`).toBe(idle.chars)
+        }
+        // The decorations hold per character, whatever pieces the text is split into.
+        const flat = (d: string) => d.split(' ').flatMap((p) => { const [mk, n] = p.split('x'); return Array<string>(Number(n)).fill(mk!) }).join('')
+        expect(flat(live.decos), `${what} underline and strike while editing`).toBe(flat(idle.decos))
+        checked++
+      }
+    }
+    expect(checked).toBe(cards.length)
+    expect(errors).toEqual([])
+  })
+
   test('pasted-html-is-inert-and-keeps-marks-only: no request leaves the page, and a heading and bold text arrive bold at normal size', async ({ page }) => {
     const errors = errorsOf(page)
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
@@ -1318,6 +1462,201 @@ test.describe('the other mouse buttons while a text is edited (Slice 2c-ii)', ()
       ['kept and typed', 'F'],
       ['new one', 'F'],
     ])
+    expect(errors).toEqual([])
+  })
+})
+
+test.describe('the review follow-ups, paired with the Fabric renderer', () => {
+  test.describe.configure({ timeout: 180_000 })
+
+  test('a size, alignment and colour changed while editing show in the live card and its box at once (a drawn box with a word wider than it)', async ({ browser }) => {
+    const doc = board([], [text('D', 120, 80, 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW and more', { width: 155, fontSize: 18, minHeight: 0 }), text('C', 520, 80, 'centred words here', { width: 200 })])
+    const steps: Step[] = [
+      { dblclick: 'D', at: [0.1, 0.05] },
+      { fontSize: 48 }, // the box heights are compared after every step: the live card is laid out at the new size at once
+      { fontSize: 30 },
+      { button: 'Align centre' },
+      { button: 'Red' },
+      { click: 'D', at: [0.05, 0.02] },
+      { key: 'Control+a' },
+      { key: 'ArrowRight' },
+      { type: ' x' },
+      { key: 'Escape' },
+      { dblclick: 'C', at: [0.1, 0.2] },
+      { fontSize: 40 },
+      { button: 'Align right' },
+      { key: 'Escape' },
+    ]
+    const { dom } = await expectPaired(browser, doc, steps)
+    expect(dom.saved.objects[0]).toMatchObject({ fontSize: 30, align: 'center', color: '#d92d20' })
+  })
+
+  test('a press that ends an edit never acts on a handle of the text it leaves: corners, sides and the rotation handle, inside, on and just outside the box, at two zooms', async ({ browser }) => {
+    for (const zoom of [1.7, 0.8]) {
+      // One line: a side handle of a text of several lines sits on the boundary between two of them,
+      // where the browser and Fabric divide lines a few pixels apart (a known difference).
+      const doc = board([], [text('T', 120, 100, 'hidden handles', { width: 240 })], { zoom, panX: 0, panY: 0 })
+      const steps: Step[] = []
+      const cases: Array<[string, [number, number]]> = [
+        ['br', [-2, -2]], ['br', [0, 0]], ['br', [2, 2]],
+        ['tl', [2, 2]], ['tl', [-2, -2]],
+        ['mr', [-2, 0]], ['mr', [0, 0]], ['mr', [2, 0]],
+        ['ml', [2, 0]], ['ml', [-2, 0]],
+        ['mtr', [0, 0]],
+      ]
+      for (const [handle, offset] of cases) steps.push({ dblclick: 'T', at: [0.2, 0.5] }, { handlePress: 'T', handle, offset, by: [30, 20] }, { key: 'Escape' })
+      const { dom } = await expectPaired(browser, doc, steps)
+      expect(dom.saved.objects[0]).toMatchObject({ width: 240, angle: 0, left: 120, top: 100 })
+    }
+  })
+
+  test('a selected word dragged within its text moves, however far the pointer first moves', async ({ browser }) => {
+    const doc = board([], [text('T', 100, 100, 'first second third fourth', { width: 500 })])
+    const steps: Step[] = []
+    for (const first of [1, 6, 12, 30]) {
+      const moves: Array<[number, number]> = [[first, 0]]
+      for (let x = first + 20; x <= 205; x += 20) moves.push([x, 0])
+      moves.push([205, 0])
+      steps.push({ dblclick: 'T', at: [0.03, 0.5] }, { wait: 600 }, { pressMove: 'T', at: [0.03, 0.5], moves }, { type: '!' }, { key: 'Escape' }, { key: 'Control+z' })
+    }
+    const { dom } = await expectPaired(browser, doc, steps)
+    expect((dom.saved.objects[0] as { text: string }).text).toBe('first second third fourth')
+    // Moved, and selected where it landed (as Fabric selects a dropped range): the next key replaces it.
+    expect(dom.records.filter((r) => r.step.includes('pressMove')).map((r) => [r.edit?.text, r.edit?.anchor, r.edit?.head])).toEqual(Array(4).fill([' second third foufirstrth', 17, 22]))
+  })
+
+  test('Shift+click on a selected text selects from the caret it kept; Shift+click inside an edit extends its range', async ({ browser }) => {
+    const doc = board([], [text('T', 100, 100, 'alpha beta gamma delta', { width: 400 })])
+    const steps: Step[] = [
+      { click: 'T', at: [0.5, 0.5] }, // selects it
+      { click: 'T', at: [0.55, 0.5], shift: true }, // edit, from the start (a text never edited keeps its caret at 0)
+      { key: 'ArrowRight' },
+      { key: 'Escape' }, // the text keeps its caret where the selection starts
+      { click: 'T', at: [0.2, 0.5], shift: true }, // back from that caret
+      { key: 'ArrowLeft' },
+      { key: 'Escape' },
+      { click: 'T', at: [0.9, 0.5], shift: true },
+      { click: 'T', at: [0.1, 0.5] }, // inside the edit: a caret
+      { click: 'T', at: [0.5, 0.5], shift: true }, // inside the edit: the range grows
+      { key: 'ArrowRight' },
+      { key: 'Escape' },
+      { drag: 'T', at: [0.9, 0.5], dx: 40, dy: 30 }, // a press on the selected text moves its caret there, then drags it
+      { click: 'T', at: [0.3, 0.5], shift: true }, // from that press, which moved with the text
+      { type: 'X' },
+      { key: 'Escape' },
+    ]
+    const { dom } = await expectPaired(browser, doc, steps)
+    expect((dom.saved.objects[0] as { text: string }).text).toBe('alpha beta X')
+  })
+
+  test('a new text drawn near the bottom of a frame, sized and lengthened in its first edit, has its owner decided again when that edit ends (a named difference)', async ({ browser }) => {
+    const doc = board([frame({ left: 200, top: 120, width: 420, height: 150 })], [])
+    const steps: Step[] = [
+      { button: 'Text' },
+      { dragAt: [240, 225], to: [460, 255] },
+      { type: 'a line' },
+      { fontSize: 40 },
+      { clickAt: [246, 240] },
+      { key: 'Control+a' },
+      { key: 'ArrowRight' },
+      ...Array.from({ length: 7 }, (_, i): Step => ({ type: `\nline ${i + 2}` })),
+      { key: 'Escape' },
+    ]
+    // The settled rule: a new text's owner is decided again when its FIRST edit ends. The size change
+    // puts the text in history mid-edit; the DOM renderer remembers it was made for this edit and
+    // decides again (loose: its centre is far below the frame); Fabric judges by history and keeps it.
+    const { dom, fabric } = await expectPaired(browser, doc, steps, { omit: new Set(['~1.frameId']) })
+    expect(dom.saved.objects[0]!.frameId).toBeUndefined()
+    expect(fabric.saved.objects[0]!.frameId).toBe('F')
+  })
+})
+
+test.describe('the review follow-ups on the DOM renderer', () => {
+  test('a size changed while editing re-lays the live card at once: nothing paints outside its box, and it is as tall as after the edit', async ({ page }) => {
+    const errors = errorsOf(page)
+    await openBoard(page, board([], [text('D', 120, 80, 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW', { width: 155, fontSize: 18, minHeight: 0 })]))
+    await dblclickIn(page, 'D', [0.1, 0.05])
+    await page.getByLabel('Font size').fill('48')
+    await frames(page)
+    const live = await page.evaluate(() => {
+      const body = document.querySelector('.scene-layer [data-id="D"] > .scene-text-body') as HTMLElement
+      const range = document.createRange()
+      range.selectNodeContents(body)
+      const b = body.getBoundingClientRect()
+      const right = Math.max(...Array.from(range.getClientRects()).map((r) => r.right))
+      return { height: parseFloat(getComputedStyle(body).height), overhang: right - b.right, box: window.__edit.boxes().D }
+    })
+    expect(live.overhang).toBeLessThanOrEqual(1)
+    await page.keyboard.press('Escape')
+    await frames(page)
+    const after = await page.evaluate(() => ({ height: parseFloat(getComputedStyle(document.querySelector('.scene-layer [data-id="D"] > .scene-text-body')!).height), box: window.__edit.boxes().D }))
+    expect(Math.abs(live.height - after.height)).toBeLessThanOrEqual(0.5)
+    expect(Math.abs(live.box! - after.box!)).toBeLessThanOrEqual(0.5)
+    expect(errors).toEqual([])
+  })
+
+  test('the edited text is a text box to assistive technology, named Text, and nothing focusable is hidden; idle cards are not read out', async ({ page }) => {
+    const errors = errorsOf(page)
+    const warnings: string[] = []
+    page.on('console', (m) => {
+      if (/aria-hidden/i.test(m.text())) warnings.push(m.text())
+    })
+    await openBoard(page, board([], [text('T', 100, 100, 'notes on the sleeve'), text('U', 100, 300, 'another idle note')]))
+    const tree = () => page.locator('.canvas-host').ariaSnapshot()
+    expect(await tree()).not.toContain('notes on the sleeve')
+    await dblclickIn(page, 'T', [0.1, 0.5])
+    const box = page.getByRole('textbox', { name: 'Text', exact: true })
+    await expect(box).toBeFocused()
+    await expect(box).toHaveText('notes on the sleeve')
+    expect(await box.getAttribute('aria-multiline')).toBe('true')
+    expect(await page.evaluate(() => document.activeElement?.closest('[aria-hidden="true"]') === null)).toBe(true)
+    const editing = await tree()
+    expect(editing).toContain('textbox "Text"')
+    expect(editing).not.toContain('another idle note')
+    await page.keyboard.press('Escape')
+    await frames(page)
+    expect(await page.getByRole('textbox', { name: 'Text', exact: true }).count()).toBe(0)
+    expect(await tree()).not.toContain('notes on the sleeve')
+    expect(warnings).toEqual([])
+    expect(errors).toEqual([])
+  })
+
+  test('a caption carried by its image is drawn with the same lettering while it moves as at rest', async ({ page }) => {
+    const errors = errorsOf(page)
+    await openBoard(page, board([], [image('I', 200, 160), text('cap', 200, 290, 'Front sleeve, 1991 pressing', { width: 160, minHeight: 0, captionOf: 'I', captionPosition: 0.5 })]), ASSETS)
+    /** Pixels darker than each threshold (sum of channels) inside the caption's box, 3 px in from its edges. */
+    const ink = async () => {
+      const c = (await page.evaluate(() => window.__edit.corners('cap')))!
+      const clip = { x: c[0]!.x + 3, y: c[0]!.y + 3, width: c[1]!.x - c[0]!.x - 6, height: c[3]!.y - c[0]!.y - 6 }
+      const png = await page.screenshot({ clip })
+      return page.evaluate(async (b64) => {
+        const img = new Image()
+        img.src = `data:image/png;base64,${b64}`
+        await img.decode()
+        const cv = document.createElement('canvas')
+        cv.width = img.width
+        cv.height = img.height
+        const ctx = cv.getContext('2d')!
+        ctx.drawImage(img, 0, 0)
+        const d = ctx.getImageData(0, 0, cv.width, cv.height).data
+        return [150, 450].map((t) => {
+          let n = 0
+          for (let i = 0; i < d.length; i += 4) if (d[i]! + d[i + 1]! + d[i + 2]! < t) n++
+          return n
+        })
+      }, png.toString('base64'))
+    }
+    await clickIn(page, 'I', [0.5, 0.5]) // the image alone: the caption follows it
+    const rest = await ink()
+    expect(rest[0]).toBeGreaterThan(50)
+    const from = await pointIn(page, 'I')
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(from.x + 40, from.y + 30, { steps: 6 })
+    await frames(page, 3)
+    const moving = await ink() // the caption has moved with its image: its corners are read again
+    await page.mouse.up()
+    rest.forEach((r, i) => expect(Math.abs(moving[i]! - r), `dark pixels at rest ${rest}, while moving ${moving}`).toBeLessThanOrEqual(Math.max(3, r * 0.02)))
     expect(errors).toEqual([])
   })
 })

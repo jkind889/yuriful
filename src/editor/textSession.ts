@@ -77,6 +77,13 @@ import type { CompactContent, FormatReadout, Pending } from './textRules.ts'
 /** Keys that move the caret (with any modifiers): only they put it at the start of the text as the person's own move (`keepMoveToStart`). */
 const CARET_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'])
 
+/**
+ * How long after a caret-movement key its move to the start of the text is still taken as the
+ * person's own (`keepMoveToStart`). The key must also be the last one since the editor gained
+ * focus, so a browser reset on focus is never taken for it; 150 ms proved too short under load.
+ */
+const CARET_KEY_MOVE_MS = 500
+
 /** Transaction metadata of the follow-up (it carries ProseMirror's `composition` metadata too, to join the composition's history step). */
 const FOLLOW_UP = 'yuriful-composition-follow-up'
 
@@ -1160,11 +1167,12 @@ export class EditSession {
    * start with no such key (focus coming back by Tab, a click elsewhere and back, `focus()`, the
    * window regaining focus) is the browser's reset, and is left to ProseMirror. Runs before
    * ProseMirror's own `selectionchange` listener (`mount`) and keydown handler (the next key can
-   * come before `selectionchange`).
+   * come before `selectionchange`). The key counts for `CARET_KEY_MOVE_MS` after it went down: on a
+   * loaded machine the browser reports the move well after the key, still inside ProseMirror's window.
    */
   private readonly keepMoveToStart = () => {
     const view = this.mounted?.view
-    if (!view || this.done || this.composing || performance.now() - this.caretKeyAt > 150 || !view.hasFocus()) return
+    if (!view || this.done || this.composing || performance.now() - this.caretKeyAt > CARET_KEY_MOVE_MS || !view.hasFocus()) return
     const shown = this.domSelection(view)
     const start = Selection.atStart(this.current.doc).from
     if (!shown || shown.from !== start || shown.to !== start) return

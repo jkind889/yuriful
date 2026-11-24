@@ -554,7 +554,8 @@ test.describe('the DOM renderer, static (Slice 2c-i)', () => {
 
     // A single text: move, corner scale, side resize (re-wraps), rotate.
     await gesture(at(280, 180), at(300, 200), 'text move', 'T', ['left', 'top'])
-    await page.mouse.click(at(290, 190).x, at(290, 190).y)
+    // The text is still selected after the move. (A click on it here would start an edit, as it
+    // does on the canvas, and an edited text has no handles to drag.)
     await gesture(await handle('br'), { x: (await handle('br')).x + 30, y: (await handle('br')).y + 20 }, 'text scale', 'T', ['fontSize', 'width'])
     await gesture(await handle('mr'), { x: (await handle('mr')).x - 40, y: (await handle('mr')).y }, 'text side resize', 'T', ['width'])
     await gesture(await handle('mtr'), { x: (await handle('mtr')).x + 60, y: (await handle('mtr')).y + 20 }, 'text rotate', 'T', ['angle'])

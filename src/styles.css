@@ -954,9 +954,9 @@ button:disabled {
 .scene-item.is-culled {
   content-visibility: hidden;
 }
-.scene-item.is-moving {
-  will-change: transform;
-}
+/* Items being moved are not given `will-change`: measured on a drag of 100 items it bought nothing
+   with a GPU and halved the frame rate without one, and their lettering was drawn darker while it
+   was on (the text was rasterized on its own layer) */
 .scene-image {
   overflow: hidden;
 }
@@ -1114,23 +1114,17 @@ button:disabled {
    whole word in one span outside them. A word joiner after every piece but the word's last keeps a
    break from falling where two pieces meet. They are `pre`, not `nowrap`: a word holds no space,
    so they lay out the same, but in a white-space mode that collapses spaces the browser's editing
-   types a space at a piece's end as a no-break space. A cut piece is an inline block, which its
-   ancestors do not decorate: it repeats an underline or strikethrough, as the static card does */
+   types a space at a piece's end as a no-break space. The first piece of a word wider than a drawn
+   box is a line of its own (the static card's line-wide inline block): a block break of no height
+   before its first part and after its last, however marks split it, and decorated by its marks */
 .scene-text.is-editing .yp-nowrap {
   white-space: pre;
 }
 .scene-text.is-editing .yp-join::after {
   content: "\2060";
 }
-.scene-text.is-editing u .yp-cut,
-.scene-text.is-editing s .yp-cut {
-  text-decoration-line: underline;
-  text-decoration-thickness: var(--yp-deco, 0.0667em);
-  text-decoration-skip-ink: none;
-}
-.scene-text.is-editing u .yp-cut {
-  text-underline-offset: 0.1em;
-}
-.scene-text.is-editing s .yp-cut {
-  text-underline-offset: calc(-0.28167em - var(--yp-deco, 0.0667em) / 2);
+.scene-text.is-editing .yp-cut-first::before,
+.scene-text.is-editing .yp-cut-last::after {
+  content: "";
+  display: block;
 }

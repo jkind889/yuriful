@@ -94,10 +94,11 @@ export interface TextHost {
   shownHistory(): { canUndo: boolean; canRedo: boolean }
 }
 
-/** A point on the page (a mouse event's `clientX` and `clientY`). */
+/** A point on the page (a mouse event's `clientX` and `clientY`); `extend`: a Shift-press, which selects from the caret the text kept. */
 export interface ClientPoint {
   clientX: number
   clientY: number
+  extend?: boolean
 }
 
 /**
@@ -145,8 +146,10 @@ export interface TextAdapter {
   stepEdit(dir: 'undo' | 'redo'): boolean
   /** What Undo and Redo can do while a text is edited, when the edit has its own history; otherwise null. */
   editHistory(): { canUndo: boolean; canRedo: boolean } | null
-  /** A primary or secondary press while a text is edited lands in the edited text itself, where the browser handles it (DOM renderer only). */
+  /** A press while a text is edited lands in the edited text itself, judged as the canvas judges it (DOM renderer only). */
   pressInsideEdit(e: MouseEvent): boolean
+  /** A primary press inside the edited text that the browser would not route into it: placed here; true when it was one (DOM renderer only). */
+  strayPressInEdit(e: MouseEvent): boolean
   /** The editor is being disposed: an edit in progress ends without committing anything. */
   dispose(): void
   setFontSize(size: number): void
@@ -344,6 +347,10 @@ export class FabricTextAdapter implements TextAdapter {
 
   /** Never asked: on the Fabric renderer every press reaches the canvas, which handles a press inside the edited text itself. */
   pressInsideEdit(): boolean {
+    return false
+  }
+
+  strayPressInEdit(): boolean {
     return false
   }
 
@@ -707,6 +714,11 @@ interface LiveEdit {
   covering: HTMLElement[]
   /** The proxy's own handle and border settings, hidden while it is edited (a Fabric text box hides its handles then too). */
   saved: { hasControls: boolean; hasBorders: boolean }
+  /**
+   * The text was made for this edit (history did not hold it when the edit began): its owner is
+   * decided once more when the edit ends, even if a font size change has put it in history since.
+   */
+  isNew: boolean
 }
 
 /**
@@ -729,6 +741,8 @@ export class DomTextAdapter implements TextAdapter {
   private edit: LiveEdit | null = null
   /** The edit is being left (`finishEditing`): a last change reported by the session only updates the card's data. */
   private finishing = false
+  /** The width and size the live card's decorations were last worked out for (`decorationBasis`). */
+  private decorated = ''
   /** A formatting command is running (it saves nothing while the text is blank, as on the Fabric path; typing always marks the board dirty). */
   private commanding = false
   /** The editable root of the edit Esc or Tab has just ended: the window listener sees that key next and must leave it alone. */
@@ -739,6 +753,14 @@ export class DomTextAdapter implements TextAdapter {
    * stops being the selected object.
    */
   private armed: FabricObject | null = null
+  /** The press on an already selected text, where its caret goes if the release starts editing. */
+  private press: { target: FabricObject; at: ClientPoint } | null = null
+  /**
+   * The caret a text keeps between edits, as Fabric keeps its selection start: where it was last
+   * pressed while selected (in its own coordinates, so it follows the text), or the start of the
+   * selection when its last edit ended. A text never pressed or edited has its caret at 0.
+   */
+  private readonly caretMemo = new WeakMap<FabricObject, { offset: number } | { local: { x: number; y: number } }>()
   private syncQueued = false
 
   constructor(
@@ -863,11 +885,24 @@ export class DomTextAdapter implements TextAdapter {
 
   /** The scene layer's flush point for a text's card; the edited card's decorations follow a new width or size. */
   private syncCard(obj: FabricObject, sync: CardSync = {}) {
-    const before = textDataOf(obj)
+    const edit = this.edit?.target === obj && !this.finishing ? this.edit : null
+    // The no-wrap pieces of a drawn box depend on its width and size: lay the live card out with the
+    // ones for the data it now has before it is measured, and again if widening changed the width.
+    if (edit) this.redecorateIfStale(edit, obj)
     this.scene.syncCard(obj, sync)
-    const after = textDataOf(obj)
-    const edit = this.edit
-    if (edit?.target === obj && !this.finishing && (before?.width !== after?.width || before?.fontSize !== after?.fontSize || before?.minHeight !== after?.minHeight)) edit.session.redecorate()
+    if (edit && this.redecorateIfStale(edit, obj)) this.scene.syncCard(obj)
+  }
+
+  /** What the live card's decorations depend on beyond its document. */
+  private decorationBasis(td: TextData | undefined): string {
+    return td ? `${td.width}|${td.fontSize}|${td.minHeight ?? ''}` : ''
+  }
+
+  /** Works the live card's decorations out again when its width or size changed since they were; true when it did. */
+  private redecorateIfStale(edit: LiveEdit, obj: FabricObject): boolean {
+    if (this.decorationBasis(textDataOf(obj)) === this.decorated) return false
+    edit.session.redecorate()
+    return true
   }
 
   // ---- editing
@@ -929,18 +964,26 @@ export class DomTextAdapter implements TextAdapter {
       .filter((o) => !isLocked(o) && o.visible)
       .map((o) => this.scene.layer.elementOf(idOf(o) ?? ''))
       .filter((el): el is HTMLElement => el !== undefined)
-    this.edit = { session, target: obj, id, body, covering, saved: { hasControls: obj.hasControls, hasBorders: obj.hasBorders } }
+    this.edit = { session, target: obj, id, body, covering, saved: { hasControls: obj.hasControls, hasBorders: obj.hasBorders }, isNew: this.host.isNew(obj) }
     this.endedByKey = null
     this.scene.layer.setEditing(id)
     const view = session.mount(body)
+    // A text box to assistive technology, named as the text is everywhere else (the Text tool, the panel's title).
+    view.setProps({ attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Text' } })
     body.addEventListener('dblclick', this.onCardDblClick)
+    body.addEventListener('mousedown', this.onCardMouseDown)
     // The canvas takes no presses now: the card and the items in front of it do (the editor's routing).
     obj.set({ hasControls: false, hasBorders: false })
     c.wrapperEl.style.pointerEvents = 'none'
     for (const el of covering) el.classList.add('is-covering')
     if (at && at !== 'end') {
       const pos = posAt(view, at)
-      if (pos !== null) session.select(textOffsetAt(session.state.doc, pos, -1))
+      if (pos !== null) {
+        const head = textOffsetAt(session.state.doc, pos, -1)
+        // Shift: from the caret the text kept to the press (Fabric `setSelectionStartEndWithShift`).
+        if (at.extend) session.select(this.rememberedCaret(obj, view) ?? 0, head)
+        else session.select(head)
+      }
     }
     view.focus()
     c.requestRenderAll()
@@ -959,7 +1002,12 @@ export class DomTextAdapter implements TextAdapter {
     const e = this.edit
     if (!e || this.finishing) return
     this.finishing = true
+    // Fabric keeps the start of the selection as the text's caret when an edit ends, and forgets that a press armed it.
+    this.caretMemo.set(e.target, { offset: e.session.selection().from })
+    this.armed = null
     e.body.removeEventListener('dblclick', this.onCardDblClick)
+    e.body.removeEventListener('mousedown', this.onCardMouseDown)
+    this.endTextDrag()
     try {
       e.session.finish()
     } finally {
@@ -988,7 +1036,7 @@ export class DomTextAdapter implements TextAdapter {
           c.requestRenderAll()
           this.host.syncState()
         })
-      } else if (!captionOf(obj) && this.host.isNew(obj)) {
+      } else if (!captionOf(obj) && e.isNew) {
         // A NEW text: its owner is decided once more from where it ended up (its box grew while it was typed).
         setOwner(obj, ownerAfterManipulation(ownerOf(obj), centerOf(obj), this.host.frameRecords(), NO_FRAMES))
       }
@@ -1012,17 +1060,63 @@ export class DomTextAdapter implements TextAdapter {
   }
 
   /**
-   * A press while a text is edited lands in its card, where the browser and the view place the
-   * caret or select: inside the card's element (an unlocked item in front of it takes its own
-   * presses, a locked one lets them through), and not on a frame's label or outline, which wins
-   * over the card as it wins over any content.
+   * A press while a text is edited lands in the edited text exactly where Fabric would find that
+   * text under it (so the decision agrees with the canvas to the pixel, on the box's edge and in its
+   * selection padding too): not on a frame's label or outline, which wins over any content; not on an
+   * unlocked object in front of it (a locked one lets presses through); and within its area.
    */
   pressInsideEdit(e: MouseEvent): boolean {
     const edit = this.edit
-    const card = edit && this.scene.layer.elementOf(edit.id)
-    if (!card || !(e.target instanceof Node) || !card.contains(e.target)) return false
+    if (!edit) return false
     const c = this.host.canvas
-    return c.frameOverlayAt(c.getObjects(), c.getScenePoint(e)) === undefined
+    // Fabric's own search: a frame's label or outline first, then the top-most object whose area
+    // (its box and its selection padding) holds the point.
+    return c.searchPossibleTargets(c.getObjects(), c.getScenePoint(e)).target === edit.target
+  }
+
+  /**
+   * A primary press inside the edited text (`pressInsideEdit`) that the browser does not route into
+   * its card (its very edge, or where an item in front shows but Fabric does not count it): the
+   * caret goes to the nearest place in the text, as Fabric puts it there, and moving the pointer
+   * with the button held selects from there, as Fabric does. True when the press was such a one and
+   * is handled here; false when the browser and the view handle it.
+   */
+  strayPressInEdit(e: MouseEvent): boolean {
+    const edit = this.edit
+    const card = edit && this.scene.layer.elementOf(edit.id)
+    const view = edit?.session.view
+    if (!edit || !card || !view || (e.target instanceof Node && card.contains(e.target))) return false
+    const anchor = this.offsetNear(edit, view, e)
+    if (anchor !== null) edit.session.select(anchor)
+    view.focus()
+    const win = card.ownerDocument.defaultView ?? window
+    const move = (m: MouseEvent) => {
+      if ((m.buttons & 1) === 0 || this.edit !== edit) return stop()
+      const head = this.offsetNear(edit, view, m)
+      if (anchor !== null && head !== null) edit.session.select(anchor, head)
+    }
+    const stop = () => {
+      win.removeEventListener('mousemove', move, { capture: true })
+      win.removeEventListener('mouseup', stop, { capture: true })
+    }
+    win.addEventListener('mousemove', move, { capture: true })
+    win.addEventListener('mouseup', stop, { capture: true })
+    return true
+  }
+
+  /** The text offset under a page point, or under the point moved a little toward the box's centre when it falls just outside the text (its edge, its padding). */
+  private offsetNear(edit: LiveEdit, view: EditorView, at: ClientPoint): number | null {
+    const ctr = edit.target.getCenterPoint()
+    const v = this.host.canvas.viewportTransform
+    const r = this.host.canvas.upperCanvasEl.getBoundingClientRect()
+    const cx = r.left + v[0] * ctr.x + v[4]
+    const cy = r.top + v[3] * ctr.y + v[5]
+    const len = Math.hypot(cx - at.clientX, cy - at.clientY) || 1
+    for (let step = 0; step <= 8; step++) {
+      const pos = posAt(view, { clientX: at.clientX + ((cx - at.clientX) / len) * step, clientY: at.clientY + ((cy - at.clientY) / len) * step })
+      if (pos !== null) return textOffsetAt(edit.session.state.doc, pos, -1)
+    }
+    return null
   }
 
   dispose() {
@@ -1075,12 +1169,15 @@ export class DomTextAdapter implements TextAdapter {
    * as a space. The static card wraps a whole word in one span outside its marks; a decoration sits
    * inside them, one span per piece of text with the same marks, so every piece but the last of a
    * word carries a word joiner after it (`yp-join`), and no break can fall where two pieces meet.
-   * A `cut` piece (the first piece of a word wider than a drawn box) starts its own line only when
-   * it lies in one piece of text.
+   * A `cut` piece (the first piece of a word wider than a drawn box) is a line of its own, as the
+   * static card's line-wide inline block makes it: a block break of no height before its first part
+   * and after its last (`yp-cut-first`, `yp-cut-last`), however its marks split it; an empty line
+   * box takes no room, so a piece already at a line's start gains no line.
    */
   private decorations(obj: FabricObject, doc: PMNode): DecorationSet {
     const td = textDataOf(obj)
     if (!td) return DecorationSet.empty
+    this.decorated = this.decorationBasis(td)
     const content = contentFromDoc(doc, boxOf(td))
     const ranges = noWrapRanges({ ...td, text: content.text, spans: content.spans, headings: content.headings }, this.scene.layer.root.ownerDocument)
     const out: Decoration[] = []
@@ -1096,7 +1193,7 @@ export class DomTextAdapter implements TextAdapter {
       for (const r of ranges[i] ?? []) {
         const parts = pieces.filter((p) => p.to > r.start && p.from < r.end).map((p) => ({ from: Math.max(p.from, r.start), to: Math.min(p.to, r.end) }))
         parts.forEach((p, k) => {
-          const cls = `yp-nowrap${k < parts.length - 1 ? ' yp-join' : ''}${r.cut && parts.length === 1 ? ' yp-cut' : ''}`
+          const cls = `yp-nowrap${k < parts.length - 1 ? ' yp-join' : ''}${r.cut && k === 0 ? ' yp-cut-first' : ''}${r.cut && k === parts.length - 1 ? ' yp-cut-last' : ''}`
           out.push(Decoration.inline(start + p.from, start + p.to, { class: cls }))
         })
       }
@@ -1107,12 +1204,75 @@ export class DomTextAdapter implements TextAdapter {
   }
 
   /**
+   * A primary press on the selected text of the edited card may start dragging it within the card.
+   * ProseMirror gives up on such a drag when the pointer's first movement exceeds 8 px before the
+   * browser has started it (prosemirror-view 1.43 `MouseDown.move`): it selects to the pointer
+   * instead and prevents the move, so a quick drag leaves the words where they were and a caret
+   * where the pointer let go. Fabric drags at any speed. For exactly this press, the moves are kept
+   * from ProseMirror until the drag starts or the press ends: the browser starts the drag, and
+   * ProseMirror's own `dragstart` carries the selection as for any drag of selected text. Pressed in
+   * the selection is judged as ProseMirror judges it (`isInSelection`: the selection the page shows).
+   */
+  private readonly onCardMouseDown = (e: MouseEvent) => {
+    const edit = this.edit
+    this.endTextDrag()
+    if (!edit || e.button !== 0 || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || e.detail > 1 || edit.session.state.selection.empty) return
+    const range = edit.body.ownerDocument.getSelection()?.rangeCount ? edit.body.ownerDocument.getSelection()!.getRangeAt(0) : null
+    if (!range || !Array.from(range.getClientRects()).some((r) => r.left <= e.clientX && r.right >= e.clientX && r.top <= e.clientY && r.bottom >= e.clientY)) return
+    const win = edit.body.ownerDocument.defaultView ?? window
+    const keep = (m: MouseEvent) => {
+      if ((m.buttons & 1) === 0) this.endTextDrag()
+      else m.stopPropagation() // the browser still starts its drag: only ProseMirror must not see the move
+    }
+    const stop = () => this.endTextDrag()
+    win.addEventListener('mousemove', keep, { capture: true })
+    win.addEventListener('mouseup', stop, { capture: true })
+    win.addEventListener('dragstart', stop, { capture: true })
+    this.textDrag = () => {
+      win.removeEventListener('mousemove', keep, { capture: true })
+      win.removeEventListener('mouseup', stop, { capture: true })
+      win.removeEventListener('dragstart', stop, { capture: true })
+    }
+  }
+
+  private textDrag: (() => void) | null = null
+
+  private endTextDrag() {
+    const done = this.textDrag
+    this.textDrag = null
+    done?.()
+  }
+  /**
    * A double-click in the edited card (both presses in the live view): the word Fabric's rule
    * gives, over whatever the browser selected by its own rule (it splits words elsewhere, at a
    * hyphen or a full stop differently).
    */
   private readonly onCardDblClick = (e: MouseEvent) => {
     if (e.button === 0 && this.edit?.body.contains(e.target as Node)) this.selectWordAt(e)
+  }
+
+  /** A page point in an object's own coordinates (its centre at 0, 0). */
+  private localPoint(obj: FabricObject, e: MouseEvent): { x: number; y: number } {
+    const p = this.host.canvas.getScenePoint(e)
+    const [a, b, c, d, tx, ty] = obj.calcTransformMatrix()
+    const det = a * d - b * c || 1
+    const x = p.x - tx
+    const y = p.y - ty
+    return { x: (d * x - c * y) / det, y: (a * y - b * x) / det }
+  }
+
+  /** The caret a text kept (`caretMemo`), as a UTF-16 offset into it; null when it has none. Needs the mounted view. */
+  private rememberedCaret(obj: FabricObject, view: EditorView): number | null {
+    const memo = this.caretMemo.get(obj)
+    if (!memo) return null
+    if ('offset' in memo) return memo.offset
+    const [a, b, c, d, tx, ty] = obj.calcTransformMatrix()
+    const sx = a * memo.local.x + c * memo.local.y + tx
+    const sy = b * memo.local.x + d * memo.local.y + ty
+    const v = this.host.canvas.viewportTransform
+    const r = this.host.canvas.upperCanvasEl.getBoundingClientRect()
+    const pos = posAt(view, { clientX: r.left + v[0] * sx + v[2] * sy + v[4], clientY: r.top + v[1] * sx + v[3] * sy + v[5] })
+    return pos === null ? null : textOffsetAt(view.state.doc, pos, -1)
   }
 
   /** A double-click in the edited text selects a word, as Fabric's does once the click before it has entered the edit. */
@@ -1193,8 +1353,15 @@ export class DomTextAdapter implements TextAdapter {
     c.on('mouse:down', (opt) => {
       const target = opt.target
       const e = opt.e
+      this.press = null
       if (!target || !this.isText(target) || isLocked(target) || handleUnder(target) || !(e instanceof MouseEvent) || e.button !== 0) return
-      if ((opt as { alreadySelected?: boolean }).alreadySelected === true || this.isEditing(target)) this.armed = target
+      const alreadySelected = (opt as { alreadySelected?: boolean }).alreadySelected === true
+      if (alreadySelected || this.isEditing(target)) this.armed = target
+      if (!alreadySelected) return
+      // Fabric puts the caret where an already selected text is pressed (`setCursorByClick`), whatever
+      // the press goes on to do; with Shift it extends from the caret the text kept.
+      this.press = { target, at: { clientX: e.clientX, clientY: e.clientY, extend: e.shiftKey } }
+      if (!e.shiftKey) this.caretMemo.set(target, { local: this.localPoint(target, e) })
     })
     c.on('mouse:up', (opt) => {
       const target = opt.target
@@ -1202,7 +1369,9 @@ export class DomTextAdapter implements TextAdapter {
       if (!target || target !== this.armed || !(e instanceof MouseEvent) || e.button !== 0) return
       if (opt.transform?.actionPerformed || handleUnder(target)) return
       if (c.getActiveObject() !== target || isLocked(target) || this.isEditing(target)) return
-      const at = { clientX: e.clientX, clientY: e.clientY }
+      // The caret goes where the text was pressed, as Fabric places it on the press.
+      const at = this.press?.target === target ? this.press.at : { clientX: e.clientX, clientY: e.clientY }
+      this.press = null
       queueMicrotask(() => {
         if (this.host.disposed() || this.edit || c.getActiveObject() !== target) return
         this.startEditing(target, at)

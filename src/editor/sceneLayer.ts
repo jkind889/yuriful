@@ -1048,7 +1048,9 @@ export class SceneLayer {
       return el
     }
     this.root = div('scene-layer')
-    this.root.setAttribute('aria-hidden', 'true')
+    // What the board shows is not read out item by item (the layer list names every item, as on the
+    // canvas, which exposes none): each item is hidden from assistive technology, never the layer
+    // itself, so that the text being edited, which has focus, can be exposed (`setEditing`).
     this.world = div('scene-world')
     this.frames = div('scene-frames')
     this.objects = div('scene-objects')
@@ -1196,6 +1198,8 @@ export class SceneLayer {
       if (item.editing === on) continue
       item.editing = on
       item.el.classList.toggle('is-editing', on)
+      if (on) item.el.removeAttribute('aria-hidden')
+      else item.el.setAttribute('aria-hidden', 'true')
       if (on) this.setCulled(item, false)
       else if (item.kind === 'text') {
         delete item.shown
@@ -1204,7 +1208,7 @@ export class SceneLayer {
     }
   }
 
-  /** An item moved or scaled by a gesture right now: composited on its own layer, never culled. Cleared when it settles. */
+  /** An item moved or scaled by a gesture right now: never culled. Cleared when it settles. */
   setMoving(id: string, on: boolean) {
     const item = this.items.get(id)
     if (!item || item.moving === on) return
@@ -1294,6 +1298,7 @@ export class SceneLayer {
       const el = this.doc.createElement('div')
       el.dataset.id = rec.id
       el.className = kind === 'frame' ? 'scene-frame' : `scene-item scene-${kind}`
+      el.setAttribute('aria-hidden', 'true')
       item = { kind, el, key: '', rec, w: 0, h: 0, matrix: [1, 0, 0, 1, 0, 0], culled: false, editing: false, moving: false }
       this.items.set(rec.id, item)
       ;(kind === 'frame' ? this.frames : this.objects).append(el)
