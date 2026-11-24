@@ -359,6 +359,12 @@ export class Editor {
   private readonly replaceApplied = new Map<string, number>()
   /** A primary-button press has been passed through to Fabric and not yet released. */
   private primaryDown = false
+  /**
+   * The primary press now held began inside the text being edited (not on its scroll thumb): the one
+   * press during which the wheel keeps its ordinary rule, so the text can scroll while words are
+   * selected in it. Cleared by every press and every primary release.
+   */
+  private editPress = false
   private pan: { button: number; end: () => void } | null = null
   private crop: CropSession | null = null
   /** Who the wheel gesture in progress belongs to: the board, or the fixed-height text it started on (plan Section 4). */
@@ -1106,14 +1112,14 @@ export class Editor {
   /**
    * Who a new wheel gesture belongs to (`pickWheelOwner`): the facts at the pointer.
    *
-   * The board is free when nothing is pressed and held on it: a primary press passed to the canvas and
-   * not yet released (a marquee, a move, a handle, a rotation, a frame or text box being drawn, a press
-   * that has not moved yet), a gesture still settling, a pan (middle button, Space or the hand tool),
-   * crop mode (with or without a handle held), a layer row held in the layer list, or a text's scroll
-   * thumb being dragged. A selection being dragged inside the text being edited is the text's own (the
-   * canvas never sees that press): the wheel follows the ordinary rule there, so a long passage can be
-   * selected past the edge of a fixed-height text. Neither the hand tool nor Space may be in effect (a
-   * read-only board, whose only tool is the hand, still lets a long text be read).
+   * The board is free when no mouse button is held, anywhere (the wheel event's own `buttons`, so no
+   * remembered state can get stuck: a button released outside the window is not held any more): a
+   * marquee, a move, a handle, a rotation, a frame or text box being drawn, a press that has not
+   * moved yet, the right or middle button, a layer row, a text's scroll thumb. One exception: a primary
+   * press that began inside the text being edited, moved or not (`editPress`), keeps the ordinary rule,
+   * so the text can scroll while words are selected in it. Nor may a gesture still be settling, a pan
+   * (middle button, Space or the hand tool) or crop mode be open, or the hand tool or Space be in
+   * effect (a read-only board, whose only tool is the hand, still lets a long text be read).
    *
    * The front-most object whose box holds the pointer counts (`boxHolds`, in the object's own
    * coordinates, so a turned box is a rectangle), locked or not, and so does a locked frame's label or
@@ -1121,7 +1127,7 @@ export class Editor {
    */
   private wheelOwner(e: WheelEvent): WheelOwner {
     const c = this.canvas
-    const held = this.primaryDown || this.layerPressActive || this.scene.layer.thumbDragging()
+    const held = e.buttons !== 0 && !(e.buttons === 1 && this.editPress && this.text.editedTarget() !== null)
     const free = !held && !this.gesture && !this.pan && !this.crop && !this.spaceHeld && !(this.editable && this.state.tool === 'hand')
     if (!free) return CANVAS_OWNER
     const p = c.getScenePoint(e)
@@ -1567,6 +1573,7 @@ export class Editor {
     const onMouseUp = (e: MouseEvent) => {
       if (e.button === 0) {
         this.primaryDown = false
+        this.editPress = false
         if (this.pan?.button === 0) this.pan.end()
         return // Fabric finishes its drag with this event
       }
@@ -1613,7 +1620,10 @@ export class Editor {
     }
     // A native drag (e.g. dragging selected text) ends with `dragend` and no `mouseup` at all.
     const onDragEnd = () => this.healPrimaryDown(0)
-    const onMouseDown = (e: MouseEvent) => this.healPrimaryDown(e.button === 0 ? 0 : e.buttons)
+    const onMouseDown = (e: MouseEvent) => {
+      this.editPress = false // a press inside the edited text sets it again (`editingPress`), after this
+      this.healPrimaryDown(e.button === 0 ? 0 : e.buttons)
+    }
     const onMouseMove = (e: MouseEvent) => this.healPrimaryDown(e.buttons)
     window.addEventListener('mousedown', onMouseDown, { capture: true })
     window.addEventListener('mouseup', onMouseUp, { capture: true })
@@ -1745,6 +1755,7 @@ export class Editor {
    */
   private editingPress(e: MouseEvent) {
     const inside = this.text.pressInsideEdit(e)
+    this.editPress = e.button === 0 && inside && !(e.target instanceof Element && e.target.closest('.scene-text-thumb'))
     if (e.button !== 0) {
       if (e.button === 2 && inside) return
       e.preventDefault()

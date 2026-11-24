@@ -162,6 +162,8 @@ interface WheelStep {
   dx?: number
   ctrl?: boolean
   shift?: boolean
+  /** The mouse buttons held, as Chromium reports them on a real wheel event (Playwright's own wheel always says none). */
+  buttons?: number
 }
 
 /** Wheel events dispatched at page points, `gapMs` apart (a busy wait, so the gaps are exact). */
@@ -177,7 +179,7 @@ async function wheel(page: Page, steps: WheelStep[], gapMs = 20) {
       steps.forEach((s, i) => {
         if (i > 0) spin(gapMs)
         const target = document.elementFromPoint(s.x, s.y) ?? document.body
-        target.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, composed: true, clientX: s.x, clientY: s.y, deltaX: s.dx ?? 0, deltaY: s.dy, deltaMode: 0, ctrlKey: !!s.ctrl, shiftKey: !!s.shift }))
+        target.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, composed: true, clientX: s.x, clientY: s.y, deltaX: s.dx ?? 0, deltaY: s.dy, deltaMode: 0, ctrlKey: !!s.ctrl, shiftKey: !!s.shift, buttons: s.buttons ?? 0 }))
       })
     },
     { steps, gapMs },
@@ -1057,14 +1059,14 @@ test('anything pressed and held on the board gives the wheel to the board; a sel
     await page.waitForTimeout(NEW_GESTURE_MS)
   }
   /**
-   * A trusted wheel over the card while the button is held, in a direction the card could scroll
-   * (up, unless a bottom-handle drag has just taken it back to its top): the board pans, the card
-   * stays where it was.
+   * A wheel over the card while the primary button is held (an event that says so, as Chromium's real
+   * wheel events do), in a direction the card could scroll (up, unless a bottom-handle drag has just
+   * taken it back to its top): the board pans, the card stays where it was.
    */
-  const wheelPans = async (what: string) => {
+  const wheelPans = async (what: string, buttons = 1) => {
     const before = (await exactOf(page, 'c')).top
     const dy = before > 0 ? -40 : 40
-    await page.mouse.wheel(0, dy)
+    await wheel(page, [{ ...(await cardPoint()), dy, buttons }])
     panY -= dy
     await expect.poll(async () => (await probe(page)).viewport.panY, { message: what }).toBe(panY)
     expect((await exactOf(page, 'c')).top, what).toBe(before)
@@ -1130,7 +1132,7 @@ test('anything pressed and held on the board gives the wheel to the board; a sel
   await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2)
   await page.mouse.down()
   const held = (await exactOf(page, 'c')).top
-  await page.mouse.wheel(0, -40)
+  await wheel(page, [{ x: tb.x + tb.width / 2, y: tb.y + tb.height / 2, dy: -40, buttons: 1 }])
   panY += 40
   await expect.poll(async () => (await probe(page)).viewport.panY).toBe(panY)
   expect((await exactOf(page, 'c')).top).toBe(held)
@@ -1142,9 +1144,39 @@ test('anything pressed and held on the board gives the wheel to the board; a sel
   await page.mouse.down()
   await page.mouse.move(inText.x + 40, inText.y + 10, { steps: 4 })
   const before = (await exactOf(page, 'c')).top
-  await page.mouse.wheel(0, 40)
+  await wheel(page, [{ x: inText.x + 40, y: inText.y + 10, dy: 40, buttons: 1 }])
   await expect.poll(async () => (await exactOf(page, 'c')).top).toBe(before + 40)
   expect((await probe(page)).viewport.panY).toBe(panY)
+  await page.mouse.up()
+  // So is a press inside it that has not moved yet.
+  await page.waitForTimeout(NEW_GESTURE_MS)
+  await page.mouse.move(inText.x, inText.y)
+  await page.mouse.down()
+  const still = (await exactOf(page, 'c')).top
+  await wheel(page, [{ ...inText, dy: -30, buttons: 1 }])
+  await expect.poll(async () => (await exactOf(page, 'c')).top).toBe(still - 30)
+  expect((await probe(page)).viewport.panY).toBe(panY)
+  await page.mouse.up()
+  await page.keyboard.press('Escape')
+  await expect.poll(async () => (await probe(page)).editing).toBe(false)
+  // The right button held over the card: the board.
+  await page.waitForTimeout(NEW_GESTURE_MS)
+  const right = await cardPoint()
+  await page.mouse.move(right.x, right.y)
+  await page.mouse.down({ button: 'right' })
+  const r0 = (await exactOf(page, 'c')).top
+  await wheel(page, [{ ...right, dy: -40, buttons: 2 }])
+  panY += 40
+  await expect.poll(async () => (await probe(page)).viewport.panY).toBe(panY)
+  expect((await exactOf(page, 'c')).top).toBe(r0)
+  await page.mouse.up({ button: 'right' })
+  // A wheel that says no button is held (the release happened outside the window) is free again,
+  // whatever the editor last saw: here a marquee press it still counts as held.
+  await page.waitForTimeout(NEW_GESTURE_MS)
+  await press(await pt(page, 200, 60), right)
+  await wheel(page, [{ ...right, dy: -20 }])
+  expect((await exactOf(page, 'c')).top).toBe(r0 - 20)
+  await page.keyboard.press('Escape')
   await page.mouse.up()
   expect(errors).toEqual([])
 })
@@ -1248,9 +1280,32 @@ for (const angle of [30, -45]) {
       await selectById(page, 'c')
       const tl = await handle(page, 'tl')
       const mb = await handle(page, 'mb')
-      // 50 screen pixels up the card's own axis: shorter than its text.
+      // The middle of the text's first character, as drawn on the page (its box's middle, however it is turned).
+      const glyph = () =>
+        page.evaluate(() => {
+          const body = document.querySelector('.scene-text[data-id="c"] > .scene-text-body')!
+          const text = document.createTreeWalker(body, NodeFilter.SHOW_TEXT).nextNode()!
+          const range = document.createRange()
+          range.setStart(text, 0)
+          range.setEnd(text, 1)
+          const r = range.getBoundingClientRect()
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+        })
+      const g0 = await glyph()
+      // 50 screen pixels up the card's own axis (shorter than its text), sampled after every move: the
+      // handle's corner and the drawn text stay where they were while the handle is held, not only after.
       const a = (angle * Math.PI) / 180
-      await drag(page, mb, { x: mb.x + 50 * Math.sin(a), y: mb.y - 50 * Math.cos(a) }, { steps: 10 })
+      await page.mouse.move(mb.x, mb.y)
+      await page.mouse.down()
+      for (let i = 1; i <= 10; i++) {
+        await page.mouse.move(mb.x + 5 * i * Math.sin(a), mb.y - 5 * i * Math.cos(a))
+        await page.evaluate(() => new Promise((r) => requestAnimationFrame(r)))
+        const corner = await handle(page, 'tl')
+        const g = await glyph()
+        expect(Math.abs(corner.x - tl.x) + Math.abs(corner.y - tl.y), `corner, step ${i}`).toBeLessThan(0.5)
+        expect(Math.abs(g.x - g0.x) + Math.abs(g.y - g0.y), `text, step ${i}`).toBeLessThan(0.5)
+      }
+      await page.mouse.up()
       const d = await storedWhen(page, (doc) => byId(doc, 'c').height !== undefined)
       expect(Math.abs((byId(d, 'c').left as number) - 300)).toBeLessThanOrEqual(0.01)
       expect(Math.abs((byId(d, 'c').top as number) - 120)).toBeLessThanOrEqual(0.01)
@@ -1261,3 +1316,110 @@ for (const angle of [30, -45]) {
     })
   }
 }
+
+// ---- found by the second review (a5b5078) -------------------------------------------------------------
+
+/** The page's own position of a card's text (what it shows, rounded as it rounds). */
+const shownTop = (page: Page, id: string) => page.evaluate((id) => document.querySelector<HTMLElement>(`.scene-text[data-id="${id}"] > .scene-text-body`)!.scrollTop, id)
+
+for (const height of [133.23, 130, 140.27, 160]) {
+test(`after the browser follows the caret, the next one-pixel wheel step moves the text one pixel (the reviewer's sequence, height ${height})`, async ({ page }) => {
+  const { errors } = await open(page, [textRec('c', 300, 180, { width: 250, height, text: lines(75) })])
+  const at45 = await pt(page, 345, 200)
+  await editAt(page, at45)
+  await page.keyboard.press('Control+End')
+  await page.waitForTimeout(230)
+  await wheel(page, at(at45, -1, 17), 1)
+  await page.waitForTimeout(NEW_GESTURE_MS)
+  await page.keyboard.type(' writing')
+  await page.waitForTimeout(270)
+  const before = await shownTop(page, 'c')
+  expect(before).toBe((await exactOf(page, 'c')).top) // the layer takes what the page shows
+  await page.mouse.move(at45.x, at45.y)
+  await page.mouse.wheel(0, -1)
+  await expect.poll(() => shownTop(page, 'c')).toBe(before - 1)
+  await page.waitForTimeout(150)
+  expect(await shownTop(page, 'c')).toBe(before - 1)
+  expect(errors).toEqual([])
+})
+}
+
+for (const height of [133.23, 160]) {
+test(`after every caret action the next one-pixel wheel step moves the text exactly one pixel on the page (height ${height})`, async ({ page }) => {
+  const { errors } = await open(page, [textRec('c', 300, 180, { width: 250, height, text: lines(75) })])
+  await page.evaluate(() => navigator.clipboard.writeText('pasted one\npasted two'))
+  const inside = await pt(page, 345, 200)
+  await editAt(page, inside)
+  const step = async (what: string) => {
+    await page.waitForTimeout(NEW_GESTURE_MS) // the browser's own scroll and the engine's reveal settle; a new wheel gesture
+    const s = await exactOf(page, 'c')
+    const before = await shownTop(page, 'c')
+    const dy = s.top > 1 ? -1 : 1
+    await page.mouse.move(inside.x, inside.y)
+    await page.mouse.wheel(0, dy)
+    await expect.poll(() => shownTop(page, 'c'), { message: what }).toBe(before + dy)
+    await page.waitForTimeout(120)
+    expect(await shownTop(page, 'c'), what).toBe(before + dy)
+  }
+  await page.keyboard.press('Control+End')
+  await step('Ctrl+End')
+  await page.keyboard.type(' typed at the end')
+  await step('typing at the end')
+  for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowUp')
+  await step('ArrowUp')
+  await page.keyboard.press('PageUp')
+  await step('PageUp')
+  await page.keyboard.press('PageDown')
+  await step('PageDown')
+  await page.keyboard.press('Control+Home')
+  await step('Ctrl+Home')
+  await page.keyboard.press('Control+End')
+  await page.keyboard.press('Control+v')
+  await step('paste')
+  await page.keyboard.press('Control+z')
+  await step('undo')
+  expect((await probe(page)).editing).toBe(true)
+  expect(errors).toEqual([])
+})
+}
+
+for (const [zoom, height, fontSize] of [[0.25, 12, 8], [0.1, 27, 18]] as const) {
+  test(`no thumb where there is no room for one: ${height}-unit box at ${zoom * 100}%; the wheel and the fades still work`, async ({ page }) => {
+    const view = { zoom, panX: 400 - 200 * zoom, panY: 300 - 100 * zoom }
+    const { errors } = await open(page, [textRec('c', 200, 100, { height, fontSize, width: 200 })], { view })
+    expect(await scrollOf(page, 'c')).toMatchObject({ fadeTop: false, fadeBottom: true })
+    await wheel(page, at(await pt(page, 300, 100 + height / 2), 4, 1))
+    expect((await exactOf(page, 'c')).top).toBe(4 / zoom)
+    expect(await scrollOf(page, 'c')).toMatchObject({ fadeTop: true, fadeBottom: true })
+    // Right away (a thumb that was shown would fade out by itself 800 ms later).
+    expect(await page.locator('.scene-text[data-id="c"] .scene-text-thumb.is-shown').count()).toBe(0)
+    expect((await probe(page)).viewport).toEqual(view)
+    expect(errors).toEqual([])
+  })
+}
+
+test('whenever the page shows another position than the layer gave it, the page wins at once, fraction dropped', async ({ page }) => {
+  const { errors } = await open(page, [textRec('c', 300, 180, { width: 250, height: 160, text: lines(75) })])
+  const p = await pt(page, 345, 220)
+  // A fractional position (as a reveal or a thumb drag leaves one): the page shows it rounded.
+  await wheel(page, [{ ...p, dy: 100.37 }])
+  expect((await exactOf(page, 'c')).top).toBe(100.37)
+  const shown = await shownTop(page, 'c')
+  expect(Math.abs(shown - 100.37)).toBeLessThan(1)
+  // Something else moves the page by one pixel (as the browser does to follow a caret), less than a
+  // pixel away from the remembered position: the page wins.
+  for (const move of [1, -1]) {
+    await page.waitForTimeout(NEW_GESTURE_MS)
+    const from = await page.evaluate(({ id, move }) => {
+      const b = document.querySelector<HTMLElement>(`.scene-text[data-id="${id}"] > .scene-text-body`)!
+      b.scrollTop = b.scrollTop + move
+      return b.scrollTop
+    }, { id: 'c', move })
+    expect((await exactOf(page, 'c')).top).toBe(from)
+    await page.mouse.move(p.x, p.y)
+    await page.mouse.wheel(0, -1)
+    await expect.poll(() => shownTop(page, 'c')).toBe(from - 1)
+    expect((await exactOf(page, 'c')).top).toBe(from - 1)
+  }
+  expect(errors).toEqual([])
+})
