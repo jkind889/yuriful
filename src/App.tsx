@@ -15,13 +15,7 @@ export default function App() {
   useEffect(() => {
     const el = host.current
     if (!el) return
-    // The app draws with the DOM renderer. The Fabric renderer stays only as the reference the
-    // paired browser tests compare against: only a development build reads the switch, from a
-    // global that a test sets before the app mounts (Playwright's `addInitScript`, or the dev
-    // server of `E2E_RENDERER=fabric`). There is no UI, URL parameter, shortcut or stored flag for
-    // it, and a production build compiles `import.meta.env.DEV` to false and drops the branch.
-    const renderer = import.meta.env.DEV && (window as { __YURIFUL_RENDERER__?: string }).__YURIFUL_RENDERER__ === 'fabric' ? 'fabric' : 'dom'
-    const ed = new Editor(el, new IndexedDbBoardStore(), undefined, undefined, { renderer })
+    const ed = new Editor(el, new IndexedDbBoardStore())
     setEditor(ed)
     void ed.init()
     return () => {

@@ -8,7 +8,7 @@ import { DomTextAdapter, fabricWordAt } from './textAdapter.ts'
 import type { EditSession } from './textSession.ts'
 import { canvasOf, press, dragBy, release } from './testing/drive.ts'
 import type { FakeObject } from './testing/fakeFabric.ts'
-import { FABRIC, FakeAssets, FakeCardMeasurer, SpyStore } from './testing/fakes.ts'
+import { FakeAssets, FakeCardMeasurer, SpyStore } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -28,7 +28,7 @@ const txt = (id: string, left: number, top: number, extra: Partial<TextRecord> =
 let host: HTMLDivElement
 const editors: Editor[] = []
 
-async function open(frames: FrameRecord[], objects: ObjectRecord[], options: EditorOptions = { renderer: 'dom', measurer: new FakeCardMeasurer() }) {
+async function open(frames: FrameRecord[], objects: ObjectRecord[], options: EditorOptions = { measurer: new FakeCardMeasurer() }) {
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Editing', frames, objects }
   const store = new SpyStore({ doc, assets: new Map([['a1', asset('a1')]]) })
   store.holdLoad = false
@@ -391,13 +391,11 @@ describe('a release on the selected text starts editing, as a Fabric text box do
   })
 })
 
-describe('the Fabric renderer binds none of this', () => {
-  it('no live-editing listener on the canvas, no edit history of its own', async () => {
-    const fabric = await open([], [txt('t', 0, 0)], FABRIC)
+describe('the live-editing listeners', () => {
+  it('are bound once each beside the editor’s own; with no text edited there is no edit history', async () => {
     const domEditor = await open([], [txt('t', 0, 0)])
-    expect(['mouse:down', 'mouse:up', 'mouse:dblclick', 'selection:cleared', 'selection:updated'].map((n) => fabric.handlers(n))).toEqual([2, 1, 1, 1, 1])
     expect(['mouse:down', 'mouse:up', 'mouse:dblclick', 'selection:cleared', 'selection:updated'].map((n) => domEditor.handlers(n))).toEqual([3, 2, 2, 2, 2])
-    const t = fabric.internals.text as unknown as { stepEdit: (d: string) => boolean; editHistory: () => unknown }
+    const t = domEditor.internals.text as unknown as { stepEdit: (d: string) => boolean; editHistory: () => unknown }
     expect(t.stepEdit('undo')).toBe(false)
     expect(t.editHistory()).toBeNull()
   })

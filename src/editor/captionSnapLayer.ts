@@ -1,11 +1,10 @@
-import { Textbox } from 'fabric'
 import type { FabricObject } from 'fabric'
 import { captionImageBounds, captionPlacement } from '../model/captions.ts'
 import { snapCandidate, storedSnapSide } from '../model/captionSnap.ts'
 import type { SnapCandidate, SnapImage } from '../model/captionSnap.ts'
 import type { CaptionSide } from '../model/types.ts'
 import type { Point, Rect } from '../model/viewport.ts'
-import { ACCENT, captionOf, captionSideOf, createObject, idOf, imageSizeOf, isImage, isLocked, toRecord } from './objects.ts'
+import { ACCENT, captionOf, idOf, imageSizeOf, isImage, isLocked, toRecord } from './objects.ts'
 
 export interface CaptionSnapPreview extends SnapCandidate {
   readonly textId: string
@@ -15,17 +14,9 @@ export interface CaptionSnapPreview extends SnapCandidate {
   readonly size: Readonly<{ width: number; height: number; fontSize: number }>
 }
 
-/** Use the same drawn box and wrapping that will appear once the text is a caption. */
-export function makeSnapCaption(text: Textbox): Textbox | null {
-  const rec = toRecord(text)
-  if (rec?.type !== 'text') return null
-  const box = createObject({ ...rec, minHeight: rec.minHeight ?? 0 }, () => undefined)
-  return box instanceof Textbox ? box : null
-}
-
 /**
- * The live position and scaled size of a dragged text, whichever renderer draws it (Fabric fires
- * object:moving before refreshing aCoords), its caption side and font size. Read only once the
+ * The live position and scaled size of a dragged text (Fabric fires object:moving before
+ * refreshing aCoords), its caption side and font size. Read only once the
  * text is known to be eligible and the images have been collected, as `findCaptionSnap` always did.
  */
 export interface SnapGeometry {
@@ -86,19 +77,6 @@ export function snapPreview(
     ...result, textId, frameId: image.frameId, bounds: image.bounds, size,
     box: { left: pos.left, top: pos.top, right: pos.left + size.width, bottom: pos.top + size.height },
   }
-}
-
-export function findCaptionSnap(text: Textbox, objects: readonly FabricObject[], zoom: number, previous: CaptionSnapPreview | null): CaptionSnapPreview | null {
-  const textId = idOf(text)
-  if (!textId || text.isEditing || isLocked(text) || text.angle % 360 !== 0 || text.text.trim() === '') return null
-  const geometry = (): SnapGeometry => ({
-    center: text.getCenterPoint(),
-    width: text.getScaledWidth(),
-    height: text.getScaledHeight(),
-    side: captionSideOf(text),
-    fontSize: text.fontSize,
-  })
-  return snapPreview(textId, geometry, objects, zoom, previous, () => makeSnapCaption(text))
 }
 
 export function drawCaptionSnap(ctx: CanvasRenderingContext2D, preview: CaptionSnapPreview, screen: (p: Point) => Point) {

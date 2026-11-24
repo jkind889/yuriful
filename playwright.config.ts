@@ -8,15 +8,10 @@ import { defineConfig, devices } from '@playwright/test'
  *   - default: Playwright's bundled Chromium  ->  `npm run test:e2e:install` once
  *   - PW_CHANNEL=msedge | chrome               ->  use a browser already installed on this machine
  *   - E2E_PORT=NNNN                            ->  dev-server port (default 5199)
- *   - E2E_RENDERER=fabric                      ->  every page that does not choose a renderer itself runs the
- *                                                  Fabric renderer, the test-only reference the paired tests
- *                                                  compare with (see e2e/fabric-renderer.vite.config.ts).
- *                                                  Its own dev server: never one already listening.
  */
 const port = Number(process.env.E2E_PORT ?? 5199)
 const baseURL = `http://127.0.0.1:${port}`
 const channel = process.env.PW_CHANNEL || undefined
-const fabricRenderer = process.env.E2E_RENDERER === 'fabric'
 
 export default defineConfig({
   testDir: './e2e',
@@ -38,10 +33,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort${fabricRenderer ? ' --config e2e/fabric-renderer.vite.config.ts' : ''}`,
+    command: `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort`,
     url: baseURL,
-    // A server already listening may not be the Fabric renderer's: with E2E_RENDERER=fabric, start one.
-    reuseExistingServer: !process.env.CI && !fabricRenderer,
+    reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },
 })

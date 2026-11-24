@@ -79,11 +79,7 @@ describe('proxy identity', () => {
 
   it('locks set the same flags as on a Fabric object', async () => {
     const p = createProxy(texts[1]!, getImage) as unknown as FakeObject & { hasControls: boolean }
-    const f = await fabricReference<boolean[]>('flags', texts[1], async () => {
-      const { createObject } = (await import(/* @vite-ignore */ './objects.ts' as string)) as { createObject: (rec: ObjectRecord, get: typeof getImage) => FakeObject }
-      const f = createObject(texts[1]!, getImage) as FakeObject & { hasControls: boolean }
-      return [f.evented, f.selectable, f.hasControls]
-    })
+    const f = await fabricReference<boolean[]>('flags', texts[1])
     expect(isLocked(p as never)).toBe(true)
     expect([p.evented, p.selectable, p.hasControls]).toEqual(f)
   })
@@ -97,10 +93,7 @@ describe('records round-trip through a proxy exactly', () => {
   it('every image field, crop and lock included; a crop that reaches outside the picture is clamped like a Fabric image', async () => {
     for (const rec of images) expect(toRecord(createProxy(rec, getImage)!)).toStrictEqual(rec)
     const outside: ImageRecord = { ...images[0]!, crop: { x: 150, y: 0, width: 100, height: 100 } }
-    expect(toRecord(createProxy(outside, getImage)!)).toStrictEqual(await fabricReference('clamped', outside, async () => {
-      const { createObject } = (await import(/* @vite-ignore */ './objects.ts' as string)) as { createObject: (rec: ObjectRecord, get: typeof getImage) => FakeObject }
-      return toRecord(createObject(outside, getImage) as never)
-    }))
+    expect(toRecord(createProxy(outside, getImage)!)).toStrictEqual(await fabricReference('clamped', outside))
   })
 
   it('every frame field', () => {
@@ -114,10 +107,7 @@ describe('records round-trip through a proxy exactly', () => {
       // Bold inside a heading line, a span font equal to the box font, the default colour, left alignment spelled out.
       { id: 'n1', type: 'text', left: 0, top: 0, angle: 0, text: 'Head\nbody', fontSize: 20, width: 200, headings: [1, 0], font: 'serif', color: '#1d2230', spans: [{ start: 0, end: 4, bold: true }, { start: 5, end: 9, font: 'serif' }] },
     ]
-    const fabric = await fabricReference<unknown[]>('records', odd, async () => {
-      const { createObject } = (await import(/* @vite-ignore */ './objects.ts' as string)) as { createObject: (rec: ObjectRecord, get: typeof getImage) => FakeObject }
-      return odd.map((rec) => toRecord(createObject(rec, getImage) as never))
-    })
+    const fabric = await fabricReference<unknown[]>('records', odd)
     odd.forEach((rec, i) => expect(toRecord(createProxy(rec, getImage)!), rec.id).toStrictEqual(fabric[i]))
   })
 
@@ -126,12 +116,7 @@ describe('records round-trip through a proxy exactly', () => {
     const p = createProxy(rec, getImage)!
     p.set({ scaleX: 1.5, scaleY: 1.5 })
     const a = toRecord(p) as TextRecord
-    const b = await fabricReference<TextRecord>('scaled', rec, async () => {
-      const { createObject } = (await import(/* @vite-ignore */ './objects.ts' as string)) as { createObject: (rec: ObjectRecord, get: typeof getImage) => FakeObject }
-      const f = createObject(rec, getImage)
-      f.set({ scaleX: 1.5, scaleY: 1.5 })
-      return toRecord(f as never) as TextRecord
-    })
+    const b = await fabricReference<TextRecord>('scaled', rec)
     expect([a.fontSize, a.width, a.minHeight]).toEqual([18, 120, 96.38])
     expect([a.fontSize, a.width, a.minHeight]).toEqual([b.fontSize, b.width, b.minHeight])
   })

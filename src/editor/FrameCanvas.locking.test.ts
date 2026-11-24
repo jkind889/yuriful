@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { LABEL_GAP } from '../model/frames.ts'
 import type { FrameRecord, ImageRecord } from '../model/types.ts'
 import { FrameCanvas } from './FrameCanvas.ts'
-import { createFrame, createObject, idOf, setLocked } from './objects.ts'
+import { createFrameProxy, createProxy, idOf, setLocked } from './objects.ts'
 import { ActiveSelection, Point } from './testing/fakeFabric.ts'
 import type { FakeObject } from './testing/fakeFabric.ts'
 
@@ -44,26 +44,26 @@ beforeEach(() => {
 
 describe('a locked object is never the target of a press', () => {
   it('a press on a locked image reaches the image beneath it, or nothing', () => {
-    add(createObject(image('small', 300, 200), () => el), createObject(image('big', 250, 150, 2, true), () => el))
+    add(createProxy(image('small', 300, 200), () => el), createProxy(image('big', 250, 150, 2, true), () => el))
     expect(targetAt(350, 250)).toBe('small')
     expect(targetAt(600, 500)).toBeUndefined() // only the locked image is there: the empty board
   })
 
   it('unlocking makes it a target again', () => {
-    const big = createObject(image('big', 250, 150, 2, true), () => el)!
-    add(createObject(image('small', 300, 200), () => el), big)
+    const big = createProxy(image('big', 250, 150, 2, true), () => el)!
+    add(createProxy(image('small', 300, 200), () => el), big)
     setLocked(big, false)
     expect(targetAt(350, 250)).toBe('big')
   })
 
   it('a locked frame’s label and outline are not grabbable, so content under them is hit', () => {
-    add(createFrame(frame('f', 100, 100, 400, 300, true)), createObject(image('img', 0, 0, 4), () => el))
+    add(createFrameProxy(frame('f', 100, 100, 400, 300, true)), createProxy(image('img', 0, 0, 4), () => el))
     expect(targetAt(104, 100 - LABEL_GAP - 3)).toBe('img') // label over image
     expect(targetAt(300, 100)).toBe('img') // top edge over image
   })
 
   it('a locked frame’s label is not hit on the empty board either', () => {
-    add(createFrame(frame('f', 100, 100, 400, 300, true)))
+    add(createFrameProxy(frame('f', 100, 100, 400, 300, true)))
     expect(targetAt(104, 100 - LABEL_GAP - 3)).toBeUndefined()
     expect(targetAt(300, 100)).toBeUndefined()
   })
@@ -72,10 +72,10 @@ describe('a locked object is never the target of a press', () => {
 describe('a marquee skips locked things', () => {
   it('takes the unlocked objects it touches, never a locked one, nor a locked frame it fully encloses', () => {
     add(
-      createFrame(frame('lf', 100, 100, 400, 300, true)),
-      createFrame(frame('f', 600, 100, 100, 100)),
-      createObject(image('img', 150, 150), () => el),
-      createObject(image('locked', 200, 200, 1, true), () => el),
+      createFrameProxy(frame('lf', 100, 100, 400, 300, true)),
+      createFrameProxy(frame('f', 600, 100, 100, 100)),
+      createProxy(image('img', 150, 150), () => el),
+      createProxy(image('locked', 200, 200, 1, true), () => el),
     )
     expect(collect(50, 50, 700, 400)).toEqual(['img', 'f'])
   })
@@ -86,8 +86,8 @@ describe('Shift-click and a locked selection', () => {
   const multi = (target?: unknown) => (canvas as unknown as { handleMultiSelection: (e: object, t?: unknown) => boolean }).handleMultiSelection(shift, target)
 
   it('does not add anything to a single locked selection (Fabric is never asked to group)', () => {
-    const locked = createObject(image('locked', 0, 0, 1, true), () => el)!
-    const other = createObject(image('other', 600, 400), () => el)!
+    const locked = createProxy(image('locked', 0, 0, 1, true), () => el)!
+    const other = createProxy(image('other', 600, 400), () => el)!
     add(locked, other)
     raw().setActiveObject(locked)
     raw().selection = true
@@ -96,8 +96,8 @@ describe('Shift-click and a locked selection', () => {
   })
 
   it('leaves an unlocked selection to Fabric as before', () => {
-    const a = createObject(image('a', 0, 0), () => el) as unknown as FakeObject
-    const b = createObject(image('b', 600, 400), () => el) as unknown as FakeObject
+    const a = createProxy(image('a', 0, 0), () => el) as unknown as FakeObject
+    const b = createProxy(image('b', 600, 400), () => el) as unknown as FakeObject
     add(a, b)
     raw().setActiveObject(a)
     raw().selection = true

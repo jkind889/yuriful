@@ -32,7 +32,7 @@ const pixel = screenPixel
 
 /**
  * RGBA of one pixel of Fabric's lower canvas, at a position given in canvas (CSS) pixels. Frame
- * outlines and labels are drawn there on either renderer (the scene layer draws only the paper),
+ * outlines and labels are drawn there (the scene layer draws only the paper),
  * so its alpha says how opaque the outline itself is, whatever lies beneath it.
  */
 function chromePixel(page: Page, x: number, y: number): Promise<[number, number, number, number]> {

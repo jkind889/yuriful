@@ -4,20 +4,19 @@ import { needsRichFence } from '../model/textDoc.ts'
 import type { BoardDoc, FrameRecord, ImageRecord, ObjectRecord, Scene, StoredAsset, TextRecord } from '../model/types.ts'
 import { Editor } from './Editor.ts'
 import type { EditorOptions } from './Editor.ts'
-import { FRAME_FILL, ProxyRect, idOf } from './objects.ts'
-import { DomTextAdapter, FabricTextAdapter } from './textAdapter.ts'
+import { ProxyRect, idOf } from './objects.ts'
+import { DomTextAdapter } from './textAdapter.ts'
 import { canvasOf, dragBy, press, release, scaleBy, tick } from './testing/drive.ts'
 import type { FakeObject } from './testing/fakeFabric.ts'
-import { FABRIC, FakeAssets, FakeCardMeasurer, SpyStore } from './testing/fakes.ts'
+import { FakeAssets, FakeCardMeasurer, SpyStore } from './testing/fakes.ts'
 import { fabricReference } from './testing/fabricReference.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
 /**
- * The text seam (`textAdapter.ts`) and the DOM renderer's static scene, driven through the real
- * editor on the fake Fabric. The default renderer must be exactly what it was: the Fabric text
- * path, no scene layer, no proxies, frames that paint their paper. The DOM renderer must load,
- * size, transform, format and save through proxies, writing only what the Fabric renderer reads
+ * The text seam (`textAdapter.ts`) and the static scene, driven through the real editor on the
+ * fake Fabric. The editor must load, size, transform, format and save through proxies, writing
+ * only what the Fabric renderer it replaced read (its frozen reference, `testing/fabricReference.ts`)
  * and writes the same way. The fake models state machines, not layout: card sizes come from
  * `FakeCardMeasurer`, and where things land on screen is proven in `e2e/interleaving.spec.ts`.
  */
@@ -38,7 +37,7 @@ class GrowingMeasurer extends FakeCardMeasurer {
 let host: HTMLDivElement
 const editors: Editor[] = []
 
-async function open(frames: FrameRecord[], objects: ObjectRecord[], options: EditorOptions = FABRIC) {
+async function open(frames: FrameRecord[], objects: ObjectRecord[], options: EditorOptions = { measurer: new FakeCardMeasurer() }) {
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Seam', frames, objects }
   const store = new SpyStore({ doc, assets: new Map([['a1', asset('a1')]]) })
   store.holdLoad = false
@@ -58,7 +57,7 @@ async function open(frames: FrameRecord[], objects: ObjectRecord[], options: Edi
   return { editor, store, canvas, obj, scene, rec, history, handlers, doc }
 }
 
-const dom = (measurer = new FakeCardMeasurer()): EditorOptions => ({ renderer: 'dom', measurer })
+const dom = (measurer = new FakeCardMeasurer()): EditorOptions => ({ measurer })
 const flush = () => vi.advanceTimersByTimeAsync(10_000)
 
 beforeEach(() => {
@@ -81,32 +80,12 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('the default renderer is the DOM one', () => {
-  it('an editor built without options draws through the scene layer and edits text with the DOM adapter', async () => {
-    const { editor, canvas } = await open([F('F', 0, 0)], [txt('t', 20, 20), img('i', 100, 100)], { measurer: new FakeCardMeasurer() })
+describe('the editor draws through the scene layer', () => {
+  it('an editor built without options draws through the scene layer and edits text with the text adapter', async () => {
+    const { editor, canvas } = await open([F('F', 0, 0)], [txt('t', 20, 20), img('i', 100, 100)], {})
     expect((editor as unknown as { text: unknown }).text).toBeInstanceOf(DomTextAdapter)
     expect(host.querySelector('.scene-layer')).not.toBeNull()
     expect(canvas.objects.every((o) => o instanceof ProxyRect)).toBe(true)
-  })
-})
-
-describe('the Fabric renderer, kept for tests, is untouched', () => {
-  it('uses the Fabric text path, builds no scene layer or proxy, binds no render listener, and frames paint their paper', async () => {
-    const { editor, canvas, obj, handlers } = await open([F('F', 0, 0)], [txt('t', 20, 20), img('i', 100, 100)])
-    expect((editor as unknown as { text: unknown }).text).toBeInstanceOf(FabricTextAdapter)
-    expect((editor as unknown as { scene: unknown }).scene).toBeNull()
-    expect(host.querySelector('.scene-layer')).toBeNull()
-    expect(handlers('before:render')).toBe(0)
-    expect(handlers('object:resizing')).toBe(1) // the editor's own feedback preview, as before
-    expect(canvas.objects.some((o) => o instanceof ProxyRect)).toBe(false)
-    expect((obj('F') as unknown as { fill: string }).fill).toBe(FRAME_FILL)
-    expect(host.style.isolation).toBe('')
-    expect(canvas.wrapperEl.style.zIndex).toBe('')
-  })
-
-  it('the four text handlers are the adapter`s, bound once', async () => {
-    const { handlers } = await open([], [txt('t', 20, 20)])
-    for (const name of ['text:editing:entered', 'text:changed', 'text:selection:changed', 'text:editing:exited']) expect(handlers(name), name).toBe(1)
   })
 })
 
@@ -208,7 +187,7 @@ describe('the DOM renderer, static (Slice 2c-i)', () => {
       out.push(store.saves.at(-1)?.doc.objects, store.saves.length)
       return out
     }
-    expect(await run(dom())).toEqual(await fabricReference('script', { records, steps }, () => run(FABRIC)))
+    expect(await run(dom())).toEqual(await fabricReference('script', { records, steps }))
   })
 
   it('a whole-box command that changes nothing records and saves nothing; a locked text or a read-only board takes none', async () => {
@@ -323,14 +302,7 @@ describe('the DOM renderer, static (Slice 2c-i)', () => {
     expect(saved.objects.filter((o) => 'blocks' in o || 'height' in o || 'surface' in o)).toEqual([])
     // Reopened on the Fabric renderer: the same scene. The reference holds the board Fabric was
     // given (what the DOM renderer saved when it was recorded) and the scene Fabric opened from it.
-    const fabric = await fabricReference('reopened', { records }, async () => {
-      const store = new SpyStore({ doc: saved, assets: new Map([['a1', asset('a1')]]) })
-      store.holdLoad = false
-      const editor = new Editor(host, store, new FakeAssets(), undefined, FABRIC)
-      editors.push(editor)
-      await editor.init()
-      return { given: saved, reopened: (editor as unknown as { snapshot: () => Scene }).snapshot() }
-    })
+    const fabric = await fabricReference<{ given: BoardDoc; reopened: Scene }>('reopened', { records })
     expect(fabric.reopened.frames).toEqual(fabric.given.frames)
     expect(fabric.reopened.objects).toEqual(fabric.given.objects)
     expect(saved.frames).toEqual(fabric.given.frames)

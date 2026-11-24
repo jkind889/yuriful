@@ -9,7 +9,7 @@ import type { CardMeasurer } from './sceneLayer.ts'
  * A frame's composition drawn into a bitmap, from the same DOM the scene layer shows (plan
  * Section 10): frame paper, then every object in `objects[]` order, images drawn directly
  * (with their crop) and text cards rasterized through an SVG `<foreignObject>`. The frame tour's
- * previews use it on the DOM renderer (`Editor.startFrameTour`).
+ * previews use it (`Editor.startFrameTour`).
  *
  * Supported in desktop Chromium. A browser that refuses to decode the SVG, or taints the
  * canvas with it, makes `renderFrameToCanvas` reject (or `toDataURL` throw a `SecurityError`):

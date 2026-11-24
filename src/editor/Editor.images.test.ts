@@ -4,11 +4,11 @@ import type { BoardDoc, FrameRecord, ImageRecord, ObjectRecord, StoredAsset, Tex
 import { CONFLICT_MESSAGE } from '../persistence/autosave.ts'
 import { BoardConflictError } from '../persistence/boardStore.ts'
 import { Editor } from './Editor.ts'
-import { idOf } from './objects.ts'
+import { idOf, imageDataOf } from './objects.ts'
 import { canvasOf, dragBy, press, release, tick } from './testing/drive.ts'
 import { ActiveSelection } from './testing/fakeFabric.ts'
 import type { Canvas, FakeObject } from './testing/fakeFabric.ts'
-import { FABRIC, FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
+import { FakeAssets, FakeCardMeasurer, SpyStore, deferred } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -39,6 +39,9 @@ const txt = (id: string, left: number, top: number): TextRecord => ({ type: 'tex
 const key = (k: string, init: KeyboardEventInit = {}) => new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...init })
 const png = () => new File([new Uint8Array([1, 2, 3])], 'drop.png', { type: 'image/png' })
 
+/** An image proxy's own fields with its picture data (where it is cropped in the original). */
+const pic = (o: FakeObject) => ({ ...o, ...imageDataOf(o as never) })
+
 let host: HTMLDivElement
 const editors: Editor[] = []
 const flush = () => vi.advanceTimersByTimeAsync(10_000)
@@ -46,7 +49,7 @@ const flush = () => vi.advanceTimersByTimeAsync(10_000)
 async function board(frames: FrameRecord[], objects: ObjectRecord[], opts: { load?: boolean } = {}) {
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Images', frames, objects }
   const store = new SpyStore(frames.length + objects.length > 0 ? { doc, assets: new Map([['a1', asset('a1')]]) } : null)
-  const editor = new Editor(host, store, new FakeAssets(), undefined, FABRIC)
+  const editor = new Editor(host, store, new FakeAssets(), undefined, { measurer: new FakeCardMeasurer() })
   editors.push(editor)
   const canvas = canvasOf(editor)
   if (opts.load !== false) {
@@ -134,7 +137,7 @@ describe('starting crop mode (M1, M11)', () => {
     b.editor.startCrop()
     expect(b.cropping()).toBe(true)
     // The kept pixels stay where they were: the original's (0, 0) moves back by the crop's corner.
-    expect(b.obj('P')).toMatchObject({ cropX: 0, cropY: 0, width: 200, height: 100, left: 80, top: 40, hasControls: false, hasBorders: false })
+    expect(pic(b.obj('P'))).toMatchObject({ cropX: 0, cropY: 0, width: 200, height: 100, left: 80, top: 40, hasControls: false, hasBorders: false })
     expect(b.canvas.skipTargetFind).toBe(true)
     expect(b.canvas.selection).toBe(false)
     // Still selected, so the inspector shows the crop panel.
@@ -246,7 +249,7 @@ describe('dragging and applying (M3, M5)', () => {
     dragCrop(b.canvas, [170, 80], [150, 80]) // ... and back
     b.editor.applyCrop()
     expect(b.rec('P')).toEqual(before)
-    expect(b.obj('P')).toMatchObject({ cropX: 20, cropY: 10, width: 100, height: 60, left: 100, top: 50 })
+    expect(pic(b.obj('P'))).toMatchObject({ cropX: 20, cropY: 10, width: 100, height: 60, left: 100, top: 50 })
     await flush()
     expect(b.canUndo()).toBe(false)
     expect(b.store.attempts).toHaveLength(0)
@@ -279,7 +282,7 @@ describe('dragging and applying (M3, M5)', () => {
     window.dispatchEvent(key('Escape'))
     expect(b.cropping()).toBe(false)
     expect(b.rec('P')).toEqual(before)
-    expect(b.obj('P')).toMatchObject({ cropX: 20, cropY: 10, width: 100, height: 60, left: 100, top: 50, hasControls: true })
+    expect(pic(b.obj('P'))).toMatchObject({ cropX: 20, cropY: 10, width: 100, height: 60, left: 100, top: 50, hasControls: true })
     b.editor.startCrop()
     dragCrop(b.canvas, [100, 50], [140, 70])
     b.editor.cancelCrop()
@@ -579,7 +582,7 @@ describe('interruptions (M9)', () => {
     expect(b.live().objects).toEqual([img('P', 100, 50, { crop: { x: 20, y: 10, width: 100, height: 60 } })])
     moveTo(150, 150) // the drag is gone
     up(150, 150)
-    expect(b.obj('P')).toMatchObject({ cropX: 20, cropY: 10, width: 100, height: 60, left: 100, top: 50 })
+    expect(pic(b.obj('P'))).toMatchObject({ cropX: 20, cropY: 10, width: 100, height: 60, left: 100, top: 50 })
     expect(b.store.saves).toHaveLength(0)
     expect(b.canUndo()).toBe(false)
   })
@@ -834,7 +837,7 @@ describe('reload', () => {
     const saved = first.store.saves.at(-1)!.doc
     const again = await board(saved.frames, saved.objects)
     expect(again.rec('P')).toEqual(img('P', 130, 70, { crop: { x: 30, y: 20, width: 170, height: 80 } }))
-    expect(again.obj('P')).toMatchObject({ cropX: 30, cropY: 20, width: 170, height: 80, left: 130, top: 70 })
+    expect(pic(again.obj('P'))).toMatchObject({ cropX: 30, cropY: 20, width: 170, height: 80, left: 130, top: 70 })
     await flush()
     expect(again.store.attempts).toHaveLength(0) // loading never rewrites
   })

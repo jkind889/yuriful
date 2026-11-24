@@ -8,8 +8,9 @@ import type { LayerItem } from './Editor.ts'
 import { idOf } from './objects.ts'
 import { canvasOf, dragBy, press, release, tick } from './testing/drive.ts'
 import { ActiveSelection } from './testing/fakeFabric.ts'
-import type { FakeObject, Textbox } from './testing/fakeFabric.ts'
-import { FABRIC, FakeAssets, SpyStore } from './testing/fakes.ts'
+import type { FakeObject } from './testing/fakeFabric.ts'
+import { FakeAssets, FakeCardMeasurer, SpyStore, stubTextLayout } from './testing/fakes.ts'
+import { boardCanUndo, editedObject, replaceText, startEditing, textAdapterOf } from './testing/editing.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -57,7 +58,7 @@ const ASSETS = new Map([
 function make(frames: FrameRecord[], objects: ObjectRecord[]) {
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Layers', frames, objects }
   const store = new SpyStore(frames.length + objects.length > 0 ? { doc, assets: ASSETS } : null)
-  const editor = new Editor(host, store, new FakeAssets(), undefined, FABRIC)
+  const editor = new Editor(host, store, new FakeAssets(), undefined, { measurer: new FakeCardMeasurer() })
   editors.push(editor)
   return { editor, store, canvas: canvasOf(editor) }
 }
@@ -88,7 +89,9 @@ function helpers({ editor, store, canvas }: ReturnType<typeof make>) {
   return { editor, store, canvas, obj, doc, layers, ids, selectedIds, activeIds, owners, select }
 }
 
+let restoreLayout = () => {}
 beforeEach(() => {
+  restoreLayout = stubTextLayout()
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   vi.stubGlobal(
     'ResizeObserver',
@@ -101,6 +104,7 @@ beforeEach(() => {
   document.body.appendChild(host)
 })
 afterEach(() => {
+  restoreLayout()
   editors.splice(0).forEach((e) => e.dispose())
   host.remove()
   vi.unstubAllGlobals()
@@ -187,10 +191,9 @@ describe('the layer list', () => {
     const b = await board(FRAMES, OBJECTS)
     b.editor.addText()
     expect(b.ids()).toEqual(['i2', 't1', 'i1', 'B', 'A']) // the new, blank text is not in the scene
-    const tb = b.canvas.getActiveObject() as Textbox
-    tb.type('Hello\n  world')
+    replaceText(b.editor, 'Hello\n  world')
     expect(b.layers()[0]).toMatchObject({ kind: 'text', label: 'Hello world', selected: true })
-    tb.exitEditing()
+    textAdapterOf(b.editor).finishEditing()
     await tick()
     expect(b.layers()[0]).toMatchObject({ kind: 'text', label: 'Hello world', selected: true })
   })
@@ -198,22 +201,22 @@ describe('the layer list', () => {
   it('follows typing: the label changes as it is typed, an emptied text leaves the list and comes back; history only when the edit ends', async () => {
     const b = await board(FRAMES, OBJECTS)
     b.select('t1')
-    const tb = b.obj('t1') as Textbox
-    tb.enterEditing()
+    const tb = b.obj('t1') as FakeObject
+    startEditing(b.editor, tb)
     const before = b.layers()
-    tb.type('hello')
+    replaceText(b.editor, 'hello')
     expect(b.layers().find((l) => l.id === 't1')).toMatchObject({ label: 'hello', selected: true })
     expect(b.layers()).not.toBe(before)
-    tb.type('')
+    replaceText(b.editor, '')
     expect(b.ids()).toEqual(['i2', 'i1', 'B', 'A']) // blank right now: not part of the scene, so not listed (no stale row to click)
-    tb.type('hello again')
+    replaceText(b.editor, 'hello again')
     expect(b.ids()).toEqual(['i2', 't1', 'i1', 'B', 'A'])
     expect(b.layers().find((l) => l.id === 't1')).toMatchObject({ label: 'hello again', selected: true })
     const same = b.layers()
-    tb.type('hello again') // nothing in the list changed: the same array
+    replaceText(b.editor, 'hello again') // nothing in the list changed: the same array
     expect(b.layers()).toBe(same)
-    expect(b.editor.getState().canUndo).toBe(false) // typing records no history
-    tb.exitEditing()
+    expect(boardCanUndo(b.editor)).toBe(false) // typing records no history
+    textAdapterOf(b.editor).finishEditing()
     await tick()
     expect(b.editor.getState().canUndo).toBe(true)
     b.editor.undo() // one step takes the whole edit back
@@ -291,10 +294,10 @@ describe('selecting from the layer list', () => {
     b.editor.selectLayer('nope', { toggle: true })
     expect(b.activeIds()).toEqual(['i1'])
     b.editor.addText()
-    const tb = b.canvas.getActiveObject() as Textbox
-    tb.type('still typing')
+    const tb = b.canvas.getActiveObject() as FakeObject
+    replaceText(b.editor, 'still typing')
     b.editor.selectLayer('nope')
-    expect(tb.isEditing).toBe(true)
+    expect((editedObject(b.editor) === tb)).toBe(true)
   })
 
   it('is inert before the stored board has loaded', async () => {
@@ -384,10 +387,10 @@ describe('leaving a text edit by selecting from the list', () => {
   it('a typed new text is committed as one history step; the clicked row ends up selected', async () => {
     const b = await board(FRAMES, OBJECTS)
     b.editor.addText()
-    const tb = b.canvas.getActiveObject() as Textbox
-    tb.type('fresh note')
+    const tb = b.canvas.getActiveObject() as FakeObject
+    replaceText(b.editor, 'fresh note')
     b.editor.selectLayer('i1')
-    expect(tb.isEditing).toBe(false)
+    expect((editedObject(b.editor) === tb)).toBe(false)
     expect(b.activeIds()).toEqual(['i1'])
     expect(b.layers()[0]).toMatchObject({ kind: 'text', label: 'fresh note', selected: false })
     expect(b.selectedIds()).toEqual(['i1'])
@@ -400,7 +403,7 @@ describe('leaving a text edit by selecting from the list', () => {
   it('a blank new text is discarded and never listed; the clicked row ends up selected', async () => {
     const b = await board(FRAMES, OBJECTS)
     b.editor.addText()
-    const tb = b.canvas.getActiveObject() as Textbox
+    const tb = b.canvas.getActiveObject() as FakeObject
     b.editor.selectLayer('B')
     await tick() // the blank text is taken off the canvas after the canvas has left the edit
     expect(b.canvas.objects).not.toContain(tb)
@@ -414,11 +417,11 @@ describe('leaving a text edit by selecting from the list', () => {
   it('clicking the row of the text being edited ends the edit and records it, keeping that text selected', async () => {
     const b = await board(FRAMES, OBJECTS)
     b.select('t1')
-    const tb = b.obj('t1') as Textbox
-    tb.enterEditing()
-    tb.type('t1 retyped')
+    const tb = b.obj('t1') as FakeObject
+    startEditing(b.editor, tb)
+    replaceText(b.editor, 't1 retyped')
     b.editor.selectLayer('t1')
-    expect(tb.isEditing).toBe(false)
+    expect((editedObject(b.editor) === tb)).toBe(false)
     expect(b.editor.getState().editingText).toBe(false)
     expect(b.activeIds()).toEqual(['t1'])
     expect(b.layers().find((l) => l.id === 't1')).toMatchObject({ label: 't1 retyped', selected: true })
@@ -428,11 +431,11 @@ describe('leaving a text edit by selecting from the list', () => {
   it('toggle while a text is being edited commits it and adds the row to it', async () => {
     const b = await board(FRAMES, OBJECTS)
     b.select('t1')
-    const tb = b.obj('t1') as Textbox
-    tb.enterEditing()
-    tb.type('t1 edited')
+    const tb = b.obj('t1') as FakeObject
+    startEditing(b.editor, tb)
+    replaceText(b.editor, 't1 edited')
     b.editor.selectLayer('i1', { toggle: true })
-    expect(tb.isEditing).toBe(false)
+    expect((editedObject(b.editor) === tb)).toBe(false)
     expect(b.activeIds()).toEqual(['i1', 't1']) // canvas z-order, back to front
     expect(b.selectedIds().sort()).toEqual(['i1', 't1'])
     expect(b.layers().find((l) => l.id === 't1')!.label).toBe('t1 edited')
@@ -443,7 +446,7 @@ describe('leaving a text edit by selecting from the list', () => {
   it('toggle while a blank new text is being edited leaves it out of the selection', async () => {
     const b = await board(FRAMES, OBJECTS)
     b.editor.addText()
-    const tb = b.canvas.getActiveObject() as Textbox
+    const tb = b.canvas.getActiveObject() as FakeObject
     b.editor.selectLayer('i1', { toggle: true })
     // Straight away, before the deferred removal of the blank text could tidy the selection up.
     expect(b.activeIds()).toEqual(['i1'])
@@ -565,14 +568,14 @@ describe('moving a layer relative to another row', () => {
   it('leaves an edit open for a no-op and commits typed text separately before a valid drop', async () => {
     const b = await board(FRAMES, OBJECTS)
     b.select('t1')
-    const text = b.obj('t1') as Textbox
-    text.enterEditing()
-    text.type('edited text')
+    const text = b.obj('t1') as FakeObject
+    startEditing(b.editor, text)
+    replaceText(b.editor, 'edited text')
     b.editor.moveLayer('i1', 't1', 'after')
-    expect(text.isEditing).toBe(true)
+    expect((editedObject(b.editor) === text)).toBe(true)
 
     b.editor.moveLayer('i1', 't1', 'before')
-    expect(text.isEditing).toBe(false)
+    expect((editedObject(b.editor) === text)).toBe(false)
     expect(b.selectedIds()).toEqual(['t1'])
     expect(b.ids()).toEqual(['i2', 'i1', 't1', 'B', 'A'])
     b.editor.undo()

@@ -256,7 +256,7 @@ function wrapTabs(block: Element) {
 /**
  * A word of one line as laid out: its width and, once it has been needed (a word wider than a
  * drawn box), each grapheme as Fabric measures it: its own width and its width after the
- * grapheme before it (kerning included), as `DrawnTextbox` fills a line.
+ * grapheme before it (kerning included), as the Fabric renderer's drawn box (`DrawnTextbox`, deleted with it) filled a line.
  */
 export interface MeasuredToken {
   start: number
@@ -600,7 +600,7 @@ function fabricFont(block: PMNode, offset: number, font: FontId, fontSize: numbe
   return { measure: `${style} ${weight} ${CACHE_FONT_SIZE}px ${family}`, decl: `${style} ${weight} ${size}px ${family}`, size }
 }
 
-/** The graphemes of `[start, end)` of a line as `DrawnTextbox` measures them; undefined without a 2D canvas. */
+/** The graphemes of `[start, end)` of a line as the Fabric renderer's drawn box measured them; undefined without a 2D canvas. */
 function fabricGraphemes(block: PMNode, start: number, end: number, font: FontId, fontSize: number, doc: Document): MeasuredToken['graphemes'] {
   const text = block.textContent
   const out: NonNullable<MeasuredToken['graphemes']> = []
@@ -626,7 +626,7 @@ function fabricGraphemes(block: PMNode, start: number, end: number, font: FontId
 
 // ---- drawn boxes: breakable words kept whole -------------------------------------------------
 //
-// Fabric's drawn box (DrawnTextbox `_wrapText`) fills a line grapheme by grapheme while the
+// A drawn box wraps as the Fabric renderer's `DrawnTextbox` (`_wrapText`) did: it fills a line grapheme by grapheme while the
 // line, its spaces included, is no wider than the box. A line that must end there goes back to
 // its last space; only a line with no space in it is cut at a grapheme. So a word moves whole to
 // the next line unless it is wider than the box on its own; such a word always starts a line of

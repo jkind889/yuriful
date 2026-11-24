@@ -2,21 +2,20 @@ import { expect, test } from '@playwright/test'
 import type { Browser, Page } from '@playwright/test'
 import type { FeedbackSnapshot } from '../src/editor/feedbackLayer.ts'
 import { fabricReference } from './fabricReference.ts'
-import { chooseRenderer, openApp, openBlank, seedRaw } from './helpers.ts'
+import { openApp, openBlank, seedRaw } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredFrame, StoredObject } from './helpers.ts'
 
 /**
- * The DOM renderer's frame previews and drag lift against the Fabric renderer's, in Chromium (plan
- * Slice 2c-iii): the same seeded board and the same actions on both renderers, compared by the
- * pixels each one shows. Each page names its renderer as in `e2e/interleaving.spec.ts`
- * (`chooseRenderer`, before the app mounts); a probe on the app's own editor
+ * The frame previews and drag lift against the Fabric renderer's, in Chromium (plan Slice 2c-iii):
+ * the same seeded board and the same actions, compared by the pixels each shows, the Fabric
+ * renderer's through its frozen reference (`fabricReference.ts`, recorded by running it before it
+ * was deleted). A probe on the app's own editor
  * (route-only, as `feel-helpers.ts`) reads proxies, handles, feedback and previews.
  */
 
 type Corner = { x: number; y: number }
 
 interface PreviewProbe {
-  renderer: () => 'dom' | 'fabric'
   /** An object's four corners (tl, tr, br, bl) in page pixels. */
   proxy: (id: string) => Corner[] | null
   /** Fabric's handle positions of the active object, in page pixels. */
@@ -33,7 +32,6 @@ interface PreviewProbe {
 declare global {
   interface Window {
     __preview: PreviewProbe
-    __YURIFUL_RENDERER__?: string
   }
 }
 
@@ -56,7 +54,6 @@ async function installProbe(page: Page) {
           return { x: r.left + v[0] * sx + v[2] * sy + v[4], y: r.top + v[1] * sx + v[3] * sy + v[5] }
         }
         window.__preview = {
-          renderer: () => (ed.scene ? 'dom' : 'fabric'),
           proxy: (id) => {
             const o = find(id)
             if (!o) return null
@@ -106,22 +103,20 @@ const frames = (page: Page, n = 2) =>
     for (let i = 0; i < n; i++) await new Promise<number>((resolve) => requestAnimationFrame(resolve))
   }, n)
 
-/** Seeds a board and opens the app on it with the given renderer, in a context of its own. */
-async function open(browser: Browser, renderer: 'dom' | 'fabric', doc: StoredBoard, assets: SeedAsset[]) {
+/** Seeds a board and opens the app on it, in a context of its own. */
+async function open(browser: Browser, doc: StoredBoard, assets: SeedAsset[]) {
   const context = await browser.newContext()
   const page = await context.newPage()
   const errors = errorsOf(page)
   await openBlank(page)
   await seedRaw(page, doc.frames?.length ? 2 : 1, doc as unknown as Record<string, unknown>, assets)
-  await chooseRenderer(page, renderer)
   await installProbe(page)
   await openApp(page)
-  expect(await page.evaluate(() => window.__preview.renderer())).toBe(renderer)
   await frames(page, 2)
   return {
     page,
     close: async () => {
-      expect(errors, renderer).toEqual([])
+      expect(errors).toEqual([])
       await context.close()
     },
   }
@@ -161,8 +156,8 @@ test.describe('a text narrowed with a side handle stays in its frame\'s preview 
   const text = (patch: Partial<StoredObject>): StoredObject => ({ type: 'text', id: 'T', left: 100, top: 120, angle: 0, text: WORDS, fontSize: 32, width: 760, font: 'mono', ...patch }) // its right handle clear of the inspector
 
   /** Narrows T from its right side handle (towards its left one) as far as it goes, then renders the frame's preview and counts its ink. */
-  async function narrowedInk(browser: Browser, renderer: 'dom' | 'fabric', doc: StoredBoard, frameId: string) {
-    const { page, close } = await open(browser, renderer, doc, [])
+  async function narrowedInk(browser: Browser, doc: StoredBoard, frameId: string) {
+    const { page, close } = await open(browser, doc, [])
     await page.evaluate(() => window.__preview.select('T'))
     await frames(page, 2)
     const c = (await page.evaluate(() => window.__preview.controls()))!
@@ -194,9 +189,8 @@ test.describe('a text narrowed with a side handle stays in its frame\'s preview 
   ]
   for (const c of cases) {
     test(`${c.name}: the preview shows its ink in the frame as the Fabric preview does`, async ({ browser }) => {
-      test.slow() // two boards, one per renderer
-      const fabric = await fabricReference(browser, 'ink', c, () => narrowedInk(browser, 'fabric', c.doc, c.frameId))
-      const dom = await narrowedInk(browser, 'dom', c.doc, c.frameId)
+      const fabric = fabricReference<number>('ink', c)
+      const dom = await narrowedInk(browser, c.doc, c.frameId)
       console.log(`narrowed text, ${c.name}: ink pixels in the frame's preview fabric ${fabric}, dom ${dom}`)
       expect(fabric, 'the Fabric preview shows the text in the frame').toBeGreaterThan(500)
       expect(Math.abs(dom - fabric), `dom ${dom}, fabric ${fabric}`).toBeLessThanOrEqual(Math.max(30, fabric * 0.03))
@@ -227,8 +221,8 @@ test.describe('the lifted look casts the canvas\'s shadow at every scale', () =>
   }
 
   /** Drags each image in turn and holds it; the screen around it and its corners, in clip pixels. */
-  async function shots(browser: Browser, renderer: 'dom' | 'fabric', doc: StoredBoard, clips?: Array<{ x: number; y: number; width: number; height: number }>) {
-    const { page, close } = await open(browser, renderer, doc, ASSETS)
+  async function shots(browser: Browser, doc: StoredBoard, clips?: Array<{ x: number; y: number; width: number; height: number }>) {
+    const { page, close } = await open(browser, doc, ASSETS)
     const out: Array<{ png: string; clip: { x: number; y: number; width: number; height: number }; corners: Corner[]; lifted: string[] }> = []
     for (const [i, rec] of doc.objects.entries()) {
       await page.evaluate((id) => window.__preview.centre(id), rec.id)
@@ -295,14 +289,9 @@ test.describe('the lifted look casts the canvas\'s shadow at every scale', () =>
   for (const zoom of [1, 1.5]) {
     for (const scale of [0.5, 2.5, 6]) {
       test(`scale ${scale} at ${zoom * 100}%: uncropped and cropped, upright and turned`, async ({ browser }) => {
-        test.slow() // two boards, four drags each
         const doc = board([PAPER], imagesAt(scale), { zoom, panX: 0, panY: 0 })
-        const fabric = await fabricReference(browser, 'shots', { doc, assets: ASSETS }, async () => {
-          const run = await shots(browser, 'fabric', doc)
-          await run.close()
-          return { out: run.out.map(({ png, clip, corners }) => ({ png, clip, corners })) }
-        })
-        const dom = await shots(browser, 'dom', doc, fabric.out.map((s) => s.clip))
+        const fabric = fabricReference<{ out: Array<{ png: string; clip: { x: number; y: number; width: number; height: number }; corners: Corner[] }> }>('shots', { doc, assets: ASSETS })
+        const dom = await shots(browser, doc, fabric.out.map((s) => s.clip))
         const report: string[] = []
         for (const [i, rec] of doc.objects.entries()) {
           const r = await compare(dom.page, fabric.out[i]!.png, dom.out[i]!.png, fabric.out[i]!.corners)

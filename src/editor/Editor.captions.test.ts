@@ -5,8 +5,10 @@ import { BoardConflictError } from '../persistence/boardStore.ts'
 import { Editor } from './Editor.ts'
 import { captionOf, idOf, setCaption } from './objects.ts'
 import { canvasOf, dragBy, press, release, tick } from './testing/drive.ts'
-import { FABRIC, FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
-import { ActiveSelection, Textbox } from './testing/fakeFabric.ts'
+import { FakeAssets, FakeCardMeasurer, SpyStore, deferred, stubTextLayout } from './testing/fakes.ts'
+import { ActiveSelection } from './testing/fakeFabric.ts'
+import type { FakeObject } from './testing/fakeFabric.ts'
+import { editSession, editedObject, replaceText, textAdapterOf } from './testing/editing.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -18,11 +20,14 @@ const makeKey = (key: string, patch: KeyboardEventInit = {}) => new KeyboardEven
 const durable = () => vi.advanceTimersByTimeAsync(1000)
 const editors: Editor[] = []
 
+let restoreLayout = () => {}
 beforeEach(() => {
+  restoreLayout = stubTextLayout()
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   vi.stubGlobal('ResizeObserver', class { observe() {}; disconnect() {} })
 })
 afterEach(() => {
+  restoreLayout()
   editors.splice(0).forEach((editor) => editor.dispose())
   document.body.replaceChildren()
   vi.unstubAllGlobals()
@@ -38,7 +43,7 @@ async function board(objects: ObjectRecord[] = [image, caption, text], holdLoad 
   const host = document.createElement('div')
   document.body.append(host)
   const assets = new FakeAssets()
-  const editor = new Editor(host, store, assets, undefined, FABRIC)
+  const editor = new Editor(host, store, assets, undefined, { measurer: new FakeCardMeasurer() })
   editors.push(editor)
   const pending = editor.init()
   if (!holdLoad) await pending
@@ -63,15 +68,15 @@ it('creates immediately above the image, saves typing with the image owner, and 
   b.select('image')
   expect(b.enter({ repeat: true })).toBe(false)
   expect(b.enter()).toBe(true)
-  const editing = b.canvas.getActiveObject() as Textbox
-  expect(editing.isEditing).toBe(true)
+  const editing = b.canvas.getActiveObject() as FakeObject
+  expect(editedObject(b.editor)).toBe(editing)
   expect(b.scene()).toEqual([image, text])
-  editing.type('The cover 🎵')
+  replaceText(b.editor, 'The cover 🎵')
   const made = { ...caption, id: idOf(editing as never), text: 'The cover 🎵' }
   await durable()
   expect(b.store.saves.at(-1)?.doc.objects).toEqual([image, made, text])
-  expect(b.editor.getState().canUndo).toBe(false)
-  editing.exitEditing()
+  expect((b.editor as unknown as { history: { canUndo: boolean } }).history.canUndo).toBe(false) // history is recorded when the edit ends
+  textAdapterOf(b.editor).finishEditing()
   expect(b.scene()).toEqual([image, made, text])
   b.editor.undo()
   expect(b.scene()).toEqual([image, text])
@@ -79,9 +84,8 @@ it('creates immediately above the image, saves typing with the image owner, and 
   expect(b.scene()).toEqual([image, made, text])
   b.select('image')
   expect(b.enter()).toBe(true)
-  const reopened = b.canvas.getActiveObject() as Textbox
-  expect(reopened.selectionStart).toBe(reopened.graphemeSplit(reopened.text).length)
-  expect(reopened.selectionEnd).toBe(reopened.selectionStart)
+  expect(editedObject(b.editor)).toBe(b.canvas.getActiveObject())
+  expect(editSession(b.editor).selection()).toMatchObject({ anchor: 'The cover 🎵'.length, head: 'The cover 🎵'.length })
 })
 
 it('discards a blank caption, does not claim Enter while editing, and gives crop Enter priority', async () => {
@@ -93,7 +97,7 @@ it('discards a blank caption, does not claim Enter while editing, and gives crop
   expect(b.editor.getState().editingText).toBe(false)
   expect(b.enter()).toBe(true)
   expect(b.enter()).toBe(false)
-  ;(b.canvas.getActiveObject() as Textbox).exitEditing()
+  textAdapterOf(b.editor).finishEditing()
   await tick()
   expect(b.scene()).toEqual([image, text])
   expect(b.canvas.getObjects()).toHaveLength(3) // frame plus the two existing objects
@@ -108,7 +112,7 @@ it('leaves a canonical board untouched on an unchanged edit, before and after re
   expect(first.enter()).toBe(true)
   first.editor.setFontSize(24)
   const move = vi.spyOn(first.find('caption'), 'setXY')
-  ;(first.canvas.getActiveObject() as Textbox).exitEditing()
+  textAdapterOf(first.editor).finishEditing()
   await durable()
   expect(first.scene()).toEqual([image, caption, text])
   expect(move).not.toHaveBeenCalled()
@@ -118,7 +122,7 @@ it('leaves a canonical board untouched on an unchanged edit, before and after re
   const second = await board(first.scene())
   second.select('image')
   second.enter()
-  ;(second.canvas.getActiveObject() as Textbox).exitEditing()
+  textAdapterOf(second.editor).finishEditing()
   await durable()
   expect(second.scene()).toEqual([image, caption, text])
   expect(second.store.attempts).toHaveLength(0)
@@ -151,7 +155,7 @@ it('commits the edit before detaching and keeps the attachment through the first
   const b = await board()
   b.select('image')
   b.enter()
-  ;(b.canvas.getActiveObject() as Textbox).type('Edited')
+  replaceText(b.editor, 'Edited')
   b.editor.detachCaption()
   expect(b.scene()[1]).toMatchObject({ text: 'Edited' })
   expect(b.scene()[1]).not.toHaveProperty('captionOf')
@@ -272,7 +276,7 @@ it('only the first caption can claim an image at commit, and a broken attachment
   setCaption(b.find('text') as never, 'image', 'right')
   b.select('image')
   b.enter()
-  ;(b.canvas.getActiveObject() as Textbox).exitEditing()
+  textAdapterOf(b.editor).finishEditing()
   expect(b.scene()).toEqual([image, caption, text])
   setCaption(b.find('caption') as never, 'missing', 'top')
   b.select('text')

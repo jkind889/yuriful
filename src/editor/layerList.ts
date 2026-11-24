@@ -54,7 +54,7 @@ export function computeLayers(
       frames.push({ id, kind: 'frame', label: frameNameOf(o) || 'Frame', selected: selected.has(o), frameName: null, locked: isLocked(o) })
       continue
     }
-    // A text on either renderer: a Fabric text box, or a text proxy's card.
+    // A text: its proxy's card.
     const text = plainTextOf(o)
     if (text !== undefined && text.trim() === '') continue
     const owner = ownerOf(o)

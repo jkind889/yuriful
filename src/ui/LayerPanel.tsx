@@ -27,12 +27,12 @@ interface Drop {
 
 /**
  * A field in the chrome that keeps keystrokes for itself (the font size, a frame name, the
- * board title). Fabric's hidden textarea (in the document body, marked `data-fabric`) is
- * not one: leaving a text edit is the editor's job.
+ * board title). The edited text (inside the canvas host) is not one: leaving a text edit is the
+ * editor's job.
  */
 function focusedChromeField(): HTMLElement | null {
   const el = document.activeElement
-  if (!(el instanceof HTMLElement) || el.closest('[data-fabric], .canvas-host')) return null
+  if (!(el instanceof HTMLElement) || el.closest('.canvas-host')) return null
   return el.matches('input, textarea, select') || el.isContentEditable ? el : null
 }
 

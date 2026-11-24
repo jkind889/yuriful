@@ -30,10 +30,12 @@ export class FakeObject {
   scaleY = 1
   width = 0
   height = 0
-  isEditing = false
   visible = true
   evented = true
   selectable = true
+  /** Fabric's defaults: an object shows its handles and its border when selected. */
+  hasControls = true
+  hasBorders = true
   lockRotation = false
   group: unknown = null
   canvas: Canvas | null = null
@@ -110,98 +112,6 @@ export class FakeObject {
   setPositionByOrigin(pos: { x: number; y: number }, originX: Origin, originY: Origin) {
     this.left = pos.x - originFactor(originX) * this.width * this.scaleX
     this.top = pos.y - originFactor(originY) * this.height * this.scaleY
-  }
-}
-
-export class Textbox extends FakeObject {
-  text: string
-  dynamicMinWidth = 0
-  fontSize = 24
-  /** Like Fabric: a text that is not editable never enters editing. */
-  editable = true
-  fontFamily = 'Times New Roman'
-  textAlign = 'left'
-  fill: unknown = 'rgb(0,0,0)'
-  /** Fabric's per-character styles: paragraph index -> grapheme index -> style. Never shifted by the fake. */
-  styles: Record<number, Record<number, Record<string, unknown>>> = {}
-  constructor(text: string, opts: Record<string, unknown> = {}) {
-    super(opts)
-    Object.assign(this, opts) // field initializers above ran after super(): apply the options again
-    this.text = text
-    this.initDimensions()
-  }
-  initDimensions() {
-    this.height = this.fontSize * 1.25
-  }
-  /** Same splitter as Fabric's (an Intl.Segmenter by grapheme). */
-  graphemeSplit(value: string): string[] {
-    return Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(value), (s) => s.segment)
-  }
-  /** The point named by an origin pair (the fake has no rotation). */
-  getPositionByOrigin(originX: Origin, originY: Origin) {
-    return this.translateToOriginPoint(this.getCenterPoint(), originX, originY)
-  }
-  private textBeforeEdit = ''
-  enterEditing() {
-    if (this.isEditing || !this.editable) return
-    this.isEditing = true
-    this.textBeforeEdit = this.text
-    this.canvas?.fire('text:editing:entered', { target: this })
-  }
-  /** Same order as Fabric: the exit event first, then `object:modified` if the text changed. */
-  exitEditing() {
-    if (!this.isEditing) return
-    this.isEditing = false
-    const changed = this.textBeforeEdit !== this.text
-    this.canvas?.fire('text:editing:exited', { target: this })
-    if (changed) this.canvas?.fire('object:modified', { target: this })
-  }
-  /** Fabric's caret, in graphemes with one per line break; absent unless a test sets it. */
-  selectionStart?: number
-  selectionEnd?: number
-  /** Fabric's hidden editing textarea; null unless a test installs one. */
-  hiddenTextarea: HTMLTextAreaElement | null = null
-  /** True between Fabric's compositionstart and compositionend (a test sets it). */
-  inCompositionMode = false
-  /** Like Fabric: copies the grapheme selection onto the hidden textarea as UTF-16 offsets (unless composing). */
-  _updateTextarea() {
-    const ta = this.hiddenTextarea
-    if (!ta || this.inCompositionMode) return
-    const graphemes = this.text.split('\n').flatMap((line, i) => (i === 0 ? this.graphemeSplit(line) : ['\n', ...this.graphemeSplit(line)]))
-    const at = (g: number | undefined) => graphemes.slice(0, g ?? 0).join('').length
-    ta.selectionStart = at(this.selectionStart)
-    ta.selectionEnd = at(this.selectionEnd)
-  }
-  /** Test helper: what typing does (optionally leaving the caret at grapheme `caret`). */
-  type(text: string, caret?: number) {
-    this.text = text
-    if (caret !== undefined) this.selectionStart = this.selectionEnd = caret
-    this.canvas?.fire('text:changed', { target: this })
-  }
-}
-
-export class FabricImage extends FakeObject {
-  cropX = 0
-  cropY = 0
-  hasControls = true
-  hasBorders = true
-  private natural: { width: number; height: number }
-  /** Like Fabric: a new element, shown at its own size. */
-  setElement(el: { naturalWidth?: number; naturalHeight?: number }) {
-    this.natural = { width: el.naturalWidth ?? 100, height: el.naturalHeight ?? 100 }
-    this.width = this.natural.width
-    this.height = this.natural.height
-  }
-  constructor(el: { naturalWidth?: number; naturalHeight?: number }, opts: Record<string, unknown> = {}) {
-    super(opts)
-    Object.assign(this, opts) // field initializers above ran after super(): apply the options again
-    this.natural = { width: el.naturalWidth ?? 100, height: el.naturalHeight ?? 100 }
-    // Like Fabric: an explicit width/height (a crop) wins over the element's size.
-    this.width = (opts.width as number | undefined) || this.natural.width
-    this.height = (opts.height as number | undefined) || this.natural.height
-  }
-  getOriginalSize() {
-    return { ...this.natural }
   }
 }
 
@@ -300,7 +210,6 @@ export class Canvas {
   discardActiveObject() {
     this.calls.push('discardActiveObject')
     const had = this.active
-    if (had instanceof Textbox && had.isEditing) had.exitEditing()
     this.active = null
     if (had) this.fire('selection:cleared', {})
     return true
@@ -337,7 +246,7 @@ export class Canvas {
   requestRenderAll() {}
   /**
    * What Fabric does on the animation frame after `requestRenderAll`, reduced to the event the
-   * DOM renderer follows: `before:render` with the main context. Only tests call it (the fake
+   * scene layer follows: `before:render` with the main context. Only tests call it (the fake
    * never renders by itself, and draws nothing, so `after:render` is left to the tests that
    * install a recording context).
    */
@@ -409,7 +318,7 @@ export class Canvas {
   }
 }
 
-/** The one control factory the DOM renderer's text proxies use (the fake has no controls of its own). */
+/** The one control factory the text proxies use (the fake has no controls of its own). */
 export const controlsUtils = {
   createTextboxDefaultControls: () => ({}),
 }

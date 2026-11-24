@@ -1,5 +1,5 @@
 import { ActiveSelection, Point as FabricPoint } from 'fabric'
-import type { FabricImage, FabricObject, Transform } from 'fabric'
+import type { FabricObject, Transform } from 'fabric'
 import { boardAppearance, boardStyle, DEFAULT_BOARD_STYLE, normalizePresetName, sameBoardStyle } from '../model/appearance.ts'
 import type { BoardAppearance, BoardStyle } from '../model/appearance.ts'
 import { captionImageBounds, captionPlacement, followsDrag } from '../model/captions.ts'
@@ -69,7 +69,6 @@ import { CROP_HIT_TOLERANCE, cropCursor, cropOverlay, drawCropOverlay } from './
 import type { CaptionSnapPreview } from './captionSnapLayer.ts'
 import { DomScene } from './domScene.ts'
 import { EdgePan } from './edgePan.ts'
-import { renderFramePreview } from './framePreview.ts'
 import { renderFrameToCanvas } from './renderFrameBitmap.ts'
 import { FeedbackLayer } from './feedbackLayer.ts'
 import { FrameCanvas } from './FrameCanvas.ts'
@@ -81,9 +80,7 @@ import {
   captionOf,
   captionSideOf,
   centerOf,
-  createFrame,
   createFrameProxy,
-  createObject,
   createProxy,
   frameNameOf,
   hasResidualScale,
@@ -106,7 +103,7 @@ import {
   toRecord,
 } from './objects.ts'
 import type { CardMeasurer } from './sceneLayer.ts'
-import { DomTextAdapter, FabricTextAdapter } from './textAdapter.ts'
+import { DomTextAdapter } from './textAdapter.ts'
 import type { TextAdapter, TextHost } from './textAdapter.ts'
 
 export type Tool = 'select' | 'hand' | 'text' | 'frame'
@@ -249,7 +246,7 @@ interface Carry {
 interface CropSession {
   /** The scene before the crop opened: what saves see, and what cancelling restores. */
   base: Scene
-  target: FabricImage
+  target: FabricObject
   /** The image's own Fabric state before the crop opened, restored exactly when nothing changes. */
   before: { left: number; top: number; cropX: number; cropY: number; width: number; height: number; hasControls: boolean; hasBorders: boolean }
   /** The original's size in source pixels. */
@@ -273,16 +270,8 @@ interface ReplaceJob {
   seq: number
 }
 
-/**
- * How the editor is built. `renderer` picks what draws the board: `'dom'` (the default, and the
- * only one the app ships), the scene layer under a transparent canvas of proxies, or `'fabric'`,
- * Fabric's own objects and text boxes. The Fabric renderer is kept only as the reference that the
- * paired browser tests and the Fabric unit tests compare against; the app reaches it only in a
- * development build, from a switch a test sets (see `App.tsx`). `measurer` sizes text cards on
- * the DOM renderer (tests inject one; jsdom lays nothing out).
- */
+/** How the editor is built: `measurer` sizes text cards (tests inject one; jsdom lays nothing out). */
 export interface EditorOptions {
-  renderer?: 'fabric' | 'dom'
   measurer?: CardMeasurer
 }
 
@@ -357,24 +346,10 @@ export class Editor {
   private pressAppliedCrop = false
   /** The press that began the current double-click followed a press that applied a crop. */
   private dblClickAfterCrop = false
-  /** Everything the editor does with text (see `textAdapter.ts`): the Fabric text path, or the DOM renderer's. */
+  /** Everything the editor does with text (see `textAdapter.ts`). */
   private readonly text: TextAdapter
-  /** The DOM renderer's scene layer; null on the Fabric renderer (tests only), which never builds one. */
-  private readonly scene: DomScene | null
-
-  /**
-   * The pending caret choices and the typing-shortcut revert lived on the editor before the text
-   * adapter existed, and the unit tests still read them here (`Editor.typing.test.ts`). Read-only
-   * views of the Fabric adapter's state; nothing in the editor uses them (protected only so that the
-   * compiler does not report them unused).
-   */
-  protected get pending(): unknown {
-    return this.text instanceof FabricTextAdapter ? this.text.transientState().pending : null
-  }
-
-  protected get shortcutRevert(): unknown {
-    return this.text instanceof FabricTextAdapter ? this.text.transientState().shortcutRevert : null
-  }
+  /** What draws the board: the scene layer under the canvas, kept in step with the canvas's proxies. */
+  private readonly scene: DomScene
 
   constructor(
     private readonly host: HTMLElement,
@@ -407,9 +382,9 @@ export class Editor {
       selectionBorderColor: ACCENT,
       selectionLineWidth: 1,
     })
-    // The DOM renderer, the default (`'fabric'` is for tests only): its scene layer listens to
-    // the canvas before anything else does, so it follows each change before the editor reacts.
-    this.scene = options.renderer !== 'fabric' ? new DomScene(this.canvas, host, this.assets, { measurer: options.measurer, gestureActive: () => this.gesture !== null }) : null
+    // The scene layer listens to the canvas before anything else does, so it follows each change
+    // before the editor reacts.
+    this.scene = new DomScene(this.canvas, host, this.assets, { measurer: options.measurer, gestureActive: () => this.gesture !== null })
     const textHost: TextHost = {
       canvas: this.canvas,
       editable: () => this.editable,
@@ -427,7 +402,7 @@ export class Editor {
       syncCaptions: (edited) => this.syncCaptions(edited),
       shownHistory: () => ({ canUndo: this.state.canUndo, canRedo: this.state.canRedo }),
     }
-    this.text = this.scene ? new DomTextAdapter(textHost, this.scene) : new FabricTextAdapter(textHost)
+    this.text = new DomTextAdapter(textHost, this.scene)
 
     this.feedback = new FeedbackLayer(new EdgePan(this.canvas, host, (dx, dy) => {
       const vp = this.getViewport()
@@ -477,7 +452,7 @@ export class Editor {
       if (interactionCleared || snapCleared) this.canvas.requestRenderAll()
     }))
     this.applyToolState()
-    this.scene?.mount()
+    this.scene.mount()
   }
 
   // ---- external store for React -------------------------------------------
@@ -583,7 +558,7 @@ export class Editor {
     for (const c of this.cleanups.splice(0)) c()
     this.autosaver.dispose()
     this.listeners.clear()
-    this.scene?.dispose()
+    this.scene.dispose()
     this.assets.dispose()
     void this.canvas.dispose()
     this.host.replaceChildren()
@@ -675,7 +650,7 @@ export class Editor {
     if (changed) this.canvas.requestRenderAll()
   }
 
-  private positionCaption(caption: FabricObject, image: FabricImage, rec: TextRecord, parent: ImageRecord): boolean {
+  private positionCaption(caption: FabricObject, image: FabricObject, rec: TextRecord, parent: ImageRecord): boolean {
     const bounds = captionImageBounds(parent, imageSizeOf(image))
     const side = captionSideOf(caption)
     const scale = caption.getObjectScaling()
@@ -712,7 +687,7 @@ export class Editor {
         if (obj) built.push(obj)
       }
       if (built.length) this.canvas.add(...built)
-      this.scene?.rebuild() // text proxies take their cards' sizes before a selection is formed
+      this.scene.rebuild() // text proxies take their cards' sizes before a selection is formed
       this.selectByIds(built.filter((o) => selected.has(idOf(o) ?? '')))
     } finally {
       this.applying = false
@@ -720,14 +695,14 @@ export class Editor {
     this.canvas.requestRenderAll()
   }
 
-  /** A content object for a record: a Fabric object, or on the DOM renderer a proxy. */
+  /** A content object for a record: its proxy (the scene layer draws it). */
   private build(rec: Scene['objects'][number], getImage: (assetId: string) => HTMLImageElement | undefined): FabricObject | null {
-    return this.scene ? createProxy(rec, getImage) : createObject(rec, getImage)
+    return createProxy(rec, getImage)
   }
 
-  /** A frame for a record: a Fabric rectangle that paints the paper, or on the DOM renderer a proxy (the layer paints it). */
+  /** A frame for a record: its proxy (the scene layer paints its paper). */
   private buildFrame(rec: FrameRecord): FabricObject {
-    return this.scene ? createFrameProxy(rec) : createFrame(rec)
+    return createFrameProxy(rec)
   }
 
   /**
@@ -819,7 +794,7 @@ export class Editor {
     }
   }
 
-  private imageInfo(img: FabricImage, locked: boolean): SelectionInfo['image'] {
+  private imageInfo(img: FabricObject, locked: boolean): SelectionInfo['image'] {
     const rec = toRecord(img)
     if (rec?.type !== 'image') return null
     // While cropping the image is shown whole; it counts as cropped if the crop the session began with was.
@@ -843,7 +818,7 @@ export class Editor {
 
   private syncState() {
     const active = this.canvas.getActiveObject()
-    // While a text is edited on the DOM renderer, Undo and Redo step that edit (Owner Decision 11).
+    // While a text is edited, Undo and Redo step that edit (Owner Decision 11).
     const edit = this.text.editHistory()
     this.setState({
       selection: this.computeSelection(),
@@ -1446,10 +1421,9 @@ export class Editor {
       this.cleanups.push(() => el.removeEventListener(type, fn, opts))
     }
 
-    // On the DOM renderer the stage holding the scene layer and the canvas: while a text is edited
-    // the canvas takes no presses (the card and the items in front of it do), and they must still
-    // be routed here. The Fabric renderer keeps them on the canvas's own wrapper.
-    const stage = this.scene ? this.host : wrapper
+    // The stage holding the scene layer and the canvas: while a text is edited the canvas takes no
+    // presses (the card and the items in front of it do), and they must still be routed here.
+    const stage = this.host
 
     // Runs before Fabric (capture phase): decides which presses Fabric may see at all.
     listen(
@@ -1462,7 +1436,7 @@ export class Editor {
           e.stopPropagation()
           return
         }
-        if (this.scene && this.text.editedTarget()) {
+        if (this.text.editedTarget()) {
           this.editingPress(e)
           return
         }
@@ -1561,24 +1535,22 @@ export class Editor {
       { passive: false },
     )
 
-    if (this.scene) {
-      // While a text is edited on the DOM renderer, the browser's own menu opens in the card only (the canvas stops its own).
-      listen(this.host, 'contextmenu', (e) => {
-        if (this.text.editedTarget() && !this.text.pressInsideEdit(e)) e.preventDefault()
-      })
-      // The board does not follow a caret typed out of view, as on the canvas (plan Section 7, rule 5):
-      // the browser and ProseMirror scroll every ancestor of the edited card that can scroll at all to
-      // show the caret, and `.workspace` hides a few pixels of overflow. Put any such ancestor back
-      // before it is painted (scroll events come before the frame is drawn).
-      const keepStill = (e: Event) => {
-        const el = e.target
-        if (!(el instanceof HTMLElement) || !el.contains(this.host) || (el.scrollTop === 0 && el.scrollLeft === 0)) return
-        el.scrollTop = 0
-        el.scrollLeft = 0
-      }
-      document.addEventListener('scroll', keepStill, { capture: true })
-      this.cleanups.push(() => document.removeEventListener('scroll', keepStill, { capture: true }))
+    // While a text is edited, the browser's own menu opens in the card only (the canvas stops its own).
+    listen(this.host, 'contextmenu', (e) => {
+      if (this.text.editedTarget() && !this.text.pressInsideEdit(e)) e.preventDefault()
+    })
+    // The board does not follow a caret typed out of view, as on the canvas (plan Section 7, rule 5):
+    // the browser and ProseMirror scroll every ancestor of the edited card that can scroll at all to
+    // show the caret, and `.workspace` hides a few pixels of overflow. Put any such ancestor back
+    // before it is painted (scroll events come before the frame is drawn).
+    const keepStill = (e: Event) => {
+      const el = e.target
+      if (!(el instanceof HTMLElement) || !el.contains(this.host) || (el.scrollTop === 0 && el.scrollLeft === 0)) return
+      el.scrollTop = 0
+      el.scrollLeft = 0
     }
+    document.addEventListener('scroll', keepStill, { capture: true })
+    this.cleanups.push(() => document.removeEventListener('scroll', keepStill, { capture: true }))
 
     const ro = new ResizeObserver(() => {
       const { width, height } = this.host.getBoundingClientRect()
@@ -1641,7 +1613,7 @@ export class Editor {
   }
 
   /**
-   * A press while a text is edited on the DOM renderer (plan Section 4, the editing row of the
+   * A press while a text is edited (plan Section 4, the editing row of the
    * routing table). Inside the edited text, where nothing covers it (judged as the canvas judges a
    * press, `pressInsideEdit`), it is the browser's and the view's:
    * the caret or a selection, a word on a double-click, the browser's own menu on the right button.
@@ -1697,8 +1669,7 @@ export class Editor {
   private healPrimaryDown(buttons: number) {
     if (!this.primaryDown || (buttons & 1) !== 0) return
     this.primaryDown = false
-    // A range drag inside the text being edited stays as it is (the edit and its range go on).
-    this.text.onPrimaryLost()
+    // A range drag inside the text being edited stays as it is (the edit and its range go on): it is the browser's.
     if (this.cancelGesture()) this.queueIdle()
   }
 
@@ -1738,7 +1709,6 @@ export class Editor {
       hasSelection: !!active,
       canEditCaption: e.key === 'Enter' && !e.defaultPrevented && this.captionImage() !== undefined,
     }
-    this.text.observeKey(e) // what a key types into the text being edited: observed only, never claimed
     if (this.busy) {
       // Mid-gesture: Esc cancels it, zoom still works, everything else waits.
       const action = resolveShortcut(e, ctx)
@@ -1932,7 +1902,7 @@ export class Editor {
     if (this.state.tool !== 'select') this.switchTool('select')
     if (this.canvas.getActiveObject() !== img) return
     const size = imageSizeOf(img)
-    // On the DOM renderer the proxy is un-cropped like a Fabric image, and the scene layer then draws the whole original.
+    // The proxy is un-cropped, and the scene layer then draws the whole original.
     const start = shownCropOf(img)
     const shown: Placement = { left: img.left, top: img.top, angle: img.angle, scaleX: img.scaleX, scaleY: img.scaleY }
     const full = uncroppedPlacement(shown, start)
@@ -2198,7 +2168,7 @@ export class Editor {
 
   // ---- captions -----------------------------------------------------------------------
 
-  private captionImage(): FabricImage | undefined {
+  private captionImage(): FabricObject | undefined {
     if (!this.editable || this.busy || this.crop || this.pan) return
     const image = this.canvas.getActiveObject()
     if (!isImage(image) || isLocked(image)) return
@@ -2273,7 +2243,7 @@ export class Editor {
     this.commit(coalesce)
   }
 
-  private captionPair(objects: readonly FabricObject[]): { image: FabricImage; text: FabricObject } | undefined {
+  private captionPair(objects: readonly FabricObject[]): { image: FabricObject; text: FabricObject } | undefined {
     if (objects.length !== 2) return
     const image = objects.find(isImage)
     const text = objects.find((o) => this.text.isText(o))
@@ -2647,9 +2617,8 @@ export class Editor {
         if (!captionOf(obj)) setOwner(obj, copiedOwner ?? ownerAfterManipulation(rec.frameId, centerOf(obj), scene.frames, NO_FRAMES))
       }
       // A text proxy has its card's size only once it is on the canvas (the scene layer sizes it
-      // when it is added), so on the DOM renderer the owner is decided after adding, from that size.
-      if (this.scene) ownersAfterAdding.push(decideOwner)
-      else decideOwner()
+      // when it is added), so the owner is decided after adding, from that size.
+      ownersAfterAdding.push(decideOwner)
       content.push(obj)
       if (selected.has(rec.id)) selection.push(obj)
     }
@@ -2926,7 +2895,7 @@ export class Editor {
 
   fit() {
     if (!this.live) return
-    this.scene?.syncAllCards({ keepWidth: true }) // text proxies are their cards' current size; Fit changes no record
+    this.scene.syncAllCards({ keepWidth: true }) // text proxies are their cards' current size; Fit changes no record
     let bounds: Rect | null = null
     for (const obj of this.canvas.getObjects()) {
       for (const p of obj.getCoords()) {
@@ -2998,14 +2967,12 @@ export class Editor {
           signal.throwIfAborted()
           if (this.disposed || !frameIds.has(id)) throw new Error('The tour frame is unavailable.')
           const getImage = (assetId: string) => this.assets.get(assetId)
-          // The DOM renderer's bitmap comes from the same cards the scene layer draws (plan Section 10).
+          // The bitmap comes from the same cards the scene layer draws (plan Section 10). A card that
+          // even the box the preview builds for it (as the layer knows it) keeps outside the frame
+          // is not laid out again.
           const dom = this.scene
-          if (dom) {
-            // A card that even the box the preview builds for it (as the layer knows it) keeps outside the frame is not laid out again.
-            const cardSize = (rec: TextRecord) => dom.builtCardBound(rec)
-            return renderFrameToCanvas(scene, id, { getImage, measurer: dom.layer.measurer, cardSize }).then((canvas) => canvas.toDataURL('image/png'))
-          }
-          return renderFramePreview(scene, id, getImage)
+          const cardSize = (rec: TextRecord) => dom.builtCardBound(rec)
+          return renderFrameToCanvas(scene, id, { getImage, measurer: dom.layer.measurer, cardSize }).then((canvas) => canvas.toDataURL('image/png'))
         })
         rendering = preview.then(() => undefined, () => undefined)
         return preview

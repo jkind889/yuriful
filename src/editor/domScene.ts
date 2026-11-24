@@ -57,7 +57,7 @@ interface LiftFilter {
 let liftSeq = 0
 
 /**
- * The DOM renderer's drawing (plan Sections 4, 6 and 9): the scene layer under a transparent
+ * What draws the board (plan Sections 4, 6 and 9): the scene layer under a transparent
  * Fabric canvas whose objects are proxies (`objects.ts` `createProxy`). Fabric stays the source
  * of truth for where things are; the layer only follows it.
  *
@@ -68,13 +68,11 @@ let liftSeq = 0
  *    size (standalone or inside a multi-selection), then culling.
  *  - A text proxy's width and height come from the layer: its effective width and measured
  *    height (`syncCard`), at the flush points the editor calls synchronously and whenever a text
- *    proxy is added to the canvas. Like a Fabric text box, its wrap width holds the effective
- *    width once it has been laid out (a stored width narrower than the widest word widens, the
- *    left edge kept), so a save writes what a Fabric save writes.
+ *    proxy is added to the canvas. Its wrap width holds the effective width once it has been
+ *    laid out (a stored width narrower than the widest word widens, the left edge kept, as the
+ *    Fabric text box of the earlier renderer did), so a save writes that width.
  *  - A late font load lays the cards out again and re-sizes the proxies, both only once no
  *    gesture is unsettled; it never touches ownership, history or the save state.
- *
- * Built for the DOM renderer, the default; the Fabric renderer (tests only) never constructs one.
  */
 export class DomScene {
   readonly layer: SceneLayer

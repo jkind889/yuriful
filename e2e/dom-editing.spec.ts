@@ -2,19 +2,19 @@ import { expect, test } from '@playwright/test'
 import type { Browser, CDPSession, Page } from '@playwright/test'
 import type { Scene } from '../src/model/types.ts'
 import { fabricReference } from './fabricReference.ts'
-import { chooseRenderer, openApp, openBlank, redoButton, seedRaw, status, storedDoc, undoButton } from './helpers.ts'
+import { openApp, openBlank, redoButton, seedRaw, status, storedDoc, undoButton } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredFrame, StoredObject, View } from './helpers.ts'
 
 /**
  * Live text editing on the DOM renderer (plan Slice 2c-ii) in real Chromium: the text engine's
  * view mounted in the edited card, pointer routing while a text is edited, in-edit undo, and what
- * the editor saves and records. Every page names its renderer (`chooseRenderer`, which sets
- * `window.__YURIFUL_RENDERER__` before the app mounts): the DOM renderer is the app's, and the
- * Fabric renderer is the test-only reference. A probe on the normal app instance (as in
+ * the editor saves and records. A probe on the normal app instance (as in
  * `interleaving.spec.ts`) reads the editor; it lives in this test route only.
  *
- * Paired tests run the same script of real key presses and pointer actions on the Fabric renderer
- * and on the DOM renderer from the same seeded board, and compare, after every step, the scene,
+ * Paired tests run a script of real key presses and pointer actions from a seeded board and
+ * compare it with what the Fabric renderer it replaced gave for the same script (its frozen
+ * reference, `fabricReference.ts`, recorded by running that renderer before it was deleted): after
+ * every step the scene,
  * the history, what the editor shows (selection, the edit and its caret, the formatting readout,
  * the layer list) and at the end the stored board.
  */
@@ -28,7 +28,7 @@ interface EditInfo {
   anchor: number
   head: number
   focused: boolean
-  /** DOM renderer: the selection the page shows in the edited card, as UTF-16 offsets (null when it shows none there). */
+  /** The selection the page shows in the edited card, as UTF-16 offsets (null when it shows none there; the frozen Fabric records have none). */
   shown?: { from: number; to: number } | null
 }
 
@@ -45,7 +45,6 @@ interface ProbeState {
 }
 
 interface EditProbe {
-  renderer: () => 'dom' | 'fabric'
   scene: () => Scene
   history: () => { current: Scene; index: number; length: number }
   state: () => ProbeState
@@ -54,11 +53,11 @@ interface EditProbe {
   /** An object's four corners (tl, tr, br, bl) in page pixels. */
   corners: (id: string) => Corner[] | null
   run: (method: string, ...args: unknown[]) => unknown
-  /** DOM renderer: calls a method of the edit session of the text being edited. */
+  /** Calls a method of the edit session of the text being edited. */
   session: (method: string, ...args: unknown[]) => unknown
-  /** The DOM renderer's card for an id: its body's computed height, whether it holds the live editor, its HTML. */
+  /** The card for an id: its body's computed height, whether it holds the live editor, its HTML. */
   card: (id: string) => { height: number; live: boolean; html: string } | null
-  /** Every text's box height (scene units): the proxy's on the DOM renderer, the text box's on Fabric. */
+  /** Every text's box height (scene units): its proxy's. */
   boxes: () => Record<string, number>
   /** An object's handle positions (Fabric's `oCoords`) in page pixels, shown or not. */
   handles: (id: string) => Record<string, Corner> | null
@@ -67,7 +66,6 @@ interface EditProbe {
 declare global {
   interface Window {
     __edit: EditProbe
-    __YURIFUL_RENDERER__?: string
   }
 }
 
@@ -91,7 +89,6 @@ async function installProbe(page: Page) {
           return { x: r.left + v[0] * sx + v[2] * sy + v[4], y: r.top + v[1] * sx + v[3] * sy + v[5] }
         }
         window.__edit = {
-          renderer: () => (ed.scene ? 'dom' : 'fabric'),
           scene: () => ed.snapshot(),
           history: () => ({ current: ed.history.current, index: ed.history.index, length: ed.history.stack.length }),
           state: () => {
@@ -109,24 +106,17 @@ async function installProbe(page: Page) {
             }
           },
           edit: () => {
-            if (ed.scene) {
-              const s = ed.text.editSession()
-              if (!s) return null
-              const sel = s.selection()
-              let shown = null
-              const ds = getSelection()
-              if (s.view && ds && ds.anchorNode && s.view.dom.contains(ds.anchorNode) && s.view.dom.contains(ds.focusNode)) {
-                const a = probeOffsetAt(s.state.doc, s.view.posAtDOM(ds.anchorNode, ds.anchorOffset), -1)
-                const b = probeOffsetAt(s.state.doc, s.view.posAtDOM(ds.focusNode, ds.focusOffset), -1)
-                shown = { from: Math.min(a, b), to: Math.max(a, b) }
-              }
-              return { id: probeIdOf(ed.text.editedTarget()), text: s.content().text, anchor: sel.anchor, head: sel.head, focused: !!s.view && s.view.hasFocus(), shown }
+            const s = ed.text.editSession()
+            if (!s) return null
+            const sel = s.selection()
+            let shown = null
+            const ds = getSelection()
+            if (s.view && ds && ds.anchorNode && s.view.dom.contains(ds.anchorNode) && s.view.dom.contains(ds.focusNode)) {
+              const a = probeOffsetAt(s.state.doc, s.view.posAtDOM(ds.anchorNode, ds.anchorOffset), -1)
+              const b = probeOffsetAt(s.state.doc, s.view.posAtDOM(ds.focusNode, ds.focusOffset), -1)
+              shown = { from: Math.min(a, b), to: Math.max(a, b) }
             }
-            const t = ed.canvas.getActiveObject()
-            if (!t || !t.isEditing) return null
-            const ta = t.hiddenTextarea
-            const back = t._selectionDirection === 'left' && ta.selectionStart !== ta.selectionEnd
-            return { id: probeIdOf(t), text: ta.value, anchor: back ? ta.selectionEnd : ta.selectionStart, head: back ? ta.selectionStart : ta.selectionEnd, focused: document.activeElement === ta }
+            return { id: probeIdOf(ed.text.editedTarget()), text: s.content().text, anchor: sel.anchor, head: sel.head, focused: !!s.view && s.view.hasFocus(), shown }
           },
           corners: (id) => {
             const o = find(id)
@@ -137,7 +127,7 @@ async function installProbe(page: Page) {
             return [[-w, -h], [w, -h], [w, h], [-w, h]].map(([x, y]) => toPage(m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]))
           },
           run: (method, ...args) => ed[method](...args),
-          session: (method, ...args) => { const s = ed.scene && ed.text.editSession(); return s ? s[method](...args) : undefined },
+          session: (method, ...args) => { const s = ed.text.editSession(); return s ? s[method](...args) : undefined },
           boxes: () => {
             const out = {}
             for (const o of ed.canvas.getObjects()) if (ed.text.isText(o) && !ed.text.isBlank(o)) out[probeIdOf(o) ?? ''] = Math.round(o.height * o.scaleY * 100) / 100
@@ -173,13 +163,11 @@ const errorsOf = (page: Page) => {
   return errors
 }
 
-async function openBoard(page: Page, doc: StoredBoard, assets: SeedAsset[] = [], renderer: 'dom' | 'fabric' = 'dom') {
+async function openBoard(page: Page, doc: StoredBoard, assets: SeedAsset[] = []) {
   await openBlank(page)
   await seedRaw(page, doc.frames?.length ? 2 : 1, doc as unknown as Record<string, unknown>, assets)
-  await chooseRenderer(page, renderer)
   await installProbe(page)
   await openApp(page)
-  expect(await page.evaluate(() => window.__edit.renderer())).toBe(renderer)
   await frames(page, 2)
 }
 
@@ -387,12 +375,12 @@ async function runStep(page: Page, step: Step, frameRects: Map<string, StoredFra
   await frames(page, 2)
 }
 
-async function runScript(browser: Browser, renderer: 'dom' | 'fabric', doc: StoredBoard, steps: readonly Step[], assets: SeedAsset[] = ASSETS, clipboard = false) {
+async function runScript(browser: Browser, doc: StoredBoard, steps: readonly Step[], assets: SeedAsset[] = ASSETS, clipboard = false) {
   const context = await browser.newContext()
   if (clipboard) await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   const page = await context.newPage()
   const errors = errorsOf(page)
-  await openBoard(page, doc, assets, renderer)
+  await openBoard(page, doc, assets)
   const frameRects = new Map((doc.frames ?? []).map((f) => [f.id, f]))
   const cdp = await context.newCDPSession(page)
   const records: StepRecord[] = []
@@ -407,7 +395,7 @@ async function runScript(browser: Browser, renderer: 'dom' | 'fabric', doc: Stor
   await page.waitForTimeout(800)
   await expect(status(page)).toContainText('Saved on this device')
   const saved = await stored(page)
-  expect(errors, renderer).toEqual([])
+  expect(errors).toEqual([])
   await context.close()
   return normalizeIds({ records, saved })
 }
@@ -451,10 +439,10 @@ function expectSameRecords(domIn: readonly Record<string, unknown>[], fabricIn: 
 }
 
 /**
- * The same script on both renderers: after every step the same scene, history (its current scene,
+ * The script, and the Fabric renderer's frozen reference for it: after every step the same scene, history (its current scene,
  * its length and position), selection, edit (which text, its text, its selection, focus), formatting
- * readout and layer list; Undo and Redo's availability only outside an edit (inside one the DOM
- * renderer offers the edit's own history: Owner Decision 11). Then the same stored board.
+ * readout and layer list; Undo and Redo's availability only outside an edit (inside one the app
+ * offers the edit's own history: Owner Decision 11). Then the same stored board.
  */
 /**
  * Box heights: Fabric's text box and the DOM card agree within 0.08 px per line box (plan Section 6);
@@ -464,8 +452,8 @@ const BOX_TOLERANCE = 1
 
 async function expectPaired(browser: Browser, doc: StoredBoard, steps: readonly Step[], opts: { assets?: SeedAsset[]; clipboard?: boolean; omit?: Omitted } = {}) {
   const omit = opts.omit ?? new Set<string>()
-  const fabric = await fabricReference(browser, 'script', { doc, steps, assets: opts.assets, clipboard: opts.clipboard }, () => runScript(browser, 'fabric', doc, steps, opts.assets, opts.clipboard))
-  const dom = await runScript(browser, 'dom', doc, steps, opts.assets, opts.clipboard)
+  const fabric = fabricReference<Awaited<ReturnType<typeof runScript>>>('script', { doc, steps, assets: opts.assets, clipboard: opts.clipboard })
+  const dom = await runScript(browser, doc, steps, opts.assets, opts.clipboard)
   let worst = 0
   if (process.env.DEBUG_STEPS) {
     fabric.records.forEach((f, i) => {
@@ -1359,11 +1347,11 @@ test.describe('the caret where a person clicks, in the real card (Slice 2c-ii)',
   test.describe.configure({ timeout: 180_000 })
 
   /** For every point, the caret a click there puts in the already selected text (an edit started by a click). */
-  async function caretsAt(browser: Browser, renderer: 'dom' | 'fabric', doc: StoredBoard, id: string, points: Array<[number, number]>) {
+  async function caretsAt(browser: Browser, doc: StoredBoard, id: string, points: Array<[number, number]>) {
     const context = await browser.newContext()
     const page = await context.newPage()
     const errors = errorsOf(page)
-    await openBoard(page, doc, [], renderer)
+    await openBoard(page, doc, [])
     await clickIn(page, id, [0.5, 0.5]) // selects it
     const out: number[] = []
     for (const at of points) {
@@ -1373,7 +1361,7 @@ test.describe('the caret where a person clicks, in the real card (Slice 2c-ii)',
       await page.keyboard.press('Escape') // leaves the edit; the text stays selected
       await frames(page, 1)
     }
-    expect(errors, renderer).toEqual([])
+    expect(errors).toEqual([])
     await context.close()
     return out
   }
@@ -1395,8 +1383,8 @@ test.describe('the caret where a person clicks, in the real card (Slice 2c-ii)',
     let total = 0
     const report: string[] = []
     for (const id of ['Z', 'R', 'D']) {
-      const fabric = await fabricReference(browser, id, { doc, id, points }, () => caretsAt(browser, 'fabric', doc, id, points))
-      const dom = await caretsAt(browser, 'dom', doc, id, points)
+      const fabric = fabricReference<number[]>(id, { doc, id, points })
+      const dom = await caretsAt(browser, doc, id, points)
       fabric.forEach((f, i) => {
         total++
         if (dom[i] === f) same++

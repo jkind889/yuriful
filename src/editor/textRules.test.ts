@@ -69,10 +69,7 @@ describe('the typing shortcut matcher (one line, no view)', () => {
     )
     // What the Fabric renderer's matcher (`matchTypingShortcut` in `src/model/richText.ts` before it was deleted) gave for each.
     type Match = { kind: string; remove: unknown; content: unknown; level?: number } | null
-    const matched = await fabricReference('matcher', inputs, async () => {
-      const { matchTypingShortcut } = (await import(/* @vite-ignore */ '../model/richText.ts' as string)) as { matchTypingShortcut: (text: string, caret: number, typed: string) => Match }
-      return inputs.map(({ text, caret, typed }) => matchTypingShortcut(text, caret, typed))
-    })
+    const matched = await fabricReference<Match[]>('matcher', inputs)
     for (const [i, { text, caret, typed }] of inputs.entries()) {
       const canvas = matched[i]!
       const ours = matchShortcut(text, caret, typed)

@@ -7,28 +7,16 @@ import {
   canonicalSpans,
   canonicalTextFormatting,
   diffText,
-  formatAtCaret,
-  formatOfRange,
+  fontOfRange,
   formatOfText,
-  headingFontSize,
   headingsAfterEdit,
   lastBoxLine,
-  linesOfRange,
   markMask,
-  matchTypingShortcut,
-  applyTypingShortcut,
-  marksAtCaret,
   paragraphsOf,
-  setHeading,
-  setHeadingEverywhere,
   splitGraphemes,
   textAfterEdit,
-  toggleMark,
-  togglePendingMark,
-  pendingMarksAt,
   withPendingMarks,
 } from './richText.ts'
-import type { Mark, TextFormatting } from './richText.ts'
 
 const spans = (text: string, raw: unknown, headings?: number[]) => canonicalSpans(text, raw, headings)
 
@@ -194,9 +182,6 @@ describe('font, alignment and colour', () => {
 describe('tables', () => {
   it('heading sizes are 2, 1.5 and 1.25 times the base size', () => {
     expect(HEADING_SCALE).toEqual({ 1: 2, 2: 1.5, 3: 1.25 })
-    expect(headingFontSize(24, 1)).toBe(48)
-    expect(headingFontSize(24, 2)).toBe(36)
-    expect(headingFontSize(24, 3)).toBe(30)
   })
 
   it('every font id has a label', () => {
@@ -374,193 +359,28 @@ describe('heading levels carried across an edit', () => {
 
 // ---- applying formatting ----------------------------------------------------------------------
 
-describe('toggling a mark on a range', () => {
-  const T = (text: string, fmt: TextFormatting, mark: Mark, a: number, b: number) => toggleMark(text, fmt, mark, a, b)
-
-  it('adds the mark to a range that does not all have it, removes it from one that does', () => {
-    expect(T('abcdef', {}, 'bold', 1, 3)).toStrictEqual({ spans: [{ start: 1, end: 3, bold: true }] })
-    const half: TextFormatting = { spans: [{ start: 1, end: 3, bold: true }] }
-    expect(T('abcdef', half, 'bold', 2, 5)).toStrictEqual({ spans: [{ start: 1, end: 5, bold: true }] }) // mixed: on
-    expect(T('abcdef', half, 'bold', 1, 3)).toStrictEqual({}) // all of it: off
-    expect(T('abcdef', half, 'bold', 2, 3)).toStrictEqual({ spans: [{ start: 1, end: 2, bold: true }] }) // part of a run: off there only
-    expect(T('abcdef', half, 'italic', 0, 6)).toStrictEqual({
-      spans: [
-        { start: 0, end: 1, italic: true },
-        { start: 1, end: 3, bold: true, italic: true },
-        { start: 3, end: 6, italic: true },
-      ],
-    })
-  })
-
-  it('keeps the other fields and their canonical key order', () => {
-    const fmt: TextFormatting = { font: 'serif', align: 'center', color: '#d92d20', headings: [1] }
-    const out = T('Title\nbody', fmt, 'italic', 6, 10)
-    expect(Object.keys(out)).toEqual(['font', 'align', 'color', 'spans', 'headings'])
-    expect(out).toStrictEqual({ ...fmt, spans: [{ start: 6, end: 10, italic: true }] })
-  })
-
-  it('treats a surrogate pair (and any grapheme) as one character, whichever half the range touches', () => {
-    // "a😀b": the emoji is code units 1 and 2.
-    expect(T('a😀b', {}, 'underline', 1, 2)).toStrictEqual({ spans: [{ start: 1, end: 3, underline: true }] })
-    expect(T('a😀b', {}, 'underline', 2, 3)).toStrictEqual({ spans: [{ start: 1, end: 3, underline: true }] })
-    expect(T('a😀b', { spans: [{ start: 1, end: 3, strike: true }] }, 'strike', 0, 4)).toStrictEqual({ spans: [{ start: 0, end: 4, strike: true }] })
-    expect(T('👍🏽x', {}, 'italic', 0, 1)).toStrictEqual({ spans: [{ start: 0, end: 4, italic: true }] }) // a skin-tone emoji: one grapheme of 4 units
-  })
-
-  it('across a line break: the break carries the mark when both sides have it', () => {
-    expect(T('ab\ncd', {}, 'bold', 1, 4)).toStrictEqual({ spans: [{ start: 1, end: 4, bold: true }] })
-    expect(T('ab\ncd', {}, 'bold', 0, 5)).toStrictEqual({ spans: [{ start: 0, end: 5, bold: true }] })
-    expect(T('ab\ncd', { spans: [{ start: 0, end: 5, bold: true }] }, 'bold', 1, 4)).toStrictEqual({
-      spans: [
-        { start: 0, end: 1, bold: true },
-        { start: 4, end: 5, bold: true },
-      ],
-    })
-  })
-
-  it('a range with no characters (empty, or only a line break) changes nothing', () => {
-    const fmt: TextFormatting = { spans: [{ start: 0, end: 1, bold: true }] }
-    expect(T('ab\ncd', fmt, 'bold', 2, 2)).toBe(fmt)
-    expect(T('ab\ncd', fmt, 'italic', 2, 3)).toBe(fmt)
-    expect(T('', {}, 'bold', 0, 0)).toStrictEqual({})
-    expect(T('\n\n', {}, 'bold', 0, 2)).toStrictEqual({})
-  })
-
-  it('bold in heading lines: nothing on a range that is all heading, the normal lines only on a mixed range', () => {
-    const fmt: TextFormatting = { headings: [1] }
-    expect(T('Title\nbody', fmt, 'bold', 0, 5)).toStrictEqual(fmt)
-    expect(T('Title\nbody', fmt, 'bold', 0, 10)).toStrictEqual({ spans: [{ start: 6, end: 10, bold: true }], headings: [1] })
-    // The normal line already bold: every character of the range is bold, so it is removed.
-    const bold: TextFormatting = { spans: [{ start: 6, end: 10, bold: true }], headings: [1] }
-    expect(T('Title\nbody', bold, 'bold', 0, 10)).toStrictEqual({ headings: [1] })
-    // Other marks are ordinary in a heading line.
-    expect(T('Title\nbody', fmt, 'italic', 0, 5)).toStrictEqual({ spans: [{ start: 0, end: 5, italic: true }], headings: [1] })
-  })
-
-  it('the whole text, empty lines included', () => {
-    expect(T('ab\n\ncd', {}, 'strike', 0, 6)).toStrictEqual({ spans: [{ start: 0, end: 6, strike: true }] })
-  })
-})
-
-describe('setting headings', () => {
-  it('on the caret line, the lines a range touches, and every line', () => {
-    const text = 'one\ntwo\nthree'
-    expect(setHeading(text, {}, 1, 5, 5)).toStrictEqual({ headings: [0, 1] })
-    expect(setHeading(text, {}, 2, 2, 9)).toStrictEqual({ headings: [2, 2, 2] })
-    expect(setHeading(text, {}, 3, 0, text.length)).toStrictEqual({ headings: [3, 3, 3] })
-    expect(setHeading(text, { headings: [1, 2, 3] }, 0, 4, 7)).toStrictEqual({ headings: [1, 0, 3] })
-    expect(setHeading(text, { headings: [1, 2, 3] }, 0, 0, text.length)).toStrictEqual({})
-  })
-
-  it('a caret at either end of a line is on that line; a range ending just after a line break does not touch the next line', () => {
-    const text = 'one\ntwo'
-    expect(setHeading(text, {}, 1, 3, 3)).toStrictEqual({ headings: [1] }) // end of "one"
-    expect(setHeading(text, {}, 1, 4, 4)).toStrictEqual({ headings: [0, 1] }) // start of "two"
-    expect(setHeading(text, {}, 1, 0, 4)).toStrictEqual({ headings: [1] }) // "one\n"
-    expect(setHeading(text, {}, 1, 3, 4)).toStrictEqual({ headings: [1] }) // the break alone
-    expect(linesOfRange(text, 0, 5)).toStrictEqual({ first: 0, last: 1 })
-  })
-
-  it('every line of the box (a selected box): an empty last line is left out of the state and of the change', () => {
-    expect(setHeadingEverywhere('a\nb\n', {}, 2)).toStrictEqual({ headings: [2, 2] })
-    expect(setHeadingEverywhere('a\nb\n', { headings: [1, 0, 3] }, 2)).toStrictEqual({ headings: [2, 2, 3] }) // a heading level leaves the empty last line alone
-    expect(setHeadingEverywhere('a\nb\n', { headings: [1, 0, 3] }, 0)).toStrictEqual({}) // body text clears it too
-    expect(setHeadingEverywhere('Title\n', { headings: [1, 1] }, 0)).toStrictEqual({})
-    expect(setHeadingEverywhere('Title\n', { headings: [1, 1] }, 2)).toStrictEqual({ headings: [2, 1] })
-    expect(setHeadingEverywhere('Title\n', {}, 1)).toStrictEqual({ headings: [1] })
-    expect(setHeadingEverywhere('a\n\n', {}, 1)).toStrictEqual({ headings: [1, 1] }) // only the LAST empty line is left out
+describe('the state a selected box shows', () => {
+  it('its heading over every line but an empty last one, and each mark over all of its characters', () => {
     expect(formatOfText('Title\n', { headings: [1, 1] }).heading).toBe(1)
     expect(formatOfText('Title\n', { headings: [1] }).heading).toBe(1)
     expect(formatOfText('Title\nbody\n', { headings: [1] }).heading).toBe('mixed')
     expect(formatOfText('Title', { headings: [1] }).heading).toBe(1)
     expect(formatOfText('ab\ncd', { spans: [{ start: 0, end: 5, bold: true }] }).marks.bold).toBe('on')
+    expect(formatOfText('Title\nbody', { headings: [1], spans: [{ start: 6, end: 10, italic: true }] })).toStrictEqual({
+      marks: { bold: 'mixed', italic: 'mixed', underline: 'off', strike: 'off' },
+      heading: 'mixed',
+      boldFromHeading: false,
+    })
   })
 
-  it('on an empty line, and on the empty last line', () => {
-    expect(setHeading('a\n\nb', {}, 2, 2, 2)).toStrictEqual({ headings: [0, 2] })
-    expect(setHeading('a\n', {}, 1, 2, 2)).toStrictEqual({ headings: [0, 1] })
-    expect(setHeading('', {}, 1, 0, 0)).toStrictEqual({ headings: [1] })
-  })
-
-  it('drops bold inside a new heading (implied), so going back to body text leaves the line plain; other marks stay', () => {
-    const fmt: TextFormatting = {
-      spans: [
-        { start: 0, end: 3, bold: true, italic: true },
-        { start: 3, end: 7, bold: true },
-      ],
-    }
-    const h = setHeading('one\ntwo', fmt, 1, 0, 0)
-    expect(h).toStrictEqual({
-      spans: [
-        { start: 0, end: 3, italic: true },
-        { start: 4, end: 7, bold: true },
-      ],
-      headings: [1],
-    })
-    expect(setHeading('one\ntwo', h, 0, 0, 0)).toStrictEqual({
-      spans: [
-        { start: 0, end: 3, italic: true },
-        { start: 4, end: 7, bold: true },
-      ],
-    })
+  it('its font: the box font, a span font over all of it, or mixed', () => {
+    expect(fontOfRange('ab cd', { font: 'serif' }, 0, 5)).toBe('serif')
+    expect(fontOfRange('ab cd', { spans: [{ start: 0, end: 5, font: 'mono' }] }, 0, 5)).toBe('mono')
+    expect(fontOfRange('ab cd', { spans: [{ start: 0, end: 2, font: 'mono' }] }, 0, 5)).toBe('mixed')
   })
 })
 
-describe('the state the controls show', () => {
-  it('a range: each mark on, off or mixed over its characters; the bold of a heading counts as on', () => {
-    const fmt = canonicalTextFormatting('Title\nbody', {
-      spans: [
-        { start: 0, end: 10, italic: true },
-        { start: 6, end: 8, bold: true },
-      ],
-      headings: [1],
-    })
-    const off = { underline: 'off', strike: 'off' } as const
-    expect(formatOfRange('Title\nbody', fmt, 0, 5)).toStrictEqual({ marks: { bold: 'on', italic: 'on', ...off }, heading: 1, boldFromHeading: true })
-    expect(formatOfRange('Title\nbody', fmt, 0, 10)).toStrictEqual({ marks: { bold: 'mixed', italic: 'on', ...off }, heading: 'mixed', boldFromHeading: false })
-    expect(formatOfRange('Title\nbody', fmt, 6, 8)).toStrictEqual({ marks: { bold: 'on', italic: 'on', ...off }, heading: 0, boldFromHeading: false })
-    expect(formatOfRange('ab', {}, 1, 1).marks.bold).toBe('off') // no characters
-  })
-
-  it('a caret: the marks the next typed character gets, from the character before it on its line, else after it', () => {
-    const fmt: TextFormatting = {
-      spans: [
-        { start: 0, end: 2, bold: true },
-        { start: 3, end: 5, italic: true },
-      ],
-    }
-    const text = 'ab\ncd'
-    expect(marksAtCaret(text, fmt, 2)).toStrictEqual({ bold: true, italic: false, underline: false, strike: false }) // after "b"
-    expect(marksAtCaret(text, fmt, 3)).toStrictEqual({ bold: false, italic: true, underline: false, strike: false }) // start of "cd": copies "c"
-    expect(marksAtCaret(text, fmt, 0).bold).toBe(true)
-    expect(marksAtCaret('a\n\nb', { spans: [{ start: 0, end: 4, bold: true }] }, 2).bold).toBe(false) // an empty line copies nothing
-    expect(marksAtCaret('Title\n', { headings: [1] }, 3).bold).toBe(true)
-    expect(marksAtCaret('a😀b', { spans: [{ start: 1, end: 3, bold: true }] }, 3).bold).toBe(true)
-  })
-
-  it('pending choices: shown as the next character’s state, toggled against it, dropped when they match what typing gives', () => {
-    const text = 'ab'
-    const fmt: TextFormatting = { spans: [{ start: 0, end: 2, bold: true }] }
-    let p = togglePendingMark(text, fmt, 2, {}, 'bold')
-    expect(p).toStrictEqual({ bold: false }) // a pending "off" next to a bold character
-    expect(formatAtCaret(text, fmt, 2, p).marks.bold).toBe('off')
-    p = togglePendingMark(text, fmt, 2, p, 'italic')
-    expect(p).toStrictEqual({ bold: false, italic: true })
-    p = togglePendingMark(text, fmt, 2, p, 'bold')
-    expect(p).toStrictEqual({ italic: true }) // back to what typing gives anyway
-    expect(formatAtCaret(text, fmt, 2, p)).toStrictEqual({ marks: { bold: 'on', italic: 'on', underline: 'off', strike: 'off' }, heading: 0, boldFromHeading: false })
-  })
-
-  it('bold at a caret on a heading line is the heading’s and cannot be pending', () => {
-    const fmt: TextFormatting = { headings: [0, 2] }
-    expect(togglePendingMark('a\nTitle', fmt, 4, {}, 'bold')).toStrictEqual({})
-    expect(formatAtCaret('a\nTitle', fmt, 4, { bold: false })).toStrictEqual({
-      marks: { bold: 'on', italic: 'off', underline: 'off', strike: 'off' },
-      heading: 2,
-      boldFromHeading: true,
-    })
-  })
-
+describe('pending choices', () => {
   it('a typed character’s marks with the pending choices applied', () => {
     const bold = markMask({ bold: true })
     const italic = markMask({ italic: true })
@@ -580,177 +400,5 @@ describe('the lines of a box', () => {
     expect(lastBoxLine('')).toBe(0)
     expect(lastBoxLine('\n')).toBe(1)
     expect(lastBoxLine('\n\n')).toBe(2)
-  })
-})
-
-describe('typing shortcuts: what fires', () => {
-  /** Types `typed` at the end of `before` (or where `|` is in it) and returns what fires. */
-  const typeAt = (before: string, typed: string) => {
-    const at = before.includes('|') ? before.indexOf('|') : before.length
-    const plain = before.replace('|', '')
-    const text = plain.slice(0, at) + typed + plain.slice(at)
-    return matchTypingShortcut(text, at + typed.length, typed)
-  }
-  const fires = (before: string, typed: string) => typeAt(before, typed)?.kind ?? null
-
-  it('headings: #, ## or ### and a typed space at the very start of a line', () => {
-    expect(typeAt('#', ' ')).toStrictEqual({ kind: 'heading', line: { start: 0, end: 2 }, level: 1, remove: [{ start: 0, end: 2 }], content: { start: 2, end: 2 } })
-    expect(typeAt('##', ' ')?.level).toBe(2)
-    expect(typeAt('###', ' ')?.level).toBe(3)
-    // at the start of a line that has text after the caret, and on a later line
-    expect(typeAt('##|Title', ' ')).toStrictEqual({ kind: 'heading', line: { start: 0, end: 8 }, level: 2, remove: [{ start: 0, end: 3 }], content: { start: 3, end: 8 } })
-    expect(typeAt('one\n#|two\nthree', ' ')).toStrictEqual({ kind: 'heading', line: { start: 4, end: 9 }, level: 1, remove: [{ start: 4, end: 6 }], content: { start: 6, end: 9 } })
-    expect(typeAt('one\r\n#|two\r\nthree', ' ')?.line).toStrictEqual({ start: 5, end: 10 })
-    expect(typeAt('#|\u{1F600}', ' ')?.content).toStrictEqual({ start: 2, end: 4 })
-  })
-
-  it('headings: literal cases', () => {
-    expect(fires('####', ' ')).toBeNull()
-    expect(fires('a #', ' ')).toBeNull()
-    expect(fires(' #', ' ')).toBeNull()
-    expect(fires('#tag', ' ')).toBeNull()
-    expect(fires('x#', ' ')).toBeNull()
-    expect(fires('#', 'a')).toBeNull()
-    expect(fires('# ', ' ')).toBeNull() // a second space
-    expect(fires('', ' ')).toBeNull()
-    expect(fires('one\n', ' ')).toBeNull()
-    expect(fires('#|́x', ' ')).toBeNull() // the space would be joined to the accent after it
-    expect(matchTypingShortcut('# ', 2, ' ')).toBeNull() // only a plain space
-    expect(matchTypingShortcut('# ', 1, ' ')).toBeNull() // the caret is not after the space
-  })
-
-  it('bold and italic: the closing marker completes a pair on the same line', () => {
-    expect(typeAt('**bold*', '*')).toStrictEqual({ kind: 'bold', line: { start: 0, end: 8 }, remove: [{ start: 0, end: 2 }, { start: 6, end: 8 }], content: { start: 2, end: 6 } })
-    expect(typeAt('*it', '*')).toStrictEqual({ kind: 'italic', line: { start: 0, end: 4 }, remove: [{ start: 0, end: 1 }, { start: 3, end: 4 }], content: { start: 1, end: 3 } })
-    expect(fires('say **two words*', '*')).toBe('bold')
-    expect(fires('**a*', '*')).toBe('bold')
-    expect(fires('*a', '*')).toBe('italic')
-    expect(fires('(*x', '*')).toBe('italic')
-    expect(fires('"**x*', '*')).toBe('bold')
-    expect(fires('“*x', '*')).toBe('italic')
-    expect(fires('\t*x', '*')).toBe('italic')
-    // in the middle of a line, with text after the caret
-    expect(typeAt('a **b*| c', '*')).toStrictEqual({ kind: 'bold', line: { start: 0, end: 9 }, remove: [{ start: 2, end: 4 }, { start: 5, end: 7 }], content: { start: 4, end: 5 } })
-    expect(fires('*x|)', '*')).toBe('italic')
-    // on a later line; earlier lines do not matter
-    expect(typeAt('**not\n*x', '*')?.line).toStrictEqual({ start: 6, end: 9 })
-    // a second pair on the same line, and a line with an earlier unmatched `*`
-    expect(typeAt('**a** **b*', '*')?.content).toStrictEqual({ start: 8, end: 9 })
-    expect(typeAt('2 * 3 and *x', '*')?.content).toStrictEqual({ start: 11, end: 12 })
-    // surrogate pairs and emoji
-    expect(typeAt('**\u{1F600}*', '*')?.content).toStrictEqual({ start: 2, end: 4 })
-    expect(fires('*\u{1F468}‍\u{1F469}‍\u{1F467}', '*')).toBe('italic')
-    expect(fires('\u{1F600} *x', '*')).toBe('italic')
-  })
-
-  it('bold and italic: literal cases', () => {
-    expect(fires('2 * 3 ', '*')).toBeNull()
-    expect(fires('2 * 3 *| 4', '*')).toBeNull()
-    expect(fires('a *', '*')).toBeNull() // `a **`
-    expect(fires('a ** b *', '*')).toBeNull()
-    expect(fires('* item', '*')).toBeNull()
-    expect(fires('*', '*')).toBeNull() // a lone `**`
-    expect(fires('', '*')).toBeNull()
-    expect(fires('snake*case', '*')).toBeNull()
-    expect(fires('***x**', '*')).toBeNull()
-    expect(fires('***x*', '*')).toBeNull()
-    expect(fires('***x', '*')).toBeNull()
-    expect(fires('**', '*')).toBeNull()
-    expect(fires('**bold', '*')).toBeNull() // the first `*` of a closing `**`
-    expect(fires('** x*', '*')).toBeNull() // whitespace just inside
-    expect(fires('**x *', '*')).toBeNull()
-    expect(fires('* x', '*')).toBeNull()
-    expect(fires('*x ', '*')).toBeNull()
-    expect(fires('*a\nb', '*')).toBeNull() // across a line break
-    expect(fires('**a\nb*', '*')).toBeNull()
-    expect(fires('**a*|*', '*')).toBeNull() // the closing marker would touch another `*`
-    expect(fires('*a|*', '*')).toBeNull()
-    expect(fires('\u{1F600}*x', '*')).toBeNull() // not at the start of a word
-    expect(fires('a*x', '*')).toBeNull()
-    expect(fires('**x*|⃣', '*')).toBeNull() // the star would be joined to a keycap mark
-    expect(fires('*́x', '*')).toBeNull() // the opening star is joined to an accent
-    expect(matchTypingShortcut('*x*', 3, 'x')).toBeNull() // the inserted character is not a marker
-    expect(matchTypingShortcut('*x*', 2, '*')).toBeNull() // the caret is not after it
-    expect(matchTypingShortcut('*x*', 4, '*')).toBeNull()
-  })
-
-  it('looks only at the caret line, so a long text costs no more than its line', () => {
-    const long = `${'word '.repeat(50_000)}\n`
-    const t0 = performance.now()
-    for (let i = 0; i < 200; i++) expect(fires(`${long}*x`, '*')).toBe('italic')
-    expect(performance.now() - t0).toBeLessThan(1000)
-  })
-})
-
-describe('typing shortcuts: what they leave', () => {
-  const run = (text: string, caret: number, inserted: string, fmt: TextFormatting = {}) => {
-    const sc = matchTypingShortcut(text, caret, inserted)
-    if (!sc) throw new Error('did not fire')
-    return applyTypingShortcut(text, fmt, sc)
-  }
-
-  it('a heading: the marker and the space go, the line takes the level, the caret is at its text', () => {
-    expect(run('# ', 2, ' ')).toStrictEqual({ text: '', fmt: { headings: [1] }, caret: 0, content: { start: 0, end: 0 } })
-    expect(run('one\n### two', 8, ' ')).toStrictEqual({ text: 'one\ntwo', fmt: { headings: [0, 3] }, caret: 4, content: { start: 4, end: 7 } })
-    // changes the level of a heading line; other lines keep theirs
-    expect(run('a\n## b\nc', 5, ' ', { headings: [1, 3, 2] })).toStrictEqual({ text: 'a\nb\nc', fmt: { headings: [1, 2, 2] }, caret: 2, content: { start: 2, end: 3 } })
-    // bold in the new heading line is dropped (implied); italic and marks elsewhere stay, shifted
-    const fmt: TextFormatting = { spans: [{ start: 0, end: 1, italic: true }, { start: 4, end: 8, bold: true, italic: true }] }
-    expect(run('x\n# bold', 4, ' ', fmt).fmt).toStrictEqual({ spans: [{ start: 0, end: 6, italic: true }], headings: [0, 1] }) // italic on both sides: the break carries it
-    expect(run('x\n# bold', 4, ' ', { spans: [{ start: 4, end: 8, bold: true }] }).fmt).toStrictEqual({ headings: [0, 1] })
-  })
-
-  it('bold and italic: both markers go, the marked text gets the mark, the caret is after it', () => {
-    expect(run('**bold**', 8, '*')).toStrictEqual({ text: 'bold', fmt: { spans: [{ start: 0, end: 4, bold: true }] }, caret: 4, content: { start: 0, end: 4 } })
-    expect(run('a *it* b', 6, '*')).toStrictEqual({ text: 'a it b', fmt: { spans: [{ start: 2, end: 4, italic: true }] }, caret: 4, content: { start: 2, end: 4 } })
-    // marks around are kept and shifted; a mark already on the marked text is not toggled off
-    const fmt: TextFormatting = { spans: [{ start: 0, end: 1, underline: true }, { start: 3, end: 6, bold: true }, { start: 7, end: 8, strike: true }] }
-    expect(run('u **b**s', 7, '*', fmt).fmt).toStrictEqual({ spans: [{ start: 0, end: 1, underline: true }, { start: 2, end: 3, bold: true }, { start: 3, end: 4, strike: true }] })
-    // font, alignment and colour are untouched; other lines keep their levels
-    expect(run('T\n*x*', 5, '*', { font: 'serif', align: 'center', color: '#d92d20', headings: [1] }).fmt).toStrictEqual({
-      font: 'serif',
-      align: 'center',
-      color: '#d92d20',
-      spans: [{ start: 2, end: 3, italic: true }],
-      headings: [1],
-    })
-  })
-
-  it("in a heading line, bold markers go and nothing is stored (bold is the heading's own)", () => {
-    expect(run('Big **x**', 9, '*', { headings: [2] })).toStrictEqual({ text: 'Big x', fmt: { headings: [2] }, caret: 5, content: { start: 4, end: 5 } })
-  })
-
-  it('surrogate pairs keep their marks whole', () => {
-    expect(run('\u{1F600} **\u{1F680}** z', 9, '*')).toStrictEqual({
-      text: '\u{1F600} \u{1F680} z',
-      fmt: { spans: [{ start: 3, end: 5, bold: true }] },
-      caret: 5,
-      content: { start: 3, end: 5 },
-    })
-  })
-
-  it('never produces a carriage return', () => {
-    expect(run('a\r\n**b**\r\nc', 8, '*').text).toBe('a\r\nb\r\nc')
-    expect(run('a\n**b**\nc', 7, '*').text).not.toContain('\r')
-  })
-})
-
-describe('pending marks that may stand at a caret', () => {
-  const fmt: TextFormatting = { headings: [1] } // "Title" is a heading, "body" is not
-  const text = 'Title\nbody'
-
-  it('on a heading line a pending bold (on or off) is dropped; every other pending mark is kept', () => {
-    expect(pendingMarksAt(text, fmt, 3, { bold: true })).toStrictEqual({})
-    expect(pendingMarksAt(text, fmt, 5, { bold: false, italic: true, underline: false, strike: true })).toStrictEqual({ italic: true, underline: false, strike: true })
-    expect(pendingMarksAt('', { headings: [2] }, 0, { bold: true, italic: true })).toStrictEqual({ italic: true }) // an empty heading line
-  })
-
-  it('on a normal line nothing changes, and the same object comes back when nothing is dropped', () => {
-    const pending = { bold: true, italic: true }
-    expect(pendingMarksAt(text, fmt, 6, pending)).toBe(pending) // start of "body"
-    expect(pendingMarksAt(text, fmt, 10, pending)).toBe(pending)
-    const noBold = { italic: true }
-    expect(pendingMarksAt(text, fmt, 3, noBold)).toBe(noBold)
-    expect(pendingMarksAt(text, {}, 3, pending)).toBe(pending)
   })
 })

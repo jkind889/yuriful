@@ -4,18 +4,18 @@ import type { BoardDoc, FrameRecord, ImageRecord, ObjectRecord, Scene, StoredAss
 import { Editor } from './Editor.ts'
 import type { EditorOptions } from './Editor.ts'
 import { computeLayers } from './layerList.ts'
-import { ProxyRect, createObject, createProxy, idOf, imageDataOf } from './objects.ts'
+import { ProxyRect, createProxy, idOf, imageDataOf } from './objects.ts'
 import { canvasOf } from './testing/drive.ts'
 import type { Canvas, FakeObject } from './testing/fakeFabric.ts'
-import { FABRIC, FakeAssets, FakeCardMeasurer, SpyStore } from './testing/fakes.ts'
+import { FakeAssets, FakeCardMeasurer, SpyStore } from './testing/fakes.ts'
 import { fabricReference } from './testing/fabricReference.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
 /**
- * The base branch's features on the DOM renderer (plan Slice 2c-iii), on the fake Fabric: crop
- * mode's session on an image proxy and duplicate run the same script as on the default renderer
- * and must give the same records and state after every step; what only the DOM renderer has (a
+ * The base branch's features on the scene layer's proxies (plan Slice 2c-iii), on the fake Fabric:
+ * crop mode's session on an image proxy and duplicate run a script that must give, after every
+ * step, the records and state the Fabric renderer gave for it (its frozen reference); what only the DOM renderer has (a
  * proxy's picture data, a text proxy sized from its card before its owner is decided, the layer
  * list reading a text proxy) is checked directly. Where things land on screen, and the pairing
  * of text geometry, is in `e2e/interleaving.spec.ts`.
@@ -29,12 +29,12 @@ const F = (id: string, left: number, top: number, width = 400, height = 300): Fr
 const img = (id: string, left: number, top: number, extra: Partial<ImageRecord> = {}): ImageRecord => ({ type: 'image', id, left, top, angle: 0, assetId: 'a1', scaleX: 1, scaleY: 1, ...extra })
 const txt = (id: string, left: number, top: number, extra: Partial<TextRecord> = {}): TextRecord => ({ type: 'text', id, left, top, angle: 0, text: `${id} words`, fontSize: 20, width: 200, ...extra })
 const key = (k: string) => new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true })
-const dom = (): EditorOptions => ({ renderer: 'dom', measurer: new FakeCardMeasurer() })
+const dom = (): EditorOptions => ({ measurer: new FakeCardMeasurer() })
 
 let host: HTMLDivElement
 const editors: Editor[] = []
 
-async function open(frames: FrameRecord[], objects: ObjectRecord[], options: EditorOptions = FABRIC) {
+async function open(frames: FrameRecord[], objects: ObjectRecord[], options: EditorOptions = dom()) {
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Features', frames, objects }
   const store = new SpyStore({ doc, assets: new Map([['a1', asset('a1')]]) })
   store.holdLoad = false
@@ -89,7 +89,7 @@ afterEach(() => {
 
 type Step = (b: Awaited<ReturnType<typeof open>>) => void
 
-/** Runs a script on one renderer: after every step, the live scene, what a save would store, history and the state flags. */
+/** Runs a script: after every step, the live scene, what a save would store, history and the state flags. */
 async function run(options: EditorOptions, frames: FrameRecord[], objects: ObjectRecord[], steps: Step[]) {
   const b = await open(frames, objects, options)
   const out: unknown[] = []
@@ -146,7 +146,7 @@ describe('crop mode on an image proxy', () => {
   ]
 
   it('gives the same records, saves, history and state after every step as the Fabric renderer', async () => {
-    const fabric = await fabricReference('script', { frames: frames(), objects: objects(), script }, async () => ({ out: (await run(FABRIC, frames(), objects(), script)).out }))
+    const fabric = await fabricReference<{ out: unknown[] }>('script', { frames: frames(), objects: objects(), script })
     const domRun = await run(dom(), frames(), objects(), script)
     expect(domRun.b.obj('P')).toBeInstanceOf(ProxyRect)
     expect(domRun.out).toEqual(fabric.out)
@@ -195,7 +195,7 @@ describe('duplicate on the DOM renderer', () => {
         return seen.get(id)!
       })) as unknown
     }
-    const fabric = await fabricReference('script', { frames, objects, script }, async () => ({ out: norm((await run(FABRIC, frames, objects, script)).out) as unknown[] }))
+    const fabric = await fabricReference<{ out: unknown[] }>('script', { frames, objects, script })
     const domRun = await run(dom(), frames, objects, script)
     expect(norm(domRun.out)).toEqual(fabric.out)
     expect((fabric.out[1] as { live: Scene }).live.frames).toHaveLength(2)
@@ -216,27 +216,24 @@ describe('duplicate on the DOM renderer', () => {
 })
 
 describe('the layer list on proxies', () => {
-  it('lists a text proxy as text with its words, leaves out a blank one, and lists images and Fabric objects as before', () => {
+  it('lists a text proxy as text with its words, leaves out a blank one, and lists images', () => {
     const el = { naturalWidth: 200, naturalHeight: 100 } as HTMLImageElement
     const proxies = [
       createProxy(img('i', 0, 0), () => el)!,
       createProxy(txt('t', 0, 0, { text: '  A   note\nwith lines  ' }), () => undefined)!,
       createProxy(txt('blank', 0, 0, { text: '   ' }), () => undefined)!,
     ]
-    const fabric = [createObject(img('fi', 0, 0), () => el)!, createObject(txt('ft', 0, 0, { text: 'Fabric words' }), () => undefined)!]
-    const rows = computeLayers([...fabric, ...proxies], [proxies[1]!], (id) => (id === 'a1' ? 'photo.png' : undefined), [])
+    const rows = computeLayers(proxies, [proxies[1]!], (id) => (id === 'a1' ? 'photo.png' : undefined), [])
     expect(rows.map((r) => [r.id, r.kind, r.label, r.selected])).toEqual([
       ['t', 'text', 'A note with lines', true],
       ['i', 'image', 'photo.png', false],
-      ['ft', 'text', 'Fabric words', false],
-      ['fi', 'image', 'photo.png', false],
     ])
   })
 })
 
 describe('caption snapping rejects an ineligible text before reading anything', () => {
-  it('a rotated text: no position, size or image is read, on either renderer; an upright one is read', async () => {
-    for (const options of [FABRIC, dom()]) {
+  it('a rotated text: no position, size or image is read; an upright one is read', async () => {
+    for (const options of [dom()]) {
       const b = await open([], [img('i', 0, 0), txt('r', 0, 120, { angle: 15 }), txt('u', 0, 160)], options)
       const text = (b.editor as unknown as { text: { findCaptionSnap: (o: unknown, objs: readonly unknown[], zoom: number, prev: null) => unknown } }).text
       const reads: string[] = []

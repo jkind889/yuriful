@@ -2,33 +2,27 @@ import { expect, test } from '@playwright/test'
 import { openBlank } from './helpers.ts'
 
 /**
- * The new text engine (`src/editor/textSession.ts`, not yet wired into the canvas) against
- * today's canvas, edit for edit: typing, Enter, Backspace and Delete over every caret and
- * selection of formatted texts. The expectation is the shipped canvas itself: a real Fabric
- * text built by `createObject`, its hidden textarea changed as the key changes it, Fabric's
- * own `onInput`, then the editor's `reconcileTextFormatting` and `toRecord`. Nothing of the
- * engine is used to compute it.
+ * The text engine (`src/editor/textSession.ts`) against the canvas it replaced, edit for edit:
+ * typing, Enter, Backspace and Delete over every caret and selection of formatted texts. The
+ * expectation is that canvas: a real Fabric text box, its hidden textarea changed as the key
+ * changes it, Fabric's own `onInput`, then the Fabric renderer's reconciling of its styles and
+ * reading of its record, from a frozen copy of that renderer's text code
+ * (`src/editor/testing/fabricTextOracle.ts`, which agreed with the live renderer on every case
+ * here before the renderer was deleted). Nothing of the engine is used to compute it.
  */
 test('typing, Enter and deletions over every caret and selection give the canvas’s record, marks included', async ({ page }) => {
   test.setTimeout(240_000)
   await openBlank(page)
-  const out = await page.evaluate(async (check) => {
+  const out = await page.evaluate(async () => {
     // Loaded from the dev server, as the other specs load app modules.
     const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
-    // The canvas fed the same input: the frozen copy of the Fabric text code (`fabricTextOracle.ts`).
-    // With FABRIC_REFERENCE=check, the live Fabric renderer is fed it too and must agree.
+    // The canvas fed the same input: the frozen copy of the Fabric renderer's text code (`fabricTextOracle.ts`).
     type Oracle = { create: (src: object) => unknown; reconcile: (obj: unknown, pending?: unknown) => unknown; content: (obj: unknown) => unknown }
     const fo = (await load('/src/editor/testing/fabricTextOracle.ts')) as typeof import('../src/editor/testing/fabricTextOracle.ts')
     const frozen: Oracle = {
       create: (src) => fo.createFabricText({ left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...(src as { text: string }) }),
       reconcile: (obj, pending) => fo.reconcileFabricText(obj as never, pending as never),
       content: (obj) => fo.fabricTextContent(obj as never),
-    }
-    const lo = check ? ((await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')) : null
-    const liveOracle: Oracle | null = lo && {
-      create: (src) => lo.createObject({ type: 'text', id: 't', left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...(src as { text: string }) }, () => undefined),
-      reconcile: (obj, pending) => lo.reconcileTextFormatting(obj as never, pending as never),
-      content: (obj) => lo.toRecord(obj as never),
     }
     const { canonicalTextContent } = (await load('/src/model/textDoc.ts')) as typeof import('../src/model/textDoc.ts')
     const { splitGraphemes } = (await load('/src/model/richText.ts')) as typeof import('../src/model/richText.ts')
@@ -39,7 +33,6 @@ test('typing, Enter and deletions over every caret and selection give the canvas
     let count = 0
     let fails = 0
     let live = 0
-    let oracleDiffs = 0
     const samples: unknown[] = []
     for (const text of texts) {
       for (const levels of [[0, 2, 1], [1, 0, 3]]) {
@@ -79,7 +72,6 @@ test('typing, Enter and deletions over every caret and selection give the canvas
                   return canonicalTextContent(oracle.content(obj) as never)
                 }
                 const expected = fed(frozen)
-                if (liveOracle && JSON.stringify(fed(liveOracle)) !== JSON.stringify(expected)) oracleDiffs++
                 const s = open(src)
                 s.select(a, b)
                 if (op === 'x') type(s, 'x')
@@ -97,10 +89,9 @@ test('typing, Enter and deletions over every caret and selection give the canvas
         }
       }
     }
-    return { count, fails, live, samples, oracleDiffs }
-  }, process.env.FABRIC_REFERENCE === 'check')
-  console.log(`text engine parity: ${out.count} edits, ${out.fails} differ, ${out.live} live documents off their record, ${out.oracleDiffs} where the frozen oracle and the live Fabric renderer differ`)
-  expect(out.oracleDiffs, 'the frozen oracle against the live Fabric renderer').toBe(0)
+    return { count, fails, live, samples }
+  })
+  console.log(`text engine parity: ${out.count} edits, ${out.fails} differ, ${out.live} live documents off their record`)
   expect(out.samples).toEqual([])
   expect(out.fails).toBe(0)
   expect(out.live).toBe(0)
@@ -163,22 +154,15 @@ test('an IME composition or a keyless insertion over every selection gives the e
         await cdp.send('Input.insertText', { text: 'カ' })
       } else await cdp.send('Input.insertText', { text: 'カ' })
       await page.waitForTimeout(60)
-      const result = await page.evaluate(async ([src, a, b, check]) => {
+      const result = await page.evaluate(async ([src, a, b]) => {
         const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
-        // The canvas fed the same input: the frozen copy of the Fabric text code (`fabricTextOracle.ts`).
-        // With FABRIC_REFERENCE=check, the live Fabric renderer is fed it too and must agree.
+        // The canvas fed the same input: the frozen copy of the Fabric renderer's text code (`fabricTextOracle.ts`).
         type Oracle = { create: (src: object) => unknown; reconcile: (obj: unknown, pending?: unknown) => unknown; content: (obj: unknown) => unknown }
         const fo = (await load('/src/editor/testing/fabricTextOracle.ts')) as typeof import('../src/editor/testing/fabricTextOracle.ts')
         const frozen: Oracle = {
           create: (src) => fo.createFabricText({ left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...(src as { text: string }) }),
           reconcile: (obj, pending) => fo.reconcileFabricText(obj as never, pending as never),
           content: (obj) => fo.fabricTextContent(obj as never),
-        }
-        const lo = check ? ((await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')) : null
-        const liveOracle: Oracle | null = lo && {
-          create: (src) => lo.createObject({ type: 'text', id: 't', left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...(src as { text: string }) }, () => undefined),
-          reconcile: (obj, pending) => lo.reconcileTextFormatting(obj as never, pending as never),
-          content: (obj) => lo.toRecord(obj as never),
         }
         const { canonicalTextContent } = (await load('/src/model/textDoc.ts')) as typeof import('../src/model/textDoc.ts')
         const { docFromText } = (await load('/src/editor/textSchema.ts')) as typeof import('../src/editor/textSchema.ts')
@@ -220,13 +204,12 @@ test('an IME composition or a keyless insertion over every selection gives the e
           return canonicalTextContent(oracle.content(obj) as never)
         }
         const expected = fed(frozen)
-        const oracleDiff = !!liveOracle && JSON.stringify(fed(liveOracle)) !== JSON.stringify(expected)
         const got = s.content()
-        return { expected, r5, got, live: docFromText(got)!.doc.eq(s.state.doc), oracleDiff }
-      }, [src, a, b, process.env.FABRIC_REFERENCE === 'check'] as const)
+        return { expected, r5, got, live: docFromText(got)!.doc.eq(s.state.doc) }
+      }, [src, a, b] as const)
       count++
       const want = how === 'ime' ? result.r5 : result.expected
-      if (JSON.stringify(want) !== JSON.stringify(result.got) || result.got.text !== result.expected?.text || !result.live || result.oracleDiff) fails.push({ how, src, a, b, ...result })
+      if (JSON.stringify(want) !== JSON.stringify(result.got) || result.got.text !== result.expected?.text || !result.live) fails.push({ how, src, a, b, ...result })
     }
   }
   console.log(`text engine parity (mounted, IME and keyless insertion): ${count} edits, ${fails.length} differ`)
@@ -239,10 +222,10 @@ test('an IME composition or a keyless insertion over every selection gives the e
  * a mounted view. A composition never starts over a selection: the selection is deleted at
  * `compositionstart`, and given back when the composition delivers nothing. While a composition
  * is open the browser and ProseMirror own the text and session commands are refused; as soon
- * as it has ended they work. Text and caret must equal the shipped canvas fed the same input:
- * each composition update an input of Fabric's real `onInput` (the textarea holding the
- * candidate, its caret after it), keys and pastes likewise, with the editor's
- * `reconcileTextFormatting` after each. Marks and levels: at a plain caret compared with that
+ * as it has ended they work. Text and caret must equal the Fabric canvas fed the same input
+ * (through the frozen copy of its text code, `fabricTextOracle.ts`): each composition update an
+ * input of Fabric's real `onInput` (the textarea holding the candidate, its caret after it), keys
+ * and pastes likewise, with the Fabric renderer's reconciling of the styles after each. Marks and levels: at a plain caret compared with that
  * same canvas record; over a selection, rule R5 (the composed text takes the marks of the
  * first selected character, levels by today's rule) asserted directly; after input that
  * followed a composition at once, text and caret only. After every scenario: the last record
@@ -454,22 +437,15 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
       }
       await Promise.all(sent.splice(0))
       await page.waitForTimeout(40)
-      const result = await page.evaluate(async ([src, a, b, steps, pending, check]) => {
+      const result = await page.evaluate(async ([src, a, b, steps, pending]) => {
         const load = (path: string): Promise<unknown> => import(/* @vite-ignore */ path)
-        // The canvas fed the same input: the frozen copy of the Fabric text code (`fabricTextOracle.ts`).
-        // With FABRIC_REFERENCE=check, the live Fabric renderer is fed it too and must agree.
+        // The canvas fed the same input: the frozen copy of the Fabric renderer's text code (`fabricTextOracle.ts`).
         type Oracle = { create: (src: object) => unknown; reconcile: (obj: unknown, pending?: unknown) => unknown; content: (obj: unknown) => unknown }
         const fo = (await load('/src/editor/testing/fabricTextOracle.ts')) as typeof import('../src/editor/testing/fabricTextOracle.ts')
         const frozen: Oracle = {
           create: (src) => fo.createFabricText({ left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...(src as { text: string }) }),
           reconcile: (obj, pending) => fo.reconcileFabricText(obj as never, pending as never),
           content: (obj) => fo.fabricTextContent(obj as never),
-        }
-        const lo = check ? ((await load('/src/editor/objects.ts')) as typeof import('../src/editor/objects.ts')) : null
-        const liveOracle: Oracle | null = lo && {
-          create: (src) => lo.createObject({ type: 'text', id: 't', left: 0, top: 0, angle: 0, width: 360, fontSize: 24, ...(src as { text: string }) }, () => undefined),
-          reconcile: (obj, pending) => lo.reconcileTextFormatting(obj as never, pending as never),
-          content: (obj) => lo.toRecord(obj as never),
         }
         const { canonicalTextContent } = (await load('/src/model/textDoc.ts')) as typeof import('../src/model/textDoc.ts')
         const { docFromText, contentFromDoc, plainTextOfDoc } = (await load('/src/editor/textSchema.ts')) as typeof import('../src/editor/textSchema.ts')
@@ -494,7 +470,7 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
         obj.hiddenTextarea = document.createElement('textarea')
         obj.selectionStart = g(value, a as number)
         obj.selectionEnd = g(value, b as number)
-        // The editor's pending choices go to what the canvas inserts (\`reconcileTextFormatting\`'s \`pending\`); Ctrl+B, I or U at a caret adds to them.
+        // The editor's pending choices go to what the canvas inserts (the reconciling's \`pending\`); Ctrl+B, I or U at a caret adds to them.
         const p = pending as { italic?: boolean; font?: string } | undefined
         let pend: Record<string, unknown> | undefined = p ? { ...(p.italic ? { italic: true } : {}), ...(p.font ? { font: p.font } : {}) } : undefined
         const input = (next: string, caret: number, type: string) => {
@@ -576,9 +552,7 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
         const canvasCaret = off(value, obj.selectionEnd)
         return { canvas, canvasCaret, records, value, undos }
         }
-        const fed = feed(frozen)
-        const oracleDiff = !!liveOracle && JSON.stringify(feed(liveOracle)) !== JSON.stringify(fed)
-        const { canvas, canvasCaret, records, value, undos } = fed
+        const { canvas, canvasCaret, records, value, undos } = feed(frozen)
         // ---- rule R5 for a run of compositions over a selection
         const text = source.text
         const r5 = (() => {
@@ -634,9 +608,8 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
           offRecord,
           commands: w.commands,
           gaps: w.times.gaps,
-          oracleDiff,
         }
-      }, [scenario.src, scenario.a, scenario.b, scenario.steps, scenario.pending, process.env.FABRIC_REFERENCE === 'check'] as const)
+      }, [scenario.src, scenario.a, scenario.b, scenario.steps, scenario.pending] as const)
       runs++
       gaps.push(...result.gaps)
       const problems: string[] = []
@@ -656,7 +629,6 @@ test('real IME compositions keep exactly the text and caret the canvas keeps, an
         } else if (c.ret !== true) problems.push(`${c.cmd} refused after the composition had ended`)
         else ran++
       }
-      if (result.oracleDiff) problems.push('the frozen oracle and the live Fabric renderer differ')
       if (result.composing || result.settling) problems.push('still composing')
       if (!result.canonical) problems.push('record not canonical')
       if (!result.live) problems.push('document is not the record')

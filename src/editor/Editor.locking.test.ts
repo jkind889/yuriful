@@ -7,8 +7,9 @@ import { Editor } from './Editor.ts'
 import { idOf, isLocked } from './objects.ts'
 import { canvasOf, dragBy, press, release, scaleBy, tick } from './testing/drive.ts'
 import { ActiveSelection } from './testing/fakeFabric.ts'
-import type { FakeObject, Textbox } from './testing/fakeFabric.ts'
-import { FABRIC, FakeAssets, SpyStore } from './testing/fakes.ts'
+import type { FakeObject } from './testing/fakeFabric.ts'
+import { editedObject, insertText, startEditing } from './testing/editing.ts'
+import { FakeAssets, FakeCardMeasurer, SpyStore, stubTextLayout } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -53,7 +54,7 @@ const flush = () => vi.advanceTimersByTimeAsync(10_000)
 function make(frames: FrameRecord[], objects: ObjectRecord[]) {
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Locking', frames, objects }
   const store = new SpyStore(frames.length + objects.length > 0 ? { doc, assets: new Map([['a1', asset('a1')]]) } : null)
-  const editor = new Editor(host, store, new FakeAssets(), undefined, FABRIC)
+  const editor = new Editor(host, store, new FakeAssets(), undefined, { measurer: new FakeCardMeasurer() })
   editors.push(editor)
   return { editor, store, canvas: canvasOf(editor) }
 }
@@ -102,7 +103,9 @@ function helpers({ editor, store, canvas }: ReturnType<typeof make>) {
   return { editor, store, canvas, obj, doc, rec, lockedIds, activeIds, select, move, scale, sel, canUndo }
 }
 
+let restoreLayout = () => {}
 beforeEach(() => {
+  restoreLayout = stubTextLayout()
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   vi.stubGlobal(
     'ResizeObserver',
@@ -115,6 +118,7 @@ beforeEach(() => {
   document.body.appendChild(host)
 })
 afterEach(() => {
+  restoreLayout()
   editors.splice(0).forEach((e) => e.dispose())
   host.remove()
   vi.unstubAllGlobals()
@@ -127,7 +131,8 @@ describe('loading', () => {
     expect(b.lockedIds()).toEqual(['L', 'A'])
     expect(b.obj('L')).toMatchObject({ evented: false, selectable: false, hasControls: false, lockMovementX: true })
     expect(b.obj('A')).toMatchObject({ evented: false, selectable: false, lockRotation: true })
-    expect(b.obj('t')).toMatchObject({ evented: true, selectable: true, editable: true })
+    expect(b.obj('t')).toMatchObject({ evented: true, selectable: true, hasControls: true })
+    expect(isLocked(b.obj('t') as never)).toBe(false)
     expect(b.rec('L')).toEqual(img('L', 50, 50, { locked: true, frameId: 'A' }))
     expect(b.rec('t')).not.toHaveProperty('locked')
     await flush()
@@ -271,7 +276,7 @@ describe('the padlock on a layer row (toggleLayerLock)', () => {
     const blank = b.canvas.getActiveObject()!
     b.editor.toggleLayerLock(idOf(blank as never)!)
     expect(isLocked(blank as never)).toBe(false)
-    expect((blank as Textbox).isEditing).toBe(true)
+    expect(editedObject(b.editor)).toBe(blank)
     expect(b.canUndo()).toBe(false)
   })
 })
@@ -357,12 +362,12 @@ describe('nothing edits a locked selection', () => {
 
   it('a locked text does not enter editing', async () => {
     const b = await board([], [txt('t', 0, 0, { locked: true })])
-    const t = b.obj('t') as Textbox
-    t.enterEditing()
-    expect(t.isEditing).toBe(false)
+    const t = b.obj('t')
+    startEditing(b.editor, t)
+    expect(editedObject(b.editor)).toBeNull()
     b.editor.toggleLayerLock('t')
-    t.enterEditing()
-    expect(t.isEditing).toBe(true)
+    startEditing(b.editor, t)
+    expect(editedObject(b.editor)).toBe(t)
   })
 })
 
@@ -370,10 +375,10 @@ describe('leaving a text edit', () => {
   it('locking a text being typed commits the text as its own step, then locks it as a second step', async () => {
     const b = await board([], [img('i1', 600, 600)])
     b.editor.addText()
-    const t = b.canvas.getActiveObject() as Textbox
-    t.type('hello')
+    const t = b.canvas.getActiveObject() as FakeObject
+    insertText(b.editor, 'hello')
     b.editor.setSelectionLocked(true)
-    expect(t.isEditing).toBe(false)
+    expect(editedObject(b.editor)).toBeNull()
     expect(b.editor.getState().editingText).toBe(false)
     expect(b.rec(idOf(t as never)!)).toMatchObject({ text: 'hello', locked: true })
     expect(b.activeIds()).toEqual([idOf(t as never)])
@@ -399,10 +404,10 @@ describe('leaving a text edit', () => {
   it('a padlock on another row while a text is being typed commits the text, then locks that row', async () => {
     const b = await board([], [img('i1', 600, 600)])
     b.editor.addText()
-    const t = b.canvas.getActiveObject() as Textbox
-    t.type('note')
+    const t = b.canvas.getActiveObject() as FakeObject
+    insertText(b.editor, 'note')
     b.editor.toggleLayerLock('i1')
-    expect(t.isEditing).toBe(false)
+    expect(editedObject(b.editor)).toBeNull()
     expect(b.lockedIds()).toEqual(['i1'])
     expect(b.rec(idOf(t as never)!)).toMatchObject({ text: 'note' })
     b.editor.undo()

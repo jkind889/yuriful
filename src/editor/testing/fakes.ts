@@ -4,11 +4,22 @@ import type { AssetSource } from '../assets.ts'
 import type { CardMeasurer } from '../sceneLayer.ts'
 
 /**
- * The options that build an editor on the Fabric renderer. The app draws with the DOM renderer;
- * these unit tests still exercise the Fabric text path, which stays as the test-only reference
- * until it is deleted.
+ * jsdom lays nothing out, and has none of the few layout calls the text engine's view makes
+ * (scrolling the caret into view, a point to a position): they find nothing. Call it before an
+ * editor edits text (in `beforeEach`); the returned function puts jsdom back (in `afterEach`).
  */
-export const FABRIC = { renderer: 'fabric' } as const
+export function stubTextLayout(): () => void {
+  const none = () => Object.assign([], { item: () => null }) as unknown as DOMRectList
+  const zero = () => ({ left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON() {} }) as DOMRect
+  Object.defineProperty(Range.prototype, 'getClientRects', { value: none, configurable: true })
+  Object.defineProperty(Range.prototype, 'getBoundingClientRect', { value: zero, configurable: true })
+  Object.defineProperty(document, 'elementFromPoint', { value: () => null, configurable: true })
+  return () => {
+    delete (Range.prototype as { getClientRects?: unknown }).getClientRects
+    delete (Range.prototype as { getBoundingClientRect?: unknown }).getBoundingClientRect
+    delete (document as { elementFromPoint?: unknown }).elementFromPoint
+  }
+}
 
 export interface Deferred<T> {
   promise: Promise<T>
@@ -121,7 +132,7 @@ export class FakeAssets implements AssetSource {
 }
 
 /**
- * Sizes text cards without layout (jsdom lays nothing out): the DOM renderer's size authority
+ * Sizes text cards without layout (jsdom lays nothing out): the editor's size authority
  * in unit tests (plan Section 6). A line is 1.25 font sizes tall, a heading line 2, 1.5 or 1.25
  * times that; the height is at least the drawn minimum height. The narrowest width is half a
  * font size per character of the longest space-separated word. Every result is deterministic.

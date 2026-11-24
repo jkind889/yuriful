@@ -3,7 +3,7 @@ import { FRAME_HIT_TOLERANCE, LABEL_GAP, LABEL_HEIGHT } from '../model/frames.ts
 import type { FrameRecord, ImageRecord } from '../model/types.ts'
 import { FrameCanvas } from './FrameCanvas.ts'
 import { fitLabel, frameOverlay, hitsFrameOverlay } from './frameLayer.ts'
-import { createFrame, createObject, idOf } from './objects.ts'
+import { createFrameProxy, createProxy, idOf } from './objects.ts'
 import { ActiveSelection, Point } from './testing/fakeFabric.ts'
 import type { FakeObject } from './testing/fakeFabric.ts'
 
@@ -38,7 +38,7 @@ beforeEach(() => {
 
 describe('frame overlay geometry', () => {
   it('maps the frame rectangle to viewport pixels and puts the label above its top-left corner', () => {
-    const f = createFrame(frame('f', 100, 200, 400, 300, 'Cover'))
+    const f = createFrameProxy(frame('f', 100, 200, 400, 300, 'Cover'))
     const o = frameOverlay(f, [2, 0, 0, 2, -50, 30])
     expect(o.outline).toEqual({ left: 150, top: 430, width: 800, height: 600 })
     expect(o.label.left).toBe(150)
@@ -48,7 +48,7 @@ describe('frame overlay geometry', () => {
   })
 
   it('the label keeps its screen size at any zoom', () => {
-    const f = createFrame(frame('f', 0, 0, 400, 300, 'Cover'))
+    const f = createFrameProxy(frame('f', 0, 0, 400, 300, 'Cover'))
     const near = frameOverlay(f, [4, 0, 0, 4, 0, 0]).label
     const far = frameOverlay(f, [0.1, 0, 0, 0.1, 0, 0]).label
     expect(near.width).toBe(far.width)
@@ -65,7 +65,7 @@ describe('frame overlay geometry', () => {
   })
 
   it('hits the label and the outline band but not the interior', () => {
-    const o = frameOverlay(createFrame(frame('f', 100, 100)), [1, 0, 0, 1, 0, 0])
+    const o = frameOverlay(createFrameProxy(frame('f', 100, 100)), [1, 0, 0, 1, 0, 0])
     expect(hitsFrameOverlay(o, { x: 104, y: 100 - LABEL_GAP - 3 })).toBe(true) // label
     expect(hitsFrameOverlay(o, { x: 300, y: 100 + FRAME_HIT_TOLERANCE })).toBe(true) // top edge band
     expect(hitsFrameOverlay(o, { x: 300, y: 250 })).toBe(false) // interior
@@ -74,14 +74,14 @@ describe('frame overlay geometry', () => {
 
 describe('target priority', () => {
   it('a frame interior is click-through: content inside it is hit, empty interior is nothing', () => {
-    add(createFrame(frame('f', 100, 100)), createObject(image('img', 150, 150), () => el))
+    add(createFrameProxy(frame('f', 100, 100)), createProxy(image('img', 150, 150), () => el))
     expect(targetAt(200, 200)).toBe('img')
     expect(targetAt(450, 380)).toBeUndefined() // inside the frame, beside the image
   })
 
   it('a frame label or outline wins over content lying on top of it', () => {
     // The image covers the whole frame and more, label included.
-    add(createFrame(frame('f', 100, 100)), createObject({ ...image('img', 0, 0), scaleX: 4, scaleY: 4 }, () => el))
+    add(createFrameProxy(frame('f', 100, 100)), createProxy({ ...image('img', 0, 0), scaleX: 4, scaleY: 4 }, () => el))
     expect(targetAt(104, 100 - LABEL_GAP - 3)).toBe('f') // label over image
     expect(targetAt(300, 100)).toBe('f') // top edge over image
     expect(targetAt(500, 250)).toBe('f') // right edge over image
@@ -89,13 +89,13 @@ describe('target priority', () => {
   })
 
   it('the front-most frame wins where two overlays coincide', () => {
-    add(createFrame(frame('back', 100, 100)), createFrame(frame('front', 100, 100)))
+    add(createFrameProxy(frame('back', 100, 100)), createFrameProxy(frame('front', 100, 100)))
     expect(targetAt(300, 100)).toBe('front')
     expect(targetAt(104, 100 - LABEL_GAP - 3)).toBe('front')
   })
 
   it('uses viewport pixels: the band is 6 screen pixels at any zoom and pan', () => {
-    add(createFrame(frame('f', 100, 100)))
+    add(createFrameProxy(frame('f', 100, 100)))
     for (const [zoom, panX, panY] of [
       [0.25, 310, -40],
       [4, -700, 120],
@@ -113,7 +113,7 @@ describe('target priority', () => {
   })
 
   it('a single selected frame is found only by its overlay, so its interior stays click-through', () => {
-    const f = createFrame(frame('f', 100, 100))
+    const f = createFrameProxy(frame('f', 100, 100))
     add(f)
     expect(targetAt(300, 250, [f])).toBeUndefined() // what Fabric asks about the active object
     expect(targetAt(300, 100, [f])).toBe('f')
@@ -122,8 +122,8 @@ describe('target priority', () => {
   })
 
   it('a multi-selection is still grabbed anywhere in its box', () => {
-    const f = createFrame(frame('f', 100, 100)) as unknown as FakeObject
-    const img = createObject(image('img', 150, 150), () => el) as unknown as FakeObject
+    const f = createFrameProxy(frame('f', 100, 100)) as unknown as FakeObject
+    const img = createProxy(image('img', 150, 150), () => el) as unknown as FakeObject
     add(f, img)
     const selection = new ActiveSelection([f, img])
     Object.assign(selection, { left: 100, top: 100, width: 400, height: 300 })
@@ -131,8 +131,8 @@ describe('target priority', () => {
   })
 
   it('the label of a frame that is part of the multi-selection acts on the whole selection', () => {
-    const f = createFrame(frame('f', 100, 100)) as unknown as FakeObject
-    const img = createObject(image('img', 150, 150), () => el) as unknown as FakeObject
+    const f = createFrameProxy(frame('f', 100, 100)) as unknown as FakeObject
+    const img = createProxy(image('img', 150, 150), () => el) as unknown as FakeObject
     add(f, img)
     const selection = new ActiveSelection([f, img])
     f.group = selection // as Fabric marks the members of the active selection
@@ -145,13 +145,13 @@ describe('target priority', () => {
     // When Fabric searches among the members themselves (Shift-click), it still gets the member.
     expect(canvas.searchPossibleTargets([f, img] as Any, at(104, 100 - LABEL_GAP - 3)).target).toBe(f)
     // A frame that is not part of the selection is still found as itself.
-    const other = createFrame(frame('other', 900, 100)) as unknown as FakeObject
+    const other = createFrameProxy(frame('other', 900, 100)) as unknown as FakeObject
     add(other)
     expect(targetAt(904, 100 - LABEL_GAP - 3)).toBe('other')
   })
 
   it('ignores a hidden or non-evented frame', () => {
-    const f = createFrame(frame('f', 100, 100))
+    const f = createFrameProxy(frame('f', 100, 100))
     add(f)
     Object.assign(f, { visible: false })
     expect(targetAt(300, 100)).toBeUndefined()
@@ -167,10 +167,10 @@ describe('Shift-click inside a multi-selection', () => {
   const lastToggled = () => (canvas as unknown as { multiSelectionCalls: Array<{ target?: unknown }> }).multiSelectionCalls.at(-1)?.target
 
   function selectTwoImagesUnderLabel() {
-    const f = createFrame(frame('f', 100, 100))
+    const f = createFrameProxy(frame('f', 100, 100))
     // Both images are in front of the frame; the first lies under the frame's label.
-    const a = createObject(image('a', 80, 20), () => el) as unknown as FakeObject
-    const b = createObject(image('b', 600, 400), () => el) as unknown as FakeObject
+    const a = createProxy(image('a', 80, 20), () => el) as unknown as FakeObject
+    const b = createProxy(image('b', 600, 400), () => el) as unknown as FakeObject
     add(f, a, b)
     const selection = new ActiveSelection([a, b])
     ;(canvas as unknown as { setActiveObject: (o: unknown) => void }).setActiveObject(selection)
@@ -204,14 +204,14 @@ describe('marquee', () => {
   const collect = (left: number, top: number, width: number, height: number) => canvas.collectObjects({ left, top, width, height }).map((o) => idOf(o as never))
 
   it('takes a frame only when it encloses the whole frame', () => {
-    add(createFrame(frame('f', 100, 100)), createObject(image('img', 150, 150), () => el))
+    add(createFrameProxy(frame('f', 100, 100)), createProxy(image('img', 150, 150), () => el))
     expect(collect(120, 120, 300, 200)).toEqual(['img']) // inside the frame: content only
     expect(collect(50, 50, 200, 200)).toEqual(['img']) // crosses the frame edge: still not the frame
     expect(collect(90, 90, 420, 320)).toEqual(['img', 'f']) // full enclosure (top to bottom)
   })
 
   it('a click on empty interior collects nothing', () => {
-    add(createFrame(frame('f', 100, 100)))
+    add(createFrameProxy(frame('f', 100, 100)))
     expect(collect(300, 250, 0, 0)).toEqual([])
   })
 })
@@ -231,7 +231,7 @@ describe('drawing', () => {
     c.fire('after:render', { ctx })
     expect(calls).toEqual([])
 
-    add(createFrame(frame('f', 100, 100, 400, 300, 'Cover')))
+    add(createFrameProxy(frame('f', 100, 100, 400, 300, 'Cover')))
     c.fire('after:render', { ctx: {} }) // some other context, e.g. an export
     expect(calls).toEqual([])
     c.fire('after:render', { ctx })
@@ -259,7 +259,7 @@ describe('drawing', () => {
 
     calls.length = 0
     canvas.draft = null
-    const hidden = createFrame(frame('f', 100, 100, 400, 300, 'Hidden'))
+    const hidden = createFrameProxy(frame('f', 100, 100, 400, 300, 'Hidden'))
     Object.assign(hidden, { visible: false })
     add(hidden)
     c.fire('after:render', { ctx })
@@ -283,7 +283,7 @@ describe('drawing', () => {
       const c = fresh as unknown as { fire: (n: string, p: unknown) => void; mainContext: unknown; retinaScaling: number; add: (o: unknown) => void }
       c.mainContext = ctx
       c.retinaScaling = ratio
-      c.add(createFrame(f))
+      c.add(createFrameProxy(f))
       c.fire('after:render', { ctx })
       return seen
     }
