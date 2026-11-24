@@ -5,7 +5,7 @@ import type { FrameRecord, ImageRecord, ObjectRecord, Scene, TextRecord } from '
 import type { Size } from '../model/viewport.ts'
 import type { AssetSource } from './assets.ts'
 import type { FrameCanvas } from './FrameCanvas.ts'
-import { SceneLayer, effectiveCardWidth, liveCardWidth, renderCardBody } from './sceneLayer.ts'
+import { SceneLayer, effectiveCardWidth, liveCardWidth, minCardWidth, renderCardBody } from './sceneLayer.ts'
 import type { CardMeasurer } from './sceneLayer.ts'
 import { canAnimate, stillFrame } from './stillImage.ts'
 import { ProxyRect, frameNameOf, idOf, imageCropOf, imageDataOf, isFrame, setTextData, textDataOf, toRecord } from './objects.ts'
@@ -44,6 +44,17 @@ export interface DomSceneOptions {
   /** A pointer gesture is unsettled: late font loads wait for it (they never change a gesture). */
   gestureActive: () => boolean
 }
+
+/** One lifted item's SVG drop-shadow filter and the primitives `syncLifted` sets. */
+interface LiftFilter {
+  filter: SVGElement
+  blur: SVGElement
+  offset: SVGElement
+  flood: SVGElement
+}
+
+/** Lift filter ids are unique in the document, whichever editor made them. */
+let liftSeq = 0
 
 /**
  * The DOM renderer's drawing (plan Sections 4, 6 and 9): the scene layer under a transparent
@@ -85,6 +96,11 @@ export class DomScene {
   private readonly cleanups: Array<() => void> = []
   /** A hidden card for measuring a text that is not on the board (see `measureRecord`), made when first needed. */
   private probe: HTMLElement | null = null
+  /** Drag lift: the hidden SVG's definitions and each lifted item's filter (see `syncLifted`). */
+  private liftDefs: SVGDefsElement | null = null
+  private readonly liftFilters = new Map<string, LiftFilter>()
+  /** The widest word of a text in plain sans at a size (`builtCardBound`), by size and text. */
+  private readonly plainWords = new Map<string, number>()
 
   constructor(
     private readonly canvas: FrameCanvas,
@@ -219,6 +235,31 @@ export class DomScene {
     const body = id ? this.layer.bodyOf(id) : undefined
     const td = textDataOf(obj)
     return body && id && td ? this.layer.measurer.measureMinWidth(body, this.textRecord(id, td)) : 0
+  }
+
+  /**
+   * A bound on the box a frame preview builds for this record (`renderFrameBitmap.ts`, at
+   * `effectiveCardWidth`), from what the layer has already laid out, or undefined when it has not:
+   * the built box's exact width (the live width, widened as a click-created box is when built from
+   * a record by its longest word in plain sans, measured once per text and size), and the live
+   * height, never less than the built box's (a wider box wraps into no more lines).
+   */
+  builtCardBound(rec: TextRecord): Size | undefined {
+    const live = this.layer.widthOf(rec.id)
+    const height = this.layer.heightOf(rec.id)
+    if (live === undefined || height === undefined) return undefined
+    let width = Math.max(live, rec.width)
+    if (rec.minHeight === undefined) {
+      const key = `${rec.fontSize}|${rec.text}`
+      let plain = this.plainWords.get(key)
+      if (plain === undefined) {
+        if (this.plainWords.size > 500) this.plainWords.clear()
+        plain = minCardWidth({ text: rec.text, fontSize: rec.fontSize, width: 0 }, this.host.ownerDocument)
+        this.plainWords.set(key, plain)
+      }
+      width = Math.max(width, plain)
+    }
+    return { width, height }
   }
 
   /**
@@ -428,15 +469,17 @@ export class DomScene {
   /**
    * Drag lift (`feedbackLayer.ts`): an item Fabric would draw with a shadow (a proxy paints
    * nothing, so it never shows one) is drawn lifted by the layer instead, with that shadow as
-   * Fabric draws a non-scaling one: its offset and blur at the board's zoom, in screen directions,
-   * whatever the item's own scale or rotation (the CSS shadow is given in the item's own units).
+   * Fabric draws a non-scaling one (`_setShadow`): offset and blur times the board's zoom (and the
+   * device pixel ratio, in device pixels), never the item's own scale, and in screen directions,
+   * whatever the item's rotation, because a canvas shadow ignores the drawing transform.
    *
-   * The blur is converted, not copied: the two blurs are defined differently. A canvas shadow's
-   * Gaussian has a standard deviation of half its `shadowBlur` (HTML canvas spec), and Chromium
-   * draws a CSS `drop-shadow` whose blur length is half the canvas's `shadowBlur` as the same
-   * shadow. Measured against canvas shadows of blur 5.5 to 33 device pixels at device pixel
-   * ratios 1 and 2: every pixel of the profile within 1.7 per channel (the blur length unhalved
-   * is up to 8 lighter, the shadow spreading farther).
+   * It is an SVG filter per lifted item, given in the item's own units (through the inverse of its
+   * linear part): blur, offset, flood and merge, the standard drop shadow. A canvas shadow's
+   * Gaussian has a standard deviation of half its `shadowBlur` (HTML canvas spec), which is the
+   * filter's `stdDeviation`. Not CSS `drop-shadow()`: Chromium keeps its offset in whole pixels of
+   * the element's own units, so on an image enlarged six times an offset of 0.67 became 0 and the
+   * shadow came out too light. Measured against a canvas shadow at item scales 0.5 to 6: every
+   * pixel of the profile within 1 per channel.
    */
   private syncLifted(objs: readonly FabricObject[]) {
     for (const o of objs) {
@@ -444,19 +487,78 @@ export class DomScene {
       const el = id ? this.layer.elementOf(id) : undefined
       if (!el) continue
       const shadow = isFrame(o) ? null : o.shadow
-      const on = !!shadow
-      if (el.classList.contains('is-lifted') !== on) el.classList.toggle('is-lifted', on)
-      if (!shadow) continue
       const m = o.calcTransformMatrix()
       const det = m[0] * m[3] - m[1] * m[2]
-      if (!(Math.abs(det) > 1e-9)) continue
-      // The offset and blur at the board's zoom, in the item's own units: through the inverse of its linear part.
-      const { offsetX: dx, offsetY: dy } = shadow
-      el.style.setProperty('--lift-x', `${(m[3] * dx - m[2] * dy) / det}px`)
-      el.style.setProperty('--lift-y', `${(m[0] * dy - m[1] * dx) / det}px`)
-      el.style.setProperty('--lift-blur', `${shadow.blur / 2 / Math.sqrt(Math.abs(det))}px`)
-      el.style.setProperty('--lift-color', shadow.color)
+      const on = !!shadow && Math.abs(det) > 1e-9
+      if (el.classList.contains('is-lifted') !== on) el.classList.toggle('is-lifted', on)
+      if (!shadow || !on) {
+        if (this.dropLift(id!)) el.style.filter = ''
+        continue
+      }
+      // The offset and the standard deviation at the board's zoom, in the item's own units.
+      const { offsetX: ox, offsetY: oy } = shadow
+      const dx = (m[3] * ox - m[2] * oy) / det
+      const dy = (m[0] * oy - m[1] * ox) / det
+      const sx = shadow.blur / 2 / Math.hypot(m[0], m[1])
+      const sy = shadow.blur / 2 / Math.hypot(m[2], m[3])
+      // The filter region also clips the item itself: room for its ink beyond its box, and the shadow.
+      const mx = o.width + Math.abs(dx) + 4 * sx
+      const my = o.height + Math.abs(dy) + 4 * sy
+      const f = this.liftFilter(id!)
+      const set = (node: Element, attrs: Record<string, string | number>) => {
+        for (const [k, v] of Object.entries(attrs)) if (node.getAttribute(k) !== String(v)) node.setAttribute(k, String(v))
+      }
+      set(f.filter, { x: -mx, y: -my, width: o.width + 2 * mx, height: o.height + 2 * my })
+      set(f.blur, { stdDeviation: `${sx} ${sy}` })
+      set(f.offset, { dx, dy })
+      set(f.flood, { 'flood-color': shadow.color })
+      const ref = `url("#${f.filter.id}")`
+      if (el.style.filter !== ref) el.style.filter = ref
     }
+    for (const id of this.liftFilters.keys()) if (!objs.some((o) => idOf(o) === id)) this.dropLift(id)
+  }
+
+  /** The lift filter of an item, made when it is first lifted, in one hidden SVG inside the layer. */
+  private liftFilter(id: string): LiftFilter {
+    const known = this.liftFilters.get(id)
+    if (known) return known
+    const doc = this.host.ownerDocument
+    const ns = 'http://www.w3.org/2000/svg'
+    if (!this.liftDefs?.isConnected) {
+      const svg = doc.createElementNS(ns, 'svg')
+      svg.setAttribute('aria-hidden', 'true')
+      svg.setAttribute('width', '0')
+      svg.setAttribute('height', '0')
+      svg.style.position = 'absolute'
+      this.liftDefs = doc.createElementNS(ns, 'defs')
+      svg.append(this.liftDefs)
+      this.layer.root.append(svg)
+    }
+    const make = (name: string, attrs: Record<string, string>) => {
+      const node = doc.createElementNS(ns, name)
+      for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v)
+      return node
+    }
+    const filter = make('filter', { id: `yuriful-lift-${++liftSeq}`, filterUnits: 'userSpaceOnUse', 'color-interpolation-filters': 'sRGB' })
+    const blur = make('feGaussianBlur', { in: 'SourceAlpha' })
+    const offset = make('feOffset', { result: 'shadow' })
+    const flood = make('feFlood', {})
+    const merge = make('feMerge', {})
+    merge.append(make('feMergeNode', {}), make('feMergeNode', { in: 'SourceGraphic' }))
+    filter.append(blur, offset, flood, make('feComposite', { in2: 'shadow', operator: 'in' }), merge)
+    this.liftDefs!.append(filter)
+    const made = { filter, blur, offset, flood }
+    this.liftFilters.set(id, made)
+    return made
+  }
+
+  /** Removes an item's lift filter; true when it had one. */
+  private dropLift(id: string): boolean {
+    const f = this.liftFilters.get(id)
+    if (!f) return false
+    f.filter.remove()
+    this.liftFilters.delete(id)
+    return true
   }
 
   // ---- fonts and stills ----------------------------------------------------------------------------

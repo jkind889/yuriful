@@ -168,6 +168,15 @@ When a primary `mousedown` hits outside unobstructed `T` (including a frame outl
 - **Visually:** `T` stays at its true `objects[]` slot in `.scene-objects`, so `I` remains visually in front of the overlapped region of `T` (no z-popping surprise).
 - **Cursor & hit testing:** Because unlocked items above `T` take `pointer-events: auto; cursor: default` during editing, hovering `I` shows the default pointer rather than `T`'s text caret; clicking the overlapped pixels of `I` triggers `.editor-stage`'s capture occlusion check -> Outside path -> ends edit on `T` and selects/drags `I`. Clicking the uncovered pixels of `T` places the caret natively in `T`.
 
+### Settled while wiring live editing (Slice 2c-ii)
+- **Shipped ways into an edit this plan had missed, now matched:** a release on an already-selected text starts editing at that point; a double-click selects a word by Fabric's own word rule; a text that stops being selected leaves its edit, as a Fabric text box does when deselected.
+- **Shipped behaviour kept where this plan said otherwise:** typing marks the board dirty even while the text is still blank (only formatting a blank text skips it); changing the font size mid-edit records its own board step.
+- **No-wrap in the live editor** is done with decorations inside the marks plus a word joiner (U+2060) after every piece of a word but the last, so no break can fall where two pieces meet; no schema mark or node view was needed. The pieces use `white-space: pre`, or a space typed at the end of a no-wrap word is stored as U+00A0.
+- **Nothing above a card may scroll:** besides `.scene-layer`, `.workspace` hides a few pixels the browser will scroll to follow a caret; on the DOM renderer any scrolled ancestor of the canvas host is put back before the frame paints.
+- **Listeners:** on the DOM renderer the capture `mousedown` and the wheel listener sit on the host element; on Fabric they stay on the canvas wrapper.
+- **Differences from Fabric that are the browser's own and are kept:** caret keys follow the browser (Fabric's `End` with a selection only collapses it); a click past the end of a wrapped line puts the caret after the wrapping space; a click within about 5px above a line boundary lands on the next line (the CSS line box sits that much higher than Fabric's line).
+- **Open on the DOM renderer, to settle before the flip:** a word wider than a drawn box whose first piece is split by marks does not start its own line in the live editor, and shows only its underline if it is both underlined and struck through; Shift+click on a selected text places a caret where Fabric extends the selection; `.scene-layer` is `aria-hidden` while a focusable editor sits inside it.
+
 ---
 
 ## 5. Records, validation, versions, migration

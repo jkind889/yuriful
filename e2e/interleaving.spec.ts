@@ -1631,7 +1631,7 @@ test.describe('what a person sees on the DOM renderer (Slice 2c-iii)', () => {
     await pressAndMove(page, grab, -300, 60)
     await frames(page, 2)
     expect(await page.evaluate(() => window.__dom.lifted())).toEqual(['I'])
-    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.scene-item[data-id="I"]')!).filter)).toContain('drop-shadow')
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.scene-item[data-id="I"]')!).filter)).toContain('url("#yuriful-lift-')
     expect((await page.evaluate(() => window.__dom.feedback())).gaining).toEqual(['F'])
     await shot(page, area)
     const column = Math.round(local(100, 0).x)

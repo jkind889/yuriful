@@ -2,6 +2,9 @@ import { ActiveSelection, Textbox } from 'fabric'
 import type { FabricObject } from 'fabric'
 import { EditorState } from 'prosemirror-state'
 import type { Transaction } from 'prosemirror-state'
+import type { Node as PMNode } from 'prosemirror-model'
+import { Decoration, DecorationSet } from 'prosemirror-view'
+import type { EditorView } from 'prosemirror-view'
 import { MAX_FONT_SIZE, MIN_FONT_SIZE, clamp, round, roundPositive } from '../model/doc.ts'
 import { ownerAfterManipulation } from '../model/frames.ts'
 import type { FrameRecord, FontId } from '../model/types.ts'
@@ -19,6 +22,7 @@ import {
   setHeading as setHeadingOfRange,
   setHeadingEverywhere,
   setRangeFont,
+  splitGraphemes,
   toggleMark as toggleMarkOfRange,
   togglePendingMark,
 } from '../model/richText.ts'
@@ -27,7 +31,7 @@ import { resolveEditingShortcut, typedCharacter } from '../input/shortcuts.ts'
 import { findCaptionSnap, makeSnapCaption, snapPreview } from './captionSnapLayer.ts'
 import type { CaptionSnapPreview } from './captionSnapLayer.ts'
 import { DrawnTextbox } from './DrawnTextbox.ts'
-import type { DomScene, WidthAnchor } from './domScene.ts'
+import type { CardSync, DomScene, WidthAnchor } from './domScene.ts'
 import type { TextFormatInfo } from './Editor.ts'
 import type { FrameCanvas } from './FrameCanvas.ts'
 import {
@@ -55,7 +59,11 @@ import {
 } from './objects.ts'
 import type { TextData, TextEdit } from './objects.ts'
 import { boxFormat, clearRangeFonts, setBoxLevel, toggleBoxMark } from './textRules.ts'
-import { boxOf, contentFromDoc, docFromText } from './textSchema.ts'
+import { noWrapRanges } from './sceneLayer.ts'
+import { boxOf, contentFromDoc, docFromText, plainTextOfDoc, textOffsetAt } from './textSchema.ts'
+import { createEditSession } from './textSession.ts'
+import type { EditSession } from './textSession.ts'
+import type { TextContent } from '../model/textDoc.ts'
 
 const NO_FRAMES: ReadonlySet<string> = new Set()
 
@@ -82,6 +90,14 @@ export interface TextHost {
   syncState(): void
   syncSelection(): void
   syncCaptions(edited?: FabricObject): void
+  /** What the history buttons show now (the DOM renderer refreshes them only when in-edit undo changes them). */
+  shownHistory(): { canUndo: boolean; canRedo: boolean }
+}
+
+/** A point on the page (a mouse event's `clientX` and `clientY`). */
+export interface ClientPoint {
+  clientX: number
+  clientY: number
 }
 
 /**
@@ -92,9 +108,6 @@ export interface TextHost {
  * this; it never touches a text box or a card itself.
  */
 export interface TextAdapter {
-  /** Text can be typed into on this renderer (new texts, captions, double-click to edit). */
-  readonly canEdit: boolean
-
   // ---- a text object on the board
   isText(obj: FabricObject | null | undefined): obj is FabricObject
   /** A text with nothing but white space: never part of the scene. */
@@ -121,10 +134,21 @@ export interface TextAdapter {
   editedTarget(): FabricObject | null
   /** The element that holds keyboard focus while a text is edited, or null. */
   editedRoot(): HTMLElement | null
-  /** Starts editing a text (`at: 'end'`: with the caret at its end). */
-  startEditing(obj: FabricObject, at?: 'end'): void
+  /** Starts editing a text (`at: 'end'`: with the caret at its end; a point: with the caret where it was pressed, DOM renderer only). */
+  startEditing(obj: FabricObject, at?: 'end' | ClientPoint): void
   /** Leaves the edit in progress, if any (Fabric commits it through its own events). */
   finishEditing(): void
+  /**
+   * Undo or Redo while a text is edited: a step of the edit's own history, the edit staying open
+   * (true), or false when this renderer leaves undo to the board (Fabric: no edit history of its own).
+   */
+  stepEdit(dir: 'undo' | 'redo'): boolean
+  /** What Undo and Redo can do while a text is edited, when the edit has its own history; otherwise null. */
+  editHistory(): { canUndo: boolean; canRedo: boolean } | null
+  /** A primary or secondary press while a text is edited lands in the edited text itself, where the browser handles it (DOM renderer only). */
+  pressInsideEdit(e: MouseEvent): boolean
+  /** The editor is being disposed: an edit in progress ends without committing anything. */
+  dispose(): void
   setFontSize(size: number): void
   toggleMark(mark: Mark): void
   setHeading(level: 0 | 1 | 2 | 3): void
@@ -152,7 +176,6 @@ export interface TextAdapter {
  * editing keys. Only `this.` became `this.host.` where the code reaches the editor.
  */
 export class FabricTextAdapter implements TextAdapter {
-  readonly canEdit = true
   /**
    * Marks and font chosen with only a caret in a text being edited, for what is typed next. Dropped
    * when the caret moves for any other reason than typing, and when the edit ends.
@@ -309,6 +332,22 @@ export class FabricTextAdapter implements TextAdapter {
     const active = this.host.canvas.getActiveObject()
     if (active instanceof Textbox && active.isEditing) active.exitEditing()
   }
+
+  /** Fabric has no history of an edit: Undo and Redo leave it and step the board. */
+  stepEdit(): boolean {
+    return false
+  }
+
+  editHistory(): null {
+    return null
+  }
+
+  /** Never asked: on the Fabric renderer every press reaches the canvas, which handles a press inside the edited text itself. */
+  pressInsideEdit(): boolean {
+    return false
+  }
+
+  dispose() {}
 
   private editingKeys() {
     const active = this.host.canvas.getActiveObject()
@@ -602,27 +641,115 @@ export class FabricTextAdapter implements TextAdapter {
   }
 }
 
-// ---- the DOM renderer (static in this slice) ---------------------------------------------------------
+// ---- the DOM renderer ---------------------------------------------------------------------------------
 
 /** The point of a box that stays put when it changes width: its alignment edge (as `applyTextFormatting` keeps it). */
 const alignAnchor = (align: TextData['align']): WidthAnchor => (align === 'center' ? 'center' : align === 'right' ? 'right' : 'left')
 
+/** A text's card data with new record content (text, formatting, box font, alignment and colour), everything else kept. */
+function withContent(td: TextData, c: TextContent): TextData {
+  return {
+    text: c.text,
+    fontSize: td.fontSize,
+    width: td.width,
+    ...(td.minHeight !== undefined && { minHeight: td.minHeight }),
+    ...(c.font !== undefined && { font: c.font }),
+    ...(c.align !== undefined && { align: c.align }),
+    ...(c.color !== undefined && { color: c.color }),
+    ...(c.spans !== undefined && { spans: c.spans }),
+    ...(c.headings !== undefined && { headings: c.headings }),
+    ...(td.captionBackground && { captionBackground: td.captionBackground }),
+  }
+}
+
+/** Fabric 7.4's word characters for a double-click (ITextBehavior.mjs `reNonWord`, `_reSpace`, `reNewline`). */
+const NON_WORD = /[ \n.,;!?-]/
+const SPACE = /\s|\r?\n/
+const NEWLINE = /\r?\n/
+
 /**
- * The DOM renderer's text: a proxy (`objects.ts` `createProxy`) whose card the scene layer
- * draws from its data (`textDataOf`). In this slice a text is static: everything a selected box
- * can do outside an edit works (font size, whole-box marks, heading, font, alignment and colour,
- * scale folding, wrap width, caption background), each through the pure model and the text
- * engine's whole-box functions (`textRules.ts`) and always ending in the canonical compact
- * record (`contentFromDoc`). Live editing is the next slice (2c-ii): until then nothing is ever
- * being edited here, and the editing members do nothing.
+ * The word a double-click selects, as Fabric 7.4 finds it (ITextBehavior.mjs `searchWordBoundary`,
+ * `selectWord`) on the text's graphemes: from the grapheme index `at`, out to the nearest space,
+ * line break or `.,;!?-` on each side. Returns grapheme indexes.
+ */
+export function fabricWordAt(graphemes: readonly string[], at: number): { start: number; end: number } {
+  const boundary = (from: number, dir: -1 | 1): number => {
+    let index = from > 0 && SPACE.test(graphemes[from] as string) && (dir === -1 || !NEWLINE.test(graphemes[from - 1] as string)) ? from - 1 : from
+    let char = graphemes[index]
+    while (index > 0 && index < graphemes.length && !NON_WORD.test(char as string)) {
+      index += dir
+      char = graphemes[index]
+    }
+    if (dir === -1 && NON_WORD.test(char as string)) index++
+    return index
+  }
+  const start = boundary(at, -1)
+  return { start, end: Math.max(start, boundary(at, 1)) }
+}
+
+/** The document position under a point of the page, in the view's text; null when there is none (or no layout to ask). */
+function posAt(view: EditorView, at: ClientPoint): number | null {
+  try {
+    return view.posAtCoords({ left: at.clientX, top: at.clientY })?.pos ?? null
+  } catch {
+    return null
+  }
+}
+
+/** The text being edited on the DOM renderer. */
+interface LiveEdit {
+  session: EditSession
+  target: FabricObject
+  id: string
+  /** The card's body, where the view is mounted (its editable root while the edit lasts). */
+  body: HTMLElement
+  /** The unlocked items in front of the card: they take presses (and show the default pointer) while it is edited. */
+  covering: HTMLElement[]
+  /** The proxy's own handle and border settings, hidden while it is edited (a Fabric text box hides its handles then too). */
+  saved: { hasControls: boolean; hasBorders: boolean }
+}
+
+/**
+ * The DOM renderer's text: a proxy (`objects.ts` `createProxy`) whose card the scene layer draws
+ * from its data (`textDataOf`). A selected box does everything outside an edit through the pure
+ * model and the text engine's whole-box functions (`textRules.ts`), always ending in the canonical
+ * compact record (`contentFromDoc`).
+ *
+ * Editing (plan Section 7): one `EditSession` at a time, its `EditorView` mounted into the card's
+ * body (`sceneLayer.ts` `setEditing` then leaves the body's children to it). Every change of the
+ * text arrives through the session's `onChange` with the canonical record content: the card's data
+ * takes it, the proxy is sized from the card at once (flush point 3), and typing is saved as it
+ * happens. Leaving the edit (`finishEditing`, by every route the editor has) puts the static card
+ * back, sizes the proxy again (flush point 4), discards a blank text, decides a new text's owner once
+ * more and records one board history step, exactly where the Fabric path does. While a text is
+ * edited, the canvas takes no presses: the card and the unlocked items in front of it do (see
+ * `pressInsideEdit` and the editor's routing), and Undo and Redo step the edit's own history.
  */
 export class DomTextAdapter implements TextAdapter {
-  readonly canEdit = false
+  private edit: LiveEdit | null = null
+  /** The edit is being left (`finishEditing`): a last change reported by the session only updates the card's data. */
+  private finishing = false
+  /** A formatting command is running (it saves nothing while the text is blank, as on the Fabric path; typing always marks the board dirty). */
+  private commanding = false
+  /** The editable root of the edit Esc or Tab has just ended: the window listener sees that key next and must leave it alone. */
+  private endedByKey: { root: EventTarget; key: string } | null = null
+  /**
+   * The text a release starts editing (a Fabric text box's own `selected` flag): set by a press on
+   * the text while it is already the selected object, not on one of its handles, and kept until it
+   * stops being the selected object.
+   */
+  private armed: FabricObject | null = null
+  private syncQueued = false
 
   constructor(
     private readonly host: TextHost,
     private readonly scene: DomScene,
   ) {}
+
+  /** The live edit's session, for unit tests and the browser probe only. */
+  editSession(): EditSession | null {
+    return this.edit?.session ?? null
+  }
 
   // ---- a text object on the board
 
@@ -639,9 +766,13 @@ export class DomTextAdapter implements TextAdapter {
     return textDataOf(obj)?.fontSize ?? 0
   }
 
-  /** The whole box, as the controls show it (nothing is edited here yet): the engine's readout of its document. */
+  /** The whole box as the controls show it, or while it is edited the selected range or the caret's next character (the engine's readouts). */
   formatInfo(obj: FabricObject): TextFormatInfo {
     const td = textDataOf(obj)
+    if (td && this.edit?.target === obj) {
+      const { font, ...state } = this.edit.session.format()
+      return { editing: true, font, align: td.align ?? 'left', color: td.color ?? DEFAULT_TEXT_COLOR, ...state }
+    }
     const read = td ? docFromText(td) : null
     if (!td || !read) {
       // Not readable by this build's schema (never on a board this build can edit): the plain model.
@@ -673,7 +804,7 @@ export class DomTextAdapter implements TextAdapter {
     })
     obj.set({ scaleX: 1, scaleY: 1 })
     // A larger size can make a word wider than the box: it widens, as a text box does, from its left edge.
-    this.scene.syncCard(obj, { widen: 'left' })
+    this.syncCard(obj, { widen: 'left' })
     return true
   }
 
@@ -688,7 +819,7 @@ export class DomTextAdapter implements TextAdapter {
     if (color) next.captionBackground = color
     else delete next.captionBackground
     setTextData(obj, next)
-    this.scene.syncCard(obj)
+    this.syncCard(obj)
   }
 
   minWidthOf(obj: FabricObject): number {
@@ -699,7 +830,7 @@ export class DomTextAdapter implements TextAdapter {
     const td = textDataOf(obj)
     if (!td) return
     setTextData(obj, { ...td, width })
-    this.scene.syncCard(obj)
+    this.syncCard(obj)
   }
 
   /**
@@ -730,44 +861,376 @@ export class DomTextAdapter implements TextAdapter {
     return rec?.type === 'text' ? createProxy({ ...rec, minHeight: 0 }, () => undefined) : null
   }
 
-  // ---- editing (Slice 2c-ii): nothing is ever being edited yet
+  /** The scene layer's flush point for a text's card; the edited card's decorations follow a new width or size. */
+  private syncCard(obj: FabricObject, sync: CardSync = {}) {
+    const before = textDataOf(obj)
+    this.scene.syncCard(obj, sync)
+    const after = textDataOf(obj)
+    const edit = this.edit
+    if (edit?.target === obj && !this.finishing && (before?.width !== after?.width || before?.fontSize !== after?.fontSize || before?.minHeight !== after?.minHeight)) edit.session.redecorate()
+  }
 
-  isEditing(): boolean {
-    return false
+  // ---- editing
+
+  isEditing(obj: FabricObject | null | undefined): boolean {
+    return !!obj && this.edit?.target === obj
   }
 
   editedTarget(): FabricObject | null {
-    return null
+    return this.edit?.target ?? null
   }
 
   editedRoot(): HTMLElement | null {
-    return null
+    return this.edit?.session.view?.dom ?? null
   }
 
-  startEditing() {}
+  /**
+   * Starts editing a text: an edit session on its card data, its view mounted into the card's
+   * body, the caret at the pressed point (`at`), at the end (`'end'`) or, for a new blank text,
+   * where it is. Only an unlocked text on the board, while the board is editable, no gesture is
+   * unsettled and no crop is open. Any other edit ends first.
+   */
+  startEditing(obj: FabricObject, at?: 'end' | ClientPoint) {
+    const c = this.host.canvas
+    if (this.edit?.target === obj) return
+    if (!this.host.editable() || this.host.busy() || this.host.cropping() || isLocked(obj) || !textDataOf(obj) || !c.getObjects().includes(obj)) return
+    this.finishEditing()
+    const td = textDataOf(obj)
+    const id = idOf(obj)
+    if (!td || !id) return
+    if (!this.scene.layer.bodyOf(id)) this.scene.syncCard(obj)
+    const body = this.scene.layer.bodyOf(id)
+    if (!body) return
+    const session = createEditSession(
+      td,
+      {
+        canEdit: (s) => this.host.editable() && !this.host.busy() && this.edit?.session === s,
+        canFireShortcut: () => !this.host.busy(),
+        onChange: (content, s) => this.onEditChange(content, s),
+        onSelectionChange: (s) => {
+          if (this.edit?.session === s) this.queueSync()
+        },
+        onWantsFinish: (reason, s) => {
+          if (this.edit?.session !== s) return
+          this.endedByKey = { root: s.root, key: reason === 'escape' ? 'Escape' : 'Tab' }
+          this.finishEditing()
+        },
+        // The session would toggle the mark itself; the adapter's command does it once, behind the editor's guards.
+        onFormatKey: (mark, s) => {
+          if (this.edit?.session === s) this.toggleMark(mark)
+        },
+      },
+      { decorate: (doc) => this.decorations(obj, doc) },
+    )
+    if (!session) return // rich blocks this build cannot edit yet
+    const objects = c.getObjects()
+    const covering = objects
+      .slice(objects.indexOf(obj) + 1)
+      .filter((o) => !isLocked(o) && o.visible)
+      .map((o) => this.scene.layer.elementOf(idOf(o) ?? ''))
+      .filter((el): el is HTMLElement => el !== undefined)
+    this.edit = { session, target: obj, id, body, covering, saved: { hasControls: obj.hasControls, hasBorders: obj.hasBorders } }
+    this.endedByKey = null
+    this.scene.layer.setEditing(id)
+    const view = session.mount(body)
+    body.addEventListener('dblclick', this.onCardDblClick)
+    // The canvas takes no presses now: the card and the items in front of it do (the editor's routing).
+    obj.set({ hasControls: false, hasBorders: false })
+    c.wrapperEl.style.pointerEvents = 'none'
+    for (const el of covering) el.classList.add('is-covering')
+    if (at && at !== 'end') {
+      const pos = posAt(view, at)
+      if (pos !== null) session.select(textOffsetAt(session.state.doc, pos, -1))
+    }
+    view.focus()
+    c.requestRenderAll()
+    this.host.syncState()
+  }
 
-  finishEditing() {}
+  /**
+   * Leaves the edit in progress (idempotent). The view goes and the static card comes back with
+   * the final text, the proxy is sized from it (flush point 4), and then, as on the Fabric path when
+   * a text leaves its edit: nothing more while records are being applied or the board is read-only;
+   * a blank text is discarded (out of the selection and the canvas's reach at once, removed from the
+   * canvas in a microtask, its removal recorded if history held it); a new text's owner is decided
+   * once more from where it ended up; and one board history step is recorded if anything changed.
+   */
+  finishEditing() {
+    const e = this.edit
+    if (!e || this.finishing) return
+    this.finishing = true
+    e.body.removeEventListener('dblclick', this.onCardDblClick)
+    try {
+      e.session.finish()
+    } finally {
+      this.finishing = false
+    }
+    this.edit = null
+    const c = this.host.canvas
+    const obj = e.target
+    const td = textDataOf(obj)
+    if (td) setTextData(obj, withContent(td, e.session.content()))
+    obj.set(e.saved)
+    for (const el of e.covering) el.classList.remove('is-covering')
+    c.wrapperEl.style.pointerEvents = ''
+    this.scene.layer.setEditing(null)
+    this.syncCard(obj, { widen: alignAnchor(td?.align) })
+    c.requestRenderAll()
+    if (!this.host.applying() && this.host.editable()) {
+      if (this.isBlank(obj)) {
+        // Out of reach at once (a Shift-press that ends the edit must not select it with something
+        // else); off the canvas once the editor has finished with it.
+        obj.set({ evented: false, selectable: false })
+        if (c.getActiveObject() === obj) c.discardActiveObject()
+        queueMicrotask(() => {
+          if (this.host.disposed() || this.edit?.target === obj || !this.isBlank(obj) || !c.getObjects().includes(obj)) return
+          c.remove(obj)
+          c.requestRenderAll()
+          this.host.syncState()
+        })
+      } else if (!captionOf(obj) && this.host.isNew(obj)) {
+        // A NEW text: its owner is decided once more from where it ended up (its box grew while it was typed).
+        setOwner(obj, ownerAfterManipulation(ownerOf(obj), centerOf(obj), this.host.frameRecords(), NO_FRAMES))
+      }
+      this.host.commit()
+    }
+    this.host.syncState()
+  }
 
-  revertShortcut() {}
+  /** In-edit Undo and Redo (Owner Decision 11): the edit's own history; the edit stays open. Whole-box settings are not steps of it. */
+  stepEdit(dir: 'undo' | 'redo'): boolean {
+    const e = this.edit
+    if (!e) return false
+    if (dir === 'undo') e.session.undo()
+    else e.session.redo()
+    return true
+  }
+
+  editHistory(): { canUndo: boolean; canRedo: boolean } | null {
+    const s = this.edit?.session
+    return s ? { canUndo: s.canUndo, canRedo: s.canRedo } : null
+  }
+
+  /**
+   * A press while a text is edited lands in its card, where the browser and the view place the
+   * caret or select: inside the card's element (an unlocked item in front of it takes its own
+   * presses, a locked one lets them through), and not on a frame's label or outline, which wins
+   * over the card as it wins over any content.
+   */
+  pressInsideEdit(e: MouseEvent): boolean {
+    const edit = this.edit
+    const card = edit && this.scene.layer.elementOf(edit.id)
+    if (!card || !(e.target instanceof Node) || !card.contains(e.target)) return false
+    const c = this.host.canvas
+    return c.frameOverlayAt(c.getObjects(), c.getScenePoint(e)) === undefined
+  }
+
+  dispose() {
+    this.finishEditing() // the board is no longer editable: nothing is committed
+  }
+
+  /**
+   * The edited text changed (typing, a paste, a command, in-edit undo...): the card's data takes
+   * the canonical content, then, unless the edit is ending, the proxy is sized from the card (flush
+   * point 3) before anything is saved: a box the text has become too narrow for widens about the
+   * alignment edge it had before the change (left, centre or right, as a Fabric text box widens while
+   * typed into), a caption is placed again, and the change is saved as it happens. Formatting a
+   * blank text saves nothing, as on the Fabric path; typing always marks the board dirty there (a
+   * blank text is out of the scene, so such a save stores none).
+   */
+  private onEditChange(content: TextContent, s: EditSession) {
+    const e = this.edit
+    if (e?.session !== s) return
+    const obj = e.target
+    const td = textDataOf(obj)
+    if (!td) return
+    setTextData(obj, withContent(td, content))
+    if (this.finishing) return
+    this.syncCard(obj, { widen: alignAnchor(td.align) })
+    if (!this.host.applying() && this.host.editable()) {
+      if (!this.host.busy() && !this.host.cropping() && captionOf(obj)) this.host.syncCaptions(obj)
+      if (!this.commanding || content.text.trim() !== '') this.host.markDirty()
+    }
+    this.host.canvas.requestRenderAll()
+    this.host.syncState() // the layer list follows typing; the history buttons follow in-edit undo
+  }
+
+  /** What the controls show, after the session's state changed: the selection, and the history buttons when in-edit undo changed them. */
+  private queueSync() {
+    if (this.syncQueued) return
+    this.syncQueued = true
+    queueMicrotask(() => {
+      this.syncQueued = false
+      if (this.host.disposed()) return
+      const h = this.editHistory()
+      const shown = this.host.shownHistory()
+      if (h && (h.canUndo !== shown.canUndo || h.canRedo !== shown.canRedo)) this.host.syncState()
+      else this.host.syncSelection()
+    })
+  }
+
+  /**
+   * How the live editor draws what the static card draws beyond the schema (`sceneLayer.ts`
+   * `renderCardBody`): each no-wrap range of `noWrapRanges` for the text as it now is, and each tab
+   * as a space. The static card wraps a whole word in one span outside its marks; a decoration sits
+   * inside them, one span per piece of text with the same marks, so every piece but the last of a
+   * word carries a word joiner after it (`yp-join`), and no break can fall where two pieces meet.
+   * A `cut` piece (the first piece of a word wider than a drawn box) starts its own line only when
+   * it lies in one piece of text.
+   */
+  private decorations(obj: FabricObject, doc: PMNode): DecorationSet {
+    const td = textDataOf(obj)
+    if (!td) return DecorationSet.empty
+    const content = contentFromDoc(doc, boxOf(td))
+    const ranges = noWrapRanges({ ...td, text: content.text, spans: content.spans, headings: content.headings }, this.scene.layer.root.ownerDocument)
+    const out: Decoration[] = []
+    doc.forEach((block, offset, i) => {
+      const start = offset + 1
+      const pieces: Array<{ from: number; to: number }> = []
+      let at = 0
+      block.forEach((child) => {
+        const length = child.text?.length ?? 0
+        pieces.push({ from: at, to: at + length })
+        at += length
+      })
+      for (const r of ranges[i] ?? []) {
+        const parts = pieces.filter((p) => p.to > r.start && p.from < r.end).map((p) => ({ from: Math.max(p.from, r.start), to: Math.min(p.to, r.end) }))
+        parts.forEach((p, k) => {
+          const cls = `yp-nowrap${k < parts.length - 1 ? ' yp-join' : ''}${r.cut && parts.length === 1 ? ' yp-cut' : ''}`
+          out.push(Decoration.inline(start + p.from, start + p.to, { class: cls }))
+        })
+      }
+      const text = block.textContent
+      for (let k = text.indexOf('\t'); k >= 0; k = text.indexOf('\t', k + 1)) out.push(Decoration.inline(start + k, start + k + 1, { class: 'yp-tab' }))
+    })
+    return DecorationSet.create(doc, out)
+  }
+
+  /**
+   * A double-click in the edited card (both presses in the live view): the word Fabric's rule
+   * gives, over whatever the browser selected by its own rule (it splits words elsewhere, at a
+   * hyphen or a full stop differently).
+   */
+  private readonly onCardDblClick = (e: MouseEvent) => {
+    if (e.button === 0 && this.edit?.body.contains(e.target as Node)) this.selectWordAt(e)
+  }
+
+  /** A double-click in the edited text selects a word, as Fabric's does once the click before it has entered the edit. */
+  private selectWordAt(e: Event) {
+    const edit = this.edit
+    const view = edit?.session.view
+    if (!edit || !view || !(e instanceof MouseEvent)) return
+    const pos = posAt(view, e)
+    if (pos === null) return
+    const doc = edit.session.state.doc
+    const text = plainTextOfDoc(doc)
+    const offset = textOffsetAt(doc, pos, -1)
+    const graphemes = splitGraphemes(text)
+    const starts: number[] = []
+    let o = 0
+    for (const g of graphemes) {
+      starts.push(o)
+      o += g.length
+    }
+    starts.push(o)
+    let index = starts.findIndex((s) => s >= offset)
+    if (index < 0) index = graphemes.length
+    const word = fabricWordAt(graphemes, index)
+    edit.session.select(starts[word.start] ?? text.length, starts[word.end] ?? text.length)
+  }
+
+  revertShortcut() {
+    this.edit?.session.revertShortcut()
+  }
 
   observeKey() {}
 
-  onKeyDown(): boolean {
-    return false
+  /**
+   * A keydown that reached the window listener. The session has had it first (ProseMirror's own
+   * listener is on the edited root): typing, the editing keys, Ctrl/Cmd+B, I, U and the Backspace
+   * revert are all its own. Claimed here: the Esc or Tab that has just ended the edit (Fabric stops
+   * both, so the canvas never sees them), and Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z and Ctrl/Cmd+Y in the
+   * edited text, which step the edit's history or do nothing, never the browser's own undo.
+   */
+  onKeyDown(e: KeyboardEvent): boolean {
+    const ended = this.endedByKey
+    this.endedByKey = null
+    if (ended && !this.edit && e.target === ended.root && e.key === ended.key) return true
+    const edit = this.edit
+    if (!edit || e.target !== edit.session.root || e.isComposing || e.altKey || !(e.ctrlKey || e.metaKey)) return false
+    const key = e.key.length === 1 ? e.key.toLowerCase() : e.key
+    if (key !== 'z' && !(key === 'y' && !e.shiftKey)) return false
+    e.preventDefault()
+    return true
   }
 
-  onKeyUp() {}
+  onKeyUp() {
+    this.edit?.session.handleKeyUp()
+  }
 
   onPrimaryLost() {}
 
-  resetTransient() {}
+  /** Records are applied (undo, redo, a cancelled gesture): an edit in progress ends without committing anything. */
+  resetTransient() {
+    this.edit?.session.clearShortcutRevert()
+    this.armed = null
+    this.finishEditing()
+  }
 
-  bindCanvasEvents() {}
+  /**
+   * What a Fabric text box does on its own with the pointer, for a proxy (fabric 7.4.0,
+   * ITextClickBehavior.mjs `_mouseDownHandler`, `mouseUpHandler`): a press on the text while it is
+   * already the selected object, not on one of its handles, arms it until it is deselected; a primary
+   * release on an armed text that is still the selected one, with no transform performed and no
+   * handle under the pointer, starts editing with the caret where it was released, in a microtask,
+   * once Fabric and the editor have finished with the release. A double-click in the edited text then
+   * selects the word under it (`doubleClickHandler`). An edited text that stops being the selected
+   * object leaves its edit, as a Fabric text box does when it is deselected.
+   */
+  bindCanvasEvents() {
+    const c = this.host.canvas
+    const handleUnder = (o: FabricObject) => (o as unknown as { __corner?: string }).__corner !== undefined
+    c.on('mouse:down', (opt) => {
+      const target = opt.target
+      const e = opt.e
+      if (!target || !this.isText(target) || isLocked(target) || handleUnder(target) || !(e instanceof MouseEvent) || e.button !== 0) return
+      if ((opt as { alreadySelected?: boolean }).alreadySelected === true || this.isEditing(target)) this.armed = target
+    })
+    c.on('mouse:up', (opt) => {
+      const target = opt.target
+      const e = opt.e
+      if (!target || target !== this.armed || !(e instanceof MouseEvent) || e.button !== 0) return
+      if (opt.transform?.actionPerformed || handleUnder(target)) return
+      if (c.getActiveObject() !== target || isLocked(target) || this.isEditing(target)) return
+      const at = { clientX: e.clientX, clientY: e.clientY }
+      queueMicrotask(() => {
+        if (this.host.disposed() || this.edit || c.getActiveObject() !== target) return
+        this.startEditing(target, at)
+      })
+    })
+    c.on('mouse:dblclick', (opt) => {
+      if (this.edit && opt.target === this.edit.target) this.selectWordAt(opt.e)
+    })
+    const followSelection = () => {
+      if (this.armed && c.getActiveObject() !== this.armed) this.armed = null
+      if (this.edit && c.getActiveObject() !== this.edit.target) this.finishEditing()
+    }
+    c.on('selection:cleared', followSelection)
+    c.on('selection:updated', followSelection)
+  }
 
-  // ---- font size and whole-box formatting
+  // ---- font size and formatting
+  //
+  // As on the Fabric path: every command acts on the one selected text, only while the board is
+  // editable and no gesture is unsettled, and none changes ownership. While the text is edited,
+  // marks, heading and font act on the selected range (with only a caret, on what is typed next)
+  // through the session, alignment and colour on the whole box; the change is saved as it happens
+  // and is part of the edit's one board step. On a selected box outside an edit, every command acts
+  // on the whole box as an undo step of its own, coalesced per kind and text.
 
-  /** As the Fabric path: one undo step per text, coalesced; never an ownership change. */
+  /** As the Fabric path: one undo step per text, coalesced; while the text is edited, also a step (a caption: saved only). Never an ownership change. */
   setFontSize(size: number) {
+    this.edit?.session.clearShortcutRevert()
     if (!this.host.editable() || this.host.busy()) return
     const active = this.host.canvas.getActiveObject()
     const td = textDataOf(active)
@@ -775,16 +1238,36 @@ export class DomTextAdapter implements TextAdapter {
     const fontSize = clamp(size, MIN_FONT_SIZE, MAX_FONT_SIZE)
     if (fontSize === td.fontSize) return
     setTextData(active, { ...td, fontSize }) // headings keep their ratio (CSS em)
-    this.scene.syncCard(active, { widen: 'left' })
+    this.syncCard(active, { widen: 'left' })
     this.host.canvas.requestRenderAll()
+    // A text that is blank right now (emptied in the middle of an edit) is not in the scene.
     if (td.text.trim() === '') return
-    this.host.commit(`font-size:${idOf(active) ?? ''}`)
+    if (this.isEditing(active) && captionOf(active)) {
+      this.host.syncCaptions(active)
+      this.host.markDirty()
+      this.host.syncSelection()
+    } else this.host.commit(`font-size:${idOf(active) ?? ''}`)
   }
 
   private formatTarget(): FabricObject | null {
+    this.edit?.session.clearShortcutRevert() // a formatting command ends "straight after a shortcut"
     if (!this.host.editable() || this.host.busy()) return null
     const active = this.host.canvas.getActiveObject()
     return active && textDataOf(active) && !isLocked(active) ? active : null
+  }
+
+  /** A command on the edited text, through its session. */
+  private inEdit(obj: FabricObject, command: (s: EditSession) => unknown): boolean {
+    const e = this.edit
+    if (e?.target !== obj) return false
+    this.commanding = true
+    try {
+      command(e.session)
+    } finally {
+      this.commanding = false
+    }
+    this.host.syncSelection()
+    return true
   }
 
   /**
@@ -806,48 +1289,37 @@ export class DomTextAdapter implements TextAdapter {
     }
     const after = contentFromDoc(doc, box ? boxOf(box(read.box)) : read.box)
     if (JSON.stringify(after) === JSON.stringify(before)) return
-    const next: TextData = {
-      text: after.text,
-      fontSize: td.fontSize,
-      width: td.width,
-      ...(td.minHeight !== undefined && { minHeight: td.minHeight }),
-      ...(after.font !== undefined && { font: after.font }),
-      ...(after.align !== undefined && { align: after.align }),
-      ...(after.color !== undefined && { color: after.color }),
-      ...(after.spans !== undefined && { spans: after.spans }),
-      ...(after.headings !== undefined && { headings: after.headings }),
-      ...(td.captionBackground && { captionBackground: td.captionBackground }),
-    }
     const anchor = alignAnchor(td.align)
-    setTextData(obj, next)
-    this.scene.syncCard(obj, { widen: anchor })
+    setTextData(obj, withContent(td, after))
+    this.syncCard(obj, { widen: anchor })
     this.host.canvas.requestRenderAll()
     this.host.commit(`format-${kind}:${idOf(obj) ?? ''}`)
   }
 
   toggleMark(mark: Mark) {
     const obj = this.formatTarget()
-    if (obj) this.formatBox(obj, `mark-${mark}`, (tr) => toggleBoxMark(tr, mark))
+    if (obj && !this.inEdit(obj, (s) => s.toggleMark(mark))) this.formatBox(obj, `mark-${mark}`, (tr) => toggleBoxMark(tr, mark))
   }
 
   setHeading(level: 0 | 1 | 2 | 3) {
     const obj = this.formatTarget()
-    if (obj) this.formatBox(obj, 'heading', (tr) => setBoxLevel(tr, level))
+    if (obj && !this.inEdit(obj, (s) => s.setHeading(level))) this.formatBox(obj, 'heading', (tr) => setBoxLevel(tr, level))
   }
 
-  /** A whole-box font: the box font changes and every font override goes. */
+  /** The font of the selection or caret while editing; outside an edit the whole box's font, every font override going. */
   setFont(font: FontId) {
     const obj = this.formatTarget()
-    if (obj) this.formatBox(obj, 'font', (tr) => clearRangeFonts(tr), (fmt) => ({ ...fmt, font }))
+    if (obj && !this.inEdit(obj, (s) => s.setFont(font))) this.formatBox(obj, 'font', (tr) => clearRangeFonts(tr), (fmt) => ({ ...fmt, font }))
   }
 
   setAlign(align: TextAlign) {
     const obj = this.formatTarget()
-    if (obj) this.formatBox(obj, 'align', undefined, (fmt) => ({ ...fmt, align: align === 'left' ? undefined : align }))
+    const value = align === 'left' ? undefined : align
+    if (obj && !this.inEdit(obj, (s) => s.setBox({ align: value }))) this.formatBox(obj, 'align', undefined, (fmt) => ({ ...fmt, align: value }))
   }
 
   setColor(color: string) {
     const obj = this.formatTarget()
-    if (obj) this.formatBox(obj, 'color', undefined, (fmt) => ({ ...fmt, color }))
+    if (obj && !this.inEdit(obj, (s) => s.setBox({ color }))) this.formatBox(obj, 'color', undefined, (fmt) => ({ ...fmt, color }))
   }
 }

@@ -957,10 +957,6 @@ button:disabled {
 .scene-item.is-moving {
   will-change: transform;
 }
-/* Drag lift (the DOM renderer's form of the shadow feedbackLayer.ts gives a dragged item). */
-.scene-item.is-lifted {
-  filter: drop-shadow(var(--lift-x) var(--lift-y) var(--lift-blur) var(--lift-color));
-}
 .scene-image {
   overflow: hidden;
 }
@@ -976,6 +972,15 @@ button:disabled {
 .scene-text.is-editing > .scene-text-body {
   outline: 1.5px solid var(--accent);
   outline-offset: 2px;
+}
+/* While a text is edited the canvas takes no presses: the card does, and so does every unlocked
+   item in front of it, with the default pointer rather than the card's text caret */
+.scene-text.is-editing {
+  pointer-events: auto;
+}
+.scene-item.is-covering {
+  pointer-events: auto;
+  cursor: default;
 }
 
 /* prose:start (inlined by src/editor/renderFrameBitmap.ts as PROSE_CSS; a test keeps the two equal) */
@@ -1103,3 +1108,29 @@ button:disabled {
   font-family: Impact, Haettenschweiler, "Arial Black", "Franklin Gothic Bold", sans-serif;
 }
 /* prose:end */
+
+/* The live editor draws a word that must not wrap as decorations inside its marks, one piece per run
+   of text with the same marks (src/editor/textAdapter.ts `decorations`); the static card wraps the
+   whole word in one span outside them. A word joiner after every piece but the word's last keeps a
+   break from falling where two pieces meet. They are `pre`, not `nowrap`: a word holds no space,
+   so they lay out the same, but in a white-space mode that collapses spaces the browser's editing
+   types a space at a piece's end as a no-break space. A cut piece is an inline block, which its
+   ancestors do not decorate: it repeats an underline or strikethrough, as the static card does */
+.scene-text.is-editing .yp-nowrap {
+  white-space: pre;
+}
+.scene-text.is-editing .yp-join::after {
+  content: "\2060";
+}
+.scene-text.is-editing u .yp-cut,
+.scene-text.is-editing s .yp-cut {
+  text-decoration-line: underline;
+  text-decoration-thickness: var(--yp-deco, 0.0667em);
+  text-decoration-skip-ink: none;
+}
+.scene-text.is-editing u .yp-cut {
+  text-underline-offset: 0.1em;
+}
+.scene-text.is-editing s .yp-cut {
+  text-underline-offset: calc(-0.28167em - var(--yp-deco, 0.0667em) / 2);
+}

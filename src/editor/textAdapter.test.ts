@@ -242,19 +242,6 @@ describe('the DOM renderer, static (Slice 2c-i)', () => {
     expect(history().current.objects.find((o) => o.id === 't')).toMatchObject({ captionOf: 'i' })
   })
 
-  it('what cannot work on the DOM path yet is inert: typing a new text and adding a caption', async () => {
-    const { editor, canvas, obj, scene, history } = await open([], [img('i', 0, 0), txt('t', 0, 200)], dom())
-    const before = scene()
-    editor.addText()
-    canvas.setActiveObject(obj('i'))
-    editor.editCaption()
-    expect(scene()).toEqual(before)
-    expect(canvas.objects).toHaveLength(2)
-    expect(editor.getState().cropping).toBe(false)
-    expect(editor.getState().editingText).toBe(false)
-    expect(history().canUndo).toBe(false)
-  })
-
   it('a late font load re-sizes the cards without touching ownership, history or the save state, and waits for a gesture', async () => {
     const fonts = new EventTarget()
     Object.defineProperty(document, 'fonts', { value: fonts, configurable: true })

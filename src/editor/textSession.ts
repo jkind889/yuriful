@@ -5,7 +5,7 @@ import type { Mark as PMMark, Node as PMNode, ParseOptions } from 'prosemirror-m
 import { EditorState, Plugin, PluginKey, Selection, TextSelection } from 'prosemirror-state'
 import type { Command, Transaction } from 'prosemirror-state'
 import { ReplaceStep } from 'prosemirror-transform'
-import { EditorView } from 'prosemirror-view'
+import { DecorationSet, EditorView } from 'prosemirror-view'
 import { resolveEditingShortcut, typedCharacter } from '../input/shortcuts.ts'
 import type { KeyEventLike } from '../input/shortcuts.ts'
 import { DEFAULT_FONT, canonicalTextFormatting, splitGraphemes } from '../model/richText.ts'
@@ -80,6 +80,9 @@ const CARET_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', '
 /** Transaction metadata of the follow-up (it carries ProseMirror's `composition` metadata too, to join the composition's history step). */
 const FOLLOW_UP = 'yuriful-composition-follow-up'
 
+/** The view-only decorations of a mounted session (`EditSessionOptions.decorate`): never part of the document, its history or its record. */
+const decorationsKey = new PluginKey<{ set: DecorationSet; stale: boolean }>('yuriful-view-decorations')
+
 /** Text a composition put in, with the marks it takes (rule R5). */
 interface ComposedRange {
   from: number
@@ -104,6 +107,19 @@ export interface EditSessionHooks {
   canFireShortcut?(session: EditSession): boolean
   /** Ctrl/Cmd+B, I or U in the edited text. When absent the session toggles the mark itself. */
   onFormatKey?(mark: Mark, session: EditSession): void
+}
+
+export interface EditSessionOptions {
+  /** The caret, as a UTF-16 offset into the text (default: its end). */
+  caret?: number
+  content?: TextContent
+  /**
+   * How the mounted view draws the document beyond the schema's own DOM (the card's no-wrap words
+   * and tabs): decorations only, never part of the document, its history or its record. Worked out
+   * again after every change of the document and on `redecorate()`; while an IME composition is
+   * open the last ones are kept, mapped through its changes, so nothing is drawn again around it.
+   */
+  decorate?: (doc: PMNode) => DecorationSet
 }
 
 export interface PasteData {
@@ -236,7 +252,7 @@ export class EditSession {
    */
   private storedBreaks: string | null
 
-  constructor(doc: PMNode, box: TextFormatting, hooks: EditSessionHooks = {}, opts: { caret?: number; content?: TextContent } = {}) {
+  constructor(doc: PMNode, box: TextFormatting, hooks: EditSessionHooks = {}, opts: EditSessionOptions = {}) {
     this.box = boxOf(box)
     this.hooks = hooks
     this.initial = { doc, box: this.box, content: opts.content ?? contentFromDoc(doc, this.box) }
@@ -258,8 +274,42 @@ export class EditSession {
         canonicalGuard({ baseFont: () => this.baseFont, busy: () => this.busy }),
         pendingMarks({ baseFont: () => this.baseFont, afterHistory: (redone, depth) => (redone ? (this.conversions.get(depth) ?? null) : null), busy: () => this.busy }),
         selectionOnCharacters({ busy: () => this.busy }),
+        ...(opts.decorate ? [this.decorationsPlugin(opts.decorate)] : []),
       ],
     })
+  }
+
+  /**
+   * The view-only decorations (`EditSessionOptions.decorate`), held as plugin state so that they
+   * map through every transaction: worked out again when the document changed or `redecorate()`
+   * asked, except while a composition is open, when they are only mapped (and worked out again by
+   * the first transaction after it).
+   */
+  private decorationsPlugin(decorate: (doc: PMNode) => DecorationSet): Plugin {
+    return new Plugin({
+      key: decorationsKey,
+      state: {
+        init: (_config, state) => ({ set: decorate(state.doc), stale: false }),
+        apply: (tr, old, _oldState, state) => {
+          if (this.busy) return { set: old.set.map(tr.mapping, tr.doc), stale: old.stale || tr.docChanged }
+          if (old.stale || tr.docChanged || tr.getMeta(decorationsKey) === true) return { set: decorate(state.doc), stale: false }
+          return old
+        },
+      },
+      props: { decorations: (state) => decorationsKey.getState(state)?.set },
+    })
+  }
+
+  /**
+   * Works the view-only decorations out again (what they depend on outside the document changed:
+   * the box's width or size). Changes nothing else: not the document, the selection, the history,
+   * the pending choices or the shortcut revert. Nothing while a composition is open (they are
+   * worked out again after it) or once finished.
+   */
+  redecorate() {
+    if (this.done || this.composing || !decorationsKey.get(this.current)) return
+    this.current = this.current.apply(this.current.tr.setMeta(decorationsKey, true).setMeta('addToHistory', false))
+    this.mounted?.view.updateState(this.current)
   }
 
   get state(): EditorState {
@@ -1035,6 +1085,13 @@ export class EditSession {
             this.caretKeyAt = CARET_KEYS.has(e.key) ? performance.now() : -Infinity
             return false
           },
+          // Text that arrives with no keydown (an emoji panel, dictation) can come before the
+          // `selectionchange` of the caret key just pressed: without this, the session would still
+          // hold the selection from before that key and take the insertion for typing over it.
+          beforeinput: () => {
+            this.keepMoveToStart()
+            return false
+          },
           focus: () => {
             this.caretKeyAt = -Infinity
             return false
@@ -1167,9 +1224,9 @@ export class EditSession {
  * A session on a stored text, with the caret at a UTF-16 offset (default: the end). Null when
  * the record cannot be read or holds rich blocks this build's schema cannot edit yet.
  */
-export function createEditSession(source: TextSource, hooks: EditSessionHooks = {}, opts: { caret?: number } = {}): EditSession | null {
+export function createEditSession(source: TextSource, hooks: EditSessionHooks = {}, opts: Pick<EditSessionOptions, 'caret' | 'decorate'> = {}): EditSession | null {
   const read = docFromText(source)
-  return read && new EditSession(read.doc, read.box, hooks, { caret: opts.caret, content: read.content })
+  return read && new EditSession(read.doc, read.box, hooks, { caret: opts.caret, content: read.content, decorate: opts.decorate })
 }
 
 // ---- pasted HTML ------------------------------------------------------------------------------------

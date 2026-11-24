@@ -423,6 +423,7 @@ export class Editor {
       syncState: () => this.syncState(),
       syncSelection: () => this.syncSelection(),
       syncCaptions: (edited) => this.syncCaptions(edited),
+      shownHistory: () => ({ canUndo: this.state.canUndo, canRedo: this.state.canRedo }),
     }
     this.text = this.scene ? new DomTextAdapter(textHost, this.scene) : new FabricTextAdapter(textHost)
 
@@ -576,6 +577,7 @@ export class Editor {
     this.pan?.end()
     this.crop?.drag?.end()
     this.crop = null
+    this.text.dispose() // an edit in progress ends; nothing is committed (the board is no longer editable)
     for (const c of this.cleanups.splice(0)) c()
     this.autosaver.dispose()
     this.listeners.clear()
@@ -839,14 +841,16 @@ export class Editor {
 
   private syncState() {
     const active = this.canvas.getActiveObject()
+    // While a text is edited on the DOM renderer, Undo and Redo step that edit (Owner Decision 11).
+    const edit = this.text.editHistory()
     this.setState({
       selection: this.computeSelection(),
       objectCount: this.canvas.getObjects().length,
       layers: computeLayers(this.canvas.getObjects(), this.canvas.getActiveObjects(), (id) => this.assets.bytes(id)?.name, this.state.layers),
       frameDestinations: this.frameDestinations(),
       // An open crop that differs from where it began can be undone too: Undo applies it, then undoes it.
-      canUndo: this.history.canUndo || (this.crop !== null && !sameCrop(storedCrop(this.crop.rect, this.crop.size), storedCrop(this.crop.start, this.crop.size))),
-      canRedo: this.history.canRedo,
+      canUndo: edit ? edit.canUndo : this.history.canUndo || (this.crop !== null && !sameCrop(storedCrop(this.crop.rect, this.crop.size), storedCrop(this.crop.start, this.crop.size))),
+      canRedo: edit ? edit.canRedo : this.history.canRedo,
       editingText: this.text.isEditing(active),
       cropping: this.crop !== null,
     })
@@ -1440,15 +1444,24 @@ export class Editor {
       this.cleanups.push(() => el.removeEventListener(type, fn, opts))
     }
 
+    // On the DOM renderer the stage holding the scene layer and the canvas: while a text is edited
+    // the canvas takes no presses (the card and the items in front of it do), and they must still
+    // be routed here. The Fabric renderer keeps them on the canvas's own wrapper.
+    const stage = this.scene ? this.host : wrapper
+
     // Runs before Fabric (capture phase): decides which presses Fabric may see at all.
     listen(
-      wrapper,
+      stage,
       'mousedown',
       (e) => {
         if (!this.live) {
           // Still hydrating: the board is inert.
           e.preventDefault()
           e.stopPropagation()
+          return
+        }
+        if (this.scene && this.text.editedTarget()) {
+          this.editingPress(e)
           return
         }
         if (e.button !== 0) {
@@ -1526,7 +1539,7 @@ export class Editor {
     })
 
     listen(
-      wrapper,
+      stage,
       'wheel',
       (e) => {
         e.preventDefault()
@@ -1545,6 +1558,25 @@ export class Editor {
       },
       { passive: false },
     )
+
+    if (this.scene) {
+      // While a text is edited on the DOM renderer, the browser's own menu opens in the card only (the canvas stops its own).
+      listen(this.host, 'contextmenu', (e) => {
+        if (this.text.editedTarget() && !this.text.pressInsideEdit(e)) e.preventDefault()
+      })
+      // The board does not follow a caret typed out of view, as on the canvas (plan Section 7, rule 5):
+      // the browser and ProseMirror scroll every ancestor of the edited card that can scroll at all to
+      // show the caret, and `.workspace` hides a few pixels of overflow. Put any such ancestor back
+      // before it is painted (scroll events come before the frame is drawn).
+      const keepStill = (e: Event) => {
+        const el = e.target
+        if (!(el instanceof HTMLElement) || !el.contains(this.host) || (el.scrollTop === 0 && el.scrollLeft === 0)) return
+        el.scrollTop = 0
+        el.scrollLeft = 0
+      }
+      document.addEventListener('scroll', keepStill, { capture: true })
+      this.cleanups.push(() => document.removeEventListener('scroll', keepStill, { capture: true }))
+    }
 
     const ro = new ResizeObserver(() => {
       const { width, height } = this.host.getBoundingClientRect()
@@ -1604,6 +1636,38 @@ export class Editor {
       document.removeEventListener('visibilitychange', onHide)
       window.removeEventListener('beforeunload', onBeforeUnload)
     })
+  }
+
+  /**
+   * A press while a text is edited on the DOM renderer (plan Section 4, the editing row of the
+   * routing table). Inside the card, where nothing covers it, it is the browser's and the view's:
+   * the caret or a selection, a word on a double-click, the browser's own menu on the right button.
+   * The middle button ends the edit and pans. Any other primary press (empty canvas, a frame's
+   * interior, label or outline, another object, an unlocked object in front of the card) ends the
+   * edit and is then given to the canvas as the same press, so that one press both ends the edit and
+   * selects, drags, Shift-selects, marquees or starts a Text-tool box (the Outside path).
+   */
+  private editingPress(e: MouseEvent) {
+    const inside = this.text.pressInsideEdit(e)
+    if (e.button !== 0) {
+      if (e.button === 2 && inside) return
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.button === 1 && !this.primaryDown) {
+        this.finishEditing({ keepCrop: true })
+        this.beginPan(e)
+      }
+      return
+    }
+    if (inside) return
+    e.preventDefault()
+    e.stopPropagation()
+    this.finishEditing()
+    if (this.text.editedTarget()) return // the edit could not end: nothing else happens
+    const { clientX, clientY, screenX, screenY, button, buttons, shiftKey, ctrlKey, altKey, metaKey, detail } = e
+    this.canvas.upperCanvasEl.dispatchEvent(
+      new MouseEvent('mousedown', { bubbles: true, cancelable: true, composed: true, view: window, clientX, clientY, screenX, screenY, button, buttons, shiftKey, ctrlKey, altKey, metaKey, detail }),
+    )
   }
 
   /**
@@ -2125,7 +2189,7 @@ export class Editor {
 
   editCaption() {
     const image = this.captionImage()
-    if (!image || !this.text.canEdit) return
+    if (!image) return
     const imageId = idOf(image)
     const rec = toRecord(image)
     if (!imageId || rec?.type !== 'image') return
@@ -2245,8 +2309,7 @@ export class Editor {
    * default box (ten font sizes wide) at `at`.
    */
   private addTextAt(at: Point, anchor: 'center' | 'top-left', dragTo?: Point) {
-    // A new text is typed into at once: not until text can be edited on this renderer (Slice 2c-ii on the DOM path).
-    if (!this.editable || this.busy || !this.text.canEdit) return
+    if (!this.editable || this.busy) return
     // Placement is single-use. Switch tools first: switching ends any editing.
     if (this.state.tool !== 'select') this.switchTool('select')
     this.finishEditing()
@@ -2745,6 +2808,7 @@ export class Editor {
 
   undo() {
     if (!this.editable || this.busy) return
+    if (this.text.stepEdit('undo')) return // a step of the text being edited; the edit stays open
     this.finishEditing()
     const scene = this.history.undo()
     if (scene) this.restoreHistory(scene)
@@ -2752,6 +2816,7 @@ export class Editor {
 
   redo() {
     if (!this.editable || this.busy) return
+    if (this.text.stepEdit('redo')) return
     this.finishEditing()
     const scene = this.history.redo()
     if (scene) this.restoreHistory(scene)
@@ -2917,12 +2982,8 @@ export class Editor {
           // The DOM renderer's bitmap comes from the same cards the scene layer draws (plan Section 10).
           const dom = this.scene
           if (dom) {
-            // A card the layer has laid out and that lies outside the frame is not laid out again.
-            const cardSize = (rec: TextRecord) => {
-              const width = dom.layer.widthOf(rec.id)
-              const height = dom.layer.heightOf(rec.id)
-              return width !== undefined && height !== undefined ? { width, height } : undefined
-            }
+            // A card that even the box the preview builds for it (as the layer knows it) keeps outside the frame is not laid out again.
+            const cardSize = (rec: TextRecord) => dom.builtCardBound(rec)
             return renderFrameToCanvas(scene, id, { getImage, measurer: dom.layer.measurer, cardSize }).then((canvas) => canvas.toDataURL('image/png'))
           }
           return renderFramePreview(scene, id, getImage)

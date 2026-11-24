@@ -241,8 +241,10 @@ export interface FrameBitmapOptions {
   /** Sizes the text cards; by default a `DomCardMeasurer`. */
   measurer?: CardMeasurer
   /**
-   * A text card's size as already laid out elsewhere (the scene layer's), if known: a card that
-   * lies outside the frame by it is then not even laid out. Unknown, it is laid out and checked.
+   * A bound on the box this compositor builds for a text record, if known without laying it out
+   * (the scene layer's `builtCardBound`): its exact width and a height at least its own. A card
+   * outside the frame even by that bound is not laid out; otherwise, or when unknown, it is laid
+   * out and its exact box checked.
    */
   cardSize?(rec: TextRecord): Size | undefined
 }
