@@ -5,7 +5,7 @@ import { BoardConflictError } from '../persistence/boardStore.ts'
 import { Editor } from './Editor.ts'
 import { captionOf, idOf, setCaption } from './objects.ts'
 import { canvasOf, dragBy, press, release, tick } from './testing/drive.ts'
-import { FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
+import { FABRIC, FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
 import { ActiveSelection, Textbox } from './testing/fakeFabric.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
@@ -38,7 +38,7 @@ async function board(objects: ObjectRecord[] = [image, caption, text], holdLoad 
   const host = document.createElement('div')
   document.body.append(host)
   const assets = new FakeAssets()
-  const editor = new Editor(host, store, assets)
+  const editor = new Editor(host, store, assets, undefined, FABRIC)
   editors.push(editor)
   const pending = editor.init()
   if (!holdLoad) await pending

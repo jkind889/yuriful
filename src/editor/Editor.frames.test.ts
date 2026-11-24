@@ -10,7 +10,7 @@ import { canvasOf, dragBy, moveCanvas, press, pressCanvas, release, releaseCanva
 import type { PressOptions } from './testing/drive.ts'
 import { ActiveSelection } from './testing/fakeFabric.ts'
 import type { FakeObject, Textbox } from './testing/fakeFabric.ts'
-import { FakeAssets, SpyStore } from './testing/fakes.ts'
+import { FABRIC, FakeAssets, SpyStore } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -59,7 +59,7 @@ async function board(frames: FrameRecord[], objects: ObjectRecord[], viewport = 
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Frames', frames, objects, viewport }
   const store = new SpyStore(frames.length + objects.length > 0 ? { doc, assets: new Map([['a1', asset('a1')]]) } : null)
   store.holdLoad = false
-  const editor = new Editor(host, store, new FakeAssets())
+  const editor = new Editor(host, store, new FakeAssets(), undefined, FABRIC)
   editors.push(editor)
   await editor.init()
   const canvas = canvasOf(editor)
@@ -914,7 +914,7 @@ describe('hooks for the UI', () => {
 
     const store = new SpyStore({ doc: { ...createEmptyDoc(), objects: [img('gone', 0, 0)] }, assets: new Map() }) // its image bytes are missing
     store.holdLoad = false
-    const broken = new Editor(host, store, new FakeAssets())
+    const broken = new Editor(host, store, new FakeAssets(), undefined, FABRIC)
     editors.push(broken)
     await broken.init()
     expect(broken.getState().readOnly).not.toBeNull()
@@ -931,7 +931,7 @@ describe('undoing an image deletion after another tab pruned its bytes', () => {
     await seed.save(doc, ABSENT, () => original)
 
     const store = new IndexedDbBoardStore(factory)
-    const editor = new Editor(host, store, new FakeAssets())
+    const editor = new Editor(host, store, new FakeAssets(), undefined, FABRIC)
     editors.push(editor)
     await editor.init()
     const canvas = canvasOf(editor)

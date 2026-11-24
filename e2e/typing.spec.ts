@@ -1,13 +1,13 @@
 /**
  * Real-browser tests (real Fabric, real IndexedDB) for the typing shortcuts: `# `, `## `,
  * `### ` at the start of a line, `**bold**` and `*italic*` typed character by character, and
- * Backspace straight afterwards to get the literal characters back. What is stored, that
- * Fabric's object and its hidden textarea still agree afterwards (typing, Backspace, the arrow
+ * Backspace straight afterwards to get the literal characters back. What is stored, that the
+ * text shown in the edit and its caret are still right afterwards (typing, Backspace, the arrow
  * keys, selection and paste behave normally), what stays literal, history and saving.
  */
 import { expect, test } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
-import { AUTOSAVE_QUIET_MS, openApp, openBlank, redoButton, sceneToPage, seedMilestone1, status, storedDoc, undoButton, waitSaved } from './helpers.ts'
+import { AUTOSAVE_QUIET_MS, editedText, openApp, openBlank, redoButton, sceneToPage, seedMilestone1, status, storedDoc, undoButton, waitSaved } from './helpers.ts'
 import type { StoredBoard, StoredObject, View } from './helpers.ts'
 
 const UNIT: View = { zoom: 1, panX: 0, panY: 0 }
@@ -55,22 +55,18 @@ async function editAtEnd(page: Page, p: { x: number; y: number }) {
 /** Types character by character, as a person does (a keydown, the input, a keyup per character). */
 const typeKeys = (page: Page, s: string) => page.keyboard.type(s)
 
-/** Fabric's hidden textarea: its value and selection (UTF-16). */
-const textarea = (page: Page) =>
-  page.evaluate(() => {
-    const ta = document.querySelector<HTMLTextAreaElement>('textarea[data-fabric="textarea"]')
-    return ta ? { value: ta.value, start: ta.selectionStart, end: ta.selectionEnd, focused: document.activeElement === ta } : null
-  })
+/** The text being edited as the page shows it: its text and selection (UTF-16), and whether it has the keyboard. */
+const edited = (page: Page) => editedText(page)
 
 const button = (page: Page, name: string): Locator => page.getByRole('button', { name, exact: true })
 
-test.describe("Fabric's object and its hidden textarea agree after a conversion", () => {
+test.describe('the text shown in the edit and its caret agree with the record after a conversion', () => {
   test('bold: typing, Backspace, arrow keys, selection and paste straight afterwards behave normally', async ({ page }) => {
     const rec = textRec('t', 100, 100, 'go')
     const { errors, at } = await open(page, [rec], { clipboard: true })
     await editAtEnd(page, at(110, 112))
     await typeKeys(page, ' **bold**')
-    expect(await textarea(page)).toEqual({ value: 'go bold', start: 7, end: 7, focused: true })
+    expect(await edited(page)).toEqual({ value: 'go bold', start: 7, end: 7, focused: true })
     const converted = await storedWhen(page, (d) => byId(d, 't').text === 'go bold') // the typing save has the converted state
     expect(byId(converted, 't')).toEqual({ ...rec, text: 'go bold', spans: [{ start: 3, end: 7, bold: true }] })
     // typing on: plain, right after the bold word
@@ -85,7 +81,7 @@ test.describe("Fabric's object and its hidden textarea agree after a conversion"
     await page.keyboard.press('ArrowLeft')
     await page.keyboard.press('Shift+ArrowLeft')
     await page.keyboard.press('Shift+ArrowLeft')
-    expect(await textarea(page)).toEqual({ value: 'go bold', start: 4, end: 6, focused: true })
+    expect(await edited(page)).toEqual({ value: 'go bold', start: 4, end: 6, focused: true })
     await typeKeys(page, 'O')
     await storedWhen(page, (d) => byId(d, 't').text === 'go bOd')
     expect(byId(await storedDoc(page), 't').spans).toEqual([{ start: 3, end: 6, bold: true }])
@@ -98,7 +94,7 @@ test.describe("Fabric's object and its hidden textarea agree after a conversion"
     await page.keyboard.press('End')
     await page.keyboard.press('Control+v')
     await storedWhen(page, (d) => byId(d, 't').text === 'go bOdgo')
-    expect(await textarea(page)).toEqual({ value: 'go bOdgo', start: 8, end: 8, focused: true })
+    expect(await edited(page)).toEqual({ value: 'go bOdgo', start: 8, end: 8, focused: true })
     await page.keyboard.press('Escape')
     const done = await storedWhen(page, (d) => byId(d, 't').text === 'go bOdgo')
     expect(byId(done, 't')).toEqual({ ...rec, text: 'go bOdgo', spans: [{ start: 3, end: 6, bold: true }] })
@@ -112,7 +108,7 @@ test.describe("Fabric's object and its hidden textarea agree after a conversion"
     await typeKeys(page, ' *it*')
     await storedWhen(page, (d) => byId(d, 't').text === 'go it')
     await page.keyboard.press('Backspace') // puts the markers back, deletes nothing
-    expect(await textarea(page)).toEqual({ value: 'go *it*', start: 7, end: 7, focused: true })
+    expect(await edited(page)).toEqual({ value: 'go *it*', start: 7, end: 7, focused: true })
     const reverted = await storedWhen(page, (d) => byId(d, 't').text === 'go *it*')
     expect(byId(reverted, 't')).toEqual({ ...rec, text: 'go *it*' })
     await typeKeys(page, '!') // stays literal
@@ -124,7 +120,7 @@ test.describe("Fabric's object and its hidden textarea agree after a conversion"
     await page.keyboard.press('ArrowLeft')
     await typeKeys(page, 'X')
     await storedWhen(page, (d) => byId(d, 't').text === 'go *Xit')
-    expect(await textarea(page)).toEqual({ value: 'go *Xit', start: 5, end: 5, focused: true })
+    expect(await edited(page)).toEqual({ value: 'go *Xit', start: 5, end: 5, focused: true })
     await page.keyboard.press('Escape')
     expect(byId(await storedWhen(page, (d) => byId(d, 't').text === 'go *Xit'), 't')).toEqual({ ...rec, text: 'go *Xit' })
     expect(errors).toEqual([])
@@ -136,7 +132,7 @@ test.describe("Fabric's object and its hidden textarea agree after a conversion"
     await editAtEnd(page, at(110, 112))
     await page.keyboard.press('Home') // start of "Title"
     await typeKeys(page, '## ')
-    expect(await textarea(page)).toEqual({ value: 'one\nTitle', start: 4, end: 4, focused: true })
+    expect(await edited(page)).toEqual({ value: 'one\nTitle', start: 4, end: 4, focused: true })
     await storedWhen(page, (d) => byId(d, 't').headings !== undefined)
     expect(byId(await storedDoc(page), 't')).toEqual({ ...rec, headings: [0, 2] })
     await typeKeys(page, 'A ')
@@ -176,7 +172,7 @@ test.describe('each shortcut, typed for real and stored after leaving the edit',
     await page.keyboard.press('Control+a')
     await page.keyboard.press('ArrowLeft')
     await typeKeys(page, '## ')
-    expect(await textarea(page)).toMatchObject({ value: 'Old\nbody\nBig\nsmall', start: 0, end: 0 })
+    expect(await edited(page)).toMatchObject({ value: 'Old\nbody\nBig\nsmall', start: 0, end: 0 })
     await typeKeys(page, 'An ')
     await page.keyboard.press('Escape')
     const done = await storedWhen(page, (d) => byId(d, 't').text === 'An Old\nbody\nBig\nsmall')
@@ -328,21 +324,26 @@ test.describe('history', () => {
     })
   }
 
-  test("the browser's own Ctrl+Z in the text after a conversion or a revert corrupts nothing", async ({ page }) => {
+  test('Ctrl+Z in the text after a conversion or a revert steps back through the edit and corrupts nothing', async ({ page }) => {
     const rec = textRec('t', 100, 100, 'go')
     const { errors, at } = await open(page, [rec])
     await editAtEnd(page, at(105, 112))
     await typeKeys(page, ' **b**')
-    await page.keyboard.press('Control+z') // the conversion replaced the textarea's value: nothing to undo there
+    expect(await edited(page)).toMatchObject({ value: 'go b', start: 4, end: 4 })
+    await page.keyboard.press('Control+z') // undoes the conversion only: the literal markers come back
+    expect(await edited(page)).toMatchObject({ value: 'go **b**', start: 8, end: 8 })
     await typeKeys(page, 'q')
     await page.keyboard.press('Control+z') // undoes only the "q"
+    expect(await edited(page)).toMatchObject({ value: 'go **b**', start: 8, end: 8 })
     await typeKeys(page, ' *i*')
-    await page.keyboard.press('Backspace')
-    await page.keyboard.press('Control+z')
-    expect(await textarea(page)).toMatchObject({ value: 'go b *i*', start: 8, end: 8 })
+    expect(await edited(page)).toMatchObject({ value: 'go **b** i', start: 10, end: 10 })
+    await page.keyboard.press('Backspace') // the revert, itself a step of the edit's undo
+    expect(await edited(page)).toMatchObject({ value: 'go **b** *i*', start: 12, end: 12 })
+    await page.keyboard.press('Control+z') // the step before the revert: the typed " *i*"
+    expect(await edited(page)).toMatchObject({ value: 'go **b**', start: 8, end: 8, focused: true })
     await page.keyboard.press('Escape')
-    const done = await storedWhen(page, (d) => byId(d, 't').text === 'go b *i*')
-    expect(byId(done, 't')).toEqual({ ...rec, text: 'go b *i*', spans: [{ start: 3, end: 4, bold: true }] })
+    const done = await storedWhen(page, (d) => byId(d, 't').text === 'go **b**')
+    expect(byId(done, 't')).toEqual({ ...rec, text: 'go **b**' })
     expect(errors).toEqual([])
   })
 
@@ -472,12 +473,12 @@ test.describe('slice 3 review follow-ups', () => {
     await typeKeys(page, '# ')
     await storedWhen(page, (d) => byId(d, 't').headings !== undefined)
     await page.keyboard.down('Backspace') // reverts: "# abc"
-    expect(await textarea(page)).toMatchObject({ value: '# abc', start: 2, end: 2 })
+    expect(await edited(page)).toMatchObject({ value: '# abc', start: 2, end: 2 })
     await page.keyboard.down('Backspace') // a repeat: deletes the space
-    expect(await textarea(page)).toMatchObject({ value: '#abc', start: 1, end: 1 })
+    expect(await edited(page)).toMatchObject({ value: '#abc', start: 1, end: 1 })
     await page.keyboard.down('Backspace') // and the "#"
     await page.keyboard.up('Backspace')
-    expect(await textarea(page)).toMatchObject({ value: 'abc', start: 0, end: 0 })
+    expect(await edited(page)).toMatchObject({ value: 'abc', start: 0, end: 0 })
     await page.keyboard.press('Escape')
     await page.waitForTimeout(AUTOSAVE_QUIET_MS)
     expect(byId(await storedDoc(page), 't')).toEqual(rec) // no heading stored
@@ -552,7 +553,7 @@ test.describe('a pending bold never survives onto a heading line (QA final pass)
     await page.keyboard.press('Control+b')
     await typeKeys(page, '# ')
     await page.keyboard.press('Backspace')
-    expect(await textarea(page)).toMatchObject({ value: '# ', start: 2, end: 2 })
+    expect(await edited(page)).toMatchObject({ value: '# ', start: 2, end: 2 })
     await expect(button(page, 'Bold')).toHaveAttribute('aria-pressed', 'true')
     await expect(button(page, 'Bold')).toBeEnabled() // a normal line again: bold can be chosen
     await typeKeys(page, 'x')

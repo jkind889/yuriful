@@ -9,7 +9,7 @@ import { idOf } from './objects.ts'
 import { canvasOf, dragBy, press, release, tick } from './testing/drive.ts'
 import { ActiveSelection } from './testing/fakeFabric.ts'
 import type { FakeObject, Textbox } from './testing/fakeFabric.ts'
-import { FakeAssets, SpyStore } from './testing/fakes.ts'
+import { FABRIC, FakeAssets, SpyStore } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -57,7 +57,7 @@ const ASSETS = new Map([
 function make(frames: FrameRecord[], objects: ObjectRecord[]) {
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Layers', frames, objects }
   const store = new SpyStore(frames.length + objects.length > 0 ? { doc, assets: ASSETS } : null)
-  const editor = new Editor(host, store, new FakeAssets())
+  const editor = new Editor(host, store, new FakeAssets(), undefined, FABRIC)
   editors.push(editor)
   return { editor, store, canvas: canvasOf(editor) }
 }

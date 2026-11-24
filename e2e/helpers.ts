@@ -428,3 +428,182 @@ export async function openApp(page: Page) {
 
 export const undoButton = (page: Page) => page.getByRole('button', { name: 'Undo' })
 export const redoButton = (page: Page) => page.getByRole('button', { name: 'Redo' })
+
+// ---- renderers ---------------------------------------------------------------------------------
+
+/**
+ * Chooses the renderer of the app this page loads next: `'dom'` (the app's) or `'fabric'`, the
+ * test-only reference the paired tests compare with. It sets the development build's switch
+ * before the app mounts (see `src/App.tsx`); call before the page goes to the app.
+ */
+export const chooseRenderer = (page: Page, renderer: 'dom' | 'fabric') =>
+  page.addInitScript((renderer) => {
+    ;(window as { __YURIFUL_RENDERER__?: string }).__YURIFUL_RENDERER__ = renderer
+  }, renderer)
+
+// ---- the text being edited -------------------------------------------------------------------
+
+export interface EditedText {
+  /** The text, one `\n` per line break. */
+  value: string
+  /** The selection the page shows in the text, as UTF-16 offsets (`start <= end`). */
+  start: number
+  end: number
+  /** The edited text has the keyboard. */
+  focused: boolean
+}
+
+/**
+ * The text being edited, as the page shows it, or null when none is. On the DOM renderer the
+ * edited card holds the text engine's live view: its text, and the page's own selection inside
+ * it (mapped to text offsets by the engine's pure `textOffsetAt`). On the Fabric renderer, which
+ * only the reference run (`E2E_RENDERER=fabric`) uses, Fabric's hidden textarea.
+ */
+export function editedText(page: Page): Promise<EditedText | null> {
+  return page.evaluate(async () => {
+    type Desc = { node: unknown; posFromDOM: (node: Node, offset: number, bias: number) => number }
+    const root = document.querySelector<HTMLElement & { pmViewDesc?: Desc }>('.scene-layer [contenteditable="true"].ProseMirror')
+    if (root?.pmViewDesc) {
+      const path = '/src/editor/textSchema.ts'
+      const { plainTextOfDoc, textOffsetAt } = await import(/* @vite-ignore */ path)
+      const desc = root.pmViewDesc
+      const doc = desc.node
+      const sel = getSelection()
+      let start = 0
+      let end = 0
+      if (sel && sel.anchorNode && sel.focusNode && root.contains(sel.anchorNode) && root.contains(sel.focusNode)) {
+        const a = textOffsetAt(doc, desc.posFromDOM(sel.anchorNode, sel.anchorOffset, -1), -1) as number
+        const b = textOffsetAt(doc, desc.posFromDOM(sel.focusNode, sel.focusOffset, -1), -1) as number
+        start = Math.min(a, b)
+        end = Math.max(a, b)
+      }
+      return { value: plainTextOfDoc(doc) as string, start, end, focused: document.activeElement === root }
+    }
+    const ta = document.querySelector<HTMLTextAreaElement>('textarea[data-fabric="textarea"]')
+    return ta ? { value: ta.value, start: ta.selectionStart, end: ta.selectionEnd, focused: document.activeElement === ta } : null
+  })
+}
+
+/** The text being edited has the keyboard (see `editedText`). */
+export const editHasFocus = async (page: Page) => (await editedText(page))?.focused === true
+
+// ---- what the page shows -----------------------------------------------------------------------
+
+/** Decodes an 8-bit, non-interlaced RGB or RGBA PNG (what Playwright's screenshots are) to RGBA. */
+export function decodePng(png: Buffer): { width: number; height: number; data: Uint8Array } {
+  let pos = 8
+  let width = 0
+  let height = 0
+  let colorType = 6
+  const idat: Buffer[] = []
+  while (pos < png.length) {
+    const len = png.readUInt32BE(pos)
+    const type = png.toString('ascii', pos + 4, pos + 8)
+    const body = png.subarray(pos + 8, pos + 8 + len)
+    if (type === 'IHDR') {
+      width = body.readUInt32BE(0)
+      height = body.readUInt32BE(4)
+      if (body[8] !== 8 || body[12] !== 0) throw new Error('decodePng: only 8-bit, non-interlaced images')
+      colorType = body[9]!
+    } else if (type === 'IDAT') idat.push(body)
+    else if (type === 'IEND') break
+    pos += 12 + len
+  }
+  const channels = colorType === 6 ? 4 : colorType === 2 ? 3 : 0
+  if (!channels) throw new Error(`decodePng: colour type ${colorType}`)
+  const raw = zlib.inflateSync(Buffer.concat(idat))
+  const stride = width * channels
+  const out = new Uint8Array(width * height * 4)
+  let prev = new Uint8Array(stride)
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)]!
+    const line = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1))
+    const cur = new Uint8Array(stride)
+    for (let i = 0; i < stride; i++) {
+      const a = i >= channels ? cur[i - channels]! : 0
+      const b = prev[i]!
+      const c = i >= channels ? prev[i - channels]! : 0
+      const x = line[i]!
+      let v: number
+      if (filter === 0) v = x
+      else if (filter === 1) v = x + a
+      else if (filter === 2) v = x + b
+      else if (filter === 3) v = x + ((a + b) >> 1)
+      else {
+        const p = a + b - c
+        const pa = Math.abs(p - a)
+        const pb = Math.abs(p - b)
+        const pc = Math.abs(p - c)
+        v = x + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c)
+      }
+      cur[i] = v & 0xff
+    }
+    for (let px = 0; px < width; px++) {
+      const o = (y * width + px) * 4
+      out[o] = cur[px * channels]!
+      out[o + 1] = cur[px * channels + 1]!
+      out[o + 2] = cur[px * channels + 2]!
+      out[o + 3] = channels === 4 ? cur[px * channels + 3]! : 255
+    }
+    prev = cur
+  }
+  return { width, height, data: out }
+}
+
+/**
+ * The board's backdrop while `screenPixels` samples it: its colour with no dots, so that a pixel
+ * where nothing is drawn reads as exactly this.
+ */
+export const BOARD_BACKDROP = [241, 243, 248, 255] as const
+
+/**
+ * What the page shows in a rectangle of the canvas (CSS pixels from the canvas host's top-left,
+ * the coordinates of Fabric's canvas element): a composited screenshot, so frame paper, images
+ * and text drawn by the scene layer and the canvas's frame outlines, labels and selection chrome
+ * are all in it, as a person sees them. The panels over the board, the board's dots and the caret
+ * are left out while it is taken. RGBA, `width * height * 4` bytes, one pixel per CSS pixel.
+ */
+export async function screenPixels(page: Page, left: number, top: number, width: number, height: number) {
+  const box = await page.locator('.canvas-host').boundingBox()
+  if (!box) throw new Error('canvas host not found')
+  return pagePixels(page, box.x + left, box.y + top, width, height)
+}
+
+/** As `screenPixels`, for a rectangle in page coordinates. */
+export async function pagePixels(page: Page, left: number, top: number, width: number, height: number) {
+  const vp = page.viewportSize()!
+  // Only the part inside the viewport can be captured; the rest reads as the backdrop.
+  const x0 = Math.max(0, Math.round(left))
+  const y0 = Math.max(0, Math.round(top))
+  const x1 = Math.min(vp.width, Math.round(left) + Math.round(width))
+  const y1 = Math.min(vp.height, Math.round(top) + Math.round(height))
+  const w = Math.round(width)
+  const h = Math.round(height)
+  const data = new Uint8Array(w * h * 4)
+  for (let i = 0; i < data.length; i += 4) data.set(BOARD_BACKDROP, i)
+  if (x1 > x0 && y1 > y0) {
+    const png = await page.screenshot({
+      clip: { x: x0, y: y0, width: x1 - x0, height: y1 - y0 },
+      scale: 'css',
+      animations: 'disabled',
+      caret: 'hide',
+      style: `.overlays { visibility: hidden !important; } .workspace { background-image: none !important; background-color: rgb(${BOARD_BACKDROP.slice(0, 3).join(',')}) !important; }`,
+    })
+    const shot = decodePng(png)
+    const dx = x0 - Math.round(left)
+    const dy = y0 - Math.round(top)
+    for (let y = 0; y < shot.height && y + dy < h; y++) {
+      for (let x = 0; x < shot.width && x + dx < w; x++) {
+        const s = (y * shot.width + x) * 4
+        data.set(shot.data.subarray(s, s + 4), ((y + dy) * w + x + dx) * 4)
+      }
+    }
+  }
+  return { width: w, height: h, data }
+}
+
+/** One pixel the page shows at a point of the canvas (see `screenPixels`), RGBA. */
+export async function screenPixel(page: Page, x: number, y: number): Promise<[number, number, number, number]> {
+  const { data } = await screenPixels(page, Math.round(x), Math.round(y), 1, 1)
+  return [data[0]!, data[1]!, data[2]!, data[3]!]
+}

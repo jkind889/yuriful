@@ -6,7 +6,7 @@
  */
 import { expect, test } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
-import { AUTOSAVE_QUIET_MS, drag, imageFile, openApp, openBlank, redoButton, sceneToPage, seedMilestone1, seedRaw, status, storedDoc, undoButton, waitSaved } from './helpers.ts'
+import { AUTOSAVE_QUIET_MS, drag, editHasFocus, imageFile, openApp, pagePixels, openBlank, redoButton, sceneToPage, seedMilestone1, seedRaw, status, storedDoc, undoButton, waitSaved } from './helpers.ts'
 import type { StoredBoard, StoredObject, View } from './helpers.ts'
 
 const UNIT: View = { zoom: 1, panX: 0, panY: 0 }
@@ -29,49 +29,32 @@ async function storedWhen(page: Page, check: (doc: StoredBoard) => boolean): Pro
 }
 const texts = (doc: StoredBoard) => doc.objects.filter((o) => o.type === 'text')
 const tool = (page: Page, name: string): Locator => page.getByRole('toolbar', { name: 'Tools' }).getByRole('button', { name, exact: true })
-const editing = (page: Page) => page.evaluate(() => document.activeElement?.getAttribute('data-fabric') === 'textarea')
+const editing = editHasFocus
 type P = { x: number; y: number }
 
-/** Dark pixels in a page rectangle of the scene canvas, and their extent. */
-function inkIn(page: Page, left: number, top: number, width: number, height: number) {
-  return page.evaluate(
-    ({ left, top, width, height }) => {
-      const canvas = document.querySelector<HTMLCanvasElement>('.canvas-container canvas.lower-canvas')!
-      const r = canvas.getBoundingClientRect()
-      const scale = canvas.width / canvas.clientWidth
-      const w = Math.round(width * scale)
-      const d = canvas.getContext('2d')!.getImageData(Math.round((left - r.left) * scale), Math.round((top - r.top) * scale), w, Math.round(height * scale)).data
-      const ink = { count: 0, left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity }
-      for (let i = 0; i < d.length; i += 4) {
-        if (!(d[i + 3]! > 40 && d[i]! < 160 && d[i + 1]! < 160 && d[i + 2]! < 160)) continue
-        ink.count++
-        const x = left + ((i / 4) % w) / scale
-        const y = top + Math.floor(i / 4 / w) / scale
-        ink.left = Math.min(ink.left, x)
-        ink.right = Math.max(ink.right, x)
-        ink.top = Math.min(ink.top, y)
-        ink.bottom = Math.max(ink.bottom, y)
-      }
-      return ink
-    },
-    { left, top, width, height },
-  )
+/** Dark pixels the page shows in a page rectangle of the board, and their extent. */
+async function inkIn(page: Page, left: number, top: number, width: number, height: number) {
+  const { width: w, data: d } = await pagePixels(page, left, top, width, height)
+  const ink = { count: 0, left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity }
+  for (let i = 0; i < d.length; i += 4) {
+    if (!(d[i]! < 160 && d[i + 1]! < 160 && d[i + 2]! < 160)) continue
+    ink.count++
+    const x = Math.round(left) + ((i / 4) % w)
+    const y = Math.round(top) + Math.floor(i / 4 / w)
+    ink.left = Math.min(ink.left, x)
+    ink.right = Math.max(ink.right, x)
+    ink.top = Math.min(ink.top, y)
+    ink.bottom = Math.max(ink.bottom, y)
+  }
+  return ink
 }
 
-/** Pixels of the accent colour (the dashed rectangle being drawn) in a page rectangle of the scene canvas. */
-function accentIn(page: Page, left: number, top: number, width: number, height: number, accent = [0x6c, 0x7b, 0xf2]) {
-  return page.evaluate(
-    ({ left, top, width, height, accent }) => {
-      const canvas = document.querySelector<HTMLCanvasElement>('.canvas-container canvas.lower-canvas')!
-      const r = canvas.getBoundingClientRect()
-      const scale = canvas.width / canvas.clientWidth
-      const d = canvas.getContext('2d')!.getImageData(Math.round((left - r.left) * scale), Math.round((top - r.top) * scale), Math.round(width * scale), Math.round(height * scale)).data
-      let n = 0
-      for (let i = 0; i < d.length; i += 4) if (d[i + 3]! > 0 && accent.every((c, j) => Math.abs(d[i + j]! - c) < 30)) n++
-      return n
-    },
-    { left, top, width, height, accent },
-  )
+/** Pixels of the accent colour (the dashed rectangle being drawn, the edited text's outline) the page shows in a page rectangle of the board. */
+async function accentIn(page: Page, left: number, top: number, width: number, height: number, accent = [0x6c, 0x7b, 0xf2]) {
+  const { data: d } = await pagePixels(page, left, top, width, height)
+  let n = 0
+  for (let i = 0; i < d.length; i += 4) if (accent.every((c, j) => Math.abs(d[i + j]! - c) < 30)) n++
+  return n
 }
 
 test.describe('dragging out a text box', () => {
@@ -82,8 +65,8 @@ test.describe('dragging out a text box', () => {
     await expect(tool(page, 'Select')).toHaveAttribute('aria-pressed', 'true') // single-use
     expect(await editing(page)).toBe(true)
     const base = at(130, 400)
-    // Fabric's editing border is pale blue. It is still at the drafted bottom before typing.
-    await expect.poll(() => accentIn(page, base.x, base.y - 4, 240, 9, [102, 153, 255])).toBeGreaterThan(100)
+    // The edited text's outline is in the accent colour. It is still at the drafted bottom before typing.
+    await expect.poll(() => accentIn(page, base.x, base.y - 4, 240, 9)).toBeGreaterThan(100)
     await page.keyboard.type('a long sentence that has to wrap several times inside this box')
     await page.keyboard.press('Escape')
     await page.keyboard.press('Escape')

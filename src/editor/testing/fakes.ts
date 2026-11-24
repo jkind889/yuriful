@@ -3,6 +3,13 @@ import type { AssetBytes, BoardStore, LoadedBoard, RevisionToken } from '../../p
 import type { AssetSource } from '../assets.ts'
 import type { CardMeasurer } from '../sceneLayer.ts'
 
+/**
+ * The options that build an editor on the Fabric renderer. The app draws with the DOM renderer;
+ * these unit tests still exercise the Fabric text path, which stays as the test-only reference
+ * until it is deleted.
+ */
+export const FABRIC = { renderer: 'fabric' } as const
+
 export interface Deferred<T> {
   promise: Promise<T>
   resolve: (v: T) => void

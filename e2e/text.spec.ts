@@ -1,6 +1,6 @@
 /**
- * Real-browser tests (real Fabric, real IndexedDB) for formatted text: a stored text's marks,
- * headings, font, alignment and colour are drawn by Fabric, survive saving, moving, scaling,
+ * Real-browser tests (real IndexedDB, the app's own renderer) for formatted text: a stored
+ * text's marks, headings, font, alignment and colour are drawn, survive saving, moving, scaling,
  * undo, redo and reload, and stay what the canvas shows while the text is typed into.
  *
  * There are no formatting controls yet, so formatted text is seeded into storage.
@@ -14,6 +14,7 @@ import {
   openBlank,
   redoButton,
   sceneToPage,
+  screenPixels,
   seedMilestone1,
   seedRaw,
   snapshotIdb,
@@ -89,36 +90,28 @@ interface Ink {
   right: number
 }
 /**
- * What is drawn in a rectangle of the scene canvas (canvas CSS pixels): how many pixels are
- * dark ink, how many are clearly red, and the extent of all of them.
+ * What the page shows in a rectangle of the board (canvas CSS pixels): how many pixels are dark
+ * ink, how many are clearly red, and the extent of all of them within the rectangle.
  */
-function inkIn(page: Page, left: number, top: number, width: number, height: number): Promise<Ink> {
-  return page.evaluate(
-    ({ left, top, width, height }) => {
-      const canvas = document.querySelector<HTMLCanvasElement>('.canvas-container canvas.lower-canvas')
-      if (!canvas) throw new Error('scene canvas not found')
-      const scale = canvas.width / canvas.clientWidth
-      const w = Math.round(width * scale)
-      const d = canvas.getContext('2d')!.getImageData(Math.round(left * scale), Math.round(top * scale), w, Math.round(height * scale)).data
-      const ink: Ink = { count: 0, red: 0, top: Infinity, bottom: -Infinity, left: Infinity, right: -Infinity }
-      for (let i = 0; i < d.length; i += 4) {
-        const [r, g, b, a] = [d[i]!, d[i + 1]!, d[i + 2]!, d[i + 3]!]
-        const dark = a > 40 && r < 160 && g < 160 && b < 160
-        const red = a > 40 && r > 140 && g < 110 && b < 110
-        if (!dark && !red) continue
-        if (dark) ink.count++
-        if (red) ink.red++
-        const y = Math.floor(i / 4 / w) / scale
-        const x = ((i / 4) % w) / scale
-        ink.top = Math.min(ink.top, y)
-        ink.bottom = Math.max(ink.bottom, y)
-        ink.left = Math.min(ink.left, x)
-        ink.right = Math.max(ink.right, x)
-      }
-      return ink
-    },
-    { left, top, width, height },
-  )
+async function inkIn(page: Page, left: number, top: number, width: number, height: number): Promise<Ink> {
+  const { width: w, data: d } = await screenPixels(page, left, top, width, height)
+  const ink: Ink = { count: 0, red: 0, top: Infinity, bottom: -Infinity, left: Infinity, right: -Infinity }
+  for (let i = 0; i < d.length; i += 4) {
+    const [r, g, b] = [d[i]!, d[i + 1]!, d[i + 2]!]
+    const dark = r < 160 && g < 160 && b < 160
+    // Clearly red, not the orange-brown fringe the browser's subpixel text smoothing gives dark text.
+    const red = r > 140 && g < 110 && b < 110 && r - Math.max(g, b) > 90
+    if (!dark && !red) continue
+    if (dark) ink.count++
+    if (red) ink.red++
+    const y = Math.floor(i / 4 / w)
+    const x = (i / 4) % w
+    ink.top = Math.min(ink.top, y)
+    ink.bottom = Math.max(ink.bottom, y)
+    ink.left = Math.min(ink.left, x)
+    ink.right = Math.max(ink.right, x)
+  }
+  return ink
 }
 
 /** Enters editing of the text under `p` and puts the caret after `n` characters (graphemes). */
@@ -450,13 +443,13 @@ test.describe('editing around headings', () => {
   })
 })
 
-/** Fabric's own clipboard path (its copy and paste handlers on the hidden textarea), inside the page. */
+/** The editor's own copy and paste, inside the page. */
 test.describe('pasting into a formatted text', () => {
   async function openWithClipboard(page: Page, objects: unknown[]) {
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
     return open(page, objects)
   }
-  /** Copies the whole of the text under `p` with Fabric's copy, and leaves it. */
+  /** Copies the whole of the text under `p` with the editor's copy, and leaves it. */
   async function copyAllOf(page: Page, p: { x: number; y: number }) {
     await page.mouse.dblclick(p.x, p.y)
     await page.keyboard.press('Control+a')
@@ -634,40 +627,6 @@ test.describe('pasting into a formatted text', () => {
     const done = await storedWhen(page, (d) => byId(d, 'b').text === 'TitleA\nB\nbody')
     expect(byId(done, 'b')).toEqual({ ...rec, text: 'TitleA\nB\nbody' })
     await page.keyboard.press('Escape')
-    expect(errors).toEqual([])
-  })
-})
-
-test.describe('dropping text into a formatted text', () => {
-  test('a word dragged from a 48 px text onto the normal line of a heading text brings no heading and no size, in every undo step', async ({ page }) => {
-    const source = textRec('src', 100, 400, 'one BIG', { fontSize: 48 })
-    const rec = textRec('b', 100, 100, 'Title\nbody', { headings: [1] })
-    const { errors, at } = await open(page, [source, rec])
-    await caretAt(page, at(130, 425), 4)
-    for (let i = 0; i < 3; i++) await page.keyboard.press('Shift+ArrowRight') // "BIG"
-    // Fabric's own drag and drop of the selection (DraggableTextDelegate.mjs): a native drag session.
-    const from = at(240, 430)
-    const to = at(102, 178) // the start of the body line (the heading line is 60 tall)
-    await page.mouse.move(from.x, from.y)
-    await page.mouse.down()
-    await page.mouse.move(from.x + 10, from.y - 10, { steps: 3 })
-    await page.mouse.move(to.x, to.y, { steps: 10 })
-    await page.mouse.up()
-    const dropped = await storedWhen(page, (d) => byId(d, 'b').text === 'Title\nBIGbody' && byId(d, 'src').text === 'one ')
-    expect(byId(dropped, 'b')).toEqual({ ...rec, text: 'Title\nBIGbody' })
-    expect(byId(dropped, 'src')).toEqual({ ...source, text: 'one ' })
-    await page.keyboard.press('Escape')
-    await waitSaved(page)
-    // However many steps the drop left in history, none of them gives the body line a heading.
-    for (let step = 0; step < 4 && (await undoButton(page).isEnabled()); step++) {
-      const before = JSON.stringify(await storedDoc(page))
-      await undoButton(page).click()
-      await storedWhen(page, (d) => JSON.stringify(d) !== before)
-      expect(byId(await storedDoc(page), 'b').headings).toEqual([1])
-    }
-    const back = await storedDoc(page)
-    expect(byId(back, 'b')).toEqual(rec)
-    expect(byId(back, 'src')).toEqual(source)
     expect(errors).toEqual([])
   })
 })

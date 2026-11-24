@@ -1,12 +1,16 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { albumSpread, drag, imageFile, openApp, openBlank, releaseHydration, sceneToPage, seedRaw, snapshotIdb, stallHydration, storedDoc } from './helpers.ts'
+import { albumSpread, drag, editedText, imageFile, openApp, openBlank, releaseHydration, sceneToPage, screenPixels, seedRaw, snapshotIdb, stallHydration, storedDoc } from './helpers.ts'
 import type { StoredBoard } from './helpers.ts'
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const layer = (page: Page, id: string) => page.getByRole('option').and(page.locator(`[data-layer-id="${id}"]`))
 const inspector = (page: Page) => page.getByRole('complementary', { name: 'Selection', exact: true })
-const textarea = (page: Page) => page.locator('textarea:focus')
+/** The text being edited while it has the keyboard, or null. */
+const focusedEdit = async (page: Page) => {
+  const edit = await editedText(page)
+  return edit?.focused ? edit.value : null
+}
 const object = (board: StoredBoard, id: string) => board.objects.find((item) => item.id === id)!
 const errors = new WeakMap<Page, string[]>()
 
@@ -63,16 +67,12 @@ function expectUnder(board: StoredBoard, imageId = 'front', captionId = 'caption
   expect(caption.width).toBeCloseTo(Math.abs(dx) + Math.abs(ex), 2)
 }
 
-/** Sample the actual text ink while a drag is still held, before commit can re-place it. */
-function ink(page: Page, x: number, y: number) {
-  return page.locator('canvas.lower-canvas').evaluate((canvas, { x, y }) => {
-    const el = canvas as HTMLCanvasElement
-    const scale = el.width / el.clientWidth
-    const data = el.getContext('2d')!.getImageData(x * scale, y * scale, 150 * scale, 19 * scale).data
-    const dark = []
-    for (let i = 0; i < data.length; i += 4) if (data[i]! < 75 && data[i + 1]! < 75 && data[i + 2]! < 75 && data[i + 3]! > 150) dark.push(i)
-    return dark
-  }, { x, y })
+/** Sample the actual text ink the page shows while a drag is still held, before commit can re-place it. */
+async function ink(page: Page, x: number, y: number) {
+  const { data } = await screenPixels(page, x, y, 150, 19)
+  const dark = []
+  for (let i = 0; i < data.length; i += 4) if (data[i]! < 75 && data[i + 1]! < 75 && data[i + 2]! < 75) dark.push(i)
+  return dark
 }
 
 const carries = [
@@ -119,7 +119,7 @@ test('scales the image alone, then rotates it without tipping the caption', asyn
   const untouched = await snapshotIdb(page)
   await select(page, 'front')
   await page.keyboard.press('Enter')
-  await expect(textarea(page)).toHaveValue('Front sleeve')
+  await expect.poll(() => focusedEdit(page)).toBe('Front sleeve')
   await page.keyboard.press('Escape')
   await page.waitForTimeout(650)
   expect(await snapshotIdb(page)).toEqual(untouched)
@@ -334,7 +334,7 @@ test('keyboard activation, caption-only duplication, and Make and Detach caption
   await select(page, 'front')
   await button(page, 'Edit caption').focus()
   await page.keyboard.press('Enter')
-  await expect(textarea(page)).toBeFocused()
+  await expect.poll(() => focusedEdit(page)).not.toBeNull()
   await page.keyboard.type(' A')
   await page.keyboard.press('Escape')
   const edited = await savedAfter(page, (doc) => object(doc, 'caption').text === 'Front sleeve A')
@@ -362,7 +362,7 @@ test('a locked caption still follows, and survives deletion detached at its last
   await expect(button(page, 'Edit caption')).toBeDisabled()
   await expect(button(page, 'Detach caption')).toBeDisabled()
   await page.keyboard.press('Enter')
-  await expect(textarea(page)).toHaveCount(0)
+  await expect.poll(() => focusedEdit(page)).toBeNull()
   await drag(page, at(280, 205), at(305, 233))
   const moved = await savedAfter(page, (doc) => object(doc, 'front').top === 178)
   expectUnder(moved)
@@ -381,7 +381,7 @@ for (const exit of editExits) {
       await select(page, 'back')
       if (blank) await button(page, 'Add caption').click()
       else await page.keyboard.press('Enter')
-      await expect(textarea(page)).toBeFocused()
+      await expect.poll(() => focusedEdit(page)).not.toBeNull()
       if (!blank) await page.keyboard.type('Back sleeve\nPrinted in 1991')
       if (exit === 'Esc') await page.keyboard.press('Escape')
       if (exit === 'empty board click') await page.mouse.click(at(810, 350).x, at(810, 350).y)
@@ -392,7 +392,7 @@ for (const exit of editExits) {
         await page.keyboard.up('Shift')
       }
       if (exit === 'panel Detach caption') await button(page, 'Detach caption').click()
-      await expect(textarea(page)).toHaveCount(0)
+      await expect.poll(() => focusedEdit(page)).toBeNull()
       if (blank) {
         await expect(button(page, 'Undo')).toBeDisabled()
         await select(page, 'back')
@@ -551,7 +551,7 @@ test('loading and a stale tab guard Enter, and a conflict rolls back a held capt
   await stallHydration(page)
   await page.goto('/')
   await page.keyboard.press('Enter')
-  await expect(textarea(page)).toHaveCount(0)
+  await expect.poll(() => focusedEdit(page)).toBeNull()
   await releaseHydration(page)
   await expect(page.locator('.save-status')).toContainText('Saved on this device')
   const other = await context.newPage()
@@ -575,7 +575,7 @@ test('loading and a stale tab guard Enter, and a conflict rolls back a held capt
   await expect.poll(() => ink(page, 210, 280)).toEqual(pixels)
   await page.mouse.up()
   await page.keyboard.press('Enter')
-  await expect(textarea(page)).toHaveCount(0)
+  await expect.poll(() => focusedEdit(page)).toBeNull()
   await expect(button(page, 'Undo')).toBeDisabled()
   expect(await storedDoc(page)).toEqual({ ...before, title: 'Saved in another tab' })
 })

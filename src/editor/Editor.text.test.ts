@@ -4,7 +4,7 @@ import type { BoardDoc, TextRecord } from '../model/types.ts'
 import { Editor } from './Editor.ts'
 import { canvasOf, press, release, tick } from './testing/drive.ts'
 import type { Textbox } from './testing/fakeFabric.ts'
-import { FakeAssets, SpyStore } from './testing/fakes.ts'
+import { FABRIC, FakeAssets, SpyStore } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -37,7 +37,7 @@ const flush = () => vi.advanceTimersByTimeAsync(10_000)
 async function setup(doc: BoardDoc = storedDoc()) {
   const store = new SpyStore({ doc, assets: new Map() })
   store.holdLoad = false
-  const editor = new Editor(host, store, new FakeAssets())
+  const editor = new Editor(host, store, new FakeAssets(), undefined, FABRIC)
   editors.push(editor)
   await editor.init()
   const canvas = canvasOf(editor)

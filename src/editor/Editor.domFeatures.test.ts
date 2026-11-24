@@ -7,7 +7,7 @@ import { computeLayers } from './layerList.ts'
 import { ProxyRect, createObject, createProxy, idOf, imageDataOf } from './objects.ts'
 import { canvasOf } from './testing/drive.ts'
 import type { Canvas, FakeObject } from './testing/fakeFabric.ts'
-import { FakeAssets, FakeCardMeasurer, SpyStore } from './testing/fakes.ts'
+import { FABRIC, FakeAssets, FakeCardMeasurer, SpyStore } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -33,7 +33,7 @@ const dom = (): EditorOptions => ({ renderer: 'dom', measurer: new FakeCardMeasu
 let host: HTMLDivElement
 const editors: Editor[] = []
 
-async function open(frames: FrameRecord[], objects: ObjectRecord[], options: EditorOptions = {}) {
+async function open(frames: FrameRecord[], objects: ObjectRecord[], options: EditorOptions = FABRIC) {
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Features', frames, objects }
   const store = new SpyStore({ doc, assets: new Map([['a1', asset('a1')]]) })
   store.holdLoad = false
@@ -145,7 +145,7 @@ describe('crop mode on an image proxy', () => {
   ]
 
   it('gives the same records, saves, history and state after every step as the Fabric renderer', async () => {
-    const fabric = await run({}, frames(), objects(), script)
+    const fabric = await run(FABRIC, frames(), objects(), script)
     const domRun = await run(dom(), frames(), objects(), script)
     expect(domRun.b.obj('P')).toBeInstanceOf(ProxyRect)
     expect(domRun.out).toEqual(fabric.out)
@@ -194,7 +194,7 @@ describe('duplicate on the DOM renderer', () => {
         return seen.get(id)!
       })) as unknown
     }
-    const fabric = await run({}, frames, objects, script)
+    const fabric = await run(FABRIC, frames, objects, script)
     const domRun = await run(dom(), frames, objects, script)
     expect(norm(domRun.out)).toEqual(norm(fabric.out))
     expect((fabric.out[1] as { live: Scene }).live.frames).toHaveLength(2)
@@ -235,7 +235,7 @@ describe('the layer list on proxies', () => {
 
 describe('caption snapping rejects an ineligible text before reading anything', () => {
   it('a rotated text: no position, size or image is read, on either renderer; an upright one is read', async () => {
-    for (const options of [{}, dom()]) {
+    for (const options of [FABRIC, dom()]) {
       const b = await open([], [img('i', 0, 0), txt('r', 0, 120, { angle: 15 }), txt('u', 0, 160)], options)
       const text = (b.editor as unknown as { text: { findCaptionSnap: (o: unknown, objs: readonly unknown[], zoom: number, prev: null) => unknown } }).text
       const reads: string[] = []

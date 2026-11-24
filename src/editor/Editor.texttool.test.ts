@@ -5,7 +5,7 @@ import { BoardConflictError } from '../persistence/boardStore.ts'
 import { Editor } from './Editor.ts'
 import { canvasOf, moveCanvas, press, pressCanvas, release, releaseCanvas, tick } from './testing/drive.ts'
 import type { Textbox } from './testing/fakeFabric.ts'
-import { FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
+import { FABRIC, FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -30,7 +30,7 @@ async function setup(opts: { frames?: FrameRecord[]; viewport?: Viewport; load?:
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Text tool', frames: opts.frames ?? [], objects: [image], viewport: opts.viewport ?? UNIT }
   const store = new SpyStore({ doc, assets: new Map([['a1', { id: 'a1', name: 'a1.png', type: 'image/png', bytes: new Uint8Array([1]).buffer }]]) })
   store.holdLoad = opts.load === false
-  const editor = new Editor(host, store, new FakeAssets())
+  const editor = new Editor(host, store, new FakeAssets(), undefined, FABRIC)
   editors.push(editor)
   const ready = editor.init()
   if (opts.load !== false) await ready

@@ -274,10 +274,12 @@ interface ReplaceJob {
 }
 
 /**
- * How the editor is built. `renderer` picks what draws the board: `'fabric'` (the default, and the
- * only one the app ships) or `'dom'`, the scene layer under a transparent canvas of proxies,
- * reachable only from a development build for tests (see `App.tsx`). `measurer` sizes text cards
- * on the DOM renderer (tests inject one; jsdom lays nothing out).
+ * How the editor is built. `renderer` picks what draws the board: `'dom'` (the default, and the
+ * only one the app ships), the scene layer under a transparent canvas of proxies, or `'fabric'`,
+ * Fabric's own objects and text boxes. The Fabric renderer is kept only as the reference that the
+ * paired browser tests and the Fabric unit tests compare against; the app reaches it only in a
+ * development build, from a switch a test sets (see `App.tsx`). `measurer` sizes text cards on
+ * the DOM renderer (tests inject one; jsdom lays nothing out).
  */
 export interface EditorOptions {
   renderer?: 'fabric' | 'dom'
@@ -357,7 +359,7 @@ export class Editor {
   private dblClickAfterCrop = false
   /** Everything the editor does with text (see `textAdapter.ts`): the Fabric text path, or the DOM renderer's. */
   private readonly text: TextAdapter
-  /** The DOM renderer's scene layer; null on the default Fabric renderer, which never builds one. */
+  /** The DOM renderer's scene layer; null on the Fabric renderer (tests only), which never builds one. */
   private readonly scene: DomScene | null
 
   /**
@@ -405,9 +407,9 @@ export class Editor {
       selectionBorderColor: ACCENT,
       selectionLineWidth: 1,
     })
-    // The DOM renderer (a test-only switch until the default flips): its scene layer listens to
+    // The DOM renderer, the default (`'fabric'` is for tests only): its scene layer listens to
     // the canvas before anything else does, so it follows each change before the editor reacts.
-    this.scene = options.renderer === 'dom' ? new DomScene(this.canvas, host, this.assets, { measurer: options.measurer, gestureActive: () => this.gesture !== null }) : null
+    this.scene = options.renderer !== 'fabric' ? new DomScene(this.canvas, host, this.assets, { measurer: options.measurer, gestureActive: () => this.gesture !== null }) : null
     const textHost: TextHost = {
       canvas: this.canvas,
       editable: () => this.editable,

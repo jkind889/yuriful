@@ -7,7 +7,7 @@ import { ABSENT, BoardConflictError, IndexedDbBoardStore } from '../persistence/
 import { Editor } from './Editor.ts'
 import { canvasOf } from './testing/drive.ts'
 import type { Textbox } from './testing/fakeFabric.ts'
-import { FakeAssets, SpyStore } from './testing/fakes.ts'
+import { FABRIC, FakeAssets, SpyStore } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -31,7 +31,7 @@ const key = (k: string, init: KeyboardEventInit = {}) => new KeyboardEvent('keyd
 let host: HTMLDivElement
 const editors: Editor[] = []
 const make = (store: ConstructorParameters<typeof Editor>[1], assets: ConstructorParameters<typeof Editor>[2]) => {
-  const e = new Editor(host, store, assets)
+  const e = new Editor(host, store, assets, undefined, FABRIC)
   editors.push(e)
   return e
 }

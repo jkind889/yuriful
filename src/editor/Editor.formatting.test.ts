@@ -6,7 +6,7 @@ import { Editor } from './Editor.ts'
 import { canvasOf, dragBy, press, release, tick } from './testing/drive.ts'
 import type { Canvas, Textbox } from './testing/fakeFabric.ts'
 import { ActiveSelection } from './testing/fakeFabric.ts'
-import { FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
+import { FABRIC, FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -27,7 +27,7 @@ async function setup(objects: BoardDoc['objects'] = [text()], frames: FrameRecor
   const bytes = new Uint8Array([1, 2, 3]).buffer
   const store = new SpyStore({ doc, assets: new Map([['a1', { id: 'a1', name: 'a1.png', type: 'image/png', bytes }]]) })
   store.holdLoad = opts.load === false
-  const editor = new Editor(host, store, new FakeAssets())
+  const editor = new Editor(host, store, new FakeAssets(), undefined, FABRIC)
   editors.push(editor)
   const ready = editor.init()
   if (opts.load !== false) await ready

@@ -55,7 +55,13 @@ async function installFeelProbe(page: Page) {
           viewport: () => this.getViewport(),
           scene: () => this.snapshot(),
           history: () => this.history.current,
-          shadows: () => this.canvas.getObjects().map((obj) => !!obj.shadow),
+          // Whether each object is drawn lifted: on the DOM renderer its scene item carries the
+          // lift (the is-lifted class, the shadow the layer paints); on the Fabric renderer, its shadow.
+          shadows: () => this.canvas.getObjects().map((obj) => {
+            if (!this.scene) return !!obj.shadow
+            const item = document.querySelector('.scene-layer [data-id="' + feelIdOf(obj) + '"]')
+            return !!item && item.classList.contains('is-lifted')
+          }),
           controls: () => this.canvas.getActiveObject()?.oCoords,
           bounds: (id) => {
             const obj = this.canvas.getObjects().find((obj) => feelIdOf(obj) === id)

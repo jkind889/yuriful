@@ -74,7 +74,7 @@ let liftSeq = 0
  *  - A late font load lays the cards out again and re-sizes the proxies, both only once no
  *    gesture is unsettled; it never touches ownership, history or the save state.
  *
- * Only built for `renderer: 'dom'`; the default Fabric renderer never constructs one.
+ * Built for the DOM renderer, the default; the Fabric renderer (tests only) never constructs one.
  */
 export class DomScene {
   readonly layer: SceneLayer

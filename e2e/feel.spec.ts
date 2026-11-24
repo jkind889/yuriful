@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { CENTRE, FRAME, FRONT, IMAGE, NO_FEEDBACK, VIEW, albumLayer, canvasBox, fileDrag, openAlbumFeel, openFeel, readFeedback, readView, sampleViewTwice } from './feel-helpers.ts'
 import type { StoredBoard, View } from './helpers.ts'
-import { AUTOSAVE_QUIET_MS, drag, imageFile, openApp, openBlank, redoButton, seedMilestone1, snapshotIdb, storedDoc, undoButton, waitSaved } from './helpers.ts'
+import { AUTOSAVE_QUIET_MS, drag, editedText, imageFile, openApp, openBlank, redoButton, seedMilestone1, snapshotIdb, storedDoc, undoButton, waitSaved } from './helpers.ts'
 
 test('Canvas options works by keyboard and persists independently of the board', async ({ page }) => {
   await openBlank(page)
@@ -529,18 +529,25 @@ test('a lost text-selection release leaves the range and edit in place', async (
   const { at } = await openAlbumFeel(page)
   await albumLayer(page, 'front').click()
   await page.keyboard.press('Enter')
-  const textarea = page.locator('textarea:focus')
-  await expect(textarea).toHaveValue('Front sleeve')
+  const focusedEdit = async () => {
+    const edit = await editedText(page)
+    return edit?.focused ? edit.value : null
+  }
+  await expect.poll(focusedEdit).toBe('Front sleeve')
   await drag(page, at(212, 294), at(248, 294), { hold: true })
-  const range = () => textarea.evaluate((el: HTMLTextAreaElement) => [el.selectionStart, el.selectionEnd])
-  const initial = await range()
+  const range = async () => {
+    const edit = await editedText(page)
+    return edit ? [edit.start, edit.end] : null
+  }
+  const initial = (await range())!
   expect(initial[1]).toBeGreaterThan(initial[0]!)
-  await page.evaluate((point) => document.querySelector('canvas.upper-canvas')!.dispatchEvent(new MouseEvent('mousemove', {
+  // A move with no button pressed, on whatever is under the pointer there: the release was lost.
+  await page.evaluate((point) => document.elementFromPoint(point.x, point.y)!.dispatchEvent(new MouseEvent('mousemove', {
     bubbles: true, buttons: 0, clientX: point.x, clientY: point.y,
   })), at(325, 294))
   expect(await range()).toEqual(initial)
   await page.mouse.up()
-  await expect(textarea).toHaveValue('Front sleeve')
+  await expect.poll(focusedEdit).toBe('Front sleeve')
   await expect(undoButton(page)).toBeDisabled()
 })
 

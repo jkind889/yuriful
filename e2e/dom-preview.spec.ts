@@ -1,14 +1,14 @@
 import { expect, test } from '@playwright/test'
 import type { Browser, Page } from '@playwright/test'
 import type { FeedbackSnapshot } from '../src/editor/feedbackLayer.ts'
-import { openApp, openBlank, seedRaw } from './helpers.ts'
+import { chooseRenderer, openApp, openBlank, seedRaw } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredFrame, StoredObject } from './helpers.ts'
 
 /**
  * The DOM renderer's frame previews and drag lift against the Fabric renderer's, in Chromium (plan
  * Slice 2c-iii): the same seeded board and the same actions on both renderers, compared by the
- * pixels each one shows. The renderer is chosen as in `e2e/interleaving.spec.ts`, by
- * `window.__YURIFUL_RENDERER__ = 'dom'` set before the app mounts; a probe on the app's own editor
+ * pixels each one shows. Each page names its renderer as in `e2e/interleaving.spec.ts`
+ * (`chooseRenderer`, before the app mounts); a probe on the app's own editor
  * (route-only, as `feel-helpers.ts`) reads proxies, handles, feedback and previews.
  */
 
@@ -112,11 +112,7 @@ async function open(browser: Browser, renderer: 'dom' | 'fabric', doc: StoredBoa
   const errors = errorsOf(page)
   await openBlank(page)
   await seedRaw(page, doc.frames?.length ? 2 : 1, doc as unknown as Record<string, unknown>, assets)
-  if (renderer === 'dom') {
-    await page.addInitScript(() => {
-      window.__YURIFUL_RENDERER__ = 'dom'
-    })
-  }
+  await chooseRenderer(page, renderer)
   await installProbe(page)
   await openApp(page)
   expect(await page.evaluate(() => window.__preview.renderer())).toBe(renderer)

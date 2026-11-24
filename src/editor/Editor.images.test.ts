@@ -8,7 +8,7 @@ import { idOf } from './objects.ts'
 import { canvasOf, dragBy, press, release, tick } from './testing/drive.ts'
 import { ActiveSelection } from './testing/fakeFabric.ts'
 import type { Canvas, FakeObject } from './testing/fakeFabric.ts'
-import { FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
+import { FABRIC, FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -46,7 +46,7 @@ const flush = () => vi.advanceTimersByTimeAsync(10_000)
 async function board(frames: FrameRecord[], objects: ObjectRecord[], opts: { load?: boolean } = {}) {
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Images', frames, objects }
   const store = new SpyStore(frames.length + objects.length > 0 ? { doc, assets: new Map([['a1', asset('a1')]]) } : null)
-  const editor = new Editor(host, store, new FakeAssets())
+  const editor = new Editor(host, store, new FakeAssets(), undefined, FABRIC)
   editors.push(editor)
   const canvas = canvasOf(editor)
   if (opts.load !== false) {

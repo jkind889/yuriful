@@ -1,14 +1,15 @@
 import { expect, test } from '@playwright/test'
 import type { Browser, CDPSession, Page } from '@playwright/test'
 import type { Scene } from '../src/model/types.ts'
-import { openApp, openBlank, redoButton, seedRaw, status, storedDoc, undoButton } from './helpers.ts'
+import { chooseRenderer, openApp, openBlank, redoButton, seedRaw, status, storedDoc, undoButton } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredFrame, StoredObject, View } from './helpers.ts'
 
 /**
  * Live text editing on the DOM renderer (plan Slice 2c-ii) in real Chromium: the text engine's
  * view mounted in the edited card, pointer routing while a text is edited, in-edit undo, and what
- * the editor saves and records. The renderer is chosen only by `window.__YURIFUL_RENDERER__ =
- * 'dom'`, set before the app mounts. A probe on the normal app instance (as in
+ * the editor saves and records. Every page names its renderer (`chooseRenderer`, which sets
+ * `window.__YURIFUL_RENDERER__` before the app mounts): the DOM renderer is the app's, and the
+ * Fabric renderer is the test-only reference. A probe on the normal app instance (as in
  * `interleaving.spec.ts`) reads the editor; it lives in this test route only.
  *
  * Paired tests run the same script of real key presses and pointer actions on the Fabric renderer
@@ -165,11 +166,6 @@ async function installProbe(page: Page) {
   })
 }
 
-const chooseDomRenderer = (page: Page) =>
-  page.addInitScript(() => {
-    window.__YURIFUL_RENDERER__ = 'dom'
-  })
-
 const errorsOf = (page: Page) => {
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(e.message))
@@ -179,7 +175,7 @@ const errorsOf = (page: Page) => {
 async function openBoard(page: Page, doc: StoredBoard, assets: SeedAsset[] = [], renderer: 'dom' | 'fabric' = 'dom') {
   await openBlank(page)
   await seedRaw(page, doc.frames?.length ? 2 : 1, doc as unknown as Record<string, unknown>, assets)
-  if (renderer === 'dom') await chooseDomRenderer(page)
+  await chooseRenderer(page, renderer)
   await installProbe(page)
   await openApp(page)
   expect(await page.evaluate(() => window.__edit.renderer())).toBe(renderer)

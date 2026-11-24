@@ -8,7 +8,7 @@ import { idOf } from './objects.ts'
 import { canvasOf, dragBy, press, release, scaleBy, tick } from './testing/drive.ts'
 import { ActiveSelection } from './testing/fakeFabric.ts'
 import type { Canvas, FakeObject } from './testing/fakeFabric.ts'
-import { FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
+import { FABRIC, FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -48,7 +48,7 @@ async function board(frames: FrameRecord[], objects: ObjectRecord[], opts: { loa
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Replace', frames, objects }
   const store = new SpyStore(frames.length + objects.length > 0 ? { doc, assets: new Map([['a1', asset('a1')]]) } : null)
   const assets = new FakeAssets(new Set(['broken-10x10.png']))
-  const editor = new Editor(host, store, assets)
+  const editor = new Editor(host, store, assets, undefined, FABRIC)
   editors.push(editor)
   const canvas = canvasOf(editor)
   if (opts.load !== false) {

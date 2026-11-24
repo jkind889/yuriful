@@ -2,14 +2,15 @@ import { expect, test } from '@playwright/test'
 import type { Browser, BrowserContext, Page } from '@playwright/test'
 import type { FeedbackSnapshot } from '../src/editor/feedbackLayer.ts'
 import type { Scene } from '../src/model/types.ts'
-import { AUTOSAVE_QUIET_MS, dropImage, openApp, openBlank, pngBuffer, sceneToPage, seedRaw, snapshotIdb, status, storedDoc, tamperIdb } from './helpers.ts'
+import { AUTOSAVE_QUIET_MS, chooseRenderer, dropImage, openApp, openBlank, pngBuffer, sceneToPage, seedRaw, snapshotIdb, status, storedDoc, tamperIdb } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredFrame, StoredObject, View } from './helpers.ts'
 
 /**
  * The DOM renderer (plan Slice 2c-i) in real Chromium: frame paper, images and text drawn by the
- * scene layer under a transparent Fabric canvas of proxies. The renderer is chosen only by
- * `window.__YURIFUL_RENDERER__ = 'dom'`, set before the app mounts (as nothing else can reach
- * it). A probe on the normal app instance (like `feel-helpers.ts`) reads the proxies and the
+ * scene layer under a transparent Fabric canvas of proxies. Every page names its renderer
+ * (`chooseRenderer`, which sets `window.__YURIFUL_RENDERER__` before the app mounts): the DOM
+ * renderer is the app's, and the Fabric renderer is the test-only reference the paired tests
+ * compare with. A probe on the normal app instance (like `feel-helpers.ts`) reads the proxies and the
  * layer; it lives in this test route only.
  *
  * In this slice text is static on the DOM path (no live editing); everything here is what a
@@ -185,11 +186,6 @@ async function installProbe(page: Page) {
   })
 }
 
-const chooseDomRenderer = (page: Page) =>
-  page.addInitScript(() => {
-    window.__YURIFUL_RENDERER__ = 'dom'
-  })
-
 const errorsOf = (page: Page) => {
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(e.message))
@@ -200,7 +196,7 @@ const errorsOf = (page: Page) => {
 async function openBoard(page: Page, board: StoredBoard, assets: SeedAsset[], renderer: 'dom' | 'fabric' = 'dom') {
   await openBlank(page)
   await seedRaw(page, board.frames?.length ? 2 : 1, board as unknown as Record<string, unknown>, assets)
-  if (renderer === 'dom') await chooseDomRenderer(page)
+  await chooseRenderer(page, renderer)
   await installProbe(page)
   await openApp(page)
   expect(await page.evaluate(() => window.__dom.renderer())).toBe(renderer)
@@ -401,7 +397,7 @@ test.describe('the DOM renderer, static (Slice 2c-i)', () => {
     await seedRaw(page, 2, doc as unknown as Record<string, unknown>, ASSETS)
     await tamperIdb(page, 'corrupt-second-asset') // 'quad' sorts second: image I no longer decodes
     const before = await snapshotIdb(page)
-    await chooseDomRenderer(page)
+    await chooseRenderer(page, 'dom')
     await installProbe(page)
     await page.goto('/')
     await expect(page.locator('.toolbar')).toBeVisible()
@@ -497,9 +493,10 @@ test.describe('the DOM renderer, static (Slice 2c-i)', () => {
     expect(domSaved.objects.filter((o) => 'blocks' in o || 'height' in o || 'surface' in o)).toEqual([])
     const domBounds = await page.evaluate((ids) => ids.map((id) => window.__dom.bounds(id)), ['F', 'img', 'note', 'loose'])
 
-    // The same board in a page with the default renderer: nothing in it changes on load or on the next save.
+    // The same board in a page on the Fabric renderer: nothing in it changes on load or on the next save.
     const fabric = await context.newPage()
     const fabricErrors = errorsOf(fabric)
+    await chooseRenderer(fabric, 'fabric')
     await installProbe(fabric)
     await openApp(fabric)
     expect(await fabric.evaluate(() => window.__dom.renderer())).toBe('fabric')

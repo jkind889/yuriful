@@ -585,7 +585,7 @@ export function createFrame(rec: FrameRecord): FabricObject {
   return rect
 }
 
-// ---- proxies (the DOM renderer, behind `new Editor(..., { renderer: 'dom' })`) -----------------
+// ---- proxies (the DOM renderer, the default of `new Editor(...)`) ------------------------------
 //
 // On the DOM renderer the scene layer (`sceneLayer.ts`) draws frame paper, images and text, and
 // every Fabric object is a transparent proxy: it paints nothing, but keeps Fabric's selection,
@@ -593,7 +593,7 @@ export function createFrame(rec: FrameRecord): FabricObject {
 // (`kind` says what it stands for); what it draws lives beside it, in `proxyText` and
 // `proxyImage`. A data object is replaced, never changed, whenever what it draws changes, so
 // the editor can tell by identity which items the layer must draw again. Nothing here is used
-// on the default Fabric renderer.
+// on the Fabric renderer, which only tests still build.
 
 /** What a text proxy's card shows: the record's text, size, wrap width and canonical formatting. */
 export type TextData = Pick<TextRecord, 'text' | 'fontSize' | 'width' | 'minHeight' | 'font' | 'align' | 'color' | 'spans' | 'headings' | 'captionBackground'>
