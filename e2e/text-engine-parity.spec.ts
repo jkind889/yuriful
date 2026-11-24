@@ -746,3 +746,89 @@ test('after select-all, Left and Shift+Right select the first character, and typ
   const got = await page.evaluate(() => (window as unknown as { ss: import('../src/editor/textSession.ts').EditSession }).ss.content())
   expect(got).toStrictEqual({ text: 'xb\nCD\nef', headings: [0, 2] })
 })
+
+/**
+ * Focus coming back to the editor: Chromium puts the DOM caret at the start of the text, and
+ * ProseMirror gives back the selection the session had (no key moved it). In `ab|cd` type `x`,
+ * focus goes away and comes back, then a character or an IME commit: it lands after the `x`,
+ * or where the person clicked. Focus returns by Tab from an input before the editor, by a click
+ * on the editor's own text (after its last character), by `view.focus()`, and by the window
+ * losing and regaining focus; the next input comes at once, 40 or 250 ms later.
+ */
+test('focus coming back to the editor keeps the caret where it was, or puts it where the click was', async ({ page }) => {
+  test.setTimeout(240_000)
+  await openBlank(page)
+  const cdp = await page.context().newCDPSession(page)
+  const fails: string[] = []
+  let count = 0
+  for (const back of ['Tab', 'a click on the text', 'view.focus()', 'the window regaining focus'] as const) {
+    for (const next of ['q', 'an IME commit'] as const) {
+      for (const delay of [0, 40, 250]) {
+        await page.evaluate(async () => {
+          const { createEditSession } = (await import(/* @vite-ignore */ '/src/editor/textSession.ts' as string)) as typeof import('../src/editor/textSession.ts')
+          const w = window as unknown as { ss?: { finish(): void } }
+          w.ss?.finish()
+          const other = document.createElement('input')
+          other.id = 'other'
+          const el = document.createElement('div')
+          el.style.whiteSpace = 'pre-wrap'
+          el.style.font = '24px sans-serif'
+          document.body.replaceChildren(other, el)
+          const s = createEditSession({ text: 'abcd' } as never)!
+          ;(window as unknown as { ss: unknown }).ss = s
+          s.mount(el).focus()
+          s.select(2)
+        })
+        await page.waitForTimeout(300) // the edit has been open a while
+        await page.keyboard.press('x')
+        await page.waitForTimeout(40)
+        let wantText = 'abx?cd'
+        if (back === 'the window regaining focus') {
+          const away = await page.context().newPage()
+          await away.bringToFront()
+          await page.waitForTimeout(40)
+          await page.bringToFront()
+          await away.close()
+        } else {
+          await page.click('#other')
+          await page.waitForTimeout(40)
+          if (back === 'Tab') await page.keyboard.press('Tab')
+          else if (back === 'view.focus()') await page.evaluate(() => (window as unknown as { ss: import('../src/editor/textSession.ts').EditSession }).ss.view!.focus())
+          else {
+            // After the last character: the caret goes there.
+            const box = await page.evaluate(() => {
+              const p = (window as unknown as { ss: import('../src/editor/textSession.ts').EditSession }).ss.view!.dom.firstElementChild!
+              const range = document.createRange()
+              range.setStart(p.firstChild!, p.firstChild!.textContent!.length - 1)
+              range.setEnd(p.firstChild!, p.firstChild!.textContent!.length)
+              const r = range.getBoundingClientRect()
+              return { x: r.right - 1, y: r.top + r.height / 2 }
+            })
+            await page.mouse.click(box.x, box.y)
+            wantText = 'abxcd?'
+          }
+        }
+        await page.waitForTimeout(delay)
+        const typed = next === 'q' ? 'q' : '火'
+        if (next === 'q') await page.keyboard.press('q')
+        else {
+          await cdp.send('Input.imeSetComposition', { text: 'ひ', selectionStart: 1, selectionEnd: 1 })
+          await cdp.send('Input.insertText', { text: '火' })
+        }
+        await page.waitForTimeout(60)
+        const got = await page.evaluate(() => {
+          const s = (window as unknown as { ss: import('../src/editor/textSession.ts').EditSession }).ss
+          return { text: s.content().text, head: s.selection().head, focused: s.view!.hasFocus() }
+        })
+        count++
+        const want = wantText.replace('?', typed)
+        const wantHead = want.indexOf(typed) + typed.length
+        if (got.text !== want || got.head !== wantHead) fails.push(`${back}, then ${next} ${delay} ms later: ${JSON.stringify(got.text)}@${got.head}, want ${JSON.stringify(want)}@${wantHead}${got.focused ? '' : ' (editor not focused)'}`)
+      }
+    }
+  }
+  console.log(`focus coming back: ${count} runs, ${fails.length} wrong`)
+  for (const f of fails) console.log('  ' + f)
+  expect(fails).toEqual([])
+  expect(count).toBe(24)
+})

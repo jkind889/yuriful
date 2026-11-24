@@ -74,6 +74,9 @@ import type { CompactContent, FormatReadout, Pending } from './textRules.ts'
  * moment stores a canonical record of exactly the text shown.
  */
 
+/** Keys that move the caret (with any modifiers): only they put it at the start of the text as the person's own move (`keepMoveToStart`). */
+const CARET_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'])
+
 /** Transaction metadata of the follow-up (it carries ProseMirror's `composition` metadata too, to join the composition's history step). */
 const FOLLOW_UP = 'yuriful-composition-follow-up'
 
@@ -214,8 +217,11 @@ export class EditSession {
   private deletion: { before: EditorState; after: EditorState; delivered: boolean } | null = null
   /** Counts compositions ending, so that a follow-up queued for one that another has followed does nothing. */
   private endings = 0
-  /** When the last key went down in the edited text (`performance.now()`). */
-  private lastKeyAt = -Infinity
+  /**
+   * When a caret-movement key (`CARET_KEYS`) went down in the edited text, if it is the last key
+   * pressed there since the editor last gained focus (`performance.now()`; otherwise -Infinity).
+   */
+  private caretKeyAt = -Infinity
   /** ProseMirror's `composition` metadata on its last composition transaction (the follow-up joins that history step). */
   private lastComposition: unknown = undefined
   /** A plain-text paste in progress: what it pastes, where, and with which pending choices. */
@@ -450,7 +456,6 @@ export class EditSession {
    * editing keys (`editKeys`) and the browser.
    */
   handleKeyDown(e: KeyEventLike): boolean {
-    this.lastKeyAt = performance.now()
     if (this.done) return false
     const ctx = { editedTextarea: this.root, canRevertShortcut: this.revert !== null && !this.composing }
     this.typed = typedCharacter(e, ctx) // observed only, never claimed
@@ -1025,8 +1030,13 @@ export class EditSession {
         handleKeyDown: (_view, e) => this.handleKeyDown(e),
         handleTextInput: (view, from, to, text) => this.handleTextInput(from, to, text, view.composing),
         handleDOMEvents: {
-          keydown: () => {
+          keydown: (_view, e) => {
             this.keepMoveToStart()
+            this.caretKeyAt = CARET_KEYS.has(e.key) ? performance.now() : -Infinity
+            return false
+          },
+          focus: () => {
+            this.caretKeyAt = -Infinity
             return false
           },
           keyup: () => {
@@ -1055,6 +1065,7 @@ export class EditSession {
           // Focus leaving during a composition ends it: the browser may never send
           // `compositionend` (it does not when focus moves before anything was composed).
           blur: (view) => {
+            this.caretKeyAt = -Infinity
             if (this.imeOpen) view.dom.dispatchEvent(new CompositionEvent('compositionend', { data: '' }))
             return false
           },
@@ -1085,15 +1096,18 @@ export class EditSession {
    * ProseMirror takes a caret at the very start of the text, within 200 ms of the editor
    * gaining focus with no click in it, for the browser resetting the selection on focus, and
    * puts the old selection back without a transaction (`DOMObserver.flush`, run on
-   * `selectionchange` and at the start of every keydown). Straight after a key in the edited
-   * text it is the person's own move (Ctrl+A then Left, Home, Up...): the session takes it as
-   * the selection first, so the browser, the session and what is typed next agree. Runs before
+   * `selectionchange` and at the start of every keydown). When a caret-movement key pressed in
+   * the edited text, the last key since the editor gained focus, has just put it there, it is
+   * the person's own move (Ctrl+A then Left, Home, Up...): the session takes it as the
+   * selection first, so the browser, the session and what is typed next agree. A caret at the
+   * start with no such key (focus coming back by Tab, a click elsewhere and back, `focus()`, the
+   * window regaining focus) is the browser's reset, and is left to ProseMirror. Runs before
    * ProseMirror's own `selectionchange` listener (`mount`) and keydown handler (the next key can
    * come before `selectionchange`).
    */
   private readonly keepMoveToStart = () => {
     const view = this.mounted?.view
-    if (!view || this.done || this.composing || performance.now() - this.lastKeyAt > 150 || !view.hasFocus()) return
+    if (!view || this.done || this.composing || performance.now() - this.caretKeyAt > 150 || !view.hasFocus()) return
     const shown = this.domSelection(view)
     const start = Selection.atStart(this.current.doc).from
     if (!shown || shown.from !== start || shown.to !== start) return
