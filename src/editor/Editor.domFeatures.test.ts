@@ -197,6 +197,10 @@ describe('duplicate on the DOM renderer', () => {
     }
     const fabric = await fabricReference<{ out: unknown[] }>('script', { frames, objects, script })
     const domRun = await run(dom(), frames, objects, script)
+    // `norm` goes through JSON, which drops a property holding `undefined`: no record has one.
+    const undefinedIn = (v: unknown, path = 'out'): string[] =>
+      v && typeof v === 'object' ? Object.entries(v).flatMap(([k, x]) => (x === undefined ? [`${path}.${k}`] : undefinedIn(x, `${path}.${k}`))) : []
+    expect(undefinedIn(domRun.out)).toStrictEqual([])
     expect(norm(domRun.out)).toStrictEqual(fabric.out)
     expect((fabric.out[1] as { live: Scene }).live.frames).toHaveLength(2)
   })

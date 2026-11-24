@@ -194,18 +194,28 @@ describe('typing shortcuts', () => {
       expect(others).toBeGreaterThan(2 * long.length - 10)
       return { state: EditorState.create({ doc, selection: TextSelection.create(doc, at) }), at, reads: () => reads }
     }
-    // A long line above the caret's line and one below it.
-    const before = watched(`${long}\n*x\n${long}`, long.length + 3)
-    const after = watched(`${long}\n*x*\n${long}`, long.length + 4)
-    const t0 = performance.now()
-    for (let i = 0; i < 200; i++) {
-      expect(completesShortcut(before.state, before.at, '*')).toBe(true)
-      expect(shortcutTransaction(after.state, '*')).not.toBeNull()
+    // The caret's line between two long lines, then last (typing at the end of a long text), then
+    // first: each time the other two lines are long and watched.
+    const places = [
+      { where: 'middle', lines: (own: string) => [long, own, long], line: 1 },
+      { where: 'last', lines: (own: string) => [long, long, own], line: 2 },
+      { where: 'first', lines: (own: string) => [own, long, long], line: 0 },
+    ]
+    let after!: ReturnType<typeof watched>
+    for (const { where, lines, line } of places) {
+      const start = lines('').slice(0, line).reduce((n, l) => n + l.length + 1, 0)
+      const before = watched(lines('*x').join('\n'), start + 2)
+      after = watched(lines('*x*').join('\n'), start + 3)
+      const t0 = performance.now()
+      for (let i = 0; i < 200; i++) {
+        expect(completesShortcut(before.state, before.at, '*'), where).toBe(true)
+        expect(shortcutTransaction(after.state, '*'), where).not.toBeNull()
+      }
+      expect(before.reads(), `${where}: reads of other lines while matching`).toBe(0)
+      expect(after.reads(), `${where}: reads of other lines while converting`).toBe(0)
+      // A backstop with a wide margin: 200 checks of each, which once took a few milliseconds.
+      expect(performance.now() - t0, where).toBeLessThan(1000)
     }
-    expect(before.reads()).toBe(0)
-    expect(after.reads()).toBe(0)
-    // A backstop with a wide margin: 200 checks of each, which once took a few milliseconds.
-    expect(performance.now() - t0).toBeLessThan(1000)
     // What the conversion leaves on that line: the markers gone and the letter italic.
     const tr = shortcutTransaction(after.state, '*')!
     const changed = tr.doc.resolve(tr.selection.head).parent

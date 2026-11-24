@@ -219,6 +219,31 @@ async function expectTracked(page: Page, ids: readonly string[], when: string) {
 
 const stored = async (page: Page) => (await storedDoc(page)) as StoredBoard
 
+/**
+ * Where the stored board holds a property set to `undefined`. IndexedDB keeps such a property and
+ * `stored` reads the board as JSON, which drops it, so an exact comparison needs this beside it.
+ */
+function storedUndefined(page: Page): Promise<string[]> {
+  return page.evaluate(
+    () =>
+      new Promise<string[]>((resolve, reject) => {
+        const open = indexedDB.open('yuriful')
+        open.onerror = () => reject(open.error)
+        open.onsuccess = () => {
+          const db = open.result
+          const get = db.transaction('boards', 'readonly').objectStore('boards').get('current')
+          get.onerror = () => reject(get.error)
+          get.onsuccess = () => {
+            db.close()
+            const walk = (v: unknown, path: string): string[] =>
+              v && typeof v === 'object' ? Object.entries(v).flatMap(([k, x]) => (x === undefined ? [`${path}.${k}`] : walk(x, `${path}.${k}`))) : []
+            resolve(walk((get.result as { doc?: unknown } | undefined)?.doc, 'doc'))
+          }
+        }
+      }),
+  )
+}
+
 const ASSETS: SeedAsset[] = [
   { id: 'quad', name: 'quad.png', width: 160, height: 120, pattern: 'quadrants' },
   { id: 'grad', name: 'grad.png', width: 200, height: 100, seed: 3 },
@@ -452,6 +477,7 @@ test.describe('the DOM renderer, static (Slice 2c-i)', () => {
     expect(saved.version).toBe(2)
     expect(saved.frames).toEqual(doc.frames)
     expect(saved.objects).toEqual(doc.objects)
+    expect(await storedUndefined(page)).toStrictEqual([])
     expect(saved.objects.filter((o) => 'blocks' in o || 'height' in o || 'surface' in o)).toEqual([])
     expect(errors).toEqual([])
   })
@@ -482,6 +508,7 @@ test.describe('the DOM renderer, static (Slice 2c-i)', () => {
     await expect(status(page)).toContainText('Saved on this device')
     await page.waitForTimeout(700)
     const domSaved = await stored(page)
+    expect(await storedUndefined(page)).toStrictEqual([])
     expect(domSaved.version).toBe(2)
     expect(domSaved.objects.filter((o) => 'blocks' in o || 'height' in o || 'surface' in o)).toEqual([])
     const domBounds = await page.evaluate((ids) => ids.map((id) => window.__dom.bounds(id)), ['F', 'img', 'note', 'loose'])
@@ -1206,11 +1233,11 @@ async function runFeatureScript(browser: Browser, doc: StoredBoard, steps: reado
 function expectSameFeedback(dom: FeedbackSnapshot, fabric: FeedbackSnapshot, where: string): number {
   const { snap: ds, ...dRest } = dom
   const { snap: fs, ...fRest } = fabric
-  expect(dRest, `${where} feedback`).toEqual(fRest)
+  expect(dRest, `${where} feedback`).toStrictEqual(fRest)
   expect(ds === null, `${where} snap offered`).toBe(fs === null)
   if (!ds || !fs) return 0
-  expect([ds.imageId, ds.side, ds.textId, ds.frameId], `${where} snap target`).toEqual([fs.imageId, fs.side, fs.textId, fs.frameId])
-  expect(ds.bounds, `${where} snap image bounds`).toEqual(fs.bounds)
+  expect([ds.imageId, ds.side, ds.textId, ds.frameId], `${where} snap target`).toStrictEqual([fs.imageId, fs.side, fs.textId, fs.frameId])
+  expect(ds.bounds, `${where} snap image bounds`).toStrictEqual(fs.bounds)
   expect(Math.abs(ds.position - fs.position), `${where} snap position`).toBeLessThanOrEqual(0.002)
   let worst = 0
   const pairs: Array<[string, number, number]> = [

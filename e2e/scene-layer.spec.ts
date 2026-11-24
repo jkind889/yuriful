@@ -220,6 +220,12 @@ async function compareTypography(page: Page, recs: Array<Record<string, unknown>
     }, { rec, frame: fabric.frame, scale: fabric.scale, margin: fabric.margin })
     const shot = await page.screenshot({ clip: { x: 0, y: 0, width: fabric.frame.width * fabric.scale, height: fabric.frame.height * fabric.scale } })
     const domInk = await lineInk(page, `data:image/png;base64,${shot.toString('base64')}`, fabric, dom.width, dom.height)
+    // Which lines are inspected comes from the recording, so its lists must agree with each other and
+    // with the lines that are compared against the DOM (`wrapped`): a recording missing a line's band
+    // would otherwise leave that line unchecked.
+    const count = fabric.lines.length
+    expect([fabric.lineTops.length, fabric.pitches.length, fabric.ink.length], `${String(rec.id)}: a band, a pitch and an ink reading per recorded line`).toStrictEqual([count, count, count])
+    expect(fabric.lines.map((l) => l.replace(/\t/g, ' ').replace(/ +$/, '')).filter((l) => l !== ''), `${String(rec.id)}: the recorded lines are the ones compared`).toStrictEqual(fabric.wrapped)
     const lines = fabric.lineTops.map((_, i) => ({ line: i, text: fabric.lines[i]!, fabric: fabric.ink[i]!.ink, dom: domInk[i]!.ink, fabricPresent: fabric.ink[i]!.present, domPresent: domInk[i]!.present }))
     out.push({ name: String(rec.id), fabricHeight: fabric.height, domHeight: dom.height, fabricWidth: fabric.width, domWidth: dom.width, fabricLines: fabric.wrapped, domLines: dom.wrapped, lines })
   }
