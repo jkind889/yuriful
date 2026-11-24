@@ -3,7 +3,7 @@ import { closeHistory, isHistoryTransaction, redo, undo, undoDepth } from 'prose
 import { Fragment, Mark as PMMark } from 'prosemirror-model'
 import type { Node as PMNode, NodeType, ResolvedPos, Slice } from 'prosemirror-model'
 import { liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list'
-import { AllSelection, EditorState, NodeSelection, Plugin, PluginKey, TextSelection } from 'prosemirror-state'
+import { AllSelection, EditorState, NodeSelection, Plugin, PluginKey, Selection, TextSelection } from 'prosemirror-state'
 import type { Command, Transaction } from 'prosemirror-state'
 import { AddMarkStep, RemoveMarkStep, Transform, canJoin, findWrapping, liftTarget } from 'prosemirror-transform'
 import { DEFAULT_FONT, MARKS, canonicalTextFormatting, headingsAfterEdit, isHeadingLevel, markMask, spansFromCharStyles, splitGraphemes, textAfterEdit, withPendingMarks } from '../model/richText.ts'
@@ -1255,7 +1255,10 @@ function rebuild(leaves: readonly Leaf[]): PMNode[] {
           while (m < run.length && run[m]!.frames[depth]!.item === itemFrame.item) m++
           const content = build(run.slice(k, m), depth + 1)
           const node = f.kind === 'taskList' ? nodes.taskItem.create({ checked: itemFrame.checked }, content) : nodes.listItem.create(null, content)
-          items.push({ node, frame: itemFrame, kept: itemFrame.number !== null && !run[k]!.selected })
+          // Pinned by the item's first line (a divider at its start does not count), or for an item of
+          // dividers only, by the divider staying where it is.
+          const firstLine = run.slice(k, m).find((x) => x.line !== null)
+          items.push({ node, frame: itemFrame, kept: itemFrame.number !== null && (firstLine ? !firstLine.selected : !run[k]!.carried) })
           k = m
         }
         if (f.kind !== 'orderedList') out.push(nodes[f.kind].create(null, items.map((it) => it.node)))
@@ -1291,26 +1294,42 @@ function rebuild(leaves: readonly Leaf[]): PMNode[] {
  * inside the selected range, or one inside a list item (a quote, for Quote) whose lines are all
  * selected. A list button moves a divider only with its list item: one in no list stays where it is.
  */
-function carryDividers(leaves: Leaf[], kind: BlockKind) {
-  const chosen = leaves.flatMap((l, i) => (l.selected ? [i] : []))
-  if (chosen.length === 0) return
-  const first = chosen[0]!
-  const last = chosen[chosen.length - 1]!
+function carryDividers(leaves: Leaf[], kind: BlockKind, span: { fromLine: number; toLine: number } | 'all') {
+  // The range in leaves: after the line the selection starts in, before the line it ends in (the line
+  // its end is at the start of included, so a divider just before it is inside the range).
+  const leafOf = new Map<number, number>()
+  leaves.forEach((l, i) => {
+    if (l.line !== null) leafOf.set(l.line, i)
+  })
+  const lo = span === 'all' ? -1 : (leafOf.get(span.fromLine) ?? -1)
+  const hi = span === 'all' ? leaves.length : (leafOf.get(span.toLine) ?? leaves.length)
+  // For every container (by its depth and frame), how many lines it holds and how many are selected: one pass.
+  const counts = new Map<string, { all: number; chosen: number }>()
+  for (const m of leaves) {
+    if (m.line === null) continue
+    m.frames.forEach((f, d) => {
+      const key = `${d}|${frameKey(f)}`
+      const c = counts.get(key) ?? { all: 0, chosen: 0 }
+      c.all++
+      if (m.selected) c.chosen++
+      counts.set(key, c)
+    })
+  }
   leaves.forEach((l, idx) => {
     if (l.line !== null || l.node.isTextblock) return
-    let depth = -1
-    if (kind === 'blockquote') {
-      for (let k = l.frames.length - 1; k >= 0 && depth < 0; k--) if (l.frames[k]!.kind === 'blockquote') depth = k
-    } else depth = lastListIndex(l.frames)
+    // Its container: for a list button its list item; for Quote the innermost block around it (a list item or a quote).
+    const depth = kind === 'blockquote' ? l.frames.length - 1 : lastListIndex(l.frames)
     if (kind !== 'blockquote' && depth < 0) return
-    if (idx > first && idx < last) {
-      l.carried = true
+    const inRange = idx > lo && idx < hi
+    if (depth < 0) {
+      l.carried = inRange
       return
     }
-    if (depth < 0) return
-    const key = frameKey(l.frames[depth]!)
-    const lines = leaves.filter((m) => m.line !== null && m.frames[depth] !== undefined && frameKey(m.frames[depth]!) === key)
-    l.carried = lines.length > 0 && lines.every((m) => m.selected)
+    // Its item (for Quote, its quote) holds no line the button does not act on: inside the range it goes
+    // with them, and outside it too when the item has lines at all. One that holds an unselected line stays.
+    const c = counts.get(`${depth}|${frameKey(l.frames[depth]!)}`)
+    const full = c === undefined || c.chosen === c.all
+    l.carried = full && (inRange || (c !== undefined && c.all > 0))
   })
 }
 
@@ -1547,6 +1566,45 @@ function deleteAcrossLines(tr: Transaction, from: number, to: number): boolean {
   return true
 }
 
+/** A divider (or any block that is not a line) selected on its own. */
+function selectedDivider(state: EditorState): NodeSelection | null {
+  const sel = state.selection
+  return sel instanceof NodeSelection && !sel.node.isTextblock ? sel : null
+}
+
+/**
+ * An input over a selected divider: Backspace or Delete removes it and leaves the caret where it was
+ * (at the start of the line after it, or the end of the one before); anything else puts a line in its
+ * place holding the input (Enter, or the start of a composition: an empty line), with the caret after
+ * it. Null when the result could not be stored.
+ */
+function replaceDivider(state: EditorState, sel: NodeSelection, input: ReplacementInput, valid: (doc: PMNode) => boolean): Transaction | null {
+  const tr = state.tr
+  if (input.kind === 'delete') {
+    tr.deleteRange(sel.from, sel.to)
+    const at = Math.min(tr.mapping.map(sel.from), tr.doc.content.size)
+    const $at = tr.doc.resolve(at)
+    // A caret in a line (never the next divider): the start of the line after, or the end of the one before.
+    const caret = Selection.findFrom($at, 1, true) ?? Selection.findFrom($at, -1, true)
+    if (caret) tr.setSelection(caret)
+  } else {
+    tr.replaceWith(sel.from, sel.to, nodes.paragraph.create())
+    tr.setSelection(TextSelection.create(tr.doc, sel.from + 1))
+    if (input.kind === 'text' && input.text) tr.insertText(input.text)
+    else if (input.kind === 'slice') tr.replaceSelection(input.slice)
+  }
+  return valid(tr.doc) && !breakOutsideCode(tr.doc) ? tr : null
+}
+
+/** Enter with a divider selected: an empty line in its place, with the caret (`replaceDivider`). */
+const enterOverDivider: Command = (state, dispatch) => {
+  const sel = selectedDivider(state)
+  if (!sel) return false
+  const tr = replaceDivider(state, sel, { kind: 'enter' }, (doc) => !exceedsBounds(doc, DEFAULT_FONT))
+  if (tr && dispatch) dispatch(tr.scrollIntoView())
+  return true
+}
+
 /**
  * A transaction that replaced the selection of `state` with `input` (typing, Enter, a paste, a
  * deletion), settled so that, whatever blocks the selection started in, ended in and crossed, the
@@ -1566,11 +1624,29 @@ export function settleReplacement(state: EditorState, tr: Transaction, input: Re
   // A text without blocks (paragraphs and headings, no inline code) is left exactly as ProseMirror
   // and the earlier canvas's rules leave it: transaction, selection and history.
   if (sel.empty || !tr.docChanged || isCompactDoc(state.doc)) return tr
+  const divider = selectedDivider(state)
+  if (divider) return replaceDivider(state, divider, input, valid)
   const range = replacedRange(state, '')
   // Where the selection started: its line's kind (a code block or not: a heading's level follows the
-  // line-level rule, `lineLevels`) and the blocks around it, which the line the two ends become keeps.
-  const kindAt = ($p: ResolvedPos) => [$p.parent.type.spec.code ? 'code' : 'line', ...Array.from({ length: Math.max(0, $p.depth - 1) }, (_, d) => $p.node(d + 1).type.name)].join('/')
+  // line-level rule, `lineLevels`) and the blocks around it, with a checklist item's tick and a
+  // numbered item's painted number: the line the two ends become keeps them all.
+  const kindAt = ($p: ResolvedPos) => {
+    const parts = [$p.parent.type.spec.code ? 'code' : 'line']
+    for (let d = 1; d < $p.depth; d++) {
+      const n = $p.node(d)
+      let part = n.type.name
+      if (n.type === nodes.taskItem) part += n.attrs.checked ? ':ticked' : ':unticked'
+      if (n.type === nodes.listItem && $p.node(d - 1).type === nodes.orderedList) part += `:${($p.node(d - 1).attrs.start as number) + $p.index(d - 1)}`
+      parts.push(part)
+    }
+    return parts.join('/')
+  }
   const startKind = kindAt(sel.$from)
+  // Every line after the selection, which no input touches: its kind, blocks, tick and painted number.
+  const linesAfter = (doc: PMNode, from: number) => textblocksOf(doc).slice(from).map(({ pos }) => kindAt(doc.resolve(pos + 1)))
+  const tbsBefore = textblocksOf(state.doc)
+  const endLine = tbsBefore.findIndex((t) => t.pos === sel.$to.before())
+  const after = endLine >= 0 ? linesAfter(state.doc, endLine + 1) : []
   const old = plainTextOfDoc(state.doc)
   const inserted = input.kind === 'text' ? input.text : input.kind === 'enter' ? '\n' : input.kind === 'slice' ? input.slice.content.textBetween(0, input.slice.content.size, '\n') : ''
   const meant = input.kind === 'enter' ? ['\n', ''] : [inserted]
@@ -1582,6 +1658,12 @@ export function settleReplacement(state: EditorState, tr: Transaction, input: Re
     // there). Enter is judged on its deletion (`enterOverItems`): after it, Enter's own rules at the
     // caret (an emptied item taken out a level) decide where that line sits.
     if (input.kind !== 'enter' && (textblocksOf(t.doc).length === 0 || kindAt(t.doc.resolve(posAtTextOffset(t.doc, range.from))) !== startKind)) return false
+    // The lines after the selection keep their blocks, ticks and numbers (Enter: its own rules may renumber them).
+    if (input.kind !== 'enter') {
+      const now2 = textblocksOf(t.doc)
+      const tail = linesAfter(t.doc, Math.max(0, now2.length - after.length))
+      if (now2.length < after.length || tail.some((k, i) => k !== after[i])) return false
+    }
     const caret = range.from + which.length
     if (!(t.selection.empty && textOffsetAt(t.doc, t.selection.head, -1) === caret) && textblocksOf(t.doc).length > 0) t.setSelection(TextSelection.create(t.doc, posAtTextOffset(t.doc, caret)))
     return true
@@ -1623,7 +1705,7 @@ export function toggleBlockKind(kind: BlockKind, opts: { wholeBox?: boolean } = 
     const next = () => ++ids
     const leaves = flatten(state.doc, next)
     for (const l of leaves) l.selected = l.line !== null && l.line >= range.first && l.line <= range.last
-    if (kind !== 'codeBlock') carryDividers(leaves, kind)
+    if (kind !== 'codeBlock') carryDividers(leaves, kind, opts.wholeBox ? 'all' : { fromLine: range.first, toLine: blockIndexAt(state.doc, state.selection.to, false) })
     const selected = (l: Leaf) => l.selected
     const lines = leaves.filter(selected)
     if (lines.length === 0) return false
@@ -1900,7 +1982,7 @@ const deleteDividerAfter: Command = (state, dispatch) => {
  * block (wherever it sits, a list item too), a list item or an empty line of a quote, as those
  * blocks do (`codeEnter` before `listEnter`, `quoteEnter`); everywhere else a line break as before.
  */
-const enterAnywhere: Command = chainCommands(createParagraphNear, enterOverItems, codeEnter, listEnter, quoteEnter, enterKey)
+const enterAnywhere: Command = chainCommands(enterOverDivider, createParagraphNear, enterOverItems, codeEnter, listEnter, quoteEnter, enterKey)
 
 /**
  * Enter over a selection that reaches into a list item from another line (across items, or from a

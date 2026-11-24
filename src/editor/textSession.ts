@@ -2,7 +2,7 @@ import { closeHistory, history, isHistoryTransaction, redo, redoDepth, undo, und
 import { keydownHandler } from 'prosemirror-keymap'
 import { DOMParser as PMDOMParser, DOMSerializer, Fragment, Slice } from 'prosemirror-model'
 import type { Mark as PMMark, Node as PMNode, ParseOptions, ResolvedPos } from 'prosemirror-model'
-import { EditorState, Plugin, PluginKey, Selection, TextSelection } from 'prosemirror-state'
+import { EditorState, NodeSelection, Plugin, PluginKey, Selection, TextSelection } from 'prosemirror-state'
 import type { Command, Transaction } from 'prosemirror-state'
 import { ReplaceStep } from 'prosemirror-transform'
 import { DecorationSet, EditorView } from 'prosemirror-view'
@@ -820,7 +820,12 @@ export class EditSession {
         // how the deletion itself joins what came before it is unchanged.
         // (Only in a text with blocks: a text without them keeps ProseMirror's usual grouping exactly.)
         const id = isCompactDoc(state.doc) ? undefined : composition
-        deleteSelected(state, (tr) => this.dispatch(id === undefined ? tr.setStoredMarks(null) : tr.setStoredMarks(null).setMeta('composition', id)))
+        const divider = state.selection instanceof NodeSelection && !state.selection.node.isTextblock ? state.selection : null
+        if (divider) {
+          // A selected divider: the composition goes into an empty line in its place.
+          const tr = state.tr.replaceWith(divider.from, divider.to, nodes.paragraph.create())
+          this.dispatch(tr.setSelection(TextSelection.create(tr.doc, divider.from + 1)).setMeta('composition', id))
+        } else deleteSelected(state, (tr) => this.dispatch(id === undefined ? tr.setStoredMarks(null) : tr.setStoredMarks(null).setMeta('composition', id)))
         if (this.current !== state) this.deletion = { before: state, after: this.current, delivered: false }
         // The deletion was refused (its result could not be stored): so is the composition, taken back when it ends.
         else this.imeRefused = true

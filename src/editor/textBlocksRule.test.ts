@@ -8,7 +8,7 @@ import { canonicalTextContent, MAX_BLOCK_DEPTH, MAX_LIST_START, MAX_TEXT_LENGTH,
 import type { BlockNode, InlineRun } from '../model/types.ts'
 import type { TextContent } from '../model/textDoc.ts'
 import type { EditSession } from './textSession.ts'
-import { docFromText, exceedsBounds, isListType, nodes, plainTextOfDoc, posAtTextOffset, textSchema, textblocksOf } from './textSchema.ts'
+import { docFromText, exceedsBounds, isItemType, isListType, nodes, plainTextOfDoc, posAtTextOffset, textSchema, textblocksOf } from './textSchema.ts'
 import type { TextSource } from './textSchema.ts'
 import { BLOCK_KINDS, META, boxBlocks, boxCommandContent, completesShortcut, linesOfSelection, settleReplacement, shortcutTransaction, toggleBlockKind } from './textRules.ts'
 import type { BlockKind, ReplacementInput } from './textRules.ts'
@@ -158,6 +158,59 @@ interface Press {
   after: TextContent
   afterDoc: PMNode
   readout: MarkState
+  /** The line the selection's end is in (at the start of it included); `all` for the selected box. */
+  toLine?: number | 'all'
+}
+
+/** Each divider of a document, in order: how many lines come before it, the lines of its list item and of its innermost block (null when in none), and the blocks around it. */
+function dividerFacts(doc: PMNode): Array<{ linesBefore: number; item: number[] | null; inner: number[] | null; quote: boolean; list: string | null }> {
+  const tbs = textblocksOf(doc)
+  const linesIn = (from: number, to: number) => tbs.flatMap((t, i) => (t.pos >= from && t.pos < to ? [i] : []))
+  const out: Array<{ linesBefore: number; item: number[] | null; inner: number[] | null; quote: boolean; list: string | null }> = []
+  doc.descendants((n, pos) => {
+    if (n.type !== nodes.divider) return true
+    const $p = doc.resolve(pos)
+    let item: number[] | null = null
+    let inner: number[] | null = null
+    let quote = false
+    let list: string | null = null
+    for (let d = $p.depth; d > 0; d--) {
+      const a = $p.node(d)
+      const span = () => linesIn($p.before(d), $p.after(d))
+      if (inner === null && (isItemType(a.type) || a.type === nodes.blockquote)) inner = span()
+      if (item === null && isItemType(a.type)) item = span()
+      if (a.type === nodes.blockquote) quote = true
+      if (list === null && isListType(a.type)) list = a.type.name
+    }
+    out.push({ linesBefore: tbs.filter((t) => t.pos < pos).length, item, inner, quote, list })
+    return false
+  })
+  return out
+}
+
+/**
+ * A divider that goes with the lines a list or quote button acts on (inside the selected range, or in
+ * a list item, for Quote its innermost block, whose lines are all selected; one in an item that also
+ * holds an unselected line stays, and a list button moves a divider only with its item) gets what
+ * they got: a list of that kind, or a quote, turned on or off. Null when it holds.
+ */
+function dividerRule(x: Press, on: boolean): string | null {
+  if (x.kind === 'codeBlock' || !x.lines || x.toLine === undefined) return null
+  const { first, last } = x.lines
+  const was = dividerFacts(x.beforeDoc)
+  const is = dividerFacts(x.afterDoc)
+  if (was.length !== is.length) return `${was.length} dividers became ${is.length}`
+  const chosen = (lines: number[]) => lines.every((i) => i >= first && i <= last)
+  for (let k = 0; k < was.length; k++) {
+    const d = was[k]!
+    const inRange = x.toLine === 'all' || (d.linesBefore > first && d.linesBefore <= x.toLine)
+    const container = x.kind === 'blockquote' ? d.inner : d.item
+    const goes = container === null ? x.kind === 'blockquote' && inRange : chosen(container) && (inRange || container.length > 0)
+    if (!goes) continue
+    const has = x.kind === 'blockquote' ? is[k]!.quote : is[k]!.list === x.kind
+    if (has !== on) return `divider ${k} did not go with the selected lines (${x.kind} ${on ? 'on' : 'off'}): ${JSON.stringify(is[k])}`
+  }
+  return null
 }
 
 /** What the last judged press did (for the randomised test's counts). */
@@ -233,6 +286,18 @@ function judge(x: Press): string | null {
     const now2 = listsPerLevel(x.afterDoc)
     if (now2.some((n, level) => n > (was[level] ?? 0))) return `lists per level of nesting went from ${JSON.stringify(was)} to ${JSON.stringify(now2)}`
   }
+  // Every line selected, a list button on: no two lists of that kind sit side by side in one parent
+  // (every selected line next to another at its level shares its list; nothing is pinned to stay apart).
+  if (on && kind !== 'blockquote' && kind !== 'codeBlock' && first === 0 && last === facts.length - 1) {
+    let split: string | null = null
+    x.afterDoc.descendants((n) => {
+      for (let i = 1; i < n.childCount && !split; i++) if (n.child(i).type.name === kind && n.child(i - 1).type.name === kind) split = JSON.stringify(n.toJSON())
+      return !split
+    })
+    if (split) return `two ${kind}s side by side after turning it on for every line: ${split}`
+  }
+  const dividerBroken = dividerRule(x, on)
+  if (dividerBroken) return dividerBroken
   if (x.readout !== (on ? 'on' : 'off')) return `the button reads ${x.readout} after turning it ${on ? 'on' : 'off'}`
   return null
 }
@@ -245,7 +310,8 @@ function checkRule(s: EditSession, kind: BlockKind, noLine = false): string | nu
   const lines = noLine ? null : linesOfSelection(beforeDoc, sel.from, sel.to)
   const changed = s.toggleBlock(kind)
   const after = s.content()
-  const broken = judge({ kind, beforeDoc, before, lines, changed, after, afterDoc: s.state.doc, readout: s.blockFormat().blocks[kind] })
+  const toLine = textblocksOf(beforeDoc).findIndex((t) => t.pos + 1 + t.node.content.size >= sel.to)
+  const broken = judge({ kind, beforeDoc, before, lines, changed, after, afterDoc: s.state.doc, readout: s.blockFormat().blocks[kind], toLine })
   if (broken) return broken
   if (noLine && !s.state.selection.eq(sel)) return 'the divider is no longer selected'
   if (!changed) return null
@@ -263,7 +329,7 @@ function checkBoxRule(source: TextSource, kind: BlockKind): string | null {
   const result = boxCommandContent(source, { command: toggleBlockKind(kind, { wholeBox: true }) })
   const after = result ?? read.content
   const afterDoc = docFromText(after)!.doc
-  return judge({ kind, beforeDoc: read.doc, before: read.content, lines: { first: 0, last: textblocksOf(read.doc).length - 1 }, changed: result !== null, after, afterDoc, readout: boxBlocks(afterDoc).blocks[kind] })
+  return judge({ kind, beforeDoc: read.doc, before: read.content, lines: { first: 0, last: textblocksOf(read.doc).length - 1 }, changed: result !== null, after, afterDoc, readout: boxBlocks(afterDoc).blocks[kind], toLine: 'all' })
 }
 
 /** Selects the divider at `pos` (as a click on it does). */
@@ -625,6 +691,8 @@ function block(r: Rand, depth: number, lists: number): BlockNode {
   const kind = r.pick(LIST_KINDS)
   const items = Array.from({ length: 1 + r.int(3) }, () => {
     const first = r.int(6) === 0 ? { type: 'codeBlock' as const, text: 'c' } : line(r, r.int(5) === 0 ? 'heading' : 'paragraph')
+    // Sometimes the item begins with a divider.
+    if (r.int(8) === 0) return [{ type: 'divider' } as BlockNode, first]
     // Sometimes several paragraphs in one item, sometimes a nested block.
     const more = r.int(3) === 0 ? Array.from({ length: 1 + r.int(2) }, (): BlockNode => (r.int(3) === 0 ? { type: 'divider' } : line(r, 'paragraph'))) : []
     const rest = r.int(3) === 0 ? [block(r, depth + 1, lists + 1)] : []
@@ -648,7 +716,7 @@ function blocks(r: Rand, depth: number, lists: number, n: number): BlockNode[] {
 function nestedList(r: Rand, depth: number): BlockNode {
   const kind = r.pick(LIST_KINDS)
   const items = Array.from({ length: 2 + r.int(3) }, (_, i) => {
-    const blocks: BlockNode[] = [line(r, 'paragraph')]
+    const blocks: BlockNode[] = r.int(6) === 0 ? [{ type: 'divider' }, line(r, 'paragraph')] : [line(r, 'paragraph')]
     const extra = r.int(5)
     if (extra <= 1 && depth < 2) blocks.push(nestedList(r, depth + 1))
     else if (extra === 2) blocks.push(quote(p(`q${i}`)))
@@ -685,6 +753,16 @@ function selection(r: Rand, s: EditSession): [number, number] {
     const i = r.pick(nextToList)
     const at = facts.slice(0, i).reduce((n, f) => n + f.text.length + 1, 0)
     return [at, at]
+  }
+  // Sometimes from the start of a line to the start of a later line that comes just after a divider.
+  const doc = s.state.doc
+  const tbs = textblocksOf(doc)
+  const afterDivider = tbs.map((t, i) => (i > 0 && doc.resolve(t.pos).nodeBefore?.type === nodes.divider ? i : -1)).filter((i) => i > 0)
+  if (afterDivider.length > 0 && r.int(4) === 0) {
+    const i = r.pick(afterDivider)
+    const j = r.int(i)
+    const start = (k: number) => facts.slice(0, k).reduce((n, f) => n + f.text.length + 1, 0)
+    return [start(j), start(i)]
   }
   const mode = r.int(4)
   if (mode === 0) {
@@ -891,6 +969,41 @@ function nearListLimit(doc: PMNode): boolean {
   return near
 }
 
+/**
+ * Checks one input over a selected divider (`s` has it selected): Backspace or Delete removes it and
+ * leaves a caret where it was, the text unchanged; anything else puts a line in its place holding the
+ * input (Enter: an empty line), caret after it. One undo brings the divider back.
+ */
+function checkDividerReplacement(s: EditSession, input: Input): string | null {
+  const before = s.content()
+  const doc = s.state.doc
+  const old = plainTextOfDoc(doc)
+  const at = (s.state.selection as NodeSelection).from
+  const facts = lineFacts(doc)
+  const next = textblocksOf(doc).findIndex((t) => t.pos > at)
+  const startOf = (k: number) => facts.slice(0, k).reduce((n, f) => n + f.text.length + 1, 0)
+  const lineStart = next >= 0 ? startOf(next) : null
+  const count = dividers(doc).length
+  const meant = apply(s, input)
+  const after = s.content()
+  if (canonicalTextContent(after as unknown as Record<string, unknown>) === null || (after.blocks && parseBlocks(after.blocks) === null)) return 'the result does not load'
+  const deleted = input === 'Backspace' || input === 'Delete'
+  const line = input === 'Enter' ? '' : meant[0]!
+  const want = deleted ? old : lineStart !== null ? `${old.slice(0, lineStart)}${line}\n${old.slice(lineStart)}` : `${old}\n${line}`
+  const now = plainTextOfDoc(s.state.doc)
+  if (now !== want) return `the text is ${JSON.stringify(now)}, not ${JSON.stringify(want)}`
+  if (after.blocks && after.text !== now) return 'the stored text is not the text shown'
+  if (dividers(s.state.doc).length !== count - 1) return 'the divider is still there'
+  const sel = s.selection()
+  if (sel.anchor !== sel.head) return `the selection is ${sel.anchor} to ${sel.head}, not a caret`
+  const caret = deleted ? (lineStart ?? old.length) : (lineStart ?? old.length + 1) + line.length
+  if (sel.head !== caret) return `the caret is at ${sel.head}, not ${caret}`
+  s.undo()
+  if (JSON.stringify(s.content()) !== JSON.stringify(before)) return `one undo did not give back the stored record: ${JSON.stringify(before)} -> ${JSON.stringify(s.content())}`
+  if (dividers(s.state.doc).length !== count) return 'undo did not bring the divider back'
+  return null
+}
+
 /** How many inputs the replacement test saw refused whole (a stored limit). */
 let replacementsRefused = 0
 
@@ -924,6 +1037,37 @@ function checkReplacement(s: EditSession, input: Input): string | null {
   // In a text with blocks, the two ends become one line of the kind the selection started in, in its place.
   // (Enter is judged on its deletion: after it, Enter's own rules at the caret may move that line.)
   if (rich && input !== 'Enter' && kindAt(s.state.doc, from) !== startKind) return `the joined line is ${kindAt(s.state.doc, from)}, not ${startKind} where the selection started`
+  if (rich && input !== 'Enter') {
+    // The lines before the selection, the joined line (the line the selection started on: its item with
+    // its tick, its list and painted number, its quote) and every line after the selection keep their
+    // blocks, ticks and painted numbers. (Enter is judged on its deletion, which Backspace and Delete
+    // check: after it, Enter's own rules at the caret may lift or renumber the item it is in.)
+    const was = lineFacts(beforeDoc)
+    const is = lineFacts(s.state.doc)
+    const lineOf = (facts: LineFacts[], offset: number) => {
+      let at = 0
+      for (let i = 0; i < facts.length; i++) {
+        if (offset <= at + facts[i]!.text.length) return i
+        at += facts[i]!.text.length + 1
+      }
+      return facts.length - 1
+    }
+    const startLine = lineOf(was, from)
+    const endLine = lineOf(was, to)
+    const same = (a: LineFacts, b: LineFacts | undefined) => b !== undefined && JSON.stringify(a.around) === JSON.stringify(b.around) && (a.painted === null || a.painted === b.painted)
+    for (let i = 0; i < startLine; i++) if (!same(was[i]!, is[i]) || was[i]!.text !== is[i]!.text) return `line ${i} before the selection changed: ${JSON.stringify(was[i])} -> ${JSON.stringify(is[i])}`
+    {
+      const a = was[startLine]!
+      const b = is[startLine]
+      if (!b || JSON.stringify(a.around) !== JSON.stringify(b.around) || a.painted !== b.painted) return `the joined line is not the line the selection started on: ${JSON.stringify(a)} -> ${JSON.stringify(b)}`
+      const tail = was.length - 1 - endLine
+      for (let k = 1; k <= tail; k++) {
+        const x = was[was.length - k]!
+        const y = is[is.length - k]
+        if (!same(x, y) || x.text !== y!.text || x.kind !== y!.kind) return `line ${was.length - k} after the selection changed: ${JSON.stringify(x)} -> ${JSON.stringify(y)}`
+      }
+    }
+  }
   s.undo()
   // A composition over a selection in a text without blocks keeps ProseMirror's usual grouping: its deletion can be an undo step of its own.
   if (!rich && input === 'composition' && JSON.stringify(s.content()) !== JSON.stringify(before)) s.undo()
@@ -970,11 +1114,30 @@ describe('T1: typing, pasting, Enter, Backspace, Delete and a composition over a
     const failures: string[] = []
     let applied = 0
     let atLineStart = 0
+    let dividerInputs = 0
     for (let d = 0; d < 250 && failures.length < 5; d++) {
       const source = richSource(r)
       if (!source || !docFromText(source)) continue
       const text = plainTextOfDoc(open(source).state.doc)
       if (text.length === 0) continue
+      // A divider selected on its own, every input.
+      const divs = dividers(open(source).state.doc)
+      if (divs.length > 0) {
+        const at = r.pick(divs)
+        for (const input of INPUTS) {
+          const s = open(source)
+          selectDivider(s, at)
+          let broken: string | null
+          try {
+            broken = checkDividerReplacement(s, input)
+          } catch (e) {
+            broken = `threw ${String(e)}`
+          }
+          applied++
+          dividerInputs++
+          if (broken) failures.push(`seed ${SEED}, document ${d}, ${input} over the divider at ${at}: ${broken}\n  source: ${JSON.stringify(source)}`)
+        }
+      }
       for (let k = 0; k < 2; k++) {
         let a = r.int(text.length + 1)
         let b = r.int(text.length + 1)
@@ -1002,7 +1165,7 @@ describe('T1: typing, pasting, Enter, Backspace, Delete and a composition over a
       }
     }
     if (failures.length > 0) console.log(failures.join('\n'))
-    console.log(`replacement rule: ${applied} inputs over random selections (seed ${SEED}), ${atLineStart} selections ending at the start of a line, ${replacementsRefused} refused whole at a stored limit`)
+    console.log(`replacement rule: ${applied} inputs over random selections (seed ${SEED}), ${atLineStart} selections ending at the start of a line, ${replacementsRefused} refused whole at a stored limit, ${dividerInputs} over a selected divider`)
     expect(failures, failures[0]).toEqual([])
     expect(applied).toBeGreaterThan(2000)
   })
@@ -1047,8 +1210,12 @@ describe('U1: in a text without blocks the settle step changes nothing at all', 
             const what = inputOf(s, tr)
             if (what) {
               checked++
+              // Not only the same object: the same steps, selection, stored marks and metadata as before the call.
+              const snapshot = () => JSON.stringify({ steps: tr.steps.map((st) => st.toJSON()), selection: tr.selection.toJSON(), marks: tr.storedMarks?.map((m) => m.toJSON()) ?? null, meta: Object.entries((tr as unknown as { meta: Record<string, unknown> }).meta).map(([k, v]) => [k, v instanceof SliceClass ? v.toJSON() : typeof v === 'object' && v !== null && 'toJSON' in v ? String(v) : v]) })
+              const was = snapshot()
               const settled = settleReplacement(s.state, tr, what, (doc) => !exceedsBounds(doc, s.baseFont))
               if (settled !== tr) failures.push(`${input} over [${a}, ${b}] in ${JSON.stringify(source)}: the step returned another transaction (or refused it)`)
+              else if (snapshot() !== was) failures.push(`${input} over [${a}, ${b}] in ${JSON.stringify(source)}: the step changed the transaction it was given`)
             }
             if (s.composing || input === 'composition') {
               compositions++
@@ -1200,6 +1367,126 @@ describe('U4: a replacement that cannot be stored changes nothing', () => {
         expect(t.content(), input).toStrictEqual(before)
       }
     }
+  })
+})
+
+// ---- V1 to V4 -------------------------------------------------------------------------------------------------
+
+describe('V1: every input over a selected divider', () => {
+  const shapes: Record<string, BlockNode[]> = {
+    'at the start': [{ type: 'divider' }, p('Album'), p('Cover')],
+    'in the middle': [p('Album'), { type: 'divider' }, p('Cover')],
+    'at the end': [p('Album'), p('Cover'), { type: 'divider' }],
+    'inside a list item': [list('bulletList', [p('Album'), { type: 'divider' }], [p('Cover')])],
+    'inside a quote': [quote(p('Album'), { type: 'divider' }, p('Cover'))],
+  }
+  for (const [name, blocks] of Object.entries(shapes)) {
+    it(`${name}: Backspace and Delete remove it, anything else puts a line holding the input in its place; one undo brings it back`, () => {
+      for (const input of INPUTS) {
+        const s = open({ text: '', blocks })
+        selectDivider(s, dividers(s.state.doc)[0]!)
+        expect(checkDividerReplacement(s, input), `${name}, ${input}`).toBeNull()
+      }
+    })
+  }
+
+  it('the reviewer\'s case: `Album`, a divider, `Cover`; the divider selected, Backspace: both lines kept, the caret at the start of Cover, Undo brings it back', () => {
+    const s = open({ text: '', blocks: [p('Album'), { type: 'divider' }, p('Cover')] })
+    selectDivider(s, dividers(s.state.doc)[0]!)
+    press(s, 'Backspace')
+    expect(content(s)).toStrictEqual({ text: 'Album\nCover' })
+    expect(s.selection()).toMatchObject({ anchor: 6, head: 6 })
+    expect(s.canUndo).toBe(true)
+    s.undo()
+    expect(content(s).blocks).toStrictEqual([p('Album'), { type: 'divider' }, p('Cover')])
+    // A composition: committed into a line in the divider's place.
+    selectDivider(s, dividers(s.state.doc)[0]!)
+    s.compositionStart()
+    insert(s, '仮名', true)
+    s.compositionEnd()
+    type(s, 'Z')
+    expect(content(s)).toStrictEqual({ text: 'Album\n仮名Z\nCover' })
+  })
+})
+
+describe('V2: the joined line is the line the selection started on, for every input', () => {
+  it('a checklist, ticked `Album` and unticked `Cover`, from the start of Album to the start of Cover: the joined line stays ticked', () => {
+    for (const input of INPUTS) {
+      const s = open({ text: '', blocks: [{ type: 'taskList', items: [{ checked: true, blocks: [p('Album')] }, { checked: false, blocks: [p('Cover')] }] }] })
+      s.select(0, 6)
+      expect(checkReplacement(s, input), input).toBeNull()
+      const t = open({ text: '', blocks: [{ type: 'taskList', items: [{ checked: true, blocks: [p('Album')] }, { checked: false, blocks: [p('Cover')] }] }] })
+      t.select(0, 6)
+      apply(t, input)
+      expect(lineFacts(t.state.doc)[0]!.around, input).toStrictEqual(['taskList', 'ticked'])
+    }
+  })
+
+  it('`7. Album`, then `21. Cover` and `22. Tail`, from the start of Album to the start of Cover: the joined line is 7 and Tail stays 22', () => {
+    const blocks = [numbered(7, [p('Album')]), numbered(21, [p('Cover')], [p('Tail')])]
+    for (const input of INPUTS) {
+      const s = open({ text: '', blocks })
+      s.select(0, 6)
+      expect(checkReplacement(s, input), input).toBeNull()
+      const t = open({ text: '', blocks })
+      t.select(0, 6)
+      apply(t, input)
+      const painted = paintedOf(t.state.doc)
+      expect(painted[0], input).toBe(7)
+      expect(painted[painted.length - 1], `${input}: Tail`).toBe(22)
+    }
+  })
+})
+
+describe('V3: a divider at the edges of what is selected', () => {
+  it('from the start of Album, through a divider, to the start of Cover: the divider goes with Album for Quote on and off, a list kind change and a list off', () => {
+    const s = open({ text: '', blocks: [p('Album'), { type: 'divider' }, p('Cover')] })
+    s.select(0, 6)
+    expect(checkRule(s, 'blockquote')).toBeNull()
+    s.select(0, 6)
+    s.toggleBlock('blockquote')
+    expect(content(s).blocks).toStrictEqual([quote(p('Album'), { type: 'divider' }), p('Cover')])
+    s.select(0, 6)
+    s.toggleBlock('blockquote')
+    expect(content(s).blocks).toStrictEqual([p('Album'), { type: 'divider' }, p('Cover')])
+    const l = open({ text: '', blocks: [list('bulletList', [p('Album'), { type: 'divider' }]), p('Cover')] })
+    l.select(0, 6)
+    l.toggleBlock('orderedList')
+    expect(content(l).blocks).toStrictEqual([list('orderedList', [p('Album'), { type: 'divider' }]), p('Cover')])
+    l.select(0, 6)
+    l.toggleBlock('orderedList')
+    expect(content(l).blocks).toStrictEqual([p('Album'), { type: 'divider' }, p('Cover')])
+    // A divider that begins the item of an unselected line stays with that item.
+    const u = open({ text: '', blocks: [p('Album'), list('bulletList', [{ type: 'divider' }, p('Cover')])] })
+    u.select(0, 6)
+    expect(checkRule(u, 'blockquote')).toBeNull()
+  })
+
+  it('`Review`, then a numbered list whose first item begins with a divider: Numbered list on all gives one list 1 to 3, the divider still in Album\'s item', () => {
+    const blocks = [p('Review'), list('orderedList', [{ type: 'divider' }, p('Album')], [p('Cover')])]
+    const want = [list('orderedList', [p('Review')], [{ type: 'divider' }, p('Album')], [p('Cover')])]
+    const s = open({ text: '', blocks })
+    s.select(0, s.content().text.length)
+    expect(checkRule(s, 'orderedList')).toBeNull()
+    s.select(0, s.content().text.length)
+    s.toggleBlock('orderedList')
+    expect(content(s).blocks).toStrictEqual(want)
+    // Album's item is 2 (its marker is beside the divider that begins it), Cover 3.
+    expect(paintedOf(s.state.doc)).toStrictEqual([1, null, 3])
+    expect(boxCommandContent({ text: '', blocks }, { command: toggleBlockKind('orderedList', { wholeBox: true }) })!.blocks).toStrictEqual(want)
+  })
+})
+
+describe('V4: deciding which dividers travel is one pass', () => {
+  it('Quote off on one line of a quote of 6,400 alternating lines and dividers stays quick', () => {
+    const inner: BlockNode[] = []
+    for (let i = 0; i < 3200; i++) inner.push(p(`l${i}`), { type: 'divider' })
+    const s = open({ text: '', blocks: [quote(...inner)] })
+    s.select(0)
+    const t0 = performance.now()
+    expect(s.toggleBlock('blockquote')).toBe(true)
+    // About 1,000 ms here when every divider rescanned every line; a single pass takes a few milliseconds.
+    expect(performance.now() - t0).toBeLessThan(250)
   })
 })
 

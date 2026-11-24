@@ -1420,3 +1420,117 @@ test('U1: a text without blocks, a blank HTML paragraph pasted over CD, then Z: 
   }
   expect(results).toEqual(['ABZ\nEF', 'ABZ\nEF'])
 })
+
+/** The lines a card shows (its paragraphs, headings and code blocks, in order), as the page has them. */
+const pageLines = (page: Page, selector: string) =>
+  page.evaluate((selector) => {
+    const el = document.querySelector(selector)
+    return el ? Array.from(el.querySelectorAll('p, h1, h2, h3, pre')).map((n) => n.textContent ?? '').join('\n') : null
+  }, selector)
+
+test('V1: every input over a selected divider, at the start, middle and end, in a list item and in a quote: the page, the session and the record agree, through a reload', async ({ page }) => {
+  test.setTimeout(120_000)
+  const div = { type: 'divider' }
+  const shapes: Array<[string, (a: string, c: string) => Block[]]> = [
+    ['start', (a, c) => [div, p(a), p(c)]],
+    ['middle', (a, c) => [p(a), div, p(c)]],
+    ['end', (a, c) => [p(a), p(c), div]],
+    ['list item', (a, c) => [bullets([p(a), div], [p(c)])]],
+    ['quote', (a, c) => [{ type: 'blockquote', blocks: [p(a), div, p(c)] }]],
+  ]
+  const inputs = ['Backspace', 'Delete', 'type', 'paste', 'Enter', 'composition'] as const
+  const cases = shapes.flatMap(([shape, make], si) => inputs.map((input, ii) => ({ shape, input, i: si * inputs.length + ii, make })))
+  const records = cases.map(({ i, make }) => textRec(`d${i}`, 90 + (i % 6) * 150, 40 + Math.floor(i / 6) * 125, { fontSize: 12, width: 120, text: `A${i}x\nC${i}x`, blocks: make(`A${i}x`, `C${i}x`) }))
+  const { errors } = await open(page, records)
+  const cdp = await page.context().newCDPSession(page)
+  const want = (shape: string, input: string, i: number) => {
+    const a = `A${i}x`
+    const c = `C${i}x`
+    const line = input === 'Backspace' || input === 'Delete' ? null : input === 'type' ? 'Z' : input === 'paste' ? 'P' : input === 'Enter' ? '' : '仮名Z'
+    if (line === null) return `${a}\n${c}`
+    if (shape === 'start') return `${line}\n${a}\n${c}`
+    if (shape === 'end') return `${a}\n${c}\n${line}`
+    return `${a}\n${line}\n${c}`
+  }
+  const live: string[] = []
+  for (const { shape, input, i } of cases) {
+    const line = (await page.locator('.scene-layer .scene-text-body p', { hasText: `A${i}x` }).first().boundingBox())!
+    await page.mouse.dblclick(line.x + 4, line.y + line.height / 2)
+    await expect.poll(async () => (await editedText(page))?.focused, { message: `${shape}, ${input}: editing` }).toBe(true)
+    const hr = (await page.locator('.scene-layer [contenteditable="true"].ProseMirror hr').boundingBox())!
+    await page.mouse.click(hr.x + hr.width / 2, hr.y + hr.height / 2)
+    await expect(page.locator('.scene-layer .ProseMirror-selectednode'), `${shape}, ${input}: the divider is selected`).toHaveCount(1)
+    if (input === 'type') await page.keyboard.type('Z')
+    else if (input === 'paste') {
+      await page.evaluate(() => navigator.clipboard.writeText('P'))
+      await page.keyboard.press('Control+v')
+    } else if (input === 'composition') {
+      await cdp.send('Input.imeSetComposition', { text: 'kana', selectionStart: 4, selectionEnd: 4 })
+      await cdp.send('Input.insertText', { text: '仮名' })
+      await page.keyboard.type('Z')
+    } else await page.keyboard.press(input)
+    const expected = want(shape, input, i)
+    // What the page shows is what the session holds, and both are what the input means.
+    await expect.poll(() => pageLines(page, '.scene-layer [contenteditable="true"].ProseMirror'), { message: `${shape}, ${input}: the page` }).toBe(expected)
+    expect((await editedText(page))?.value, `${shape}, ${input}: the session`).toBe(expected)
+    await expect(page.locator('.scene-layer [contenteditable="true"].ProseMirror hr'), `${shape}, ${input}: the divider went`).toHaveCount(0)
+    live.push(expected)
+    await page.keyboard.press('Escape')
+  }
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  await expect(status(page)).toContainText('Saved on this device')
+  const stored = await storedDoc(page)
+  for (const { shape, input, i } of cases) {
+    expect(byId(stored, `d${i}`).text, `${shape}, ${input}: stored`).toBe(live[i])
+    expect(JSON.stringify(byId(stored, `d${i}`).blocks ?? []), `${shape}, ${input}: no divider stored`).not.toContain('divider')
+  }
+  await page.reload()
+  await expect(status(page)).toContainText('Saved on this device')
+  const reloaded = await storedDoc(page)
+  for (const { shape, input, i } of cases) {
+    expect(byId(reloaded, `d${i}`).text, `${shape}, ${input}: stored after a reload`).toBe(live[i])
+    const shown = await page.evaluate((marker) => {
+      const body = Array.from(document.querySelectorAll('.scene-layer .scene-text-body')).find((b) => b.textContent?.includes(marker))
+      return body ? Array.from(body.querySelectorAll('p, h1, h2, h3, pre')).map((n) => n.textContent ?? '').join('\n') : null
+    }, `A${i}x`)
+    expect(shown, `${shape}, ${input}: shown after a reload`).toBe(live[i])
+  }
+  expect(errors).toEqual([])
+})
+
+test('V1: a refused input leaves the page, the session and the selection as they were, a refused composition included', async ({ page }) => {
+  await openBlank(page)
+  await page.evaluate(async () => {
+    const path = '/src/editor/textSession.ts'
+    const { createEditSession } = await import(/* @vite-ignore */ path)
+    const el = document.createElement('div')
+    el.id = 'edit'
+    el.style.whiteSpace = 'pre-wrap'
+    document.body.replaceChildren(el)
+    const s = createEditSession({
+      text: '',
+      blocks: [
+        { type: 'codeBlock', text: 'alpha' },
+        { type: 'orderedList', start: 999999999, items: [{ blocks: [{ type: 'paragraph', content: [{ text: 'beta', italic: true }] }] }, { blocks: [{ type: 'paragraph', content: [{ text: 'next' }] }] }] },
+      ],
+    })
+    ;(window as unknown as { s: unknown }).s = s
+    s.mount(el).focus()
+    s.select(0, 6)
+  })
+  const session = () => page.evaluate(() => {
+    const s = (window as unknown as { s: { content(): { text: string }; selection(): { anchor: number; head: number } } }).s
+    return { text: s.content().text, selection: s.selection() }
+  })
+  const before = await session()
+  expect(before).toMatchObject({ text: 'alpha\nbeta\nnext', selection: { anchor: 0, head: 6 } })
+  await page.keyboard.type('XYZ')
+  expect(await session()).toEqual(before)
+  expect(await pageLines(page, '#edit')).toBe(before.text)
+  // A composition over it: refused whole, its candidate gone from the page when it ends.
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.imeSetComposition', { text: 'か', selectionStart: 1, selectionEnd: 1 })
+  await cdp.send('Input.insertText', { text: '仮' })
+  await expect.poll(() => pageLines(page, '#edit')).toBe(before.text)
+  expect((await session()).text).toBe(before.text)
+})
