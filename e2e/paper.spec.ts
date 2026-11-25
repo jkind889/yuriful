@@ -43,6 +43,9 @@ interface PaperProbe {
   proxy: (id: string) => { width: number; height: number; angle: number; left: number; top: number } | null
   preview: (frameId: string) => Promise<string>
   history: () => number
+  selectAll: () => void
+  /** What saving would store for an object right now (during a gesture too). */
+  record: (id: string) => Record<string, unknown> & { id: string }
 }
 declare global {
   interface Window {
@@ -67,7 +70,7 @@ async function installProbe(page: Page) {
       response,
       body: `
       import { Editor as PaperEditor } from '/src/editor/Editor.ts'
-      import { idOf as paperIdOf } from '/src/editor/objects.ts'
+      import { idOf as paperIdOf, toRecord as paperToRecord } from '/src/editor/objects.ts'
       const paperInit = PaperEditor.prototype.init
       PaperEditor.prototype.init = function () {
         const ed = this
@@ -93,6 +96,8 @@ async function installProbe(page: Page) {
             return tour.renderFrame(frameId, new AbortController().signal)
           },
           history: () => ed.history.index,
+          selectAll: () => ed.selectAll(),
+          record: (id) => paperToRecord(ed.canvas.getObjects().find((x) => paperIdOf(x) === id)),
         }
         return paperInit.call(this)
       }
@@ -730,5 +735,196 @@ test('an attached caption’s sheet stays against its image when paper is toggle
   const g1 = await glyphs(page, 'cap')
   expect(Math.abs(g1[0]![1]! - g0[0]![1]! - PAD_Y_EM * 18)).toBeLessThanOrEqual(0.5)
   expect(byId(await storedDoc(page), 'cap')).toMatchObject({ captionOf: 'img', captionPosition: 0.5 })
+  expect(errors).toEqual([])
+})
+
+// ---- the second review's faults ---------------------------------------------------------------------
+
+/** One line of every kind, nested lists three deep among them; in the order they are shown. */
+const ALL_LINES: Block[] = [
+  { type: 'heading', level: 2, content: [{ text: 'Heading line' }] },
+  { type: 'bulletList', items: [{ blocks: [p('Parent'), { type: 'bulletList', items: [{ blocks: [p('Nested item'), { type: 'bulletList', items: [{ blocks: [p('Third deep')] }] }] }] }] }] },
+  { type: 'taskList', items: [{ checked: true, blocks: [p('Ticked')] }, { checked: false, blocks: [p('Open')] }] },
+  { type: 'blockquote', blocks: [p('Quoted')] },
+  { type: 'blockquote', blocks: [{ type: 'bulletList', items: [{ blocks: [p('Quote list')] }] }] },
+  { type: 'codeBlock', text: 'code one\ncode two' },
+  p(),
+  { type: 'divider' },
+  p('After divider'),
+]
+/** The plain text's lines (a code block's lines are lines of it; a divider is none). */
+const ALL_LINE_TEXTS = ['Heading line', 'Parent', 'Nested item', 'Third deep', 'Ticked', 'Open', 'Quoted', 'Quote list', 'code one', 'code two', '', 'After divider']
+const startOfLine = (k: number) => ALL_LINE_TEXTS.slice(0, k).reduce((a, l) => a + l.length + 1, 0)
+
+/** A page point in a box's own coordinates (the inverse of `local`). */
+async function toLocal(page: Page, box: { left: number; top: number; angle: number }, clientX: number, clientY: number) {
+  const view = (await probe(page)).viewport
+  const host = (await page.locator('.canvas-host').boundingBox())!
+  const sx = (clientX - host.x - view.panX) / view.zoom - box.left
+  const sy = (clientY - host.y - view.panY) / view.zoom - box.top
+  const a = (box.angle * Math.PI) / 180
+  return { x: sx * Math.cos(a) + sy * Math.sin(a), y: -sx * Math.sin(a) + sy * Math.cos(a) }
+}
+
+/** The centre on the page of every line of the text `t` (and of its divider), in order, edited or not. */
+const shownLines = (page: Page) =>
+  page.evaluate(() => {
+    const root = document.querySelector('.scene-text[data-id="t"] > .scene-text-body')!
+    const out: Array<{ text: string; x: number; y: number; divider?: true }> = []
+    const centre = (r: DOMRect) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 })
+    for (const el of Array.from(root.querySelectorAll('p, h1, h2, h3, pre, hr'))) {
+      if (el.tagName === 'HR') out.push({ text: '', ...centre(el.getBoundingClientRect()), divider: true })
+      else if (el.tagName !== 'PRE') out.push({ text: el.textContent ?? '', ...centre(el.getBoundingClientRect()) })
+      else {
+        const node = document.createTreeWalker(el, NodeFilter.SHOW_TEXT).nextNode() as Text
+        let from = 0
+        for (const line of node.data.split('\n')) {
+          const range = document.createRange()
+          range.setStart(node, from)
+          range.setEnd(node, from + line.length)
+          out.push({ text: line, ...centre(range.getBoundingClientRect()) })
+          from += line.length + 1
+        }
+      }
+    }
+    return out
+  })
+
+const PLACEMENTS = [
+  { name: 'upright', angle: 0, fixed: false },
+  { name: 'turned 25°', angle: 25, fixed: false },
+  { name: 'scrolled', angle: 0, fixed: true },
+  { name: 'scrolled and turned 115°', angle: 115, fixed: true },
+] as const
+
+for (const align of [undefined, 'center', 'right'] as const) {
+  for (const zoom of [0.5, 1, 2]) {
+    for (const placement of PLACEMENTS) {
+      test(`a margin press lands on the line level with it, at its start (left) or end (right), for every kind of line (${align ?? 'left'}, zoom ${zoom}, ${placement.name})`, async ({ page }) => {
+        const W = 300
+        const H = placement.fixed ? 260 : 420 // about the whole text when it grows
+        const a = (placement.angle * Math.PI) / 180
+        const cx = 200 + (W / 2) * Math.cos(a) - (H / 2) * Math.sin(a)
+        const cy = 150 + (W / 2) * Math.sin(a) + (H / 2) * Math.cos(a)
+        const rec = textRec('t', 200, 150, { surface: 'card', text: 'x', blocks: ALL_LINES, width: W, angle: placement.angle, ...(align && { align }), ...(placement.fixed && { height: H }) })
+        const { errors } = await open(page, [rec], { view: { zoom, panX: Math.round(640 - zoom * cx), panY: Math.round(400 - zoom * cy) } })
+        const into = (await shownLines(page)).find((l) => l.text === 'Heading line')!
+        if (placement.fixed) {
+          const mid = await local(page, rec, W / 2, H / 2)
+          await page.mouse.move(mid.x, mid.y)
+          await page.mouse.wheel(0, 90 * zoom)
+          await page.waitForTimeout(1000) // the thumb fades: a press in the right margin is the sheet's
+        }
+        // Into the words: the line nearest the middle of what is shown.
+        let target = into
+        if (placement.fixed) {
+          let best = Infinity
+          for (const l of await shownLines(page)) {
+            if (l.divider || l.text === '') continue
+            const d = Math.abs((await toLocal(page, rec, l.x, l.y)).y - H / 2)
+            if (d < best) [best, target] = [d, l]
+          }
+        }
+        await page.mouse.dblclick(target.x, target.y)
+        await expect.poll(async () => (await editedText(page))?.value.split('\n')).toEqual(ALL_LINE_TEXTS)
+        await page.waitForTimeout(NOT_A_DOUBLE_CLICK_MS)
+        const host = (await page.locator('.canvas-host').boundingBox())!
+        let pressed = 0
+        // Each line in turn, left margin then right: far apart, so no two presses make a double-click.
+        for (let k = 0; k <= ALL_LINE_TEXTS.length; k++) {
+          for (const side of ['left', 'right'] as const) {
+            const lines = await shownLines(page)
+            const words = lines.filter((l) => !l.divider)
+            const line = k < ALL_LINE_TEXTS.length ? words[k]! : lines.find((l) => l.divider)!
+            const at = await toLocal(page, rec, line.x, line.y)
+            // Only lines well inside what is shown (the caret's reveal would scroll for one near a fade).
+            if (placement.fixed && (at.y < 13.5 + 32 || at.y > H - 13.5 - 32)) continue
+            const point = await local(page, rec, side === 'left' ? 9 : W - 9, at.y)
+            if (point.x < host.x + 10 || point.x > host.x + host.width - 10 || point.y < host.y + 10 || point.y > host.y + host.height - 10) continue
+            const onBoard = await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.canvas-host'), point)
+            if (!onBoard) continue
+            await page.mouse.click(point.x, point.y)
+            const what = `${side} margin beside ${line.divider ? 'the divider' : JSON.stringify(line.text)}`
+            if (line.divider) {
+              // The nearest line with words: the empty line above it, or the line below.
+              const above = startOfLine(10)
+              const below = startOfLine(11)
+              const ends = side === 'left' ? [above, below] : [above, below + ALL_LINE_TEXTS[11]!.length]
+              await expect.poll(async () => { const e = await editedText(page); return e?.start === e?.end && ends.includes(e!.start!) }, { message: what }).toBe(true)
+            } else {
+              const at0 = startOfLine(k) + (side === 'left' ? 0 : ALL_LINE_TEXTS[k]!.length)
+              await expect.poll(() => editedText(page), { message: what }).toMatchObject({ start: at0, end: at0, focused: true })
+            }
+            pressed++
+          }
+        }
+        expect(pressed).toBeGreaterThanOrEqual(placement.fixed ? 6 : 10)
+        expect((await probe(page)).editing).toBe(true)
+        expect(errors).toEqual([])
+      })
+    }
+  }
+}
+
+test('the reviewer’s case: the left margin beside a nested item, typed into, puts the typing at its start', async ({ page }) => {
+  const rec = textRec('t', 100, 80, { surface: 'card', text: 'x', blocks: [{ type: 'bulletList', items: [{ blocks: [p('Parent'), { type: 'bulletList', items: [{ blocks: [p('Nested item')] }] }] }] }], width: 300 })
+  const { errors } = await open(page, [rec])
+  const parent = (await shownLines(page)).find((l) => l.text === 'Parent')!
+  await page.mouse.dblclick(parent.x, parent.y)
+  await expect.poll(async () => (await editedText(page))?.focused).toBe(true)
+  await page.waitForTimeout(NOT_A_DOUBLE_CLICK_MS)
+  const nested = (await shownLines(page)).find((l) => l.text === 'Nested item')!
+  const at = await toLocal(page, rec, nested.x, nested.y)
+  const margin = await local(page, rec, 9, at.y)
+  await page.mouse.click(margin.x, margin.y)
+  await page.keyboard.type('X')
+  await page.keyboard.press('Escape')
+  const doc = await storedWhen(page, (d) => JSON.stringify(byId(d, 't').blocks).includes('XNested item'))
+  expect(JSON.stringify(byId(doc, 't').blocks)).toContain('"Parent"')
+  expect(errors).toEqual([])
+})
+
+test('a turned text loaded with a fixed height below its least one keeps it when another text changes', async ({ page }) => {
+  const recs = [3, 70].flatMap((angle, i) => [
+    textRec(`bare${angle}`, 100 + i * 500, 100, { text: 'I', fontSize: 64, width: 400, height: 72, angle }),
+    textRec(`paper${angle}`, 100 + i * 500, 400, { text: 'I', fontSize: 64, width: 400, height: 72, angle, surface: 'card' }),
+  ])
+  const other = textRec('other', 100, 700, { text: 'another text' })
+  const { errors } = await open(page, [...recs, other])
+  // Drawn at the least one (96 bare, 192 on paper)…
+  expect((await page.evaluate(() => window.__paper.proxy('bare3')))!.height).toBeCloseTo(96, 2)
+  expect((await page.evaluate(() => window.__paper.proxy('paper70')))!.height).toBeCloseTo(192, 2)
+  // …and stored as they were, after another text is changed and the board saved.
+  await selectById(page, 'other')
+  await paperButton(page).click()
+  const doc = await storedWhen(page, (d) => byId(d, 'other').surface === 'card')
+  for (const rec of recs) expect(byId(doc, rec.id), rec.id).toEqual(rec)
+  expect(errors).toEqual([])
+})
+
+test('scaling a selection of a bare and a paper text at their least fixed heights holds both heights, during the drag and after it', async ({ page }) => {
+  const bare = textRec('bare', 100, 100, { text: 'one', fontSize: 24, width: 200, height: 36 })
+  const paper = textRec('paper', 360, 100, { text: 'two', fontSize: 24, width: 200, height: 72, surface: 'card' })
+  const { errors } = await open(page, [bare, paper])
+  await page.evaluate(() => window.__paper.selectAll())
+  await expect.poll(async () => (await probe(page)).selected.sort()).toEqual(['bare', 'paper'])
+  const least = (fontSize: number, onPaper: boolean) => Math.round(fontSize * 1.5) + (onPaper ? 2 * (Math.round(fontSize * 0.75 * 100) / 100) : 0)
+  const br = await handle(page, 'br')
+  const tl = await handle(page, 'tl')
+  await page.mouse.move(br.x, br.y)
+  await page.mouse.down()
+  // About 1.9% larger: the heights scaled alone (36.64 and 73.27) fall just under the least ones (37 and 73.64).
+  await page.mouse.move(tl.x + (br.x - tl.x) * 1.019, tl.y + (br.y - tl.y) * 1.019, { steps: 6 })
+  const during = await page.evaluate(() => [window.__paper.record('bare'), window.__paper.record('paper')])
+  for (const [rec, onPaper] of [[during[0]!, false], [during[1]!, true]] as const) {
+    expect(rec.fontSize, 'scaled').not.toBe(24)
+    expect(rec.height, `${rec.id} during the drag`).toBeGreaterThanOrEqual(least(rec.fontSize as number, onPaper))
+  }
+  await page.mouse.up()
+  const doc = await storedWhen(page, (d) => byId(d, 'bare').fontSize !== 24 && byId(d, 'paper').fontSize !== 24)
+  for (const [id, onPaper] of [['bare', false], ['paper', true]] as const) {
+    const rec = byId(doc, id)
+    expect(rec.height, `${id} after the drag`).toBeGreaterThanOrEqual(least(rec.fontSize as number, onPaper))
+  }
   expect(errors).toEqual([])
 })

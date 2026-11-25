@@ -693,9 +693,9 @@ export class DomTextAdapter implements TextAdapter {
   }
 
   /**
-   * The text offset under a page point, or under the nearest point in the words' own box when it
-   * falls outside them (the box's edge, a paper's padding); failing that, under the point moved a
-   * little toward the box's centre. Read beneath the items in front of
+   * The text offset under a page point, or, when it falls beside the words (the box's edge, a paper's
+   * padding, a line's indentation), on the line level with it (`pointOnNearestLine`); failing that,
+   * under the point moved a little toward the box's centre. Read beneath the items in front of
    * the card, which otherwise take the point.
    */
   private offsetNear(edit: LiveEdit, view: EditorView, at: ClientPoint): number | null {
@@ -708,9 +708,8 @@ export class DomTextAdapter implements TextAdapter {
   }
 
   private offsetNearShown(edit: LiveEdit, view: EditorView, at: ClientPoint): number | null {
-    // The nearest point in the words' own box: beside a line, its start or end; above or below the
-    // words, the first or last line shown.
-    const near = this.scene.layer.nearestInWords(edit.id, at.clientX, at.clientY)
+    // The line level with the press (or the nearest shown), then its start or end.
+    const near = this.pointOnNearestLine(edit, view, at)
     const pos = near && posAt(view, near)
     if (pos !== null && pos !== undefined) return textOffsetAt(edit.session.state.doc, pos, -1)
     const ctr = edit.target.getCenterPoint()
@@ -728,6 +727,52 @@ export class DomTextAdapter implements TextAdapter {
       if (pos !== null) return textOffsetAt(edit.session.state.doc, pos, -1)
     }
     return null
+  }
+
+  /**
+   * A point of the page on the line a press beside the words belongs to, as near the press as that
+   * line allows: the line (a paragraph, heading, list or checklist item's paragraph, a code block, an
+   * empty line; never a divider) whose height, in the card's own coordinates, holds the press, or the
+   * nearest one above or below it, among the lines shown; then the press is brought inside that line's
+   * own box, which starts after any indentation. So a press left of a line lands at its start, right
+   * of it at its end, above or below the words on the first or last line shown; a wrapped line's
+   * press lands on the row level with it. Null when the card or its lines cannot be read.
+   */
+  private pointOnNearestLine(edit: LiveEdit, view: EditorView, at: ClientPoint): ClientPoint | null {
+    const layer = this.scene.layer
+    const press = layer.toCard(edit.id, at.clientX, at.clientY)
+    const shown = layer.wordsBox(edit.id)
+    if (!press || !shown || shown.bottom <= shown.top) return null
+    const z = this.host.canvas.viewportTransform[0] || 1
+    const inset = Math.max(1, 1 / z) // a screen pixel (and at least a unit) inside an edge
+    const y = clamp(press.y, shown.top + inset, shown.bottom - inset)
+    let best: { left: number; top: number; right: number; bottom: number } | null = null
+    let bestGap = Infinity
+    for (const { pos } of textblocksOf(view.state.doc)) {
+      const dom = view.nodeDOM(pos)
+      if (!(dom instanceof HTMLElement)) continue
+      // A code block's lines are in its `code`, inside the block's padding.
+      const el = dom.tagName === 'PRE' && dom.firstElementChild instanceof HTMLElement ? dom.firstElementChild : dom
+      const w = el.offsetWidth
+      const h = el.offsetHeight
+      if (!w || !h) continue
+      // Its centre on the page is its centre in the card, however the card is turned; its size is its own layout size.
+      const r = el.getBoundingClientRect()
+      const c = layer.toCard(edit.id, r.left + r.width / 2, r.top + r.height / 2)
+      if (!c) continue
+      const box = { left: c.x - w / 2, top: Math.max(c.y - h / 2, shown.top), right: c.x + w / 2, bottom: Math.min(c.y + h / 2, shown.bottom) }
+      if (box.bottom <= box.top) continue // scrolled out of sight
+      const gap = y < box.top ? box.top - y : y > box.bottom ? y - box.bottom : 0
+      if (gap < bestGap) {
+        best = box
+        bestGap = gap
+        if (gap === 0) break
+      }
+    }
+    if (!best) return null
+    const ix = Math.min(inset, (best.right - best.left) / 2)
+    const iy = Math.min(inset, (best.bottom - best.top) / 2)
+    return layer.fromCard(edit.id, clamp(press.x, best.left + ix, best.right - ix), clamp(y, best.top + iy, best.bottom - iy))
   }
 
   dispose() {

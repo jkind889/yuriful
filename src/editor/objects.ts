@@ -344,12 +344,28 @@ export function centerOf(obj: FabricObject): Point {
  * Nothing is clamped here: a value is whatever the canvas shows. Quantities that must
  * be positive are rounded so that they can never become zero.
  */
+/**
+ * How far from 1 a decomposed scale may be and still be read as exactly 1. Taking a turned object's
+ * matrix apart (`qrDecompose`, through a selection's matrix too) leaves a scale a few units in the
+ * last place off 1 (0.9999999999999999 at 3° or 70°: about 1e-16, and below 1e-12 through any matrix
+ * product here), which would read an unscaled object as scaled and change its record (a fixed height
+ * held to its least one). A real scale cannot come that close: Fabric sets it from pointer
+ * positions, and the least pointer step over the largest box on screen is still about 1e-7 of its
+ * size. Anything a scale this small could change is rounded away in the record anyway.
+ */
+const UNIT_SCALE_TOLERANCE = 1e-9
+const absoluteScale = (v: number) => {
+  const a = Math.abs(v)
+  return Math.abs(a - 1) < UNIT_SCALE_TOLERANCE ? 1 : a
+}
+
 export function toRecord(obj: FabricObject): ObjectRecord | null {
   const m = meta.get(obj)
   if (!m || m.kind === 'frame') return null
   const d = util.qrDecompose(obj.calcTransformMatrix())
-  const sx = Math.abs(d.scaleX)
-  const sy = Math.abs(d.scaleY)
+  // An object nothing scaled reads as scale 1 exactly, however it is turned: reading it gives back its record.
+  const sx = absoluteScale(d.scaleX)
+  const sy = absoluteScale(d.scaleY)
   // translateX/Y is the object's centre; convert to its (unrotated) top-left.
   const [ox, oy] = rotate((obj.width * sx) / 2, (obj.height * sy) / 2, d.angle)
   const base = { id: m.id, left: round(d.translateX - ox), top: round(d.translateY - oy), angle: round(d.angle) }
@@ -437,8 +453,8 @@ export function toFrameRecord(obj: FabricObject): FrameRecord | null {
   const m = meta.get(obj)
   if (!m || m.kind !== 'frame') return null
   const d = util.qrDecompose(obj.calcTransformMatrix())
-  const width = obj.width * Math.abs(d.scaleX)
-  const height = obj.height * Math.abs(d.scaleY)
+  const width = obj.width * absoluteScale(d.scaleX)
+  const height = obj.height * absoluteScale(d.scaleY)
   return {
     id: m.id,
     name: m.name ?? '',

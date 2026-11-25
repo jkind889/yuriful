@@ -1451,23 +1451,24 @@ export class SceneLayer {
   }
 
   /**
-   * The point of the page nearest to (clientX, clientY) inside the words' own box of a text card, as
-   * shown now (inside a paper's padding, and the visible part of a fixed-height text), a little in
-   * from its edges: a press beside the words maps to the start of the line it is level with (left),
-   * its end (right), or the first or last line shown (above, below). Worked out in the card's own
-   * coordinates, so a turned or zoomed card is handled the same. Null when there is no such card.
+   * The words' own box of a text card as shown now, in the card's own coordinates (see `toCard`):
+   * inside a paper's padding, and only the visible part of a fixed-height text. Null when there is no
+   * such card.
    */
-  nearestInWords(id: string, clientX: number, clientY: number): { clientX: number; clientY: number } | null {
+  wordsBox(id: string): { left: number; top: number; right: number; bottom: number } | null {
     const item = this.items.get(id)
     const body = item && this.textBody(item)
-    const local = body ? this.toCard(id, clientX, clientY) : null
-    if (!item || !body || !local) return null
+    if (!item || !body) return null
     const pad = item.pad ?? { x: 0, y: 0 }
-    const z = this.view.zoom || 1
-    const inset = Math.min(1 / z, body.clientWidth / 2, body.clientHeight / 2) // about a screen pixel in
-    const x = Math.min(Math.max(local.x, pad.x + inset), pad.x + body.clientWidth - inset)
-    const y = Math.min(Math.max(local.y, pad.y + inset), pad.y + body.clientHeight - inset)
+    return { left: pad.x, top: pad.y, right: pad.x + body.clientWidth, bottom: pad.y + body.clientHeight }
+  }
+
+  /** A point in a card's own coordinates (see `toCard`) on the page: the inverse of `toCard`. */
+  fromCard(id: string, x: number, y: number): { clientX: number; clientY: number } | null {
+    const item = this.items.get(id)
+    if (!item) return null
     const r = this.root.getBoundingClientRect()
+    const z = this.view.zoom || 1
     const [a, b, c, d, e, f] = item.matrix
     return { clientX: r.left + this.view.panX + z * (a * x + c * y + e), clientY: r.top + this.view.panY + z * (b * x + d * y + f) }
   }
