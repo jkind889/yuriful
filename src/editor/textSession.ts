@@ -54,6 +54,9 @@ import {
   typedMarks,
   replacedRange,
   settleReplacement,
+  restOfEndItem,
+  restOfEndList,
+  inMono,
   pasteBlocks,
   replaceDocument,
   selectionOnCharacters,
@@ -300,7 +303,9 @@ export function clipboardSlice(slice: Slice, selection: Selection, baseFont: Fon
   }
   slice = new Slice(withFonts(slice.content, false), slice.openStart, slice.openEnd)
   const { $from, $to } = selection
-  if ($from.parent.isTextblock && $from.sameParent($to)) return slice
+  // Inside a code block each code line is a line: a selection over code lines is a copy across lines.
+  const overCodeLines = $from.parent.type.spec.code === true && $from.sameParent($to) && $from.parent.textBetween($from.parentOffset, $to.parentOffset).includes('\n')
+  if ($from.parent.isTextblock && $from.sameParent($to) && !overCodeLines) return slice
   if (slice.openStart !== $from.depth) return slice // not a selection's own content (with its parents): left as it is
   let unstorable = false
   const edge = (frag: Fragment, d: number): Fragment => {
@@ -335,7 +340,15 @@ export function clipboardSlice(slice: Slice, selection: Selection, baseFont: Fon
     })
     return new Slice(Fragment.fromArray(lines), 0, 0)
   }
-  const open = [$from.parent.isTextblock && $from.parentOffset > 0 ? 'open-start' : '', $to.parent.isTextblock && $to.parentOffset < $to.parent.content.size ? 'open-end' : ''].filter(Boolean)
+  // An edge inside its line (a code line, in a code block) is open.
+  const inside = ($p: ResolvedPos, start: boolean) => {
+    if (!$p.parent.isTextblock) return false
+    const text = $p.parent.textContent
+    const offset = $p.parentOffset
+    if (start ? offset === 0 : offset === text.length) return false
+    return !$p.parent.type.spec.code || text[start ? offset - 1 : offset] !== '\n'
+  }
+  const open = [inside($from, true) ? 'open-start' : '', inside($to, false) ? 'open-end' : ''].filter(Boolean)
   copyEdges = open.join(' ')
   return new Slice(closed, 0, 0)
 }
@@ -370,6 +383,8 @@ export class EditSession {
   private done = false
   /** True while ProseMirror serializes a drag's slice (`dragstart`), which is not a copy. */
   private draggingOut = false
+  /** Where the last cut left the rest of the item it ended in (`restOfEndItem`), with the text and caret it left. */
+  private lastCut: { doc: PMNode; caret: number; rest?: number; restList?: number } | null = null
   private composingHeadless = false
   /**
    * Everything the session holds that a composition can change (its state, history included, the
@@ -678,6 +693,11 @@ export class EditSession {
     else if (tr.getMeta('uiEvent') === 'cut') input = { kind: 'delete' }
     else return tr
     const settled = settleReplacement(this.current, tr, input, (doc) => !exceedsBounds(doc, this.baseFont))
+    if (tr.getMeta('uiEvent') === 'cut' && settled) {
+      const rest = restOfEndItem(this.current, settled.mapping)
+      const restList = restOfEndList(this.current, settled.mapping)
+      this.lastCut = rest === undefined && restList === undefined ? null : { doc: settled.doc, caret: settled.selection.from, rest, restList }
+    }
     if (settled === tr || settled === null) return settled
     // Made again: with the metadata the replacement carried (what it replaced, a paste, a composition id...).
     for (const [key, value] of Object.entries((tr as unknown as { meta: Record<string, unknown> }).meta)) settled.setMeta(key, value)
@@ -1278,10 +1298,13 @@ export class EditSession {
       this.dispatch(closeHistory(this.current.tr))
       const done = this.pasteNow(data)
       if (this.current.doc.eq(was.doc)) {
-        // Refused (or it put back exactly what it replaced): the record, the selection and how the
-        // typing around it groups for undo stay exactly as they were.
+        // The record is as it was. Refused (nothing moved either): the selection and how the typing around
+        // it groups for undo stay exactly as they were. Accepted (the same characters went in): the caret
+        // goes after them, with no undo step, since nothing changed.
+        const sel = this.current.selection
         this.current = was
         this.mounted?.view.updateState(was)
+        if (!sel.eq(was.selection)) this.dispatch(was.tr.setSelection(selectionAt(was.doc, sel.anchor, sel.head)).setMeta('addToHistory', false))
         return done
       }
       this.dispatch(closeHistory(this.current.tr))
@@ -1313,7 +1336,8 @@ export class EditSession {
       const words = read.blocks.some((b) => b.type === 'paragraph' && (b.content ?? []).some((r) => r.text !== ''))
       if (read.plain && data.text && words) return this.pastePlainText(data.text, true)
       const structural = read.blocks.some((b) => b.type !== 'paragraph' || (b.content ?? []).some((r) => r.font !== undefined || r.code === true))
-      if (structural) return this.pasteHtmlBlocks(read, data)
+      // (Yuriful's own copy always follows the copy-and-paste rule, even lines with no marks at all.)
+      if (structural || read.own) return this.pasteHtmlBlocks(read, data)
       // Only lines with bold, italic, underline or strikethrough: as before.
       const body = new DOMParser().parseFromString(sanitizePastedHTML(data.html), 'text/html').body
       const slice = this.arriving(pasteParser.parseSlice(body, { context: sel.$from }), this.destinationFont(this.current))
@@ -1411,6 +1435,12 @@ export class EditSession {
     if (!canonical) return null
     const tr = state.selection.empty ? state.tr : settleReplacement(state, state.tr.deleteSelection(), { kind: 'delete' }, valid)
     if (!tr) return null
+    // The rest of the item the text after the caret came from: the selection's end item (pasted over), or
+    // the end item of the cut that left this caret, when nothing has changed since.
+    const cut = this.lastCut
+    const fresh = cut && cut.doc.eq(state.doc) && cut.caret === state.selection.from ? cut : null
+    const continuesInto = !state.selection.empty ? restOfEndItem(state, tr.mapping) : fresh?.rest
+    const continuesList = !state.selection.empty ? restOfEndList(state, tr.mapping) : fresh?.restList
     const at = EditorState.create({ doc: tr.doc, selection: TextSelection.create(tr.doc, tr.selection.from) })
     const intoHeading = at.selection.$from.parent.type === nodes.heading
     let blocksIn = docFromBlocks(canonical).content
@@ -1421,10 +1451,11 @@ export class EditSession {
         if (!run && n.isTextblock) run = n
         return !run
       })
-      blocksIn = Fragment.from(nodes.paragraph.create(null, (run as PMNode | null)?.content ?? Fragment.empty))
+      const words = (run as PMNode | null)?.content ?? Fragment.empty
+      blocksIn = Fragment.from(nodes.paragraph.create(null, (run as PMNode | null)?.type.spec.code ? inMono(words) : words))
     }
     const content = this.pasteMarks(blocksIn, state, inline && fromHeading && !intoHeading, ownFonts)
-    const placed = pasteBlocks(at, content, { inline, ...edges })
+    const placed = pasteBlocks(at, content, { inline, ...edges, ...(continuesInto !== undefined && edges.own ? { continuesInto } : {}), ...(continuesList !== undefined && edges.own ? { continuesList } : {}) })
     if (!placed) return null
     for (const step of placed.steps) tr.step(step)
     tr.setSelection(TextSelection.create(tr.doc, placed.selection.anchor, placed.selection.head))

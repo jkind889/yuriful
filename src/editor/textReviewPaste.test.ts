@@ -569,12 +569,12 @@ describe('P1: a cut across lines pastes back where it was; its partial lines joi
     const shapes: Array<[string, BlockNode[], number, number]> = [
       ['inside one line', [p('Album cover')], 2, 7],
       ['two paragraphs of one ticked item', [tasks([true, [p('First'), p('Second')]])], 2, 9],
-      ['an unticked item into a ticked one', [tasks([false, [p('First')]], [true, [p('Second')]])], 2, 9],
+      ['a ticked item into an unticked one', [tasks([true, [p('First')]], [false, [p('Second')]])], 2, 9],
       ['inside one code block, across its lines', [code('alpha\nbeta\ngamma')], 2, 13],
       ['whole lines between, in a list', [numbered(3, [p('one')], [p('two')], [p('three')])], 1, 11],
       ['out of a quote and back into it', [quote(p('First')), p('Between'), quote(p('Second'))], 2, 17],
       // A cut deletes as Delete does (the line the selection starts on keeps its blocks and tick):
-      ['from the start of an unticked item into a ticked one', [tasks([false, [p('gh')]], [true, [hr, p('ij k')]])], 0, 4],
+      ['from the start of a ticked item into an unticked one', [tasks([true, [p('gh')]], [false, [hr, p('ij k')]])], 0, 4],
       ['from the start of an item after a code block, into the next item', [code('alpha'), numbered(7, [p('beta')], [p('next')])], 6, 14],
     ]
     for (const [name, blocks, a, b] of shapes) {
@@ -582,6 +582,10 @@ describe('P1: a cut across lines pastes back where it was; its partial lines joi
       expect(stored(s), name).toStrictEqual(before)
       done()
     }
+    // The listed exception: a cut that ends inside a ticked item brings that item back unticked (rule 6).
+    const { s, done } = cutAndPasteBack([tasks([false, [p('First')]], [true, [p('Second')]])], 2, 9)
+    expect(stored(s).blocks).toStrictEqual([tasks([false, [p('First')]], [false, [p('Second')]])])
+    done()
   })
 
   it('the same clipboard elsewhere: the partial first line joins the words before the caret, the partial last line the words after it, in the kind of the line they join; whole lines between arrive as their blocks', () => {
@@ -600,15 +604,19 @@ describe('P1: a cut across lines pastes back where it was; its partial lines joi
 })
 
 describe('P2: a word copied from a code line pastes as words', () => {
-  it('"note" from "const note = 1;" pasted into "Review" after "Rev": one line, plain words; lines of code copied together stay a code block', () => {
+  it('"note" from "const note = 1;" pasted into "Review" after "Rev": one line, the word in the Mono font it was shown in (rule 1); part-lines of code join the lines they are pasted into, whole code lines stay a code block (rules 3, 4)', () => {
     const word = copyText([code('const note = 1;')], 6, 10)
     const s = open({ text: 'Review' }, { caret: 3 })
     s.paste(word)
-    expect(stored(s)).toStrictEqual({ text: 'Revnoteiew' })
-    const lines = copyText([code('const a\nconst b')], 2, 12)
+    expect(stored(s)).toStrictEqual({ text: 'Revnoteiew', spans: [{ start: 3, end: 7, font: 'mono' }] })
+    const parts = copyText([code('const a\nconst b')], 2, 12)
     const t = open({ text: 'Review' }, { caret: 3 })
-    t.paste(lines)
-    expect(stored(t).blocks).toStrictEqual([p('Rev'), code('nst a\ncons'), p('iew')])
+    t.paste(parts)
+    expect(stored(t)).toStrictEqual({ text: 'Revnst a\nconsiew', spans: [{ start: 3, end: 13, font: 'mono' }] })
+    const whole = copyText([p('top'), code('const a\nconst b'), p('end')], 2, 22)
+    const u = open({ text: 'Review' }, { caret: 3 })
+    u.paste(whole)
+    expect(stored(u).blocks).toStrictEqual([p('Revp'), code('const a\nconst b'), p('eniew')])
   })
 })
 
@@ -719,5 +727,135 @@ describe('P6: a refused paste leaves the undo grouping as it was', () => {
     type(s, 'B')
     s.undo()
     expect(stored(s).text).toBe('note')
+  })
+})
+
+describe("Q1: a paste that was accepted and changed nothing is not a refusal", () => {
+  it('select evi in Review, copy, paste over it, type !: Revi!ew; the paste is no undo step, as nothing changed', () => {
+    const s = open({ text: 'Review' })
+    const clip = copyText([p('Review')], 1, 4)
+    s.select(1, 4)
+    expect(s.paste(clip)).toBe(true)
+    expect(s.selection()).toMatchObject({ from: 4, to: 4 })
+    expect(s.canUndo).toBe(false)
+    type(s, '!')
+    expect(stored(s)).toStrictEqual({ text: 'Revi!ew' })
+  })
+
+  it('a refused paste over a selection (over the length bound, in a quote) leaves the selection as it was, and no undo step', () => {
+    const s = open({ text: '', blocks: [quote(p('Review'))] })
+    s.select(1, 4)
+    s.paste({ text: 'x'.repeat(MAX_TEXT_LENGTH + 1) })
+    expect(s.selection()).toMatchObject({ from: 1, to: 4 })
+    expect(stored(s).blocks).toStrictEqual([quote(p('Review'))])
+    expect(s.canUndo).toBe(false)
+  })
+})
+
+describe("the copy-and-paste rule for Yuriful's own copies, rule by rule (the coordinator's examples)", () => {
+  it('rule 1: a whole line copied from a numbered item is its words, with their marks', () => {
+    const clip = copyText([numbered(5, [p('North', { italic: true })], [p('South')])], 0, 5)
+    const s = open({ text: 'LR' }, { caret: 1 })
+    s.paste(clip)
+    expect(stored(s)).toStrictEqual({ text: 'LNorthR', spans: [{ start: 1, end: 6, italic: true }] })
+  })
+
+  it('rules 2 and 3: t a and let, copied from inside two code lines and pasted between L and R in prose, give Lt a and letR, two prose lines in Mono', () => {
+    const clip = copyText([code('const a\nlet b')], 4, 11)
+    const s = open({ text: 'LR' }, { caret: 1 })
+    s.paste(clip)
+    const c = stored(s)
+    expect(c.blocks).toBeUndefined()
+    expect(c.text).toBe('Lt a\nletR')
+    expect(c.spans).toStrictEqual([{ start: 1, end: 8, font: 'mono' }])
+  })
+
+  it('rule 4: North through So, from a list starting at 5, between L and R: L, the numbered item 5. North, SoR; the caret after So (rule 7)', () => {
+    const clip = copyText([numbered(5, [p('North')], [p('South')])], 0, 8)
+    const s = open({ text: 'LR' }, { caret: 1 })
+    s.paste(clip)
+    expect(stored(s).blocks).toStrictEqual([p('L'), numbered(5, [p('North')]), p('SoR')])
+    expect(s.selection()).toMatchObject({ from: 10, to: 10 })
+    s.undo()
+    expect(stored(s)).toStrictEqual({ text: 'LR' })
+  })
+
+  it('rule 4: the whole middle paragraph of a three-paragraph quote keeps its quote', () => {
+    const clip = copyText([quote(p('One'), p('Two'), p('Three'))], 1, 10)
+    const s = open({ text: 'LR' }, { caret: 1 })
+    s.paste(clip)
+    expect(stored(s).blocks).toStrictEqual([p('Lne'), quote(p('Two')), p('ThR')])
+  })
+
+  it('rule 5: two whole plain paragraphs One and Two between L and R give LOne and TwoR', () => {
+    const clip = copyText([p('One'), p('Two')], 0, 7)
+    const s = open({ text: 'LR' }, { caret: 1 })
+    s.paste(clip)
+    expect(stored(s)).toStrictEqual({ text: 'LOne\nTwoR' })
+  })
+
+  it("rule 6: rst / Th across an unticked First and a ticked Third, into an unticked task LR with a later paragraph: Lrst, then ThR and the later paragraph in a new unticked item", () => {
+    const clip = copyText([tasks([false, [p('First')]], [true, [p('Third')]])], 2, 8)
+    const s = open({ text: '', blocks: [tasks([false, [p('LR'), p('Later')]])] }, { caret: 1 })
+    s.paste(clip)
+    expect(stored(s).blocks).toStrictEqual([tasks([false, [p('Lrst')]], [false, [p('ThR'), p('Later')]])])
+  })
+
+  it("rule 6: a cut from inside a ticked First through part of an unticked Third, whose item also holds Fourth and a nested list, comes back exactly; copied over the same selection too", () => {
+    const blocks = [tasks([true, [p('First')]], [false, [p('Third'), p('Fourth'), bullets([p('nested')])]])]
+    const { s, before, done } = cutAndPasteBack(blocks, 2, 8)
+    expect(stored(s)).toStrictEqual(before)
+    done()
+    const t = open({ text: '', blocks })
+    const clip = copyText(blocks, 2, 8)
+    t.select(2, 8)
+    t.paste(clip)
+    expect(stored(t)).toStrictEqual(before)
+    t.undo()
+    expect(stored(t)).toStrictEqual(before)
+  })
+
+  it('rule 6 (the listed exception): the same cut with Third ticked brings its item back unticked, Fourth and the nested list still in it', () => {
+    const { s, done } = cutAndPasteBack([tasks([true, [p('First')]], [true, [p('Third'), p('Fourth'), bullets([p('nested')])]])], 2, 8)
+    expect(stored(s).blocks).toStrictEqual([tasks([true, [p('First')]], [false, [p('Third'), p('Fourth'), bullets([p('nested')])]])])
+    done()
+  })
+})
+
+describe('Q3: inline code chosen at the caret, not a caret inside inline code text, makes a paste literal', () => {
+  const inCode = () => open({ text: '', blocks: [{ type: 'paragraph', content: [{ text: 'a' }, { text: 'code', code: true }, { text: 'b' }] }] }, { caret: 3 })
+  it('HTML with a heading, at a caret inside inline code text: the heading arrives', () => {
+    const s = inCode()
+    s.paste({ text: '# Title', html: '<h2>Title</h2>' })
+    expect(stored(s).blocks?.some((b) => b.type === 'heading')).toBe(true)
+  })
+
+  it("Yuriful's own copy of two quoted lines, at a caret inside inline code text: the quote's lines arrive as the rule places them, not as code", () => {
+    const s = inCode()
+    s.paste(copyText([p('top'), quote(p('First'), p('Second'))], 0, 16))
+    const c = stored(s)
+    expect(c.blocks?.some((b) => b.type === 'blockquote')).toBe(true)
+    expect(c.text).toContain('Second')
+  })
+
+  it('plain Markdown at a caret inside inline code text is never converted: # Title goes in as it is, in the code', () => {
+    const s = inCode()
+    s.paste({ text: '# Title' })
+    const c = stored(s)
+    expect(c.blocks?.some((b) => b.type === 'heading') ?? false).toBe(false)
+    expect(c.text).toBe('aco# Titledeb')
+  })
+})
+
+describe('found by the randomised rule check: the rest of the caret\'s item goes with what follows the caret, wherever that goes', () => {
+  it('0 (from a quote in item 1) and de (from item 2) pasted into item LR with a later paragraph: deR and Later stay one item', () => {
+    const clip = copyText([numbered(1, [quote(p('q0'))], [p('def')])], 1, 5)
+    const s = open({ text: '', blocks: [numbered(21, [p('LR'), p('Later')])] }, { caret: 1 })
+    s.paste(clip)
+    const blocks = stored(s).blocks!
+    expect(stored(s).text).toBe('L0\ndeR\nLater')
+    const items = blocks.flatMap((b) => (b as { items?: Array<{ blocks: BlockNode[] }> }).items ?? [])
+    const holder = items.find((it) => it.blocks.some((x) => JSON.stringify(x).includes('deR')))!
+    expect(holder.blocks).toStrictEqual([p('deR'), p('Later')])
   })
 })

@@ -2065,3 +2065,58 @@ test('P1, P2: Ctrl+X across two lines and Ctrl+V straight back give the text bac
   expect(byId(done, 'r').blocks).toBeUndefined()
   expect(errors).toEqual([])
 })
+
+test('Q1 and the copy-and-paste rule through the real clipboard: evi pasted over itself then ! gives Revi!ew; North through So into LR keeps 5. North; the Fourth cut comes back exactly', async ({ page }) => {
+  const numberedLines = [{ type: 'orderedList', start: 5, items: [{ blocks: [p('North')] }, { blocks: [p('South')] }] }]
+  const fourth = [tasks([true, [p('First')]], [false, [p('Third'), p('Fourth'), bullets([p('nested')])]])]
+  const { errors, at } = await open(page, [
+    textRec('r', 120, 60, { fontSize: 16, width: 300, text: 'Review' }),
+    textRec('n', 120, 160, { fontSize: 16, width: 300, text: 'North\nSouth', blocks: numberedLines }),
+    textRec('lr', 520, 160, { fontSize: 16, width: 300, text: 'LR' }),
+    textRec('t', 120, 320, { fontSize: 16, width: 300, text: 'First\nThird\nFourth\nnested', blocks: fourth }),
+  ])
+  /** Selects from character `a` of the line reading `first` to character `b` of the line reading `last`, in the edited text. */
+  const select = (first: string, a: number, last: string, b: number) =>
+    page.evaluate(
+      ({ first, a, last, b }) => {
+        const lines = Array.from(document.querySelectorAll('.scene-layer [contenteditable="true"].ProseMirror p'))
+        const textOf = (text: string) => document.createTreeWalker(lines.find((l) => l.textContent === text)!, NodeFilter.SHOW_TEXT).nextNode() as Text
+        const range = document.createRange()
+        range.setStart(textOf(first), a)
+        range.setEnd(textOf(last), b)
+        getSelection()!.removeAllRanges()
+        getSelection()!.addRange(range)
+      },
+      { first, a, last, b },
+    )
+  // Q1: an accepted paste that changes nothing leaves the caret after what it pasted.
+  await editAtEnd(page, at(150, 72))
+  await select('Review', 1, 'Review', 4)
+  await expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }).toEqual([1, 4])
+  await page.keyboard.press('Control+c')
+  await page.keyboard.press('Control+v')
+  await page.keyboard.type('!')
+  await storedWhen(page, (d) => byId(d, 'r').text === 'Revi!ew')
+  await page.keyboard.press('Escape')
+  // Rule 4: a whole line arrives as its block, with its number.
+  await editAtEnd(page, at(150, 172))
+  await select('North', 0, 'South', 2)
+  await expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }).toEqual([0, 8])
+  await page.keyboard.press('Control+c')
+  await page.keyboard.press('Escape')
+  await editAtEnd(page, at(530, 172))
+  await page.keyboard.press('Home')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'lr').blocks) === JSON.stringify([p('L'), { type: 'orderedList', start: 5, items: [{ blocks: [p('North')] }] }, p('SoR')]))
+  await page.keyboard.press('Escape')
+  // Rule 6: a cut from inside First through part of Third, whose item holds Fourth and a nested list, pasted straight back.
+  await editAtEnd(page, at(150, 332))
+  await select('First', 2, 'Third', 2)
+  await expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }).toEqual([2, 8])
+  await page.keyboard.press('Control+x')
+  await storedWhen(page, (d) => byId(d, 't').text === 'Fiird\nFourth\nnested')
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 't').blocks) === JSON.stringify(fourth) && byId(d, 't').text === 'First\nThird\nFourth\nnested')
+  expect(errors).toEqual([])
+})

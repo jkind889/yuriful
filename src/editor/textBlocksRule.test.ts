@@ -2044,29 +2044,52 @@ describe('R5: a code block is always Mono', () => {
 
 describe('a cut pasted back where it was, seeded and randomised', () => {
   /**
-   * Whether a cut of [from, to) pasted back can give back the blocks exactly, not only the text: the
-   * two ends are in one line, or are lines of one kind (not code) in the same blocks, except that they
-   * may be in two items of one list (the last line then the last thing in its item), and the selection
-   * does not end at the start of a line. Otherwise the cut has made the two ends one line of the first
-   * end's kind, which the paste keeps (or, ending at a line's start, joined nothing).
+   * What a cut of [from, to) pasted back must give: the original document exactly, but for the listed
+   * exceptions (README, Known limits): null when only the text must come back (a selection across two
+   * different kinds of line, one ending at the very start of a line, a copy from a numbered item painted
+   * past what storage keeps); and, for a cut ending inside a ticked item other than the first line's, the
+   * original with that item unticked (rule 6). (A cut from a code block into another line, and a carriage
+   * return inside a line, are left out by the caller: not even the text comes back.)
    */
-  const blocksComeBack = (doc: PMNode, from: number, to: number): boolean => {
+  /** Whether, in `mid` (the text after the cut), the caret's item holds anything after the caret's line. */
+  const restInCaretItem = (mid: PMNode, caret: number): boolean => {
+    const $m = mid.resolve(caret)
+    for (let d = $m.depth - 1; d > 0; d--) {
+      if (!isItemType($m.node(d).type)) continue
+      let found = false
+      mid.nodesBetween($m.after($m.depth), $m.end(d), (n) => {
+        if (n.isTextblock || n.type === nodes.divider) found = true
+        return !found
+      })
+      return found
+    }
+    return false
+  }
+  const comesBack = (doc: PMNode, from: number, to: number, mid: PMNode, caret: number): PMNode | null => {
     const $a = doc.resolve(from)
     const $b = doc.resolve(to)
-    if ($a.sameParent($b)) return true
-    // A selection that ends at the very start of a line removes whole lines and joins nothing: the
-    // caret is left in the line it ended at, so the first copied line has no line of its own to stand on.
-    if ($b.parentOffset === 0) return false
-    // A copy whose first item was painted with a number storage cannot keep carries plain lines (P5).
-    for (let d = 1; d < $a.depth; d++) if ($a.node(d).type === nodes.orderedList && ($a.node(d).attrs.start as number) + $a.index(d) > MAX_LIST_START) return false
-    const A = $a.parent
-    const B = $b.parent
-    if (A.type !== B.type || A.type.spec.code || A.attrs.level !== B.attrs.level || $a.depth !== $b.depth) return false
-    let d = 1
-    while (d < $a.depth && $a.node(d) === $b.node(d)) d++
-    if (d === $a.depth) return true
-    // Two items of one list, each line straight in its item, the last line the last thing in its item.
-    return d === $a.depth - 1 && isItemType($a.node(d).type) && $a.node(d - 1) === $b.node(d - 1) && $b.index(d) === $b.node(d).childCount - 1
+    if ($a.sameParent($b)) return doc
+    if ($b.parentOffset === 0) return null
+    for (let d = 1; d < $a.depth; d++) if ($a.node(d).type === nodes.orderedList && ($a.node(d).attrs.start as number) + $a.index(d) > MAX_LIST_START) return null
+    const kindOf = ($p: typeof $a) => [$p.parent.type.name, String($p.parent.attrs.level), ...Array.from({ length: $p.depth - 1 }, (_, d) => $p.node(d + 1).type.name)].join('>')
+    if (kindOf($a) !== kindOf($b)) return null
+    // A cut ending inside a ticked item, other than the item the selection starts in: that item comes back unticked.
+    for (let d = $b.depth - 1; d > 0; d--) {
+      const item = $b.node(d)
+      if (!isItemType(item.type)) continue
+      if (d <= $a.depth && $a.node(d) === item) return doc
+      // (Only for an end inside its line: what follows a closed end arrives as its block with its tick. And
+      // only where what follows the caret after the cut is in the caret's item, so that rule 6 makes it a new
+      // unticked item: the end item held nothing after the end line, or what it held went to the caret's item.
+      // Where the cut left the rest of the end item an item of its own, the continuation goes back into it.)
+      if (item.attrs.checked !== true || $b.parentOffset === $b.parent.content.size) return doc
+      const restAfterEnd = $b.index(d) < item.childCount - 1
+      if (restAfterEnd && !restInCaretItem(mid, caret)) return doc
+      const tr = EditorState.create({ doc }).tr
+      tr.setNodeMarkup($b.before(d), undefined, { ...item.attrs, checked: false })
+      return tr.doc
+    }
+    return doc
   }
   it('cut then paste at the caret, and copy then paste over the selection, give back the original; undo of the paste and the cut too (seeded)', () => {
     const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env
@@ -2081,6 +2104,7 @@ describe('a cut pasted back where it was, seeded and randomised', () => {
       const source = r.int(6) === 0 ? compactText(r) : richSource(r)
       if (!source || !docFromText(source)) continue
       const doc0 = open(source).state.doc
+      if (nearListLimit(doc0)) continue // (a cut there can be refused: not this test's)
       const size = doc0.content.size
       let a = Selection.near(doc0.resolve(r.int(size + 1))).from
       let b = Selection.near(doc0.resolve(r.int(size + 1))).from
@@ -2104,7 +2128,12 @@ describe('a cut pasted back where it was, seeded and randomised', () => {
           // a cut from a code block into another line leaves the code's emptied line and a line of its own for the
           // rest, by the settled rule for a replacement, so neither text nor blocks can come back exactly there.)
           const textBack = !/\r(?!\n)/.test(text0) && !(doc0.resolve(from).parent.type.spec.code && !doc0.resolve(from).sameParent(doc0.resolve(to)))
-          const whole = textBack && blocksComeBack(doc0, from, to)
+          // (What the cut leaves, for where the rest of the end item goes: a cut on a copy of the text.)
+          const m = open(source)
+          m.dispatch(m.state.tr.setSelection(TextSelection.create(m.state.doc, from, to)))
+          m.dispatch(m.state.tr.deleteSelection().setMeta('uiEvent', 'cut'))
+          const wanted = textBack ? comesBack(doc0, from, to, m.state.doc, m.state.selection.from) : null
+          m.finish()
           // (An old text's stored "\r\n" breaks go once it is edited, as before: there the documents are compared.)
           const same = (c: TextContent, doc: PMNode, want: TextContent, wantDoc: PMNode) => (JSON.stringify(want).includes('\\r') ? doc.eq(wantDoc) : JSON.stringify(c) === JSON.stringify(want))
           const clip = s.view!.serializeForClipboard(s.state.selection.content())
@@ -2117,9 +2146,9 @@ describe('a cut pasted back where it was, seeded and randomised', () => {
           const after = s.content()
           if (canonicalTextContent(after as unknown as Record<string, unknown>) === null) broken = 'the result does not load'
           else if (textBack && plainTextOfDoc(s.state.doc) !== text0) broken = `the text is ${JSON.stringify(plainTextOfDoc(s.state.doc))}, not ${JSON.stringify(text0)}`
-          else if (whole) {
+          else if (wanted) {
             exact++
-            if (!same(after, s.state.doc, before, doc0)) broken = `the blocks are ${JSON.stringify(after)}, not ${JSON.stringify(before)}`
+            if (!s.state.doc.eq(wanted)) broken = `the blocks are ${JSON.stringify(after)}, not ${JSON.stringify(wanted.toJSON())}`
           }
           if (!broken) {
             // (A paste that changed nothing has no undo step of its own.)
@@ -2141,5 +2170,257 @@ describe('a cut pasted back where it was, seeded and randomised', () => {
     console.log(`cut and paste back: ${cases} cases (seed ${SEED}), ${exact} with the blocks compared too`)
     expect(failures, failures[0]).toEqual([])
     expect(cases).toBeGreaterThan(150)
+  })
+})
+
+// ---- Yuriful's own copy pasted anywhere follows the copy-and-paste rule (rules 1 to 7) ---------------------------
+
+describe("Yuriful's own copy pasted anywhere, seeded and randomised: what rules 1 to 7 say the result must be", () => {
+  interface Line {
+    text: string
+    /** Where the line starts in the plain text. */
+    from: number
+    kind: string
+    code: boolean
+    /** The blocks around the line, outermost first: kind, and for an item where it starts and its tick. */
+    chain: Array<{ kind: string; at: number; checked: boolean | null }>
+  }
+  /** Every line of a document, a code block's code lines each a line. */
+  const linesOf = (doc: PMNode): Line[] => {
+    const out: Line[] = []
+    let from = 0
+    for (const { node, pos } of textblocksOf(doc)) {
+      const $p = doc.resolve(pos + 1)
+      const chain = Array.from({ length: $p.depth - 1 }, (_, d) => ({ kind: $p.node(d + 1).type.name, at: $p.before(d + 1), checked: ($p.node(d + 1).attrs.checked as boolean | undefined) ?? null }))
+      const kind = node.type.name + (node.type.name === 'heading' ? String(node.attrs.level) : '')
+      const parts = node.type.spec.code ? node.textContent.split('\n') : [node.textContent]
+      for (const text of parts) {
+        out.push({ text, from, kind, code: node.type.spec.code === true, chain })
+        from += text.length + 1
+      }
+    }
+    return out
+  }
+  const kinds = (l: Line) => l.chain.map((c) => c.kind).join('>')
+  const itemOf = (l: Line) => [...l.chain].reverse().find((c) => c.kind === 'listItem' || c.kind === 'taskItem') ?? null
+  const fontOfMarks = (m: string, base: string) => m.split(',').find((x) => x.startsWith('font:'))?.slice(5) ?? base
+  const otherMarks = (m: string, heading: boolean) => m.split(',').filter((x) => x && !x.startsWith('font:') && !(heading && x === 'bold')).join(',')
+
+  it('for random texts, selections and destinations (a caret in every kind of line, an empty line, an empty text) the lines at the caret are what the rule says (seeded)', () => {
+    const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env
+    const SEED = Number(env?.PASTE_RULE_SEED ?? 0x5a5a)
+    const r = random(SEED + 13)
+    const failures: string[] = []
+    let cases = 0
+    let multi = 0
+    const el = document.createElement('div')
+    document.body.appendChild(el)
+    for (let d = 0; d < 2000 && failures.length < 5; d++) {
+      const source = r.int(6) === 0 ? compactText(r) : richSource(r)
+      const dest = r.int(8) === 0 ? ({ text: '' } as TextSource) : r.int(6) === 0 ? compactText(r) : richSource(r)
+      if (!source || !dest || !docFromText(source) || !docFromText(dest)) continue
+      const from = open(source)
+      from.mount(el)
+      const srcText = plainTextOfDoc(from.state.doc)
+      if (srcText.includes('\r') || srcText.length < 2) {
+        from.finish()
+        continue
+      }
+      let a = r.int(srcText.length + 1)
+      let b = r.int(srcText.length + 1)
+      if (a === b) {
+        from.finish()
+        continue
+      }
+      if (a > b) [a, b] = [b, a]
+      from.select(a, b)
+      const srcDoc = from.state.doc
+      const srcBase = docFromText(source)!.box.font ?? 'sans'
+      const clip = from.view!.serializeForClipboard(from.state.selection.content())
+      from.finish()
+      // A copy starting at a numbered item painted past what storage keeps carries plain lines (P5): not this test's.
+      const $a = srcDoc.resolve(posAtTextOffset(srcDoc, a))
+      let unstorable = false
+      for (let dd = 1; dd < $a.depth; dd++) if ($a.node(dd).type === nodes.orderedList && ($a.node(dd).attrs.start as number) + $a.index(dd) > MAX_LIST_START) unstorable = true
+      if (unstorable) continue
+      const s = open(dest)
+      const destDoc = s.state.doc
+      // (Numbered lists at the edge of what storage keeps fall back to plain lines, Y7: not this test's.)
+      if (nearListLimit(srcDoc) || nearListLimit(destDoc)) continue
+      const destText = plainTextOfDoc(destDoc)
+      if (destText.includes('\r')) continue
+      const caretAt = r.int(destText.length + 1)
+      s.select(caretAt, caretAt)
+      const before = s.content()
+      const destBase = docFromText(dest)!.box.font ?? 'sans'
+      const dLines = linesOf(destDoc)
+      const ci = dLines.findIndex((l) => caretAt >= l.from && caretAt <= l.from + l.text.length)
+      if (ci < 0) continue // (a text that is only a divider has no line to put a caret in)
+      const D = dLines[ci]!
+      const head = D.text.slice(0, caretAt - D.from)
+      const tail = D.text.slice(caretAt - D.from)
+      // What was copied: the lines the selection covers, and which of its ends are open.
+      const sLines = linesOf(srcDoc)
+      const covered = sLines.filter((l) => l.from <= b && l.from + l.text.length >= a)
+      const pieces = covered.map((l) => ({ line: l, text: l.text.slice(Math.max(0, a - l.from), Math.min(l.text.length, b - l.from)) }))
+      if (pieces.length === 0) continue
+      let broken: string | null = null
+      try {
+        s.paste({ html: clip.dom.innerHTML, text: clip.text })
+        cases++
+        const result = s.state.doc
+        const rText = plainTextOfDoc(result)
+        const rLines = linesOf(result)
+        const srcMarks = charMarks(srcDoc)
+        const resMarks = charMarks(result)
+        // Blocks nested past what storage keeps fall back to the plain lines (Y7).
+        const deep = D.chain.length + Math.max(...pieces.map((pc) => pc.line.chain.length)) >= MAX_BLOCK_DEPTH
+        if (!D.code && deep && rText === destText.slice(0, caretAt) + clip.text + destText.slice(caretAt)) {
+          // (fell back)
+        } else if (D.code) {
+          // Into a code block: the plain text, as code.
+          if (rText !== destText.slice(0, caretAt) + clip.text + destText.slice(caretAt)) broken = `into code: the text is ${JSON.stringify(rText)}`
+        } else if (pieces.length === 1) {
+          // Rule 1: words, joining the caret's line, in the font they were shown in (a code line's in Mono).
+          const want = destText.slice(0, caretAt) + pieces[0]!.text + destText.slice(caretAt)
+          if (rText !== want) broken = `words: the text is ${JSON.stringify(rText)}, not ${JSON.stringify(want)}`
+          for (let i = 0; i < pieces[0]!.text.length && !broken; i++) {
+            const sm = srcMarks[a + i]
+            const rm = resMarks[caretAt + i]
+            if (!sm || !rm || rm.code) continue
+            const want = sm.code ? 'mono' : fontOfMarks(sm.marks, srcBase)
+            if (fontOfMarks(rm.marks, destBase) !== want) broken = `word ${i}: font ${fontOfMarks(rm.marks, destBase)}, not ${want}`
+            else if (!sm.code && otherMarks(sm.marks, sm.heading || rm.heading) !== otherMarks(rm.marks, sm.heading || rm.heading)) broken = `word ${i}: marks ${rm.marks}, not ${sm.marks}`
+          }
+          const caret = s.selection()
+          if (!broken && caret.head !== caretAt + pieces[0]!.text.length) broken = `the caret is at ${caret.head}, not after the words`
+        } else {
+          multi++
+          const first = pieces[0]!
+          const lastP = pieces[pieces.length - 1]!
+          const firstOpen = a > first.line.from
+          const lastOpen = b < lastP.line.from + lastP.line.text.length
+          // Rules 3 and 5: an open part-line, or a plain top-level paragraph at an end, joins.
+          const plain = (l: Line) => l.kind === 'paragraph' && l.chain.length === 0
+          const firstJoins = firstOpen || plain(first.line)
+          const lastJoins = lastOpen || plain(lastP.line)
+          const want: Array<{ text: string; from: 'dest' | 'copy' | 'joinFirst' | 'joinLast'; line?: Line }> = []
+          if (firstJoins) want.push({ text: head + first.text, from: 'joinFirst' })
+          else {
+            if (head) want.push({ text: head, from: 'joinFirst' })
+            want.push({ text: first.text, from: 'copy', line: first.line })
+          }
+          for (const pc of pieces.slice(1, -1)) want.push({ text: pc.text, from: 'copy', line: pc.line })
+          if (lastJoins) want.push({ text: lastP.text + tail, from: 'joinLast' })
+          else {
+            want.push({ text: lastP.text, from: 'copy', line: lastP.line })
+            if (tail) want.push({ text: tail, from: 'joinLast' })
+          }
+          const expected = [...dLines.slice(0, ci).map((l) => l.text), ...want.map((w) => w.text), ...dLines.slice(ci + 1).map((l) => l.text)].join('\n')
+          if (rText !== expected) broken = `the text is ${JSON.stringify(rText)}, not ${JSON.stringify(expected)}`
+          else {
+            const at = (i: number) => rLines[ci + i]!
+            // Lines not at the caret keep their text, kind and blocks (rule 7); the rest of the caret's item goes with the continuation (rule 6).
+            const shift = want.length - 1
+            for (const [j, l] of dLines.entries()) {
+              if (j === ci || broken) continue
+              const rl = rLines[j < ci ? j : j + shift]!
+              if (rl.kind !== l.kind || kinds(rl) !== kinds(l)) broken = `line "${l.text}" not at the caret became ${rl.kind} in ${kinds(rl)} (was ${l.kind} in ${kinds(l)})`
+              const inCaretItem = itemOf(D) && itemOf(l) && itemOf(l)!.at === itemOf(D)!.at && j > ci
+              if (!broken && !inCaretItem && itemOf(l)?.checked !== itemOf(rl)?.checked) broken = `line "${l.text}" not at the caret changed its tick`
+            }
+            // The joining lines take the kind of the caret's line (rule 3), both halves of the split line keep it (rule 6).
+            for (const [i, w] of want.entries()) {
+              if (broken) break
+              const rl = at(i)
+              if (w.from === 'joinFirst' || w.from === 'joinLast') {
+                if (rl.kind !== D.kind) broken = `the ${w.from === 'joinFirst' ? 'first' : 'last'} joined line is ${rl.kind}, not ${D.kind}`
+                else if (kinds(rl) !== kinds(D)) broken = `the ${w.from === 'joinFirst' ? 'first' : 'last'} joined line is in ${kinds(rl)}, not ${kinds(D)}`
+              } else {
+                // Rule 4: a whole line arrives as its block, with the blocks around it, its own item with its tick.
+                const kindWanted = w.line!.code ? 'codeBlock' : w.line!.kind
+                if (rl.kind !== kindWanted) broken = `the whole line "${w.text}" is ${rl.kind}, not ${kindWanted}`
+                // (The blocks a whole line shares with a part-line that joins go where that part-line goes: only
+                // the blocks inside them come with it. So does the whole first line pasted at the start of a line of
+                // its kind in the same kinds of blocks, where a cut of it leaves the caret: it takes that line's place.)
+                const L = w.line!
+                const common = (end: Line) => {
+                  let n = 0
+                  while (n < L.chain.length && n < end.chain.length && L.chain[n]!.at === end.chain[n]!.at && L.chain[n]!.kind === end.chain[n]!.kind) n++
+                  return n
+                }
+                const firstInPlace = !firstJoins && head === '' && first.line.kind === D.kind && kinds(first.line) === kinds(D)
+                const shared = Math.max(firstJoins || firstInPlace ? common(first.line) : 0, lastJoins ? common(lastP.line) : 0)
+                const around = L.chain.slice(shared).map((c) => c.kind).join('>')
+                const got = kinds(rl)
+                // (In a quote, a pasted quote joins it: its leading quotes can be the caret's.)
+                const merged = D.chain.some((c) => c.kind === 'blockquote') ? around.replace(/^(blockquote>?)+/, '') : around
+                const holds = (want: string) => want === '' || got === want || got.endsWith(`>${want}`)
+                if (!broken && !holds(around) && !holds(merged)) broken = `the whole line "${w.text}" is in ${got}, not in ${around}`
+                const own = itemOf(L)
+                if (!broken && own && L.chain.lastIndexOf(own) >= shared && itemOf(rl) && itemOf(rl)!.checked !== own.checked) broken = `the whole line "${w.text}" lost its tick`
+              }
+            }
+            // Rule 6: the rest of the caret's item goes with what follows the caret.
+            const dItem = itemOf(D)
+            const dDepth = dItem ? D.chain.indexOf(dItem) : -1
+            if (!broken && dItem && want[want.length - 1]!.from === 'joinLast') {
+              const holder = at(want.length - 1).chain[dDepth]
+              for (const [j, l] of dLines.entries()) {
+                if (j <= ci || broken || l.chain[dDepth]?.at !== dItem.at) continue
+                const rl = rLines[j + shift]!
+                if (rl.chain[dDepth]?.at !== holder?.at) broken = `line "${l.text}" of the caret's item did not go with what follows the caret`
+              }
+            }
+            // Rule 6: the continuation is unticked unless it stays in the caret's item.
+            const lastLine = at(want.length - 1)
+            const firstLine = at(0)
+            // (Only when part of the caret's item ends up before the caret: the head of its line, or earlier lines of the item.)
+            const itemBefore = (head.length > 0 || firstJoins) && want[0]!.from === 'joinFirst'
+            void firstLine
+            if (!broken && itemBefore && want[want.length - 1]!.from === 'joinLast' && itemOf(lastLine) && itemOf(D) && itemOf(lastLine)!.at !== itemOf(at(0))!.at && kinds(lastLine) === kinds(D) && itemOf(lastLine)!.checked === true) broken = 'the continuation is ticked'
+            // Rule 7: the caret ends after the paste.
+            const caret = s.selection()
+            const endLine = want[want.length - 1]!.from === 'joinLast' && lastJoins ? at(want.length - 1) : at(want.length - 1 - (want[want.length - 1]!.from === 'joinLast' ? 1 : 0))
+            const caretWanted = lastJoins ? endLine.from + lastP.text.length : endLine.from + endLine.text.length
+            if (!broken && caret.head !== caretWanted) broken = `the caret is at ${caret.head}, not ${caretWanted}`
+            // Rules 1 and 7: each pasted character keeps its marks and the font it was shown in.
+            let si = a
+            for (const [i, w] of want.entries()) {
+              if (broken) break
+              const rl = at(i)
+              const start = w.from === 'joinFirst' ? head.length : 0
+              const n = w.from === 'joinFirst' ? (firstJoins ? first.text.length : 0) : w.from === 'joinLast' ? (lastJoins ? lastP.text.length : 0) : w.text.length
+              if (w.from === 'joinLast' && !lastJoins) continue
+              for (let c = 0; c < n && !broken; c++) {
+                while (srcMarks[si] === null) si++
+                const sm = srcMarks[si]!
+                const rm = resMarks[rl.from + start + c]!
+                si++
+                if (!rm || rm.code) continue
+                const fw = sm.code ? 'mono' : fontOfMarks(sm.marks, srcBase)
+                if (fontOfMarks(rm.marks, destBase) !== fw) broken = `character ${c} of "${w.text}": font ${fontOfMarks(rm.marks, destBase)}, not ${fw}`
+                else if (!sm.code && otherMarks(sm.marks, rm.heading || sm.heading) !== otherMarks(rm.marks, rm.heading || sm.heading)) broken = `character ${c} of "${w.text}": marks ${rm.marks}, not ${sm.marks}`
+              }
+              if (w.from === 'joinFirst' && !firstJoins) continue
+              while (si < srcMarks.length && srcMarks[si] === null) si++
+            }
+          }
+        }
+        if (!broken) {
+          s.undo()
+          // (An old text's stored line breaks go once it is edited: there the documents are compared.)
+          if (JSON.stringify(before).includes('\\r') ? !s.state.doc.eq(destDoc) : JSON.stringify(s.content()) !== JSON.stringify(before)) broken = 'one undo does not restore the destination'
+        }
+      } catch (e) {
+        broken = `threw ${String(e)}`
+      }
+      if (broken) failures.push(`seed ${SEED}, document ${d}, [${a}, ${b}] to ${caretAt}: ${broken}\n  source: ${JSON.stringify(source)}\n  destination: ${JSON.stringify(dest)}`)
+    }
+    el.remove()
+    if (failures.length > 0) console.log(failures.join('\n'))
+    console.log(`the rule at the caret: ${cases} pastes (seed ${SEED}), ${multi} across lines`)
+    expect(failures, failures[0]).toEqual([])
+    expect(cases).toBeGreaterThan(1000)
   })
 })
