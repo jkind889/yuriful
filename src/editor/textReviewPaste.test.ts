@@ -999,3 +999,41 @@ describe('found by the ordinary seeded run: a quote in each of two items', () =>
     expect(afterCopy).toStrictEqual(before)
   })
 })
+
+describe('N6: pasted numbered items directly against the remaining items of a numbered list are one list with them', () => {
+  const bonus = () => copyText([numbered(1, [p('Bonus')], [p('Extra')])], 0, 11)
+
+  it('before them (the review\'s case): from Ed|it this through the end of Night, over 5. Dusk, 6. Night, 7. Coda: Ed, then 1. Bonus, 2. Extra, 3. Coda', () => {
+    const blocks = [p('Edit this'), numbered(5, [p('Dusk')], [p('Night')], [p('Coda')])]
+    const s = open({ text: '', blocks })
+    s.select(2, 20)
+    s.paste(bonus())
+    expect(stored(s).blocks).toStrictEqual([p('Ed'), numbered(1, [p('Bonus')], [p('Extra')], [p('Coda')])])
+    // The same as a cut, then the paste at the caret it left.
+    const { s: t, done } = cutAndPasteBack(blocks, 2, 20)
+    t.undo()
+    expect(stored(t).blocks).toStrictEqual([p('Ed'), numbered(7, [p('Coda')])])
+    t.paste(bonus())
+    expect(stored(t).blocks).toStrictEqual([p('Ed'), numbered(1, [p('Bonus')], [p('Extra')], [p('Coda')])])
+    done()
+  })
+
+  it('after them: from the end of Noon, or the start of Dusk, through the paragraph below 5. Dawn, 6. Noon, 7. Dusk: one list from 5', () => {
+    const blocks = [numbered(5, [p('Dawn')], [p('Noon')], [p('Dusk')]), p('Outro text')]
+    const s = open({ text: '', blocks })
+    s.select(9, 17)
+    s.paste(bonus())
+    expect(stored(s).blocks).toStrictEqual([numbered(5, [p('Dawn')], [p('Noon')], [p('Bonus')], [p('Extra')], [p('tro text')])])
+    const t = open({ text: '', blocks })
+    t.select(10, 25)
+    t.paste(bonus())
+    expect(stored(t).blocks).toStrictEqual([numbered(5, [p('Dawn')], [p('Noon')], [p('Bonus')], [p('Extra')])])
+  })
+
+  it('the known limit: pasted on a line next to a list the selection did not reach, the items stay a list of their own beside it', () => {
+    const s = open({ text: '', blocks: [numbered(1, [p('Dawn')], [p('Noon')]), p('Outro')] })
+    s.select(10, 15)
+    s.paste(bonus())
+    expect(stored(s).blocks).toStrictEqual([numbered(1, [p('Dawn')], [p('Noon')]), numbered(1, [p('Bonus')], [p('Extra')])])
+  })
+})

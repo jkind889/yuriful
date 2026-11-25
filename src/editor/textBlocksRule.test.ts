@@ -2318,7 +2318,9 @@ describe("Yuriful's own copy pasted anywhere, seeded and randomised: what rules 
   const itemOf = (l: Line) => [...l.chain].reverse().find((c) => c.kind === 'listItem' || c.kind === 'taskItem') ?? null
   const isItem = (c: { kind: string }) => c.kind === 'listItem' || c.kind === 'taskItem'
   /**
-   * N3: a list the caret's line was not in keeps its start and every item's number. N1: the caret's numbered
+   * N3: a list the caret's line was not in keeps its start and every item's number, unless pasted numbered items
+   * now stand directly against it and it is one list with them (N6: then it is counted on from that list's first
+   * item, as any one list is). N1: the caret's numbered
    * list keeps its own start, and its items after the caret stay in it (one list, numbered on), unless the paste
    * put a line that is not in that list between them. N5: an item not at the caret stays under its parent item,
    * when the pasted lines stay at the depth of the caret's item or deeper. `pasted`: the lines from the caret's
@@ -2328,6 +2330,8 @@ describe("Yuriful's own copy pasted anywhere, seeded and randomised: what rules 
     const D = dLines[ci]!
     const map = (j: number) => (j <= ci ? j : j + shift)
     const caretLists = new Set(D.chain.filter((c) => c.kind.endsWith('List')).map((c) => c.at))
+    // (The numbered lists the pasted lines are in, after the paste: a list joined with them may be counted on, N6.)
+    const pastedLists = new Set((pasted ?? []).flatMap((l) => l.chain.filter((c) => c.kind === 'orderedList').map((c) => c.at)))
     const dItem = [...D.chain].reverse().find(isItem)
     const inCaretItem = (l: Line, j: number) => dItem !== undefined && j > ci && l.chain.some((c) => c.at === dItem.at)
     for (const [j, l] of dLines.entries()) {
@@ -2337,7 +2341,9 @@ describe("Yuriful's own copy pasted anywhere, seeded and randomised: what rules 
       const li = [...l.chain].reverse().find(isItem)
       const ri = [...rl.chain].reverse().find(isItem)
       const listOfL = li ? l.chain[l.chain.indexOf(li) - 1] : undefined
-      if (li && li.n !== null && listOfL && !caretLists.has(listOfL.at) && ri?.n !== li.n) return `N3: line "${l.text}" of a list not at the caret is numbered ${ri?.n ?? 'nothing'}, not ${li.n}`
+      const riList = ri ? rl.chain[rl.chain.indexOf(ri) - 1] : undefined
+      const joined = riList !== undefined && pastedLists.has(riList.at)
+      if (li && li.n !== null && listOfL && !caretLists.has(listOfL.at) && !joined && ri?.n !== li.n) return `N3: line "${l.text}" of a list not at the caret is numbered ${ri?.n ?? 'nothing'}, not ${li.n}`
     }
     // N1.
     const dIdx = dItem ? D.chain.indexOf(dItem) : -1

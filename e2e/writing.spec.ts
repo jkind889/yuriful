@@ -2121,14 +2121,17 @@ test('Q1 and the copy-and-paste rule through the real clipboard: evi pasted over
   expect(errors).toEqual([])
 })
 
-test('N1 to N5 and rule 6 through the real clipboard, in an album review: sides cut and pasted back keep their numbers, nested tracks their sides; tracks join a numbered list as one; a bullet\'s two paragraphs into a ticked task leave a new unticked item', async ({ page }) => {
+test('N1 to N6 and rule 6 through the real clipboard, in an album review: sides cut and pasted back keep their numbers, nested tracks their sides; tracks join a numbered list as one, and replace tracks as one list with the rest; a bullet\'s two paragraphs into a ticked task leave a new unticked item', async ({ page }) => {
   const numbered = (start: number, ...items: string[]): Block => ({ type: 'orderedList', ...(start !== 1 ? { start } : {}), items: items.map((t) => ({ blocks: [p(t)] })) })
   const heading = (text: string): Block => ({ type: 'heading', level: 2, content: [{ text }] })
   const sides = [heading('Blue Hour'), numbered(1, 'Dawn', 'Noon'), heading('Side B'), numbered(5, 'Dusk', 'Night', 'Coda')]
   const nested = [bullets([p('Side A'), bullets([p('Rise')], [p('Glow')])], [p('Side C'), bullets([p('Fade')], [p('Rest')])])]
   const notes = [bullets([p('First'), p('Second')]), tasks([true, [p('LR'), p('Later')]], [false, [p('Mix')]])]
   const join = [numbered(1, 'Tapeloop', 'Coda'), numbered(5, 'North', 'South')]
-  const text = (blocks: Block[]) => {
+  const bonus = [numbered(1, 'Bonus', 'Extra')]
+  const replace = [p('Edit this'), numbered(5, 'Dusk', 'Night', 'Coda')]
+  const mirror = [numbered(5, 'Dawn', 'Noon', 'Dusk'), p('Outro text')]
+  const text =(blocks: Block[]) => {
     const out: string[] = []
     const walk = (bs: Block[]) => {
       for (const b of bs as Array<Record<string, unknown>>) {
@@ -2145,6 +2148,9 @@ test('N1 to N5 and rule 6 through the real clipboard, in an album review: sides 
     textRec('nested', 120, 260, { fontSize: 14, width: 300, text: text(nested), blocks: nested }),
     textRec('notes', 520, 40, { fontSize: 14, width: 300, text: text(notes), blocks: notes }),
     textRec('join', 520, 260, { fontSize: 14, width: 300, text: text(join), blocks: join }),
+    textRec('bonus', 120, 440, { fontSize: 14, width: 300, text: text(bonus), blocks: bonus }),
+    textRec('replace', 520, 440, { fontSize: 14, width: 300, text: text(replace), blocks: replace }),
+    textRec('mirror', 920, 260, { fontSize: 14, width: 300, text: text(mirror), blocks: mirror }),
   ])
   /** Selects from character `a` of the line reading `first` to character `b` of the line reading `last`, in the edited text. */
   const select = (first: string, a: number, last: string, b: number) =>
@@ -2198,5 +2204,24 @@ test('N1 to N5 and rule 6 through the real clipboard, in an album review: sides 
   await selected(4, 4)
   await page.keyboard.press('Control+v')
   await storedWhen(page, (d) => JSON.stringify(byId(d, 'join').blocks) === JSON.stringify([numbered(1, 'Tape', 'North', 'South', 'loop', 'Coda'), numbered(5, 'North', 'South')]))
+  await page.keyboard.press('Escape')
+  // N6 (the review's case): 1. Bonus, 2. Extra pasted from Ed|it this through the end of Night, over 5. Dusk, 6. Night, 7. Coda: Ed, then one list 1. Bonus, 2. Extra, 3. Coda.
+  await editAtEnd(page, at(140, 452))
+  await select('Bonus', 0, 'Extra', 5)
+  await selected(0, 11)
+  await page.keyboard.press('Control+c')
+  await page.keyboard.press('Escape')
+  await editAtEnd(page, at(540, 452))
+  await select('Edit this', 2, 'Night', 5)
+  await selected(2, 20)
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'replace').blocks) === JSON.stringify([p('Ed'), numbered(1, 'Bonus', 'Extra', 'Coda')]))
+  await page.keyboard.press('Escape')
+  // N6 the other way: pasted from the end of Noon through Ou|tro, after 5. Dawn, 6. Noon: one list from 5.
+  await editAtEnd(page, at(940, 272))
+  await select('Noon', 4, 'Outro text', 2)
+  await selected(9, 17)
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'mirror').blocks) === JSON.stringify([{ type: 'orderedList', start: 5, items: ['Dawn', 'Noon', 'Bonus', 'Extra', 'tro text'].map((t) => ({ blocks: [p(t)] })) }]))
   expect(errors).toEqual([])
 })
