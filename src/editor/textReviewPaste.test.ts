@@ -859,3 +859,143 @@ describe('found by the randomised rule check: the rest of the caret\'s item goes
     expect(holder.blocks).toStrictEqual([p('deR'), p('Later')])
   })
 })
+
+/** Cuts [a, b) of the plain text of `blocks` and pastes it straight back; then copies the same selection and pastes it over itself. Both must give back `blocks`' record. */
+function backBothWays(blocks: BlockNode[], a: number, b: number) {
+  const cut = cutAndPasteBack(blocks, a, b)
+  const afterCut = stored(cut.s)
+  cut.done()
+  const s = open({ text: '', blocks })
+  const el = document.body.appendChild(document.createElement('div'))
+  s.mount(el)
+  const before = s.content()
+  s.select(a, b)
+  const clip = s.view!.serializeForClipboard(s.state.selection.content())
+  s.paste({ html: clip.dom.innerHTML, text: clip.text })
+  const afterCopy = stored(s)
+  s.finish()
+  el.remove()
+  return { before, afterCut, afterCopy }
+}
+
+describe('N1 to N5: numbered track lists and two-level lists', () => {
+  it('N1 (finding 1): tracks 5 and 6 pasted between Tape and loop of 1. Tapeloop, 2. Coda: one list, 1 to 5 (the split loop is a new item, Coda counts on)', () => {
+    const clip = copyText([numbered(5, [p('North')], [p('South')])], 0, 11)
+    const s = open({ text: '', blocks: [numbered(1, [p('Tapeloop')], [p('Coda')])] }, { caret: 4 })
+    s.paste(clip)
+    expect(stored(s).blocks).toStrictEqual([numbered(1, [p('Tape')], [p('North')], [p('South')], [p('loop')], [p('Coda')])])
+  })
+
+  it("N1: items of two copied numbered lists pasted at the start of an item join the caret's list, numbered on from its own start", () => {
+    const clip = copyText([numbered(4, [p('Four')]), numbered(7, [p('Seven')])], 0, 10)
+    const s = open({ text: '', blocks: [numbered(2, [p('Alpha')], [p('Beta')])] }, { caret: 0 })
+    s.paste(clip)
+    expect(stored(s).blocks).toStrictEqual([numbered(2, [p('Four')], [p('Seven')], [p('Alpha')], [p('Beta')])])
+  })
+
+  it('N2: numbered items pasted into a paragraph start at the number their first copied item was painted with', () => {
+    const clip = copyText([numbered(5, [p('North')], [p('South')])], 0, 11)
+    const s = open({ text: 'LR' }, { caret: 1 })
+    s.paste(clip)
+    expect(stored(s).blocks).toStrictEqual([p('L'), numbered(5, [p('North')], [p('South')]), p('R')])
+  })
+
+  it('N3: a paste into side A leaves side B, a list the caret was not in, numbered as it was', () => {
+    const clip = copyText([numbered(9, [p('Nine')], [p('Ten')])], 0, 8)
+    const s = open({ text: '', blocks: [numbered(1, [p('Dawn')], [p('Noon')]), h(2, 'Side B'), numbered(5, [p('Dusk')], [p('Night')])] }, { caret: 2 })
+    s.paste(clip)
+    const blocks = stored(s).blocks!
+    expect(blocks.slice(-2)).toStrictEqual([h(2, 'Side B'), numbered(5, [p('Dusk')], [p('Night')])])
+  })
+
+  it('N4 (finding 3): from No|on in side A (1, 2) through Nig|ht in side B (5 to 7), cut and pasted back, and copied over itself: both sides come back, side B still from 5', () => {
+    const blocks = [numbered(1, [p('Dawn')], [p('Noon')]), h(2, 'Side B'), numbered(5, [p('Dusk')], [p('Night')], [p('Coda')])]
+    for (const [a, b] of [[7, 25], [7, 27]] as const) {
+      const { before, afterCut, afterCopy } = backBothWays(blocks, a, b)
+      expect(afterCut, `cut [${a}, ${b}]`).toStrictEqual(before)
+      expect(afterCopy, `copy over [${a}, ${b}]`).toStrictEqual(before)
+    }
+  })
+
+  it('N5 (finding 4): from N|oon under Side A into Dus|k under Side B, cut and pasted back, and copied over itself: every track stays under its own side', () => {
+    const blocks = [bullets([p('Side A'), bullets([p('Dawn')], [p('Noon')])], [p('Side B'), bullets([p('Dusk')], [p('Night')])])]
+    const { before, afterCut, afterCopy } = backBothWays(blocks, 13, 27)
+    expect(afterCut).toStrictEqual(before)
+    expect(afterCopy).toStrictEqual(before)
+  })
+
+  it('N4 and N5 together: numbered tracks under two sides, from No|on to Nig|ht, come back with their numbers and parents', () => {
+    const blocks = [bullets([p('Side A'), numbered(1, [p('Dawn')], [p('Noon')])], [p('Side B'), numbered(5, [p('Dusk')], [p('Night')], [p('Coda')])])]
+    const { before, afterCut, afterCopy } = backBothWays(blocks, 14, 32)
+    expect(afterCut).toStrictEqual(before)
+    expect(afterCopy).toStrictEqual(before)
+  })
+})
+
+describe('rule 6 (finding 2): what follows the caret is a new unticked item, whatever the copied lines came from', () => {
+  it('Fi|rst to Sec|ond of one bullet, pasted into the middle of a ticked task LR with a later paragraph: Lrst stays ticked, SecR and Later are a new unticked item', () => {
+    const clip = copyText([bullets([p('First'), p('Second')])], 2, 9)
+    const s = open({ text: '', blocks: [tasks([true, [p('LR'), p('Later')]])] }, { caret: 1 })
+    s.paste(clip)
+    expect(stored(s).blocks).toStrictEqual([tasks([true, [p('Lrst')]], [false, [p('SecR'), p('Later')]])])
+  })
+
+  it('the same lines pasted at the end of an item: the last part-line is what follows the caret, a new item', () => {
+    const clip = copyText([bullets([p('First'), p('Second')])], 2, 9)
+    const s = open({ text: '', blocks: [bullets([p('L')])] }, { caret: 1 })
+    s.paste(clip)
+    expect(stored(s).blocks).toStrictEqual([bullets([p('Lrst')], [p('Sec')])])
+  })
+
+  it('pasted back where they came from (cut, or copied over the selection), lines of one item stay in that one item', () => {
+    const blocks = [tasks([true, [p('First'), p('Second')]])]
+    const { before, afterCut, afterCopy } = backBothWays(blocks, 2, 9)
+    expect(afterCut).toStrictEqual(before)
+    expect(afterCopy).toStrictEqual(before)
+  })
+})
+
+describe('ordinary texts the seeded tests found coming back wrong, now right', () => {
+  it('from Sec|ond in one quote to Thi|rd in the next quote, and to the end of Third: both quotes come back, Fourth still in the second', () => {
+    const blocks = [quote(p('First'), p('Second')), quote(p('Third'), p('Fourth'))]
+    for (const [a, b] of [[9, 16], [9, 18]] as const) {
+      const { before, afterCut, afterCopy } = backBothWays(blocks, a, b)
+      expect(afterCut, `cut [${a}, ${b}]`).toStrictEqual(before)
+      expect(afterCopy, `copy over [${a}, ${b}]`).toStrictEqual(before)
+    }
+  })
+
+  it('from On|e to Tw|o, where Two is the second paragraph of its item, and that item also holds a numbered list from 7: the list stays in that item, from 7', () => {
+    const blocks = [bullets([p('One')], [p('Intro'), p('Two'), numbered(7, [p('seven')], [p('eight')])])]
+    const { before, afterCut, afterCopy } = backBothWays(blocks, 2, 12)
+    expect(afterCut).toStrictEqual(before)
+    expect(afterCopy).toStrictEqual(before)
+  })
+
+  it('a quote in a numbered item: its whole first line to the start of a later line, pasted on an empty line, keeps the item and the quote', () => {
+    const clip = copyText([numbered(9, [p('Intro'), quote(p('Lyric'), p('Second'), p('Next'))])], 6, 19)
+    const s = open({ text: '\n' }, { caret: 0 })
+    s.paste(clip)
+    expect(stored(s).blocks).toStrictEqual([numbered(9, [quote(p('Lyric'), p('Second'))]), p(), p()])
+  })
+})
+
+describe('N1, found by the ordinary seeded run: the first copied line inside a quote of its item', () => {
+  it('from inside a quote in track 2, through track 3, into the next paragraph, pasted at the end of track 1 of another list: one list, numbered on', () => {
+    const clip = copyText([numbered(2, [quote(p('Lyric'), p('Chorus'))], [p('Bridge')]), p('Outro')], 2, 22)
+    const s = open({ text: '', blocks: [numbered(1, [p('Intro')], [p('Verse')])] }, { caret: 5 })
+    s.paste(clip)
+    const blocks = stored(s).blocks!
+    expect(blocks.filter((b) => b.type === 'orderedList')).toHaveLength(1)
+    expect(stored(s).text).toBe('Introric\nChorus\nBridge\nOu\nVerse')
+  })
+})
+
+describe('found by the ordinary seeded run: a quote in each of two items', () => {
+  it('from the start of the quote in one item to inside the last line of the quote in the next, cut and pasted back, and copied over itself: each item keeps one quote', () => {
+    const blocks = [bullets([p('Gh'), quote(p('Lyric'), p('Line'))], [p('Bc'), quote(p('Verse'), p('Hook'))])]
+    const { before, afterCut, afterCopy } = backBothWays(blocks, 3, 25)
+    expect(afterCut).toStrictEqual(before)
+    expect(afterCopy).toStrictEqual(before)
+  })
+})

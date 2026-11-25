@@ -17,6 +17,11 @@ import type { TextContent } from '../model/textDoc.ts'
 import type { BlockNode, FontId } from '../model/types.ts'
 import { DROPPED, YURIFUL_COPY, htmlToBlocks } from './pasteHtml.ts'
 import type { PastedHtml } from './pasteHtml.ts'
+
+/** What a paste of Yuriful's own copy reads from it, as one string: two copies that paste alike read alike (the browser may wrap the HTML). */
+function copyKey(read: PastedHtml): string {
+  return JSON.stringify([read.blocks, read.inline, read.openStart, read.openEnd])
+}
 import { blockOf, boxOf, contentFromDoc, docFromBlocks, docFromText, exceedsBounds, fontOf, isCompactDoc, marks, nodes, plainTextOfDoc, posAtTextOffset, renderStaticInto, taskItemDOM, textOffsetAt, textSchema, textblocksOf } from './textSchema.ts'
 import type { TextSource } from './textSchema.ts'
 import {
@@ -56,6 +61,8 @@ import {
   settleReplacement,
   restOfEndItem,
   restOfEndList,
+  restOfEnd,
+  type RestOfEnd,
   inMono,
   pasteBlocks,
   replaceDocument,
@@ -384,7 +391,7 @@ export class EditSession {
   /** True while ProseMirror serializes a drag's slice (`dragstart`), which is not a copy. */
   private draggingOut = false
   /** Where the last cut left the rest of the item it ended in (`restOfEndItem`), with the text and caret it left. */
-  private lastCut: { doc: PMNode; caret: number; rest?: number; restList?: number } | null = null
+  private lastCut: { doc: PMNode; caret: number; copy: string | null; rest?: number; restList?: number; restOf?: RestOfEnd } | null = null
   private composingHeadless = false
   /**
    * Everything the session holds that a composition can change (its state, history included, the
@@ -696,7 +703,8 @@ export class EditSession {
     if (tr.getMeta('uiEvent') === 'cut' && settled) {
       const rest = restOfEndItem(this.current, settled.mapping)
       const restList = restOfEndList(this.current, settled.mapping)
-      this.lastCut = rest === undefined && restList === undefined ? null : { doc: settled.doc, caret: settled.selection.from, rest, restList }
+      const restOf = restOfEnd(this.current)
+      this.lastCut = { doc: settled.doc, caret: settled.selection.from, copy: this.copiedKey(this.current), rest, restList, restOf }
     }
     if (settled === tr || settled === null) return settled
     // Made again: with the metadata the replacement carried (what it replaced, a paste, a composition id...).
@@ -1413,7 +1421,15 @@ export class EditSession {
 
   /** Pasted HTML that keeps structure (headings, lists, quotes, code, dividers, fonts copied in Yuriful): one in-edit undo step; over a bound, pasted as lines with marks only (as before), and over a bound even so, nothing. */
   private pasteHtmlBlocks(read: PastedHtml, data: PasteData): boolean {
-    const target = this.pastedBlocks(this.current, read.blocks, read.inline, read.fromHeading, read.own, { openStart: read.openStart, openEnd: read.openEnd, own: read.own })
+    // Pasted back exactly where it came from: a copy pasted over the selection it was copied from, or a cut
+    // pasted at the caret it left, nothing changed since.
+    const state = this.current
+    const cut = this.lastCut
+    const backInPlace =
+      read.own &&
+      data.html !== undefined &&
+      (state.selection.empty ? cut !== null && cut.doc.eq(state.doc) && cut.caret === state.selection.from && cut.copy === copyKey(read) : this.copiedKey(state) === copyKey(read))
+    const target = this.pastedBlocks(this.current, read.blocks, read.inline, read.fromHeading, read.own, { openStart: read.openStart, openEnd: read.openEnd, own: read.own, ...(backInPlace ? { backInPlace } : {}) })
     if (!target) {
       // It does not fit: the clipboard's plain text, literally (never converted again), arriving as HTML's
       // characters do; when that does not fit either, nothing changes.
@@ -1429,7 +1445,14 @@ export class EditSession {
    * by the settled rule for input over a selection), with their marks given (`pasteMarks`), placed
    * by `pasteBlocks`; null when it could not be stored, or the selection could not be deleted.
    */
-  private pastedBlocks(state: EditorState, blocks: BlockNode[], inline: boolean, fromHeading: boolean, ownFonts = false, edges: { openStart?: boolean; openEnd?: boolean; own?: boolean } = {}): Transaction | null {
+  /** What a copy of the selection of `state` carries, as a paste reads it (`copyKey`); null without a mounted view. */
+  private copiedKey(state: EditorState): string | null {
+    const view = this.mounted?.view
+    if (!view || state.selection.empty) return null
+    return copyKey(htmlToBlocks(view.serializeForClipboard(state.selection.content()).dom.innerHTML))
+  }
+
+  private pastedBlocks(state: EditorState, blocks: BlockNode[], inline: boolean, fromHeading: boolean, ownFonts = false, edges: { openStart?: boolean; openEnd?: boolean; own?: boolean; backInPlace?: boolean } = {}): Transaction | null {
     const valid = (doc: PMNode) => !exceedsBounds(doc, this.baseFont)
     const canonical = parseBlocks(blocks, this.baseFont)
     if (!canonical) return null
@@ -1441,6 +1464,7 @@ export class EditSession {
     const fresh = cut && cut.doc.eq(state.doc) && cut.caret === state.selection.from ? cut : null
     const continuesInto = !state.selection.empty ? restOfEndItem(state, tr.mapping) : fresh?.rest
     const continuesList = !state.selection.empty ? restOfEndList(state, tr.mapping) : fresh?.restList
+    const rest = !state.selection.empty ? restOfEnd(state) : fresh?.restOf
     const at = EditorState.create({ doc: tr.doc, selection: TextSelection.create(tr.doc, tr.selection.from) })
     const intoHeading = at.selection.$from.parent.type === nodes.heading
     let blocksIn = docFromBlocks(canonical).content
@@ -1455,7 +1479,7 @@ export class EditSession {
       blocksIn = Fragment.from(nodes.paragraph.create(null, (run as PMNode | null)?.type.spec.code ? inMono(words) : words))
     }
     const content = this.pasteMarks(blocksIn, state, inline && fromHeading && !intoHeading, ownFonts)
-    const placed = pasteBlocks(at, content, { inline, ...edges, ...(continuesInto !== undefined && edges.own ? { continuesInto } : {}), ...(continuesList !== undefined && edges.own ? { continuesList } : {}) })
+    const placed = pasteBlocks(at, content, { inline, ...edges, ...(continuesInto !== undefined && edges.own ? { continuesInto } : {}), ...(continuesList !== undefined && edges.own ? { continuesList } : {}), ...(rest !== undefined && edges.own ? { rest } : {}) })
     if (!placed) return null
     for (const step of placed.steps) tr.step(step)
     tr.setSelection(TextSelection.create(tr.doc, placed.selection.anchor, placed.selection.head))

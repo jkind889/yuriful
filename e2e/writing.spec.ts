@@ -2120,3 +2120,83 @@ test('Q1 and the copy-and-paste rule through the real clipboard: evi pasted over
   await storedWhen(page, (d) => JSON.stringify(byId(d, 't').blocks) === JSON.stringify(fourth) && byId(d, 't').text === 'First\nThird\nFourth\nnested')
   expect(errors).toEqual([])
 })
+
+test('N1 to N5 and rule 6 through the real clipboard, in an album review: sides cut and pasted back keep their numbers, nested tracks their sides; tracks join a numbered list as one; a bullet\'s two paragraphs into a ticked task leave a new unticked item', async ({ page }) => {
+  const numbered = (start: number, ...items: string[]): Block => ({ type: 'orderedList', ...(start !== 1 ? { start } : {}), items: items.map((t) => ({ blocks: [p(t)] })) })
+  const heading = (text: string): Block => ({ type: 'heading', level: 2, content: [{ text }] })
+  const sides = [heading('Blue Hour'), numbered(1, 'Dawn', 'Noon'), heading('Side B'), numbered(5, 'Dusk', 'Night', 'Coda')]
+  const nested = [bullets([p('Side A'), bullets([p('Rise')], [p('Glow')])], [p('Side C'), bullets([p('Fade')], [p('Rest')])])]
+  const notes = [bullets([p('First'), p('Second')]), tasks([true, [p('LR'), p('Later')]], [false, [p('Mix')]])]
+  const join = [numbered(1, 'Tapeloop', 'Coda'), numbered(5, 'North', 'South')]
+  const text = (blocks: Block[]) => {
+    const out: string[] = []
+    const walk = (bs: Block[]) => {
+      for (const b of bs as Array<Record<string, unknown>>) {
+        if (b.type === 'paragraph' || b.type === 'heading') out.push(((b.content as Array<{ text: string }> | undefined) ?? []).map((r) => r.text).join(''))
+        else if (b.type === 'blockquote') walk(b.blocks as Block[])
+        else if (Array.isArray(b.items)) for (const it of b.items as Array<{ blocks: Block[] }>) walk(it.blocks)
+      }
+    }
+    walk(blocks)
+    return out.join('\n')
+  }
+  const { errors, at } = await open(page, [
+    textRec('sides', 120, 40, { fontSize: 14, width: 300, text: text(sides), blocks: sides }),
+    textRec('nested', 120, 260, { fontSize: 14, width: 300, text: text(nested), blocks: nested }),
+    textRec('notes', 520, 40, { fontSize: 14, width: 300, text: text(notes), blocks: notes }),
+    textRec('join', 520, 260, { fontSize: 14, width: 300, text: text(join), blocks: join }),
+  ])
+  /** Selects from character `a` of the line reading `first` to character `b` of the line reading `last`, in the edited text. */
+  const select = (first: string, a: number, last: string, b: number) =>
+    page.evaluate(
+      ({ first, a, last, b }) => {
+        const lines = Array.from(document.querySelectorAll('.scene-layer [contenteditable="true"].ProseMirror p, .scene-layer [contenteditable="true"].ProseMirror h2'))
+        const textOf = (text: string) => document.createTreeWalker(lines.find((l) => l.textContent === text)!, NodeFilter.SHOW_TEXT).nextNode() as Text
+        const range = document.createRange()
+        range.setStart(textOf(first), a)
+        range.setEnd(textOf(last), b)
+        getSelection()!.removeAllRanges()
+        getSelection()!.addRange(range)
+      },
+      { first, a, last, b },
+    )
+  const selected = async (start: number, end: number) => expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }).toEqual([start, end])
+  // N4: from No|on through Nig|ht, cut and pasted straight back: side B still starts at 5.
+  await editAtEnd(page, at(140, 52))
+  await select('Noon', 2, 'Night', 3)
+  await selected(17, 35)
+  await page.keyboard.press('Control+x')
+  await storedWhen(page, (d) => byId(d, 'sides').text === 'Blue Hour\nDawn\nNoht\nCoda')
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'sides').blocks) === JSON.stringify(sides))
+  await page.keyboard.press('Escape')
+  // N5: from G|low under Side A into Fa|de under Side C, cut and pasted back: Rest stays under Side C.
+  await editAtEnd(page, at(140, 272))
+  await select('Glow', 1, 'Fade', 2)
+  await selected(13, 26)
+  await page.keyboard.press('Control+x')
+  await storedWhen(page, (d) => byId(d, 'nested').text === 'Side A\nRise\nGde\nRest')
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'nested').blocks) === JSON.stringify(nested))
+  await page.keyboard.press('Escape')
+  // Rule 6: Fi|rst to Sec|ond of one bullet, pasted into the ticked task L|R: Lrst stays ticked, SecR and Later a new unticked item.
+  await editAtEnd(page, at(540, 52))
+  await select('First', 2, 'Second', 3)
+  await selected(2, 9)
+  await page.keyboard.press('Control+c')
+  await select('LR', 1, 'LR', 1)
+  await selected(14, 14)
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'notes').blocks) === JSON.stringify([bullets([p('First'), p('Second')]), tasks([true, [p('Lrst')]], [false, [p('SecR'), p('Later')]], [false, [p('Mix')]])]))
+  await page.keyboard.press('Escape')
+  // N1: tracks 5 and 6 pasted between Tape and loop: one list, numbered 1 to 5.
+  await editAtEnd(page, at(540, 272))
+  await select('North', 0, 'South', 5)
+  await selected(14, 25)
+  await page.keyboard.press('Control+c')
+  await select('Tapeloop', 4, 'Tapeloop', 4)
+  await selected(4, 4)
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'join').blocks) === JSON.stringify([numbered(1, 'Tape', 'North', 'South', 'loop', 'Coda'), numbered(5, 'North', 'South')]))
+  expect(errors).toEqual([])
+})
