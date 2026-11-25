@@ -928,3 +928,45 @@ test('scaling a selection of a bare and a paper text at their least fixed height
   }
   expect(errors).toEqual([])
 })
+
+// ---- the third review: what is drawn during a scale is what would be stored ----------------------
+
+for (const [size, fontSize, zoom, factor] of [['1.9%', 24, 1, 1.019], ['10×', 8.32, 0.5, 10]] as const) {
+  test(`a fixed-height text scaled in a selection is drawn at the height its record would have, during the drag and after it (${size})`, async ({ page }) => {
+    const padY = Math.round(fontSize * 0.75 * 100) / 100
+    const body = Math.round(fontSize * 1.5) // the least fixed height: what Slice 4's handle allows
+    const bare = textRec('bare', 100, 100, { text: 'A', fontSize, width: fontSize * 8, height: body })
+    const paper = textRec('paper', 100 + fontSize * 12, 100, { text: 'B', fontSize, width: fontSize * 8, height: Math.round((body + 2 * padY) * 100) / 100, surface: 'card' })
+    const { errors } = await open(page, [bare, paper], { view: { zoom, panX: 80, panY: 80 } })
+    await page.evaluate(() => window.__paper.selectAll())
+    await expect.poll(async () => (await probe(page)).selected.sort()).toEqual(['bare', 'paper'])
+    const br = await handle(page, 'br')
+    const tl = await handle(page, 'tl')
+    // Drawn (the card on the page) against stored (what saving would store now), in screen pixels.
+    const compare = async (when: string) => {
+      const rows = await page.evaluate(() =>
+        ['bare', 'paper'].map((id) => ({ id, rec: window.__paper.record(id), drawn: document.querySelector(`.scene-text[data-id="${id}"]`)!.getBoundingClientRect().height })),
+      )
+      for (const { id, rec, drawn } of rows) {
+        const least = Math.round((rec.fontSize as number) * 1.5) + (id === 'paper' ? 2 * (Math.round((rec.fontSize as number) * 0.75 * 100) / 100) : 0)
+        expect(rec.height as number, `${id} ${when}: stored`).toBeGreaterThanOrEqual(least - 0.005)
+        // Within a quarter of a screen pixel: the browser lays a card out in 1/64 px of its own, which a 10× scale makes about a tenth of a unit.
+        expect(Math.abs(drawn - (rec.height as number) * zoom), `${id} ${when}: drawn ${drawn / zoom}, stored ${String(rec.height)}`).toBeLessThan(0.25)
+      }
+      return rows
+    }
+    await page.mouse.move(br.x, br.y)
+    await page.mouse.down()
+    await page.mouse.move(tl.x + (br.x - tl.x) * factor, tl.y + (br.y - tl.y) * factor, { steps: 10 })
+    await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))))
+    const during = await compare('during the drag')
+    expect(during[0]!.rec.fontSize, 'scaled').not.toBe(fontSize)
+    await page.mouse.up()
+    await storedWhen(page, (d) => byId(d, 'bare').fontSize !== fontSize)
+    await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))))
+    const after = await compare('after the drag')
+    // Nothing jumps on release (to within a pixel).
+    for (let k = 0; k < 2; k++) expect(Math.abs(after[k]!.drawn - during[k]!.drawn), `${after[k]!.id} on release`).toBeLessThan(0.5)
+    expect(errors).toEqual([])
+  })
+}

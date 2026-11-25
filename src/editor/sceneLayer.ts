@@ -1087,6 +1087,12 @@ interface ItemState {
   pageTop?: number
   /** Texts: the paper's padding (zero without paper): the body, where the words are, sits inside it. */
   pad?: PaperPad
+  /**
+   * Texts with a fixed height, while a scale gesture holds that height to its least one for the scaled
+   * size (`setHeldHeight`): the outer height in the card's own units, drawn instead of the record's,
+   * so the card is drawn as the record would be if the gesture ended now. A new record clears it.
+   */
+  held?: number
 }
 
 /**
@@ -1262,11 +1268,31 @@ export class SceneLayer {
     const kind = 'type' in rec ? rec.type : 'frame'
     const item = this.items.get(rec.id)
     if (!item) throw new Error(`no scene item ${rec.id}: use setRecords to add one`)
+    if (item.held !== undefined) {
+      delete item.held // the record now says what the height is
+      item.key = ''
+    }
     if (force) {
       item.key = ''
       delete item.shown
     }
     this.upsert(rec, kind)
+  }
+
+  /**
+   * While a scale gesture is under way, a fixed-height text is drawn at the height its record would
+   * have if the gesture ended now (held to its least one for the scaled size): `outer` is that height
+   * in the card's own units (the record's height over the vertical scale), or undefined to draw the
+   * record's again. True when the card was drawn again (its matrix is then the record's: set the
+   * gesture's again).
+   */
+  setHeldHeight(id: string, outer: number | undefined): boolean {
+    const item = this.items.get(id)
+    if (item?.kind !== 'text' || item.held === outer) return false
+    if (outer === undefined) delete item.held
+    else item.held = outer
+    this.renderText(item, item.rec as TextRecord)
+    return true
   }
 
   /** The viewport, as the editor stores it. */
@@ -1460,7 +1486,11 @@ export class SceneLayer {
     const body = item && this.textBody(item)
     if (!item || !body) return null
     const pad = item.pad ?? { x: 0, y: 0 }
-    return { left: pad.x, top: pad.y, right: pad.x + body.clientWidth, bottom: pad.y + body.clientHeight }
+    // Exact sizes (`clientWidth` and `clientHeight` are whole pixels): a fixed height as set, otherwise as laid out.
+    const style = this.doc.defaultView?.getComputedStyle(body)
+    const width = parseFloat(style?.width ?? '') || body.clientWidth
+    const height = item.fixed ?? (parseFloat(style?.height ?? '') || body.clientHeight)
+    return { left: pad.x, top: pad.y, right: pad.x + width, bottom: pad.y + height }
   }
 
   /** A point in a card's own coordinates (see `toCard`) on the page: the inverse of `toCard`. */
@@ -1882,7 +1912,7 @@ export class SceneLayer {
     // On paper the card is the sheet, padded; its body, where the words are, is laid out as the words'
     // own box (`innerText`). Without paper the two are the same.
     const pad = paperPad(rec)
-    const inner = innerText(rec)
+    const inner = this.innerOf(item, rec)
     item.pad = pad
     const width = this.cardWidth(inner, this.doc) + 2 * pad.x
     el.style.width = `${width}px`
@@ -1919,7 +1949,7 @@ export class SceneLayer {
    */
   private fixHeight(item: ItemState, body: HTMLElement, rec: TextRecord) {
     // The body's own fixed height: inside the paper's padding.
-    const fixed = innerText(rec).height
+    const fixed = this.innerOf(item, rec).height
     const id = rec.id
     item.el.classList.toggle('is-fixed', fixed !== undefined)
     // A caption background fills the sheet on paper (over the paper's own colour), and the card of a
@@ -1953,7 +1983,14 @@ export class SceneLayer {
     }
     const culled = item.culled
     if (culled) this.setCulled(item, false)
-    item.h = this.measurer.measureHeight(item.el.firstElementChild as HTMLElement, innerText(rec)) + 2 * paperPad(rec).y
+    item.h = this.measurer.measureHeight(item.el.firstElementChild as HTMLElement, this.innerOf(item, rec)) + 2 * paperPad(rec).y
     if (culled) this.setCulled(item, true)
+  }
+
+  /** The words' own box as drawn (`innerText`), at a scale gesture's held height while one is set (`setHeldHeight`). */
+  private innerOf(item: ItemState, rec: TextRecord): TextRecord {
+    const inner = innerText(rec)
+    if (item.held === undefined || rec.height === undefined) return inner
+    return { ...inner, height: Math.max(1, item.held - 2 * paperPad(rec).y) }
   }
 }

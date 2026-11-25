@@ -18,6 +18,8 @@ import type { TextData } from './objects.ts'
 import { BLOCK_KINDS, boxBlocks, boxCommandContent, boxFormat, clearRangeFonts, setBoxLevel, toggleBlockKind, toggleBoxMark } from './textRules.ts'
 import type { BlockKind } from './textRules.ts'
 import { noWrapRanges } from './sceneLayer.ts'
+import { rowDistance, rowElement, rowShown, rowsOfBlock } from './marginRows.ts'
+import type { Row } from './marginRows.ts'
 import { boxOf, contentFromDoc, docFromText, plainTextOfDoc, textOffsetAt, textblocksOf } from './textSchema.ts'
 import { createEditSession } from './textSession.ts'
 import type { EditSession } from './textSession.ts'
@@ -670,8 +672,14 @@ export class DomTextAdapter implements TextAdapter {
     const view = edit?.session.view
     // In the text itself, or on its scroll thumb: the browser's and the view's (or the thumb's). On
     // the paper round the words (its padding), or anywhere else the browser would not route into the
-    // text: placed here.
-    const own = e.target instanceof Node && (edit?.body.contains(e.target) || (e.target instanceof Element && !!e.target.closest('.scene-text-thumb') && !!card?.contains(e.target)))
+    // text: placed here. "In the text" is where the press is, inside the words' own box: the browser
+    // also counts as the text what overflows it, such as the white space a wrapped row hangs past its
+    // end (a heading's can reach well into the paper's margin), and would put the caret after it.
+    const onThumb = e.target instanceof Element && !!e.target.closest('.scene-text-thumb') && !!card?.contains(e.target)
+    const local = edit ? this.scene.layer.toCard(edit.id, e.clientX, e.clientY) : null
+    const box = edit ? this.scene.layer.wordsBox(edit.id) : null
+    const inWords = !!local && !!box && local.x >= box.left && local.x <= box.right && local.y >= box.top && local.y <= box.bottom
+    const own = onThumb || (e.target instanceof Node && !!edit?.body.contains(e.target) && inWords)
     if (!edit || !card || !view || own) return false
     const at = this.offsetNear(edit, view, e)
     const anchor = e.shiftKey ? edit.session.selection().anchor : at
@@ -694,7 +702,7 @@ export class DomTextAdapter implements TextAdapter {
 
   /**
    * The text offset under a page point, or, when it falls beside the words (the box's edge, a paper's
-   * padding, a line's indentation), on the line level with it (`pointOnNearestLine`); failing that,
+   * padding, a line's indentation), at the start or end of the row level with it (`positionBesideWords`); failing that,
    * under the point moved a little toward the box's centre. Read beneath the items in front of
    * the card, which otherwise take the point.
    */
@@ -708,10 +716,9 @@ export class DomTextAdapter implements TextAdapter {
   }
 
   private offsetNearShown(edit: LiveEdit, view: EditorView, at: ClientPoint): number | null {
-    // The line level with the press (or the nearest shown), then its start or end.
-    const near = this.pointOnNearestLine(edit, view, at)
-    const pos = near && posAt(view, near)
-    if (pos !== null && pos !== undefined) return textOffsetAt(edit.session.state.doc, pos, -1)
+    // The row level with the press (or the nearest shown), then its start or end.
+    const beside = this.positionBesideWords(edit, view, at)
+    if (beside !== null) return textOffsetAt(edit.session.state.doc, beside, -1)
     const ctr = edit.target.getCenterPoint()
     const v = this.host.canvas.viewportTransform
     const r = this.host.canvas.upperCanvasEl.getBoundingClientRect()
@@ -730,49 +737,61 @@ export class DomTextAdapter implements TextAdapter {
   }
 
   /**
-   * A point of the page on the line a press beside the words belongs to, as near the press as that
-   * line allows: the line (a paragraph, heading, list or checklist item's paragraph, a code block, an
-   * empty line; never a divider) whose height, in the card's own coordinates, holds the press, or the
-   * nearest one above or below it, among the lines shown; then the press is brought inside that line's
-   * own box, which starts after any indentation. So a press left of a line lands at its start, right
-   * of it at its end, above or below the words on the first or last line shown; a wrapped line's
-   * press lands on the row level with it. Null when the card or its lines cannot be read.
+   * The margin-press rule (Slice 5): the document position a press beside the words puts the caret
+   * at. The candidates are the text's visual rows as laid out (`rowsOfBlock`: each wrapped row, each
+   * row of a code block, an empty line; never a divider), and only rows at least half shown in the
+   * words' viewport (`rowShown`). The row whose height holds the press is taken, or the nearest shown
+   * one above or below it. A press left of the row's characters gives the position before its first
+   * character, right of them the position after its last (before the wrap, for a row that wraps), in
+   * reading order; one level with its characters (above or below the words) the place in the row the
+   * browser gives at that point on the row's middle. Worked out in the card's own coordinates, so the
+   * same at every zoom and angle. Null when the card or its rows cannot be read.
    */
-  private pointOnNearestLine(edit: LiveEdit, view: EditorView, at: ClientPoint): ClientPoint | null {
+  private positionBesideWords(edit: LiveEdit, view: EditorView, at: ClientPoint): number | null {
     const layer = this.scene.layer
-    const press = layer.toCard(edit.id, at.clientX, at.clientY)
+    const toCard = (x: number, y: number) => layer.toCard(edit.id, x, y)
+    const press = toCard(at.clientX, at.clientY)
     const shown = layer.wordsBox(edit.id)
     if (!press || !shown || shown.bottom <= shown.top) return null
-    const z = this.host.canvas.viewportTransform[0] || 1
-    const inset = Math.max(1, 1 / z) // a screen pixel (and at least a unit) inside an edge
-    const y = clamp(press.y, shown.top + inset, shown.bottom - inset)
-    let best: { left: number; top: number; right: number; bottom: number } | null = null
-    let bestGap = Infinity
+    // The textblocks shown, nearest first: a row lies within its block, so no row of a block farther
+    // than the best row so far can be nearer.
+    const blocks: Array<{ pos: number; el: HTMLElement; gap: number }> = []
     for (const { pos } of textblocksOf(view.state.doc)) {
       const dom = view.nodeDOM(pos)
       if (!(dom instanceof HTMLElement)) continue
-      // A code block's lines are in its `code`, inside the block's padding.
-      const el = dom.tagName === 'PRE' && dom.firstElementChild instanceof HTMLElement ? dom.firstElementChild : dom
-      const w = el.offsetWidth
-      const h = el.offsetHeight
-      if (!w || !h) continue
-      // Its centre on the page is its centre in the card, however the card is turned; its size is its own layout size.
-      const r = el.getBoundingClientRect()
-      const c = layer.toCard(edit.id, r.left + r.width / 2, r.top + r.height / 2)
+      // The block's own box (a rectangle, so the middle of its box on the page is its middle in the
+      // card, however the card is turned); its rows are read from the element that lays them out.
+      const r = dom.getBoundingClientRect()
+      const c = toCard(r.left + r.width / 2, r.top + r.height / 2)
+      const h = dom.offsetHeight
+      const el = rowElement(dom)
       if (!c) continue
-      const box = { left: c.x - w / 2, top: Math.max(c.y - h / 2, shown.top), right: c.x + w / 2, bottom: Math.min(c.y + h / 2, shown.bottom) }
-      if (box.bottom <= box.top) continue // scrolled out of sight
-      const gap = y < box.top ? box.top - y : y > box.bottom ? y - box.bottom : 0
-      if (gap < bestGap) {
-        best = box
-        bestGap = gap
-        if (gap === 0) break
+      const top = c.y - h / 2
+      const bottom = c.y + h / 2
+      if (bottom <= shown.top || top >= shown.bottom) continue
+      blocks.push({ pos, el, gap: press.y < top ? top - press.y : press.y > bottom ? press.y - bottom : 0 })
+    }
+    blocks.sort((p, q) => p.gap - q.gap)
+    let best: Row | null = null
+    let bestDistance: [number, number] = [Infinity, Infinity]
+    for (const block of blocks) {
+      if (best && block.gap > bestDistance[0]) break
+      for (const row of rowsOfBlock(view, block.pos, block.el, toCard)) {
+        if (!rowShown(row, shown.top, shown.bottom)) continue
+        const d = rowDistance(row, press.y)
+        if (d[0] < bestDistance[0] || (d[0] === bestDistance[0] && d[1] < bestDistance[1])) {
+          best = row
+          bestDistance = d
+        }
       }
     }
     if (!best) return null
-    const ix = Math.min(inset, (best.right - best.left) / 2)
-    const iy = Math.min(inset, (best.bottom - best.top) / 2)
-    return layer.fromCard(edit.id, clamp(press.x, best.left + ix, best.right - ix), clamp(y, best.top + iy, best.bottom - iy))
+    if (press.x < best.inkLeft) return best.start
+    if (press.x > best.inkRight) return best.end
+    const onRow = layer.fromCard(edit.id, press.x, best.centre)
+    const pos = onRow && posAt(view, onRow)
+    if (pos === null || pos === undefined) return press.x - best.inkLeft < best.inkRight - press.x ? best.start : best.end
+    return Math.min(Math.max(pos, best.start), best.end)
   }
 
   dispose() {

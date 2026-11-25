@@ -9,7 +9,7 @@ import { SceneLayer, effectiveCardWidth, liveCardWidth, minCardWidth, paperWidth
 import { innerText, paperPad } from '../model/paper.ts'
 import type { CardMeasurer } from './sceneLayer.ts'
 import { canAnimate, stillFrame } from './stillImage.ts'
-import { FIX_HEIGHT_ACTION, ProxyRect, frameNameOf, idOf, imageCropOf, imageDataOf, isFrame, setTextData, textDataOf, toRecord } from './objects.ts'
+import { FIX_HEIGHT_ACTION, ProxyRect, absoluteScaleOf, frameNameOf, idOf, imageCropOf, imageDataOf, isFrame, setTextData, textDataOf, toRecord } from './objects.ts'
 import type { TextData } from './objects.ts'
 
 /** Which point of a text's box stays where it is when its width changes: its alignment edge. */
@@ -444,13 +444,40 @@ export class DomScene {
   private place(o: FabricObject): boolean {
     const id = idOf(o)
     if (!id) return false
+    const redrawn = this.holdScaledHeight(o, id)
     const m = o.calcTransformMatrix()
     const key = `${m.join(',')}|${o.width}|${o.height}`
-    if (this.placed.get(id) === key) return false
+    if (!redrawn && this.placed.get(id) === key) return false
     this.layer.setItemMatrix(id, m, { width: o.width, height: o.height })
     this.placed.set(id, key)
     this.cullPending = true
     return true
+  }
+
+  /**
+   * What is drawn during a gesture is what the record would be if it ended now: a fixed-height text
+   * being scaled (alone or in a selection) is drawn at its record's held height (`toRecord`: never
+   * below the least one for the scaled size), not its height times the scale, so nothing jumps on
+   * release. A text in a selection being scaled takes that height as its proxy's too, so its border
+   * agrees; a text scaled alone keeps its proxy's (Fabric works its scale out from it as the pointer
+   * moves), and its card can then reach a little below its border until it settles. True when the card
+   * was drawn again.
+   */
+  private holdScaledHeight(o: FabricObject, id: string): boolean {
+    const td = textDataOf(o)
+    if (!td) return false
+    let held: number | undefined
+    if (td.height !== undefined) {
+      const { sx, sy } = absoluteScaleOf(o)
+      const rec = sx !== 1 || sy !== 1 ? toRecord(o) : null
+      if (rec?.type === 'text' && rec.height !== undefined) held = rec.height / sy
+    }
+    const redrawn = this.layer.setHeldHeight(id, held)
+    if (held !== undefined && o.group instanceof ActiveSelection && o.height !== held) {
+      o.set({ height: held })
+      o.setCoords()
+    }
+    return redrawn
   }
 
   /** The items Fabric is transforming right now are composited on their own layer and never culled. */

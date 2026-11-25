@@ -359,6 +359,12 @@ const absoluteScale = (v: number) => {
   return Math.abs(a - 1) < UNIT_SCALE_TOLERANCE ? 1 : a
 }
 
+/** An object's absolute scale (its own times its selection's), each read as exactly 1 within `UNIT_SCALE_TOLERANCE`. */
+export function absoluteScaleOf(obj: FabricObject): { sx: number; sy: number } {
+  const d = util.qrDecompose(obj.calcTransformMatrix())
+  return { sx: absoluteScale(d.scaleX), sy: absoluteScale(d.scaleY) }
+}
+
 export function toRecord(obj: FabricObject): ObjectRecord | null {
   const m = meta.get(obj)
   if (!m || m.kind === 'frame') return null
