@@ -162,6 +162,15 @@ button:disabled {
   background: var(--surface);
   box-shadow: var(--shadow);
 }
+.canvas-options-panel label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.canvas-options-panel input {
+  accent-color: var(--accent);
+}
 .appearance-presets {
   display: flex;
   flex-wrap: wrap;
@@ -822,19 +831,7 @@ button:disabled {
   background: var(--bg);
 }
 
-/* ---- drop + toast ---- */
-.drop-overlay {
-  position: absolute;
-  inset: 12px;
-  display: grid;
-  place-items: center;
-  border: 1.5px dashed var(--accent);
-  border-radius: 12px;
-  background: rgba(108, 123, 242, 0.07);
-  color: var(--accent-strong);
-  font-weight: 600;
-  pointer-events: none !important;
-}
+/* ---- toast ---- */
 .toast {
   position: absolute;
   left: 50%;
@@ -896,4 +893,19 @@ button:disabled {
 .banner-btn {
   flex: none;
   align-self: center;
+}
+
+.caption-background,
+.caption-background label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.caption-background {
+  justify-content: space-between;
+}
+.caption-background input[type="color"] {
+  width: 30px;
+  height: 24px;
+  padding: 1px;
 }

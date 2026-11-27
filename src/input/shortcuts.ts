@@ -4,6 +4,8 @@ export type ShortcutAction =
   | 'delete'
   | 'select-all'
   | 'duplicate'
+  | 'edit-caption'
+  | 'frame-navigator'
   | 'tool-select'
   | 'tool-hand'
   | 'tool-text'
@@ -31,6 +33,8 @@ export interface ShortcutContext {
   /** Exactly one text is selected (and not being edited): Ctrl/Cmd+B, I and U format it as a whole. */
   textSelected?: boolean
   hasSelection?: boolean
+  /** Exactly one image is selected and its caption can be opened or created. */
+  canEditCaption?: boolean
 }
 
 export type KeyEventLike = Pick<
@@ -56,7 +60,7 @@ export function isEditableTarget(target: EventTarget | null): boolean {
 export function isActivatableTarget(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null
   if (!el || typeof el.tagName !== 'string') return false
-  return ['BUTTON', 'A', 'SUMMARY'].includes(el.tagName) || el.getAttribute('role') === 'button'
+  return el.closest('button, a, summary, [role="button"]') !== null
 }
 
 /**
@@ -92,6 +96,8 @@ export function resolveShortcut(e: KeyEventLike, ctx: ShortcutContext): Shortcut
   if (key === 'Escape') return 'escape'
   if (e.altKey) return null
 
+  if (ctx.canEditCaption && !e.repeat && isConfirmKey(e, ctx)) return 'edit-caption'
+
   switch (key) {
     case 'Delete':
     case 'Backspace':
@@ -122,6 +128,8 @@ export function resolveShortcut(e: KeyEventLike, ctx: ShortcutContext): Shortcut
       return 'tool-frame'
     case 'i':
       return 'add-image'
+    case 'j':
+      return e.repeat ? 'ignore' : 'frame-navigator'
   }
   return null
 }
@@ -192,8 +200,8 @@ export function isPanHoldKey(e: KeyEventLike, ctx: ShortcutContext): boolean {
 }
 
 /**
- * Plain Enter (outside fields and buttons, which use Enter themselves): applies an open crop.
- * Enter in the title field, or on a focused Cancel button, is not this key.
+ * Plain Enter outside fields and buttons: applies an open crop or opens a caption.
+ * The caller decides which action is available, and whether to accept repeat.
  */
 export function isConfirmKey(e: KeyEventLike, ctx: ShortcutContext): boolean {
   return (
@@ -204,6 +212,7 @@ export function isConfirmKey(e: KeyEventLike, ctx: ShortcutContext): boolean {
     !e.shiftKey &&
     !e.isComposing &&
     !ctx.editingText &&
+    (e.target as HTMLElement | null)?.tagName !== 'INPUT' &&
     !isEditableTarget(e.target) &&
     !isActivatableTarget(e.target)
   )

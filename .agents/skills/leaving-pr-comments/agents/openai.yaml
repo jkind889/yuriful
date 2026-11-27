@@ -1,0 +1,3 @@
+interface:
+  display_name: "Leaving Pr Comments"
+  short_description: "Format authorized agent-authored PR comments"

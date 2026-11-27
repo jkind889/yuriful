@@ -1,0 +1,3 @@
+interface:
+  display_name: "Babysit Pr"
+  short_description: "Monitor a PR within the authorized scope"

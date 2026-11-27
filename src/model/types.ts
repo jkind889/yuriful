@@ -50,6 +50,9 @@ export interface ImageRecord extends RecordBase {
 /** A named font choice. The board stores the id, never a font name (see src/editor/fonts.ts). */
 export type FontId = 'sans' | 'serif' | 'mono' | 'hand' | 'display'
 
+/** An attached caption's side. The default (below the image) has no stored value. */
+export type CaptionSide = 'top' | 'left' | 'right'
+
 /**
  * Formatting on a range of a text's characters. Offsets are UTF-16 code units into the
  * text; a span may cross a line break. Marks are present only when on, and a font only
@@ -88,6 +91,12 @@ export interface TextRecord extends RecordBase {
   spans?: TextSpan[]
   /** Heading level (0 to 3) per paragraph (`text.split('\n')`), trailing zeros trimmed. */
   headings?: number[]
+  captionOf?: string
+  captionSide?: CaptionSide
+  /** Fraction along the edge at the center of the caption. Absent uses legacy alignment. */
+  captionPosition?: number
+  /** A text-box fill that survives detaching the caption. */
+  captionBackground?: string
 }
 
 export type ObjectRecord = ImageRecord | TextRecord

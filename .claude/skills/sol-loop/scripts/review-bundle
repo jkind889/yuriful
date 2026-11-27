@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# review-bundle: write the exact change under review to files a read-only
+# reviewer can read.
+#
+#   review-bundle <base> <out-dir> [--prev-tree <tree>] [-- <path>...]
+#
+# <path> arguments are relative to the repository root.
+#
+# Snapshots base -> working tree (tracked, staged, unstaged, and untracked
+# files that .gitignore does not exclude) through a temporary index. The user's
+# index, stash, and working tree are never touched. Only new git objects are
+# written, and git gc cleans them up.
+#
+# Writes to <out-dir>:
+#   diff.patch      base -> snapshot, the source of truth for the review
+#   context.patch   the same diff with whole-function context
+#   diffstat.txt    git diff --stat of the same range
+#   delta.patch     <prev-tree> -> snapshot (only with --prev-tree)
+#   git.txt         repo, base, HEAD, tree, branch, scoped paths, git status
+# Prints "tree <sha>" last. Pass that sha as --prev-tree for the next round.
+set -euo pipefail
+
+usage() {
+  echo "usage: review-bundle <base> <out-dir> [--prev-tree <tree>] [-- <path>...]" >&2
+  exit 2
+}
+
+[ $# -ge 2 ] || usage
+base=$1
+out=$2
+shift 2
+prev=""
+if [ "${1:-}" = "--prev-tree" ]; then
+  [ $# -ge 2 ] || usage
+  prev=$2
+  shift 2
+fi
+if [ "${1:-}" = "--" ]; then
+  shift
+fi
+[ $# -eq 0 ] || [ -n "${1:-}" ] || usage
+
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+  echo "review-bundle: not inside a git work tree" >&2
+  exit 2
+}
+mkdir -p "$out"
+out=$(cd "$out" && pwd)
+top=$(git rev-parse --show-toplevel)
+cd "$top"
+base_sha=$(git rev-parse --verify --quiet "$base^{commit}") || {
+  echo "review-bundle: unknown base '$base'" >&2
+  exit 2
+}
+if [ -n "$prev" ]; then
+  git rev-parse --verify --quiet "$prev^{tree}" >/dev/null || {
+    echo "review-bundle: unknown prev tree '$prev'" >&2
+    exit 2
+  }
+fi
+
+mkdir -p "$out"
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/review-bundle.XXXXXX")
+trap 'rm -rf "$tmp"' EXIT
+export GIT_INDEX_FILE="$tmp/index"
+git read-tree HEAD
+if [ $# -gt 0 ]; then
+  git add -A -- "$@"
+else
+  git add -A
+fi
+tree=$(git write-tree)
+unset GIT_INDEX_FILE
+
+diff_opts=(--no-ext-diff --no-textconv --find-renames)
+git diff "${diff_opts[@]}" "$base_sha" "$tree" -- "$@" > "$out/diff.patch"
+git diff "${diff_opts[@]}" --function-context "$base_sha" "$tree" -- "$@" > "$out/context.patch"
+git diff "${diff_opts[@]}" --stat "$base_sha" "$tree" -- "$@" > "$out/diffstat.txt"
+if [ -n "$prev" ]; then
+  git diff "${diff_opts[@]}" "$prev" "$tree" -- "$@" > "$out/delta.patch"
+fi
+
+{
+  echo "repo: $top"
+  echo "base: $base_sha ($base)"
+  echo "head: $(git rev-parse HEAD)"
+  echo "branch: $(git branch --show-current || true)"
+  echo "tree: $tree"
+  [ -n "$prev" ] && echo "prev-tree: $prev"
+  if [ $# -gt 0 ]; then echo "paths: $*"; else echo "paths: (whole repo)"; fi
+  echo "diff: git diff ${diff_opts[*]} $base_sha $tree${*:+ -- $*}"
+  echo "generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "git status --short:"
+  git status --short
+} > "$out/git.txt"
+
+lines=$(wc -l < "$out/diff.patch" | tr -d ' ')
+echo "review-bundle: wrote $out (diff.patch: $lines lines)" >&2
+[ "$lines" -gt 0 ] || echo "review-bundle: warning: diff is empty" >&2
+[ "$lines" -le 4000 ] || echo "review-bundle: warning: diff is over 4000 lines; consider narrowing the paths" >&2
+echo "tree $tree"

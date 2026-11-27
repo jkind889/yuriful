@@ -29,6 +29,22 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string,
 afterEach(() => made.splice(0).forEach((e) => e.remove()))
 
 describe('resolveShortcut: actions', () => {
+  it('claims only plain, fresh Enter on an eligible image outside controls and text editing', () => {
+    const ctx = { ...idle, canEditCaption: true }
+    expect(resolveShortcut(key('Enter'), ctx)).toBe('edit-caption')
+    for (const patch of [{ repeat: true }, { ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }, { isComposing: true }]) {
+      expect(resolveShortcut(key('Enter', patch), ctx)).toBeNull()
+    }
+    const button = el('button')
+    const label = el('span')
+    button.append(label)
+    for (const target of [button, label, el('input'), el('input', { type: 'button' }), el('textarea'), el('select')]) {
+      expect(resolveShortcut(key('Enter', { target }), ctx)).toBeNull()
+    }
+    expect(resolveShortcut(key('Enter'), { ...ctx, editingText: true })).toBeNull()
+    expect(resolveShortcut(key('Enter'), idle)).toBeNull()
+  })
+
   it('maps tool and add keys', () => {
     expect(resolveShortcut(key('v'), idle)).toBe('tool-select')
     expect(resolveShortcut(key('h'), idle)).toBe('tool-hand')

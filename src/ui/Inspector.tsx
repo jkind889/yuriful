@@ -413,6 +413,44 @@ export function Inspector({ editor, selection, cropping, onReplace }: {
       {selection.kind === 'image' && <ImageTools editor={editor} selection={selection} />}
       {selection.kind === 'image' && <ReplaceButton selection={selection} onReplace={onReplace} />}
 
+      {selection.caption.edit && (
+        <button type="button" className="secondary-btn inspector-btn" disabled={!selection.caption.canEdit} onClick={() => editor.editCaption()}>
+          {selection.caption.edit === 'add' ? 'Add caption' : 'Edit caption'}
+        </button>
+      )}
+      {selection.caption.attached && (
+        <button type="button" className="secondary-btn inspector-btn" disabled={!selection.caption.canDetach} onClick={() => editor.detachCaption()}>
+          Detach caption
+        </button>
+      )}
+      {(selection.caption.attached || selection.caption.background) && (
+        <div className="caption-background" onKeyDown={(e) => e.stopPropagation()}>
+          <label>
+            <input
+              type="checkbox"
+              checked={selection.caption.background !== undefined}
+              disabled={!selection.caption.canStyle}
+              onChange={(e) => editor.setCaptionBackground(e.currentTarget.checked ? '#ffffff' : undefined)}
+            />
+            Caption background
+          </label>
+          {selection.caption.background && (
+            <input
+              type="color"
+              aria-label="Caption background color"
+              value={selection.caption.background}
+              disabled={!selection.caption.canStyle}
+              onChange={(e) => editor.setCaptionBackground(e.currentTarget.value)}
+            />
+          )}
+        </div>
+      )}
+      {selection.caption.canMake && (
+        <button type="button" className="secondary-btn inspector-btn" onClick={() => editor.makeCaption()}>
+          Make caption
+        </button>
+      )}
+
       {selection.kind === 'text' && selection.text && <TextPanel editor={editor} selection={selection} text={selection.text} locked={selection.locked} />}
 
       {selection.layout && <LayoutPanel editor={editor} layout={selection.layout} />}

@@ -1,7 +1,7 @@
 import { boardAppearance } from './appearance.ts'
 import { canonicalTextFormatting } from './richText.ts'
 import { DEFAULT_TITLE, DOC_VERSION } from './types.ts'
-import type { BoardDoc, CropRect, FrameRecord, ObjectRecord, Scene, StoredDoc, Viewport } from './types.ts'
+import type { BoardDoc, CropRect, FrameRecord, ObjectRecord, Scene, StoredDoc, TextRecord, Viewport } from './types.ts'
 
 export const MIN_ZOOM = 0.05
 export const MAX_ZOOM = 8
@@ -22,6 +22,27 @@ const isStr = (v: unknown): v is string => typeof v === 'string'
 
 /** `locked` is kept only when it is exactly `true`; anything else is dropped, not fatal. Both wire versions. */
 const lockOf = (raw: Record<string, unknown>): { locked?: true } => (raw.locked === true ? { locked: true } : {})
+
+export function captionBackground(value: unknown): string | undefined {
+  return isStr(value) && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : undefined
+}
+
+type CaptionFields = Pick<TextRecord, 'captionOf' | 'captionSide' | 'captionPosition' | 'captionBackground'>
+
+function captionFields(raw: Partial<Record<keyof CaptionFields, unknown>>): CaptionFields {
+  const background = captionBackground(raw.captionBackground)
+  const style = background ? { captionBackground: background } : {}
+  const captionOf = isStr(raw.captionOf) ? raw.captionOf : ''
+  if (!captionOf) return style
+  const side = raw.captionSide
+  const position = raw.captionPosition
+  return {
+    ...style,
+    captionOf,
+    ...((side === 'top' || side === 'left' || side === 'right') && { captionSide: side }),
+    ...(isNum(position) && position >= 0 && position <= 1 && { captionPosition: position }),
+  }
+}
 
 /**
  * An image's `crop`, kept only when it is an object of finite numbers with `x >= 0`,
@@ -53,7 +74,7 @@ function parseObject(raw: unknown): ObjectRecord | null {
     // Formatting is read leniently, like a dangling owner: whatever is malformed is dropped
     // or trimmed, and the text itself still loads.
     const height = isNum(minHeight) && minHeight >= 0 ? { minHeight } : {}
-    return { type, id, left, top, angle, text, fontSize, width, ...height, ...canonicalTextFormatting(text, raw), ...lockOf(raw) }
+    return { type, id, left, top, angle, text, fontSize, width, ...height, ...canonicalTextFormatting(text, raw), ...lockOf(raw), ...captionFields(raw) }
   }
   return null
 }
@@ -99,6 +120,16 @@ export function parseDoc(raw: unknown): BoardDoc | null {
     objects.push(rec)
   }
 
+  // Resolve after reading all objects: the image can be above or below the caption.
+  const unclaimedImages = new Set(objects.flatMap((o) => o.type === 'image' ? [o.id] : []))
+  for (const rec of objects) {
+    if (rec.type === 'text' && rec.captionOf && !unclaimedImages.delete(rec.captionOf)) {
+      delete rec.captionOf
+      delete rec.captionSide
+      delete rec.captionPosition
+    }
+  }
+
   const title = isStr(raw.title) && raw.title.trim() !== '' ? raw.title : DEFAULT_TITLE
   let viewport = { ...DEFAULT_VIEWPORT }
   if (isRecord(raw.viewport)) {
@@ -122,6 +153,14 @@ function storable<T extends ObjectRecord | FrameRecord>(rec: T): T {
   if ('crop' in out && out.crop) out.crop = { ...out.crop }
   if ('spans' in out && out.spans) out.spans = out.spans.map((span) => ({ ...span }))
   if ('headings' in out && out.headings) out.headings = [...out.headings]
+  if ('type' in out && out.type === 'text') {
+    const caption = captionFields(out)
+    if (!caption.captionOf) delete out.captionOf
+    if (!caption.captionSide) delete out.captionSide
+    if (caption.captionPosition === undefined) delete out.captionPosition
+    if (!caption.captionBackground) delete out.captionBackground
+    Object.assign(out, caption)
+  }
   return out
 }
 
@@ -171,7 +210,7 @@ export function objectsEqual(a: readonly ObjectRecord[], b: readonly ObjectRecor
  * `undefined` vs absent do not matter), arrays element by element. A text's spans and
  * headings are arrays, and two equal lists must not look like a change on every commit.
  */
-function valuesEqual(x: unknown, y: unknown): boolean {
+export function valuesEqual(x: unknown, y: unknown): boolean {
   if (x === y) return true
   // NaN equals NaN here, so a broken number can never look like an endless stream of changes.
   if (Number.isNaN(x) && Number.isNaN(y)) return true

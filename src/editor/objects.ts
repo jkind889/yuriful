@@ -4,7 +4,7 @@ import { clampCrop, storedCrop } from '../model/crop.ts'
 import { round, roundPositive } from '../model/doc.ts'
 import { DEFAULT_TEXT_COLOR, canonicalHeadings, canonicalTextFormatting, headingFontSize, isHeadingLevel, markMask, spansFromCharStyles, textAfterEdit, withPendingMarks } from '../model/richText.ts'
 import type { CharStyle, PendingTextStyle, TextChange, TextFormatting } from '../model/richText.ts'
-import type { CropRect, FrameRecord, ImageRecord, ObjectRecord, TextRecord } from '../model/types.ts'
+import type { CaptionSide, CropRect, FrameRecord, ImageRecord, ObjectRecord, TextRecord } from '../model/types.ts'
 import type { Point, Size } from '../model/viewport.ts'
 import { DrawnTextbox } from './DrawnTextbox.ts'
 import { FONT_STACKS, fontIdOf } from './fonts.ts'
@@ -24,6 +24,9 @@ interface Meta {
   name?: string
   /** Locked (content and frames). Absent means unlocked. */
   locked?: true
+  captionOf?: string
+  captionSide?: CaptionSide
+  captionPosition?: number
 }
 
 /** Fabric objects are plain; our identity lives beside them, not on them. */
@@ -33,6 +36,19 @@ export const idOf = (obj: FabricObject): string | undefined => meta.get(obj)?.id
 export const isFrame = (obj: FabricObject): boolean => meta.get(obj)?.kind === 'frame'
 export const ownerOf = (obj: FabricObject): string | undefined => meta.get(obj)?.frameId
 export const frameNameOf = (obj: FabricObject): string | undefined => meta.get(obj)?.name
+export const captionOf = (obj: FabricObject): string | undefined => meta.get(obj)?.captionOf
+export const captionSideOf = (obj: FabricObject): CaptionSide | undefined => meta.get(obj)?.captionSide
+
+export function setCaption(obj: FabricObject, imageId: string | undefined, side?: CaptionSide, position?: number) {
+  const m = meta.get(obj)
+  if (m?.kind !== 'text') return
+  if (imageId === undefined) delete m.captionOf
+  else m.captionOf = imageId
+  if (imageId === undefined || side === undefined) delete m.captionSide
+  else m.captionSide = side
+  if (imageId === undefined || position === undefined) delete m.captionPosition
+  else m.captionPosition = position
+}
 
 /** Sets or clears the owner of a piece of content. Frames have no owner. */
 export function setOwner(obj: FabricObject, frameId: string | undefined) {
@@ -144,6 +160,8 @@ export function createObject(rec: ObjectRecord, getImage: (assetId: string) => H
   writeTextFormatting(tb, rec)
   tb.setControlsVisibility({ mt: false, mb: false })
   meta.set(tb, { id: rec.id, kind: 'text', ...(rec.frameId !== undefined && { frameId: rec.frameId }), ...lockMeta(rec) })
+  setCaption(tb, rec.captionOf, rec.captionSide, rec.captionPosition)
+  if (rec.captionBackground) tb.set({ backgroundColor: rec.captionBackground })
   applyLockFlags(tb, 'text', rec.locked === true)
   return tb
 }
@@ -477,6 +495,19 @@ export function setTextFontSize(tb: Textbox, fontSize: number, patch: { width?: 
   remember(tb, fmt.headings)
 }
 
+/** Changes the wrap width without changing any styles or moving the caret. */
+export function setTextWrapWidth(tb: Textbox, width: number) {
+  const headings = lastCanonical.get(tb)?.headings
+  tb.set({ width })
+  remember(tb, headings)
+}
+
+export function editTextAtEnd(tb: Textbox) {
+  tb.enterEditing()
+  tb.selectionStart = tb.selectionEnd = offsetToGrapheme(tb, tb.text.length)
+  tb._updateTextarea()
+}
+
 /** Plain value equality of two style tables, ignoring empty rows and entries. */
 function sameStyles(a: TextStyle | undefined, b: TextStyle): boolean {
   const flat = (s: TextStyle | undefined) => {
@@ -604,6 +635,12 @@ export function toRecord(obj: FabricObject): ObjectRecord | null {
       ...(obj instanceof DrawnTextbox && { minHeight: round(obj.minHeight * sy) }),
       ...fmt,
       ...owner,
+      ...(m.captionOf && {
+        captionOf: m.captionOf,
+        ...(m.captionSide && { captionSide: m.captionSide }),
+        ...(m.captionPosition !== undefined && { captionPosition: m.captionPosition }),
+      }),
+      ...(obj.backgroundColor && { captionBackground: obj.backgroundColor }),
     }
     return rec
   }

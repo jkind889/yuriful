@@ -3,6 +3,8 @@ import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { Editor } from '../editor/Editor.ts'
 import type { SaveState } from '../model/types.ts'
 import { AppearanceMenu } from './AppearanceMenu.tsx'
+import { CanvasOptionsMenu } from './CanvasOptionsMenu.tsx'
+import { FrameNavigator, FrameTour } from './FrameNavigation.tsx'
 import { useEditorState } from './useEditorState.ts'
 
 interface StatusView {
@@ -54,7 +56,11 @@ export function Header({ editor }: { editor: Editor | null }) {
 
   return (
     <header className="header">
-      <div className="wordmark">yuriful</div>
+      <div className="header-start">
+        <div className="wordmark">yuriful</div>
+        {editor && state?.ready && <FrameNavigator editor={editor} state={state} />}
+        {editor && state?.ready && <FrameTour editor={editor} state={state} />}
+      </div>
       <input
         key={title}
         className="title-input"
@@ -70,6 +76,7 @@ export function Header({ editor }: { editor: Editor | null }) {
       />
       <div className="save-area">
         {editor && state?.ready && <AppearanceMenu editor={editor} appearance={state.appearance} disabled={state.readOnly !== null} />}
+        <CanvasOptionsMenu editor={editor} />
         <div className={`save-status tone-${status.tone}`} role="status" aria-live="polite" title={status.detail}>
           <span className="save-dot" aria-hidden="true" />
           <span>{status.label}</span>
