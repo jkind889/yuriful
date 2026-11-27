@@ -2004,6 +2004,10 @@ export function pasteBlocks(state: EditorState, pasted: Fragment, opts: { inline
         }
         continue
       }
+      // What a selection left of a numbered list keeps the numbers it shows (N6): it is the last copied line's
+      // list again only when the paste goes back where it came from (N4). Anywhere else the pasted items are a
+      // list of their own before it, and the blocks inside the two lists stay apart with them.
+      if (xf.kind === 'orderedList' && opts.backInPlace !== true) break
       freshIds.set(xf.id, rf.id)
       // (A list made again starts at the number its first pasted item was painted with: its start in the copy.)
       freshStarts.set(xf.id, xf.start)

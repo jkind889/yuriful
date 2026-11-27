@@ -2121,7 +2121,7 @@ test('Q1 and the copy-and-paste rule through the real clipboard: evi pasted over
   expect(errors).toEqual([])
 })
 
-test('N1 to N6 and rule 6 through the real clipboard, in an album review: sides cut and pasted back keep their numbers, nested tracks their sides; tracks join a numbered list as one, and replace tracks as one list with the rest; a bullet\'s two paragraphs into a ticked task leave a new unticked item', async ({ page }) => {
+test('N1 to N6 and rule 6 through the real clipboard, in an album review: sides cut and pasted back keep their numbers, nested tracks their sides; tracks join a numbered list as one, and pasted over tracks leave the rest its numbers; a bullet\'s two paragraphs into a ticked task leave a new unticked item', async ({ page }) => {
   const numbered = (start: number, ...items: string[]): Block => ({ type: 'orderedList', ...(start !== 1 ? { start } : {}), items: items.map((t) => ({ blocks: [p(t)] })) })
   const heading = (text: string): Block => ({ type: 'heading', level: 2, content: [{ text }] })
   const sides = [heading('Blue Hour'), numbered(1, 'Dawn', 'Noon'), heading('Side B'), numbered(5, 'Dusk', 'Night', 'Coda')]
@@ -2205,7 +2205,7 @@ test('N1 to N6 and rule 6 through the real clipboard, in an album review: sides 
   await page.keyboard.press('Control+v')
   await storedWhen(page, (d) => JSON.stringify(byId(d, 'join').blocks) === JSON.stringify([numbered(1, 'Tape', 'North', 'South', 'loop', 'Coda'), numbered(5, 'North', 'South')]))
   await page.keyboard.press('Escape')
-  // N6 (the review's case): 1. Bonus, 2. Extra pasted from Ed|it this through the end of Night, over 5. Dusk, 6. Night, 7. Coda: Ed, then one list 1. Bonus, 2. Extra, 3. Coda.
+  // N6 (the owner's case): 1. Bonus, 2. Extra pasted from Ed|it this through the end of Night, over 5. Dusk, 6. Night, 7. Coda: Ed, then 1. Bonus, 2. Extra, and 7. Coda still 7 in a list of its own.
   await editAtEnd(page, at(140, 452))
   await select('Bonus', 0, 'Extra', 5)
   await selected(0, 11)
@@ -2215,9 +2215,9 @@ test('N1 to N6 and rule 6 through the real clipboard, in an album review: sides 
   await select('Edit this', 2, 'Night', 5)
   await selected(2, 20)
   await page.keyboard.press('Control+v')
-  await storedWhen(page, (d) => JSON.stringify(byId(d, 'replace').blocks) === JSON.stringify([p('Ed'), numbered(1, 'Bonus', 'Extra', 'Coda')]))
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'replace').blocks) === JSON.stringify([p('Ed'), numbered(1, 'Bonus', 'Extra'), numbered(7, 'Coda')]))
   await page.keyboard.press('Escape')
-  // N6 the other way: pasted from the end of Noon through Ou|tro, after 5. Dawn, 6. Noon: one list from 5.
+  // N1, with the caret in the list: pasted from the end of Noon through Ou|tro, after 5. Dawn, 6. Noon: one list from 5.
   await editAtEnd(page, at(940, 272))
   await select('Noon', 4, 'Outro text', 2)
   await selected(9, 17)

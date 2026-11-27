@@ -1000,25 +1000,44 @@ describe('found by the ordinary seeded run: a quote in each of two items', () =>
   })
 })
 
-describe('N6: pasted numbered items directly against the remaining items of a numbered list are one list with them', () => {
+describe('N6: what a selection left of a numbered list keeps the numbers it shows when numbered items are pasted over the selection', () => {
   const bonus = () => copyText([numbered(1, [p('Bonus')], [p('Extra')])], 0, 11)
 
-  it('before them (the review\'s case): from Ed|it this through the end of Night, over 5. Dusk, 6. Night, 7. Coda: Ed, then 1. Bonus, 2. Extra, 3. Coda', () => {
+  it('the owner\'s case: from Ed|it this through the end of Night, over 5. Dusk, 6. Night, 7. Coda: Ed, then 1. Bonus, 2. Extra, and 7. Coda still 7, a list of its own', () => {
     const blocks = [p('Edit this'), numbered(5, [p('Dusk')], [p('Night')], [p('Coda')])]
+    const after = [p('Ed'), numbered(1, [p('Bonus')], [p('Extra')]), numbered(7, [p('Coda')])]
     const s = open({ text: '', blocks })
     s.select(2, 20)
     s.paste(bonus())
-    expect(stored(s).blocks).toStrictEqual([p('Ed'), numbered(1, [p('Bonus')], [p('Extra')], [p('Coda')])])
+    expect(stored(s).blocks).toStrictEqual(after)
+    // One undo gives the text back as it was.
+    s.undo()
+    expect(stored(s).blocks).toStrictEqual(blocks)
     // The same as a cut, then the paste at the caret it left.
     const { s: t, done } = cutAndPasteBack(blocks, 2, 20)
     t.undo()
     expect(stored(t).blocks).toStrictEqual([p('Ed'), numbered(7, [p('Coda')])])
     t.paste(bonus())
-    expect(stored(t).blocks).toStrictEqual([p('Ed'), numbered(1, [p('Bonus')], [p('Extra')], [p('Coda')])])
+    expect(stored(t).blocks).toStrictEqual(after)
     done()
   })
 
-  it('after them: from the end of Noon, or the start of Dusk, through the paragraph below 5. Dawn, 6. Noon, 7. Dusk: one list from 5', () => {
+  it('N4 still holds beside it: the tracks that were cut, pasted straight back, are one list with Coda again, 5 to 7', () => {
+    const blocks = [p('Edit this'), numbered(5, [p('Dusk')], [p('Night')], [p('Coda')])]
+    const { before, afterCut, afterCopy } = backBothWays(blocks, 2, 20)
+    expect(afterCut).toStrictEqual(before)
+    expect(afterCopy).toStrictEqual(before)
+  })
+
+  it('a selection that ends inside a track (as it was before the rule changed): what is left of Night follows the pasted items as a line of the kind the selection started in, and Coda is still 7', () => {
+    const blocks = [p('Edit this'), numbered(5, [p('Dusk')], [p('Night')], [p('Coda')])]
+    const s = open({ text: '', blocks })
+    s.select(2, 17)
+    s.paste(bonus())
+    expect(stored(s).blocks).toStrictEqual([p('Ed'), numbered(1, [p('Bonus')], [p('Extra')]), p('ght'), numbered(7, [p('Coda')])])
+  })
+
+  it('N1 is as it was: from the end of Noon, or the start of Dusk, through the paragraph below 5. Dawn, 6. Noon, 7. Dusk, the caret is in the list and it is one list from 5', () => {
     const blocks = [numbered(5, [p('Dawn')], [p('Noon')], [p('Dusk')]), p('Outro text')]
     const s = open({ text: '', blocks })
     s.select(9, 17)
@@ -1030,7 +1049,7 @@ describe('N6: pasted numbered items directly against the remaining items of a nu
     expect(stored(t).blocks).toStrictEqual([numbered(5, [p('Dawn')], [p('Noon')], [p('Bonus')], [p('Extra')])])
   })
 
-  it('the known limit: pasted on a line next to a list the selection did not reach, the items stay a list of their own beside it', () => {
+  it('the same rule beside a list the selection did not reach: the pasted items are a list of their own next to it', () => {
     const s = open({ text: '', blocks: [numbered(1, [p('Dawn')], [p('Noon')]), p('Outro')] })
     s.select(10, 15)
     s.paste(bonus())
