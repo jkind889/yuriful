@@ -1,0 +1,10 @@
+node_modules
+dist
+*.local
+.vite
+coverage
+.qa
+test-results
+playwright-report
+blob-report
+playwright/.cache
