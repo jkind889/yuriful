@@ -43,6 +43,7 @@ Explain changes through the experience of using the canvas. Use plain, direct la
 - A change to what a rule *is* needs the owner first. When unsure whether a change redefines a rule or only makes it work as stated, treat it as a redefinition: keep the plan's behaviour and report the alternative.
 - The frame, transform and storage rules in [Expected behaviour](docs/expected-behavior.md) are settled. Do not reopen them, and ask only about consequential unknowns.
 - A plan says, before work starts, when a slice is done: a review reports no fault a person would meet in ordinary use, and nothing that loses work, crashes or leaves a board unsavable. What remains is recorded under "Known limits" in the README.
+- At the end of each slice, before the next one starts, send the owner a short note headed "Decisions I made for you": one line per decision, saying what it changes for the person using the canvas. Small decisions are reported and work goes on. A medium or large decision needs the owner's answer: one that changes what a person sees or does in ordinary use, is hard to undo once boards store it, adds or removes scope, or departs from the plan. While waiting, carry on with work that does not depend on the answer and start nothing that builds on it.
 - Where a behaviour guesses what the person meant and could follow a coarse rule or an exact one, ask the owner before the brief goes out. Rules that are judgements about what a person expects go to the owner first, as worked before-and-after examples.
 
 ## References to read when needed
