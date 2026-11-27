@@ -4,8 +4,10 @@ import type { BoardDoc, FrameRecord, ImageRecord, TextRecord, Viewport } from '.
 import { BoardConflictError } from '../persistence/boardStore.ts'
 import { Editor } from './Editor.ts'
 import { canvasOf, moveCanvas, press, pressCanvas, release, releaseCanvas, tick } from './testing/drive.ts'
-import type { Textbox } from './testing/fakeFabric.ts'
-import { FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
+import type { FakeObject } from './testing/fakeFabric.ts'
+import { FakeAssets, FakeCardMeasurer, SpyStore, deferred, stubTextLayout } from './testing/fakes.ts'
+import { editedObject, replaceText, textAdapterOf } from './testing/editing.ts'
+import { isText, textDataOf } from './objects.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -26,17 +28,20 @@ const flush = () => vi.advanceTimersByTimeAsync(10_000)
 const key = (k: string, init: KeyboardEventInit = {}) => new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...init })
 const png = () => new File([new Uint8Array([1, 2, 3])], 'drop.png', { type: 'image/png' })
 
+/** A text as the tests read it: its box, what its card shows, and whether it is the text being edited. */
+const textView = (editor: Editor, o: FakeObject | undefined) => o && { left: o.left, top: o.top, width: o.width, height: o.height, ...textDataOf(o as never), isEditing: editedObject(editor) === o }
+
 async function setup(opts: { frames?: FrameRecord[]; viewport?: Viewport; load?: boolean } = {}) {
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Text tool', frames: opts.frames ?? [], objects: [image], viewport: opts.viewport ?? UNIT }
   const store = new SpyStore({ doc, assets: new Map([['a1', { id: 'a1', name: 'a1.png', type: 'image/png', bytes: new Uint8Array([1]).buffer }]]) })
   store.holdLoad = opts.load === false
-  const editor = new Editor(host, store, new FakeAssets())
+  const editor = new Editor(host, store, new FakeAssets(), undefined, { measurer: new FakeCardMeasurer() })
   editors.push(editor)
   const ready = editor.init()
   if (opts.load !== false) await ready
   const canvas = canvasOf(editor)
   const scene = () => (editor as unknown as { getDoc: () => BoardDoc }).getDoc()
-  const texts = () => canvas.objects.filter((o) => (o as { text?: unknown }).text !== undefined) as Textbox[]
+  const texts = () => canvas.objects.filter((o) => isText(o as never)) as FakeObject[]
   const busy = () => (editor as unknown as { gesture: unknown }).gesture !== null
   /** A Text-tool drag from one scene point to another, released; settlement has run afterwards. */
   const drag = async (x0: number, y0: number, x1: number, y1: number) => {
@@ -45,12 +50,14 @@ async function setup(opts: { frames?: FrameRecord[]; viewport?: Viewport; load?:
     moveCanvas(canvas, x1, y1)
     releaseCanvas(canvas, x1, y1)
     await tick()
-    return texts().at(-1)
+    return textView(editor, texts().at(-1))
   }
   return { editor, store, canvas, scene, texts, busy, drag, ready }
 }
 
+let restoreLayout = () => {}
 beforeEach(() => {
+  restoreLayout = stubTextLayout()
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   vi.stubGlobal(
     'ResizeObserver',
@@ -63,6 +70,7 @@ beforeEach(() => {
   document.body.appendChild(host)
 })
 afterEach(() => {
+  restoreLayout()
   editors.splice(0).forEach((e) => e.dispose())
   host.remove()
   vi.unstubAllGlobals()
@@ -82,14 +90,14 @@ describe('dragging out a text box', () => {
     await tick()
     expect(canvas.draft).toBeNull()
     expect(busy()).toBe(false)
-    const tb = texts()[0] as Textbox
+    const tb = texts()[0] as FakeObject
     expect(texts()).toHaveLength(1)
-    expect(tb).toMatchObject({ left: 100, top: 100, width: 300, fontSize: 24, isEditing: true, text: '' })
+    expect(textView(editor, tb)).toMatchObject({ left: 100, top: 100, width: 300, fontSize: 24, isEditing: true, text: '' })
     expect(tb.height).toBe(150)
     expect(editor.getState().tool).toBe('select')
     expect(canvas.getActiveObject()).toBe(tb)
     expect(scene().objects).toHaveLength(1) // blank: not in the scene
-    tb.type('Hello')
+    replaceText(editor, 'Hello')
     expect(scene().objects.at(-1)).toMatchObject({ type: 'text', text: 'Hello', left: 100, top: 100, width: 300, minHeight: 150, fontSize: 24 })
   })
 
@@ -153,7 +161,7 @@ describe('dragging out a text box', () => {
     canvas.fire('mouse:up', { e: { button: 0, clientX: 40, clientY: 50 }, isClick: true })
     await tick()
     expect(texts()).toHaveLength(1)
-    expect(texts()[0]).toMatchObject({ left: 40, top: 50, width: 240 })
+    expect(textView(editor, texts()[0])).toMatchObject({ left: 40, top: 50, width: 240 })
   })
 
   it('one text per press, and the tool is single-use: a second drag right after selects nothing and makes nothing', async () => {
@@ -164,7 +172,7 @@ describe('dragging out a text box', () => {
     canvas.fire('mouse:up', { e: { button: 0, clientX: 300, clientY: 200 }, isClick: true }) // even if Fabric called it a click
     await tick()
     expect(texts()).toHaveLength(1)
-    texts()[0]!.exitEditing()
+    textAdapterOf(editor).finishEditing()
     await tick()
     await drag(100, 100, 300, 200) // the Select tool now
     expect(busy()).toBe(false)
@@ -175,13 +183,13 @@ describe('dragging out a text box', () => {
   it('a box dragged out inside a frame belongs to it; one whose centre is outside does not', async () => {
     const { editor, scene, drag } = await setup({ frames: [frame] })
     editor.setTool('text')
-    const inside = (await drag(300, 100, 450, 150)) as Textbox // centre (375, ...) inside, though a click there would not be
-    inside.type('in')
-    inside.exitEditing()
+    await drag(300, 100, 450, 150) // centre (375, ...) inside, though a click there would not be
+    replaceText(editor, 'in')
+    textAdapterOf(editor).finishEditing()
     editor.setTool('text')
-    const outside = (await drag(300, 200, 800, 250)) as Textbox // centre (550, ...) outside
-    outside.type('out')
-    outside.exitEditing()
+    await drag(300, 200, 800, 250) // centre (550, ...) outside
+    replaceText(editor, 'out')
+    textAdapterOf(editor).finishEditing()
     const recs = scene().objects.filter((o): o is TextRecord => o.type === 'text')
     expect(recs.map((r) => [r.text, r.frameId])).toEqual([
       ['in', 'F'],
@@ -192,9 +200,9 @@ describe('dragging out a text box', () => {
   it('typing into a dragged box and leaving is one undo step; redo restores it with its width', async () => {
     const { editor, scene, drag } = await setup()
     editor.setTool('text')
-    const tb = (await drag(100, 100, 260, 120)) as Textbox
-    tb.type('Words')
-    tb.exitEditing()
+    await drag(100, 100, 260, 120)
+    replaceText(editor, 'Words')
+    textAdapterOf(editor).finishEditing()
     const made = scene().objects.at(-1)
     expect(made).toMatchObject({ text: 'Words', width: 160 })
     editor.undo()
@@ -269,7 +277,7 @@ describe('while a draft is in progress, and cancelling it', () => {
   })
 
   it('a save in flight when the draft starts stores nothing of it', async () => {
-    const { editor, store, canvas, texts } = await setup()
+    const { editor, store, canvas } = await setup()
     editor.setTitle('A')
     store.saveGate = deferred<void>()
     await vi.advanceTimersByTimeAsync(600)
@@ -282,7 +290,7 @@ describe('while a draft is in progress, and cancelling it', () => {
     expect(store.attempts.every((a) => a.doc.objects.length === 1)).toBe(true)
     releaseCanvas(canvas, 300, 200)
     await tick()
-    texts()[0]!.type('typed')
+    replaceText(editor, 'typed')
     await flush()
     expect(store.saves.at(-1)?.doc.objects).toHaveLength(2)
   })
@@ -335,11 +343,11 @@ describe('while a draft is in progress, and cancelling it', () => {
     releaseCanvas(canvas, 300, 200)
     await tick()
     expect(scene().objects.filter((o) => o.type === 'image')).toHaveLength(2)
-    const tb = texts()[0] as Textbox
-    expect(tb.isEditing).toBe(true)
+    const tb = texts()[0] as FakeObject
+    expect((editedObject(editor) === tb)).toBe(true)
     expect(canvas.getActiveObject()).toBe(tb)
-    tb.type('note')
-    tb.exitEditing()
+    replaceText(editor, 'note')
+    textAdapterOf(editor).finishEditing()
     editor.undo() // the text
     expect(scene().objects.filter((o) => o.type === 'text')).toHaveLength(0)
     expect(scene().objects).toHaveLength(2)
@@ -350,8 +358,8 @@ describe('while a draft is in progress, and cancelling it', () => {
   it('a dragged box left blank is discarded with no trace', async () => {
     const { editor, store, texts, drag, canvas } = await setup()
     editor.setTool('text')
-    const tb = (await drag(100, 100, 300, 200)) as Textbox
-    tb.exitEditing()
+    await drag(100, 100, 300, 200)
+    textAdapterOf(editor).finishEditing()
     await tick()
     await flush()
     expect(texts()).toHaveLength(0)

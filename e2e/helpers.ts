@@ -1,9 +1,36 @@
 import { expect } from '@playwright/test'
-import type { BrowserContext, Page } from '@playwright/test'
+import type { APIResponse, BrowserContext, Page, Route } from '@playwright/test'
 import zlib from 'node:zlib'
+
+/**
+ * `route.fetch()` for a route that rewrites a dev-server module (the test probes on `/src/main.tsx`),
+ * tried again on a network error: on a busy machine the dev server can reset the connection while
+ * a page reloads (`route.fetch: read ECONNRESET`). Any other error, and the first error when every
+ * try fails, is thrown as it came.
+ */
+export async function fetchRetrying(route: Route, tries = 4): Promise<APIResponse> {
+  let first: unknown = null
+  for (let i = 0; ; i++) {
+    try {
+      return await route.fetch()
+    } catch (e) {
+      first ??= e
+      const network = /ECONNRESET|ECONNREFUSED|EPIPE|socket hang up/i.test(String(e))
+      if (!network || i + 1 >= tries) throw first
+      await new Promise((resolve) => setTimeout(resolve, 50 * (i + 1)))
+    }
+  }
+}
 
 /** The autosave debounce is 500ms; "nothing was written" checks wait well past it. */
 export const AUTOSAVE_QUIET_MS = 1500
+
+/**
+ * How long a test waits for the app to appear after a page is opened or reloaded. Several browser
+ * suites running at once on one machine can make the dev server slow to answer; the default five
+ * seconds then fails a test that has nothing wrong with it.
+ */
+export const APP_READY_MS = 20_000
 
 // ---- deterministic image fixtures (no binary files in the repo) -------------------------
 
@@ -314,6 +341,9 @@ export interface StoredObject {
   color?: string
   spans?: Array<{ start: number; end: number; bold?: true; italic?: true; underline?: true; strike?: true; font?: string }>
   headings?: number[]
+  height?: number
+  blocks?: unknown[]
+  surface?: 'card'
   captionOf?: string
   captionSide?: 'top' | 'left' | 'right'
   captionPosition?: number
@@ -419,9 +449,257 @@ export async function drag(page: Page, from: { x: number; y: number }, to: { x: 
 /** Loads the app on a seeded board and waits until it is editable. */
 export async function openApp(page: Page) {
   await page.goto('/')
-  await expect(page.locator('.toolbar')).toBeVisible()
+  await expect(page.locator('.toolbar')).toBeVisible({ timeout: APP_READY_MS })
   await expect(status(page)).toContainText('Saved on this device')
 }
 
 export const undoButton = (page: Page) => page.getByRole('button', { name: 'Undo' })
 export const redoButton = (page: Page) => page.getByRole('button', { name: 'Redo' })
+
+// ---- the text being edited -------------------------------------------------------------------
+
+export interface EditedText {
+  /** The text, one `\n` per line break. */
+  value: string
+  /** The selection the page shows in the text, as UTF-16 offsets (`start <= end`); both null when the page shows none in it. */
+  start: number | null
+  end: number | null
+  /** The edited text has the keyboard: it is focused and the page's selection is in it. */
+  focused: boolean
+}
+
+/**
+ * The text being edited, as the page shows it, or null when none is. The edited card holds the
+ * text engine's live view: its text, and the page's own selection inside it (mapped to text
+ * offsets by the engine's pure `textOffsetAt`); with no selection in it, `start` and `end` are
+ * null and it does not have the keyboard.
+ */
+export function editedText(page: Page): Promise<EditedText | null> {
+  return page.evaluate(async () => {
+    type Desc = { node: unknown; posFromDOM: (node: Node, offset: number, bias: number) => number }
+    const root = document.querySelector<HTMLElement & { pmViewDesc?: Desc }>('.scene-layer [contenteditable="true"].ProseMirror')
+    if (!root?.pmViewDesc) return null
+    const path = '/src/editor/textSchema.ts'
+    const { plainTextOfDoc, textOffsetAt } = await import(/* @vite-ignore */ path)
+    const desc = root.pmViewDesc
+    const doc = desc.node
+    const sel = getSelection()
+    let start: number | null = null
+    let end: number | null = null
+    if (sel && sel.rangeCount > 0 && sel.anchorNode && sel.focusNode && root.contains(sel.anchorNode) && root.contains(sel.focusNode)) {
+      const a = textOffsetAt(doc, desc.posFromDOM(sel.anchorNode, sel.anchorOffset, -1), -1) as number
+      const b = textOffsetAt(doc, desc.posFromDOM(sel.focusNode, sel.focusOffset, -1), -1) as number
+      start = Math.min(a, b)
+      end = Math.max(a, b)
+    }
+    return { value: plainTextOfDoc(doc) as string, start, end, focused: document.activeElement === root && start !== null }
+  })
+}
+
+/** The text being edited has the keyboard (see `editedText`). */
+export const editHasFocus = async (page: Page) => (await editedText(page))?.focused === true
+
+// ---- what the page shows -----------------------------------------------------------------------
+
+/** Decodes an 8-bit, non-interlaced RGB or RGBA PNG (what Playwright's screenshots are) to RGBA. */
+export function decodePng(png: Buffer): { width: number; height: number; data: Uint8Array } {
+  let pos = 8
+  let width = 0
+  let height = 0
+  let colorType = 6
+  const idat: Buffer[] = []
+  while (pos < png.length) {
+    const len = png.readUInt32BE(pos)
+    const type = png.toString('ascii', pos + 4, pos + 8)
+    const body = png.subarray(pos + 8, pos + 8 + len)
+    if (type === 'IHDR') {
+      width = body.readUInt32BE(0)
+      height = body.readUInt32BE(4)
+      if (body[8] !== 8 || body[12] !== 0) throw new Error('decodePng: only 8-bit, non-interlaced images')
+      colorType = body[9]!
+    } else if (type === 'IDAT') idat.push(body)
+    else if (type === 'IEND') break
+    pos += 12 + len
+  }
+  const channels = colorType === 6 ? 4 : colorType === 2 ? 3 : 0
+  if (!channels) throw new Error(`decodePng: colour type ${colorType}`)
+  const raw = zlib.inflateSync(Buffer.concat(idat))
+  const stride = width * channels
+  const out = new Uint8Array(width * height * 4)
+  let prev = new Uint8Array(stride)
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)]!
+    const line = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1))
+    const cur = new Uint8Array(stride)
+    for (let i = 0; i < stride; i++) {
+      const a = i >= channels ? cur[i - channels]! : 0
+      const b = prev[i]!
+      const c = i >= channels ? prev[i - channels]! : 0
+      const x = line[i]!
+      let v: number
+      if (filter === 0) v = x
+      else if (filter === 1) v = x + a
+      else if (filter === 2) v = x + b
+      else if (filter === 3) v = x + ((a + b) >> 1)
+      else {
+        const p = a + b - c
+        const pa = Math.abs(p - a)
+        const pb = Math.abs(p - b)
+        const pc = Math.abs(p - c)
+        v = x + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c)
+      }
+      cur[i] = v & 0xff
+    }
+    for (let px = 0; px < width; px++) {
+      const o = (y * width + px) * 4
+      out[o] = cur[px * channels]!
+      out[o + 1] = cur[px * channels + 1]!
+      out[o + 2] = cur[px * channels + 2]!
+      out[o + 3] = channels === 4 ? cur[px * channels + 3]! : 255
+    }
+    prev = cur
+  }
+  return { width, height, data: out }
+}
+
+/**
+ * The board's backdrop while `screenPixels` samples it: its colour with no dots, so that a pixel
+ * where nothing is drawn reads as exactly this.
+ */
+export const BOARD_BACKDROP = [241, 243, 248, 255] as const
+
+/**
+ * What the page shows in a rectangle of the canvas (CSS pixels from the canvas host's top-left,
+ * the coordinates of Fabric's canvas element): a composited screenshot, so frame paper, images
+ * and text drawn by the scene layer and the canvas's frame outlines, labels and selection chrome
+ * are all in it, as a person sees them. The panels over the board, the board's dots and the caret
+ * are left out while it is taken. RGBA, `width * height * 4` bytes, one pixel per CSS pixel.
+ */
+export async function screenPixels(page: Page, left: number, top: number, width: number, height: number) {
+  const box = await page.locator('.canvas-host').boundingBox()
+  if (!box) throw new Error('canvas host not found')
+  return pagePixels(page, box.x + left, box.y + top, width, height)
+}
+
+/** What `pagePixels` may change while it takes its screenshot. */
+export interface ShotOptions {
+  /** A stylesheet applied for the screenshot only, after the one that hides the panels and dots. */
+  style?: string
+  /** The board's backdrop colour for this screenshot (RGB), instead of `BOARD_BACKDROP`. */
+  backdrop?: readonly number[]
+}
+
+/** As `screenPixels`, for a rectangle in page coordinates. */
+export async function pagePixels(page: Page, left: number, top: number, width: number, height: number, opts: ShotOptions = {}) {
+  const backdrop = [...(opts.backdrop ?? BOARD_BACKDROP).slice(0, 3), 255]
+  const vp = page.viewportSize()!
+  // Only the part inside the viewport can be captured; the rest reads as the backdrop.
+  const x0 = Math.max(0, Math.round(left))
+  const y0 = Math.max(0, Math.round(top))
+  const x1 = Math.min(vp.width, Math.round(left) + Math.round(width))
+  const y1 = Math.min(vp.height, Math.round(top) + Math.round(height))
+  const w = Math.round(width)
+  const h = Math.round(height)
+  const data = new Uint8Array(w * h * 4)
+  for (let i = 0; i < data.length; i += 4) data.set(backdrop, i)
+  if (x1 > x0 && y1 > y0) {
+    const png = await page.screenshot({
+      clip: { x: x0, y: y0, width: x1 - x0, height: y1 - y0 },
+      scale: 'css',
+      animations: 'disabled',
+      caret: 'hide',
+      style: `.overlays { visibility: hidden !important; } .workspace { background-image: none !important; background-color: rgb(${backdrop.slice(0, 3).join(',')}) !important; } ${opts.style ?? ''}`,
+    })
+    const shot = decodePng(png)
+    const dx = x0 - Math.round(left)
+    const dy = y0 - Math.round(top)
+    for (let y = 0; y < shot.height && y + dy < h; y++) {
+      for (let x = 0; x < shot.width && x + dx < w; x++) {
+        const s = (y * shot.width + x) * 4
+        data.set(shot.data.subarray(s, s + 4), ((y + dy) * w + x + dx) * 4)
+      }
+    }
+  }
+  return { width: w, height: h, data }
+}
+
+/** One pixel the page shows at a point of the canvas (see `screenPixels`), RGBA. */
+export async function screenPixel(page: Page, x: number, y: number): Promise<[number, number, number, number]> {
+  const { data } = await screenPixels(page, Math.round(x), Math.round(y), 1, 1)
+  return [data[0]!, data[1]!, data[2]!, data[3]!]
+}
+
+/** A second backdrop colour, far from the first, for telling "nothing painted here" from "painted the backdrop's colour". */
+const OTHER_BACKDROP = [20, 160, 90] as const
+
+/**
+ * Whether anything is painted at a point of the canvas: the pixel is the backdrop under two very
+ * different backdrop colours only where nothing covers the board there, so something opaque
+ * painted in the backdrop's own colour still counts.
+ */
+export async function paintedAt(page: Page, x: number, y: number): Promise<boolean> {
+  const box = await page.locator('.canvas-host').boundingBox()
+  if (!box) throw new Error('canvas host not found')
+  const at = (backdrop: readonly number[]) => pagePixels(page, box.x + Math.round(x), box.y + Math.round(y), 1, 1, { backdrop })
+  const [a, b] = [(await at(BOARD_BACKDROP)).data, (await at(OTHER_BACKDROP)).data]
+  const same = (d: Uint8Array, c: readonly number[]) => d[0] === c[0] && d[1] === c[1] && d[2] === c[2]
+  return !(same(a, BOARD_BACKDROP) && same(b, OTHER_BACKDROP))
+}
+
+// ---- the lettering the page paints ---------------------------------------------------------------
+
+/** Lettering in a sampled rectangle: how many pixels, and their extent within it (Infinity / -Infinity when none). */
+export interface Lettering {
+  count: number
+  left: number
+  right: number
+  top: number
+  bottom: number
+}
+
+/** Hides the lettering of every text card, the edited one included, and nothing else (layout, outlines and highlights stay). */
+const NO_LETTERING = '.scene-layer .scene-text-body, .scene-layer .scene-text-body * { color: transparent !important; -webkit-text-fill-color: transparent !important; text-decoration-color: transparent !important; text-shadow: none !important; }'
+
+/**
+ * The text lettering the page paints in a rectangle of the page: the pixels that change when the
+ * lettering is taken away, that is every card's text colour (the card being edited included), so
+ * lettering that is invisible, clipped or out of place in the live editor shows here as missing
+ * or moved.
+ */
+export async function letteringAt(page: Page, left: number, top: number, width: number, height: number): Promise<Lettering> {
+  const shown = await pagePixels(page, left, top, width, height)
+  const bare = await pagePixels(page, left, top, width, height, { style: NO_LETTERING })
+  const ink: Lettering = { count: 0, left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity }
+  const d = shown.data
+  const e = bare.data
+  for (let i = 0; i < d.length; i += 4) {
+    const diff = Math.max(Math.abs(d[i]! - e[i]!), Math.abs(d[i + 1]! - e[i + 1]!), Math.abs(d[i + 2]! - e[i + 2]!))
+    if (diff <= 48) continue
+    const x = (i / 4) % shown.width
+    const y = Math.floor(i / 4 / shown.width)
+    ink.count++
+    ink.left = Math.min(ink.left, x)
+    ink.right = Math.max(ink.right, x)
+    ink.top = Math.min(ink.top, y)
+    ink.bottom = Math.max(ink.bottom, y)
+  }
+  return ink
+}
+
+/** As `letteringAt`, for a rectangle of the canvas (CSS pixels from the canvas host's top-left). */
+export async function letteringIn(page: Page, left: number, top: number, width: number, height: number): Promise<Lettering> {
+  const box = await page.locator('.canvas-host').boundingBox()
+  if (!box) throw new Error('canvas host not found')
+  return letteringAt(page, box.x + left, box.y + top, width, height)
+}
+
+/**
+ * The lettering painted while a text is edited is the lettering painted once the edit has ended:
+ * visible (enough of it), in the same place (within 2 px), and as much of it (within 10 %).
+ */
+export function expectSameLettering(live: Lettering, idle: Lettering, min = 100) {
+  expect(idle.count, 'lettering once the edit has ended').toBeGreaterThan(min)
+  expect(live.count, 'lettering while editing').toBeGreaterThan(idle.count * 0.9)
+  expect(live.count, 'lettering while editing').toBeLessThan(idle.count * 1.1)
+  for (const side of ['left', 'right', 'top', 'bottom'] as const) expect(Math.abs(live[side] - idle[side]), `lettering's ${side} edge while editing`).toBeLessThanOrEqual(2)
+}

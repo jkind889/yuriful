@@ -4,11 +4,11 @@ import type { BoardDoc, FrameRecord, ImageRecord, ObjectRecord, StoredAsset, Tex
 import { CONFLICT_MESSAGE } from '../persistence/autosave.ts'
 import { BoardConflictError } from '../persistence/boardStore.ts'
 import { Editor } from './Editor.ts'
-import { idOf } from './objects.ts'
+import { idOf, imageDataOf } from './objects.ts'
 import { canvasOf, dragBy, press, release, scaleBy, tick } from './testing/drive.ts'
 import { ActiveSelection } from './testing/fakeFabric.ts'
 import type { Canvas, FakeObject } from './testing/fakeFabric.ts'
-import { FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
+import { FakeAssets, FakeCardMeasurer, SpyStore, deferred } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -40,6 +40,9 @@ const txt = (id: string, left: number, top: number): TextRecord => ({ type: 'tex
 const file = (name: string, type = 'image/png') => new File([new Uint8Array([1, 2, 3])], name, { type })
 const key = (k: string, init: KeyboardEventInit = {}) => new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...init })
 
+/** An image proxy's own fields with its picture data (where it is cropped in the original). */
+const pic = (o: FakeObject) => ({ ...o, ...imageDataOf(o as never) })
+
 let host: HTMLDivElement
 const editors: Editor[] = []
 const flush = () => vi.advanceTimersByTimeAsync(10_000)
@@ -48,7 +51,7 @@ async function board(frames: FrameRecord[], objects: ObjectRecord[], opts: { loa
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Replace', frames, objects }
   const store = new SpyStore(frames.length + objects.length > 0 ? { doc, assets: new Map([['a1', asset('a1')]]) } : null)
   const assets = new FakeAssets(new Set(['broken-10x10.png']))
-  const editor = new Editor(host, store, assets)
+  const editor = new Editor(host, store, assets, undefined, { measurer: new FakeCardMeasurer() })
   editors.push(editor)
   const canvas = canvasOf(editor)
   if (opts.load !== false) {
@@ -250,7 +253,7 @@ describe('when the decode finishes (P3)', () => {
     let t = press(b.canvas, b.obj('P'))
     dragBy(b.canvas, t, 40, 0)
     await b.editor.replaceImageFile(target, file('wide-400x100.png'))
-    expect(b.obj('P')).toMatchObject({ cropX: 0, width: 200 }) // untouched mid-gesture
+    expect(pic(b.obj('P'))).toMatchObject({ cropX: 0, width: 200 }) // untouched mid-gesture
     release(b.canvas, t)
     await tick()
     expect(b.rec('P')).toMatchObject({ left: 140, crop: { x: 100, y: 0, width: 200, height: 100 } })

@@ -1,0 +1,557 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the DOM renderer saves what the Fabric renderer saves (paired) > side handles on rotated texts, at zoom and pan",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/interleaving.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "4365d767eb52defd",
+   "value": {
+    "scenes": [
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":-160,\"dy\":0}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "r1",
+         "left": 120,
+         "top": 120,
+         "angle": 30,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 184.09
+        },
+        {
+         "id": "r2",
+         "left": 560,
+         "top": 140,
+         "angle": -20,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 320,
+         "minHeight": 20,
+         "align": "center"
+        },
+        {
+         "id": "r3",
+         "left": 200,
+         "top": 420,
+         "angle": 12,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 330,
+         "align": "right"
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":50,\"dy\":0}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "r1",
+         "left": 158.87,
+         "top": 122.87,
+         "angle": 30,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 149
+        },
+        {
+         "id": "r2",
+         "left": 560,
+         "top": 140,
+         "angle": -20,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 320,
+         "minHeight": 20,
+         "align": "center"
+        },
+        {
+         "id": "r3",
+         "left": 200,
+         "top": 420,
+         "angle": 12,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 330,
+         "align": "right"
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":120,\"dy\":0}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "r1",
+         "left": 150.39,
+         "top": 137.55,
+         "angle": 30,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 235
+        },
+        {
+         "id": "r2",
+         "left": 560,
+         "top": 140,
+         "angle": -20,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 320,
+         "minHeight": 20,
+         "align": "center"
+        },
+        {
+         "id": "r3",
+         "left": 200,
+         "top": 420,
+         "angle": 12,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 330,
+         "align": "right"
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":-60,\"dy\":0}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "r1",
+         "left": 112.35,
+         "top": 115.58,
+         "angle": 30,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 278.93
+        },
+        {
+         "id": "r2",
+         "left": 560,
+         "top": 140,
+         "angle": -20,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 320,
+         "minHeight": 20,
+         "align": "center"
+        },
+        {
+         "id": "r3",
+         "left": 200,
+         "top": 420,
+         "angle": 12,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 330,
+         "align": "right"
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":-200,\"dy\":0}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "r1",
+         "left": 112.35,
+         "top": 115.58,
+         "angle": 30,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 278.93
+        },
+        {
+         "id": "r2",
+         "left": 548.41,
+         "top": 108.14,
+         "angle": -20,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 163.24,
+         "minHeight": 20,
+         "align": "center"
+        },
+        {
+         "id": "r3",
+         "left": 200,
+         "top": 420,
+         "angle": 12,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 330,
+         "align": "right"
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":40,\"dy\":0}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "r1",
+         "left": 112.35,
+         "top": 115.58,
+         "angle": 30,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 278.93
+        },
+        {
+         "id": "r2",
+         "left": 577.6,
+         "top": 97.52,
+         "angle": -20,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 132.17,
+         "minHeight": 20,
+         "align": "center"
+        },
+        {
+         "id": "r3",
+         "left": 200,
+         "top": 420,
+         "angle": 12,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 330,
+         "align": "right"
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":120,\"dy\":0}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "r1",
+         "left": 112.35,
+         "top": 115.58,
+         "angle": 30,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 278.93
+        },
+        {
+         "id": "r2",
+         "left": 577.6,
+         "top": 97.52,
+         "angle": -20,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 225.91,
+         "minHeight": 20,
+         "align": "center"
+        },
+        {
+         "id": "r3",
+         "left": 200,
+         "top": 420,
+         "angle": 12,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 330,
+         "align": "right"
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":-60,\"dy\":0}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "r1",
+         "left": 112.35,
+         "top": 115.58,
+         "angle": 30,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 278.93
+        },
+        {
+         "id": "r2",
+         "left": 538.78,
+         "top": 129.69,
+         "angle": -20,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 273.39,
+         "minHeight": 20,
+         "align": "center"
+        },
+        {
+         "id": "r3",
+         "left": 200,
+         "top": 420,
+         "angle": 12,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 330,
+         "align": "right"
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":-240,\"dy\":0}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "r1",
+         "left": 112.35,
+         "top": 115.58,
+         "angle": 30,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 278.93
+        },
+        {
+         "id": "r2",
+         "left": 538.78,
+         "top": 129.69,
+         "angle": -20,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 273.39,
+         "minHeight": 20,
+         "align": "center"
+        },
+        {
+         "id": "r3",
+         "left": 207.05,
+         "top": 386.84,
+         "angle": 12,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 188.54,
+         "align": "right"
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":60,\"dy\":0}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "r1",
+         "left": 112.35,
+         "top": 115.58,
+         "angle": 30,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 278.93
+        },
+        {
+         "id": "r2",
+         "left": 538.78,
+         "top": 129.69,
+         "angle": -20,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 273.39,
+         "minHeight": 20,
+         "align": "center"
+        },
+        {
+         "id": "r3",
+         "left": 207.05,
+         "top": 386.84,
+         "angle": 12,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 188.54,
+         "align": "right"
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":120,\"dy\":0}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "r1",
+         "left": 112.35,
+         "top": 115.58,
+         "angle": 30,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 278.93
+        },
+        {
+         "id": "r2",
+         "left": 538.78,
+         "top": 129.69,
+         "angle": -20,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 273.39,
+         "minHeight": 20,
+         "align": "center"
+        },
+        {
+         "id": "r3",
+         "left": 200,
+         "top": 420,
+         "angle": 12,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 285.58,
+         "align": "right"
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":-60,\"dy\":0}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "r1",
+         "left": 112.35,
+         "top": 115.58,
+         "angle": 30,
+         "type": "text",
+         "text": "the blue chair by the red door",
+         "fontSize": 24,
+         "width": 278.93
+        },
+        {
+         "id": "r2",
+         "left": 538.78,
+         "top": 129.69,
+         "angle": -20,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 273.39,
+         "minHeight": 20,
+         "align": "center"
+        },
+        {
+         "id": "r3",
+         "left": 151.55,
+         "top": 409.7,
+         "angle": 12,
+         "type": "text",
+         "text": "see supercalifragilistic here",
+         "fontSize": 24,
+         "width": 335.11,
+         "align": "right"
+        }
+       ]
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Interleaving",
+     "objects": [
+      {
+       "id": "r1",
+       "left": 112.35,
+       "top": 115.58,
+       "angle": 30,
+       "type": "text",
+       "text": "the blue chair by the red door",
+       "fontSize": 24,
+       "width": 278.93
+      },
+      {
+       "id": "r2",
+       "left": 538.78,
+       "top": 129.69,
+       "angle": -20,
+       "type": "text",
+       "text": "see supercalifragilistic here",
+       "fontSize": 24,
+       "width": 273.39,
+       "minHeight": 20,
+       "align": "center"
+      },
+      {
+       "id": "r3",
+       "left": 151.55,
+       "top": 409.7,
+       "angle": 12,
+       "type": "text",
+       "text": "see supercalifragilistic here",
+       "fontSize": 24,
+       "width": 335.11,
+       "align": "right"
+      }
+     ],
+     "viewport": {
+      "zoom": 1.2,
+      "panX": -40,
+      "panY": -30
+     }
+    }
+   }
+  }
+ }
+}

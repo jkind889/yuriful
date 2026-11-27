@@ -1,0 +1,28 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "a frame preview draws only what overlaps the frame (Slice 2c-iii follow-up) > an image outside the frame cannot break its preview; an image inside it that taints a canvas fails the preview on both renderers alike",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/interleaving.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "OUT": {
+   "inputs": "ef2ee76226ff3309",
+   "value": {
+    "drawn": true,
+    "error": null
+   }
+  },
+  "IN": {
+   "inputs": "48fe2b3319c22a2d",
+   "value": {
+    "drawn": false,
+    "error": "SecurityError"
+   }
+  }
+ }
+}

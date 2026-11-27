@@ -1,0 +1,119 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "click-created boxes wrap only between words: state-of-the-art, 2012—2014, and/or, a URL and a CJK run stay whole",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/scene-layer.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "fabric": {
+   "inputs": "44fb7786ff4a5049",
+   "value": [
+    {
+     "given": 123.43,
+     "width": 123.43,
+     "longest": 123.3984375,
+     "lines": [
+      "Ab",
+      "state-of-the-art",
+      "cd"
+     ]
+    },
+    {
+     "given": 95.65,
+     "width": 95.65,
+     "longest": 95.625,
+     "lines": [
+      "Ab",
+      "2012—2014",
+      "cd"
+     ]
+    },
+    {
+     "given": 53.79,
+     "width": 53.79,
+     "longest": 53.7626953125,
+     "lines": [
+      "Ab",
+      "and/or",
+      "cd"
+     ]
+    },
+    {
+     "given": 253.19,
+     "width": 253.19,
+     "longest": 253.1689453125,
+     "lines": [
+      "Ab",
+      "https://example.com/a-b/c?d=e",
+      "cd"
+     ]
+    },
+    {
+     "given": 180.02,
+     "width": 180.02,
+     "longest": 180,
+     "lines": [
+      "Ab",
+      "日本語のテキストです",
+      "cd"
+     ]
+    },
+    {
+     "given": 125.22,
+     "width": 125.22,
+     "longest": 125.1826171875,
+     "lines": [
+      "Ab",
+      "state-of-the-art",
+      "cd"
+     ]
+    },
+    {
+     "given": 96.94,
+     "width": 96.94,
+     "longest": 96.92578125,
+     "lines": [
+      "Ab",
+      "2012—2014",
+      "cd"
+     ]
+    },
+    {
+     "given": 54.18,
+     "width": 54.18,
+     "longest": 54.1494140625,
+     "lines": [
+      "Ab",
+      "and/or",
+      "cd"
+     ]
+    },
+    {
+     "given": 254.47,
+     "width": 254.47,
+     "longest": 254.443359375,
+     "lines": [
+      "Ab",
+      "https://example.com/a-b/c?d=e",
+      "cd"
+     ]
+    },
+    {
+     "given": 180,
+     "width": 180,
+     "longest": 180,
+     "lines": [
+      "Ab",
+      "日本語のテキストです",
+      "cd"
+     ]
+    }
+   ]
+  }
+ }
+}

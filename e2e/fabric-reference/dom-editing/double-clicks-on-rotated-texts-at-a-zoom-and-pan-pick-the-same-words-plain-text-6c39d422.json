@@ -1,0 +1,1925 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "text edited on the DOM renderer saves and records what the Fabric renderer does (paired) > double-clicks on rotated texts at a zoom and pan pick the same words; plain text pasted at a caret and over a selection",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/dom-editing.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "112d6d7cc350bda3",
+   "value": {
+    "records": [
+     {
+      "step": "{\"dblclick\":\"R\",\"at\":[0.45,0.4]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned words here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "another tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned words here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "R"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "S:another tilted note",
+        "R:turned words here*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": {
+       "id": "R",
+       "text": "turned words here",
+       "anchor": 7,
+       "head": 12,
+       "focused": true
+      },
+      "boxes": {
+       "R": 27.12,
+       "S": 40
+      }
+     },
+     {
+      "step": "{\"type\":\"W\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "another tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned words here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "R"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "S:another tilted note",
+        "R:turned W here*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": {
+       "id": "R",
+       "text": "turned W here",
+       "anchor": 8,
+       "head": 8,
+       "focused": true
+      },
+      "boxes": {
+       "R": 27.12,
+       "S": 40
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "another tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "R"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:another tilted note",
+        "R:turned W here*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "R": 27.12,
+       "S": 40
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"S\",\"at\":[0.12,0.3]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "another tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:another tilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": {
+       "id": "S",
+       "text": "another tilted note",
+       "anchor": 0,
+       "head": 7,
+       "focused": true
+      },
+      "boxes": {
+       "R": 27.12,
+       "S": 40
+      }
+     },
+     {
+      "step": "{\"type\":\"V\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "V tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:V tilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": {
+       "id": "S",
+       "text": "V tilted note",
+       "anchor": 1,
+       "head": 1,
+       "focused": true
+      },
+      "boxes": {
+       "R": 27.12,
+       "S": 40
+      }
+     },
+     {
+      "step": "{\"clipboard\":\"pasted\\nlines\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "V tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:V tilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": {
+       "id": "S",
+       "text": "V tilted note",
+       "anchor": 1,
+       "head": 1,
+       "focused": true
+      },
+      "boxes": {
+       "R": 27.12,
+       "S": 40
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+v\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "Vpasted\nlines tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:Vpasted lines tilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": {
+       "id": "S",
+       "text": "Vpasted\nlines tilted note",
+       "anchor": 13,
+       "head": 13,
+       "focused": true
+      },
+      "boxes": {
+       "R": 27.12,
+       "S": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"Shift+ArrowLeft\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "Vpasted\nlines tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:Vpasted lines tilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": {
+       "id": "S",
+       "text": "Vpasted\nlines tilted note",
+       "anchor": 13,
+       "head": 12,
+       "focused": true
+      },
+      "boxes": {
+       "R": 27.12,
+       "S": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"Shift+ArrowLeft\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "Vpasted\nlines tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:Vpasted lines tilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": {
+       "id": "S",
+       "text": "Vpasted\nlines tilted note",
+       "anchor": 13,
+       "head": 11,
+       "focused": true
+      },
+      "boxes": {
+       "R": 27.12,
+       "S": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+v\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "Vpasted\nlinpasted\nlines tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:Vpasted linpasted lines tilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": {
+       "id": "S",
+       "text": "Vpasted\nlinpasted\nlines tilted note",
+       "anchor": 23,
+       "head": 23,
+       "focused": true
+      },
+      "boxes": {
+       "R": 27.12,
+       "S": 94.92
+      }
+     },
+     {
+      "step": "{\"button\":\"Bold\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "Vpasted\nlinpasted\nlines tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:Vpasted linpasted lines tilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": {
+       "id": "S",
+       "text": "Vpasted\nlinpasted\nlines tilted note",
+       "anchor": 23,
+       "head": 23,
+       "focused": true
+      },
+      "boxes": {
+       "R": 27.12,
+       "S": 94.92
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowRight\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "Vpasted\nlinpasted\nlines tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:Vpasted linpasted lines tilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": {
+       "id": "S",
+       "text": "Vpasted\nlinpasted\nlines tilted note",
+       "anchor": 24,
+       "head": 24,
+       "focused": true
+      },
+      "boxes": {
+       "R": 27.12,
+       "S": 94.92
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+b\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "Vpasted\nlinpasted\nlines tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:Vpasted linpasted lines tilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": {
+       "id": "S",
+       "text": "Vpasted\nlinpasted\nlines tilted note",
+       "anchor": 24,
+       "head": 24,
+       "focused": true
+      },
+      "boxes": {
+       "R": 27.12,
+       "S": 94.92
+      }
+     },
+     {
+      "step": "{\"clipboard\":\"X\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "Vpasted\nlinpasted\nlines tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:Vpasted linpasted lines tilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": {
+       "id": "S",
+       "text": "Vpasted\nlinpasted\nlines tilted note",
+       "anchor": 24,
+       "head": 24,
+       "focused": true
+      },
+      "boxes": {
+       "R": 27.12,
+       "S": 94.92
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+v\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "Vpasted\nlinpasted\nlines Xtilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40,
+         "spans": [
+          {
+           "start": 24,
+           "end": 25,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:Vpasted linpasted lines Xtilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": {
+       "id": "S",
+       "text": "Vpasted\nlinpasted\nlines Xtilted note",
+       "anchor": 25,
+       "head": 25,
+       "focused": true
+      },
+      "boxes": {
+       "R": 27.12,
+       "S": 94.92
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "Vpasted\nlinpasted\nlines Xtilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40,
+         "spans": [
+          {
+           "start": 24,
+           "end": 25,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "Vpasted\nlinpasted\nlines Xtilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40,
+          "spans": [
+           {
+            "start": 24,
+            "end": 25,
+            "bold": true
+           }
+          ]
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:Vpasted linpasted lines Xtilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "mixed",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "R": 27.12,
+       "S": 94.92
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "another tilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "another tilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40
+         }
+        ]
+       },
+       "index": 1,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "S:another tilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "R": 27.12,
+       "S": 40
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+Shift+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "R",
+         "left": 120,
+         "top": 80,
+         "angle": 30,
+         "type": "text",
+         "text": "turned W here",
+         "fontSize": 24,
+         "width": 300
+        },
+        {
+         "id": "S",
+         "left": 420,
+         "top": 260,
+         "angle": -20,
+         "type": "text",
+         "text": "Vpasted\nlinpasted\nlines Xtilted note",
+         "fontSize": 24,
+         "width": 280,
+         "minHeight": 40,
+         "spans": [
+          {
+           "start": 24,
+           "end": 25,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "R",
+          "left": 120,
+          "top": 80,
+          "angle": 30,
+          "type": "text",
+          "text": "turned W here",
+          "fontSize": 24,
+          "width": 300
+         },
+         {
+          "id": "S",
+          "left": 420,
+          "top": 260,
+          "angle": -20,
+          "type": "text",
+          "text": "Vpasted\nlinpasted\nlines Xtilted note",
+          "fontSize": 24,
+          "width": 280,
+          "minHeight": 40,
+          "spans": [
+           {
+            "start": 24,
+            "end": 25,
+            "bold": true
+           }
+          ]
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "S"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "S:Vpasted linpasted lines Xtilted note*",
+        "R:turned W here"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "mixed",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1.6,
+        "panX": -40,
+        "panY": -30
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "R": 27.12,
+       "S": 94.92
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Editing",
+     "objects": [
+      {
+       "id": "R",
+       "left": 120,
+       "top": 80,
+       "angle": 30,
+       "type": "text",
+       "text": "turned W here",
+       "fontSize": 24,
+       "width": 300
+      },
+      {
+       "id": "S",
+       "left": 420,
+       "top": 260,
+       "angle": -20,
+       "type": "text",
+       "text": "Vpasted\nlinpasted\nlines Xtilted note",
+       "fontSize": 24,
+       "width": 280,
+       "minHeight": 40,
+       "spans": [
+        {
+         "start": 24,
+         "end": 25,
+         "bold": true
+        }
+       ]
+      }
+     ],
+     "viewport": {
+      "zoom": 1.6,
+      "panX": -40,
+      "panY": -30
+     }
+    }
+   }
+  }
+ }
+}

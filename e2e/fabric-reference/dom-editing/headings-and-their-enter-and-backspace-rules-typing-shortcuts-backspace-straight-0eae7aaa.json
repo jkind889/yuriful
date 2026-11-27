@@ -1,0 +1,3192 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "text edited on the DOM renderer saves and records what the Fabric renderer does (paired) > headings and their Enter and Backspace rules, typing shortcuts, Backspace straight after one, and the literal cases",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/dom-editing.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "4f2343d3f7c72acc",
+   "value": {
+    "records": [
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.04,0.1]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text",
+         "fontSize": 24,
+         "width": 420,
+         "headings": [
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 1,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text",
+       "anchor": 0,
+       "head": 5,
+       "focused": true
+      },
+      "boxes": {
+       "T": 94.92
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+a\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text",
+         "fontSize": 24,
+         "width": 420,
+         "headings": [
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "mixed",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": "mixed",
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text",
+       "anchor": 0,
+       "head": 15,
+       "focused": true
+      },
+      "boxes": {
+       "T": 94.92
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowRight\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text",
+         "fontSize": 24,
+         "width": 420,
+         "headings": [
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text",
+       "anchor": 15,
+       "head": 15,
+       "focused": true
+      },
+      "boxes": {
+       "T": 94.92
+      }
+     },
+     {
+      "step": "{\"key\":\"Enter\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\n",
+         "fontSize": 24,
+         "width": 420,
+         "headings": [
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\n",
+       "anchor": 16,
+       "head": 16,
+       "focused": true
+      },
+      "boxes": {
+       "T": 128.82
+      }
+     },
+     {
+      "step": "{\"type\":\"# Big one\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one",
+         "fontSize": 24,
+         "width": 420,
+         "headings": [
+          1,
+          0,
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 1,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one",
+       "anchor": 23,
+       "head": 23,
+       "focused": true
+      },
+      "boxes": {
+       "T": 155.94
+      }
+     },
+     {
+      "step": "{\"key\":\"Enter\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one\n",
+         "fontSize": 24,
+         "width": 420,
+         "headings": [
+          1,
+          0,
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one\n",
+       "anchor": 24,
+       "head": 24,
+       "focused": true
+      },
+      "boxes": {
+       "T": 196.62
+      }
+     },
+     {
+      "step": "{\"type\":\"after\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one\nafter",
+         "fontSize": 24,
+         "width": 420,
+         "headings": [
+          1,
+          0,
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one after*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one\nafter",
+       "anchor": 29,
+       "head": 29,
+       "focused": true
+      },
+      "boxes": {
+       "T": 196.62
+      }
+     },
+     {
+      "step": "{\"key\":\"Home\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one\nafter",
+         "fontSize": 24,
+         "width": 420,
+         "headings": [
+          1,
+          0,
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one after*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one\nafter",
+       "anchor": 24,
+       "head": 24,
+       "focused": true
+      },
+      "boxes": {
+       "T": 196.62
+      }
+     },
+     {
+      "step": "{\"key\":\"Backspace\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig oneafter",
+         "fontSize": 24,
+         "width": 420,
+         "headings": [
+          1,
+          0,
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big oneafter*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 1,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig oneafter",
+       "anchor": 23,
+       "head": 23,
+       "focused": true
+      },
+      "boxes": {
+       "T": 155.94
+      }
+     },
+     {
+      "step": "{\"type\":\" **bold**\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one boldafter",
+         "fontSize": 24,
+         "width": 420,
+         "headings": [
+          1,
+          0,
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one boldafter*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 1,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one boldafter",
+       "anchor": 28,
+       "head": 28,
+       "focused": true
+      },
+      "boxes": {
+       "T": 155.94
+      }
+     },
+     {
+      "step": "{\"key\":\"Backspace\",\"skip\":[\"layers\"]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold**after",
+         "fontSize": 24,
+         "width": 420,
+         "headings": [
+          1,
+          0,
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one boldafter*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 1,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold**after",
+       "anchor": 32,
+       "head": 32,
+       "focused": true
+      },
+      "boxes": {
+       "T": 223.74
+      }
+     },
+     {
+      "step": "{\"type\":\" *it*\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** itafter",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** itafter*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 1,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** itafter",
+       "anchor": 35,
+       "head": 35,
+       "focused": true
+      },
+      "boxes": {
+       "T": 223.74
+      }
+     },
+     {
+      "step": "{\"type\":\" plain\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plainafter",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 1,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plainafter",
+       "anchor": 41,
+       "head": 41,
+       "focused": true
+      },
+      "boxes": {
+       "T": 223.74
+      }
+     },
+     {
+      "step": "{\"key\":\"Enter\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\nafter",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 1,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\nafter",
+       "anchor": 42,
+       "head": 42,
+       "focused": true
+      },
+      "boxes": {
+       "T": 291.54
+      }
+     },
+     {
+      "step": "{\"type\":\"## sub\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\nsubafter",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 2,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\nsubafter",
+       "anchor": 45,
+       "head": 45,
+       "focused": true
+      },
+      "boxes": {
+       "T": 277.98
+      }
+     },
+     {
+      "step": "{\"key\":\"Backspace\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\nsuafter",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 2,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\nsuafter",
+       "anchor": 44,
+       "head": 44,
+       "focused": true
+      },
+      "boxes": {
+       "T": 277.98
+      }
+     },
+     {
+      "step": "{\"key\":\"Backspace\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\nsafter",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 2,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\nsafter",
+       "anchor": 43,
+       "head": 43,
+       "focused": true
+      },
+      "boxes": {
+       "T": 277.98
+      }
+     },
+     {
+      "step": "{\"key\":\"Backspace\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\nafter",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          2
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 2,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\nafter",
+       "anchor": 42,
+       "head": 42,
+       "focused": true
+      },
+      "boxes": {
+       "T": 277.98
+      }
+     },
+     {
+      "step": "{\"key\":\"Backspace\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plainafter",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 1,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plainafter",
+       "anchor": 41,
+       "head": 41,
+       "focused": true
+      },
+      "boxes": {
+       "T": 223.74
+      }
+     },
+     {
+      "step": "{\"key\":\"Enter\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\nafter",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 1,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\nafter",
+       "anchor": 42,
+       "head": 42,
+       "focused": true
+      },
+      "boxes": {
+       "T": 291.54
+      }
+     },
+     {
+      "step": "{\"type\":\"### x\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\nxafter",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          3
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 3,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\nxafter",
+       "anchor": 43,
+       "head": 43,
+       "focused": true
+      },
+      "boxes": {
+       "T": 271.2
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowLeft\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\nxafter",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          3
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 3,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\nxafter",
+       "anchor": 42,
+       "head": 42,
+       "focused": true
+      },
+      "boxes": {
+       "T": 271.2
+      }
+     },
+     {
+      "step": "{\"key\":\"Enter\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          3,
+          3
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 3,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter",
+       "anchor": 43,
+       "head": 43,
+       "focused": true
+      },
+      "boxes": {
+       "T": 313.58
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+a\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          3,
+          3
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "mixed",
+         "italic": "mixed",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": "mixed",
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter",
+       "anchor": 49,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "T": 313.58
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowRight\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          3,
+          3
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "on",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 3,
+        "boldFromHeading": true
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter",
+       "anchor": 49,
+       "head": 49,
+       "focused": true
+      },
+      "boxes": {
+       "T": 313.58
+      }
+     },
+     {
+      "step": "{\"key\":\"Enter\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          3,
+          3
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n",
+       "anchor": 50,
+       "head": 50,
+       "focused": true
+      },
+      "boxes": {
+       "T": 349.17
+      }
+     },
+     {
+      "step": "{\"type\":\"2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          3,
+          3
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four",
+       "anchor": 101,
+       "head": 101,
+       "focused": true
+      },
+      "boxes": {
+       "T": 383.07
+      }
+     },
+     {
+      "step": "{\"key\":\"Enter\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four\n",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          3,
+          3
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four\n",
+       "anchor": 102,
+       "head": 102,
+       "focused": true
+      },
+      "boxes": {
+       "T": 416.97
+      }
+     },
+     {
+      "step": "{\"type\":\"**\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four\n**",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          3,
+          3
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four\n**",
+       "anchor": 104,
+       "head": 104,
+       "focused": true
+      },
+      "boxes": {
+       "T": 416.97
+      }
+     },
+     {
+      "step": "{\"key\":\"Enter\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four\n**\n",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          3,
+          3
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four\n**\n",
+       "anchor": 105,
+       "head": 105,
+       "focused": true
+      },
+      "boxes": {
+       "T": 450.87
+      }
+     },
+     {
+      "step": "{\"type\":\"* item\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four\n**\n* item",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          3,
+          3
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four\n**\n* item",
+       "anchor": 111,
+       "head": 111,
+       "focused": true
+      },
+      "boxes": {
+       "T": 450.87
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four\n**\n* item",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          3,
+          3
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four\n**\n* item",
+          "fontSize": 24,
+          "width": 420,
+          "spans": [
+           {
+            "start": 33,
+            "end": 35,
+            "italic": true
+           }
+          ],
+          "headings": [
+           1,
+           0,
+           1,
+           3,
+           3
+          ]
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "mixed",
+         "italic": "mixed",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": "mixed",
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 450.87
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text",
+         "fontSize": 24,
+         "width": 420,
+         "headings": [
+          1
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text",
+          "fontSize": 24,
+          "width": 420,
+          "headings": [
+           1
+          ]
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:Title body text*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "mixed",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": "mixed",
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 94.92
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+Shift+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four\n**\n* item",
+         "fontSize": 24,
+         "width": 420,
+         "spans": [
+          {
+           "start": 33,
+           "end": 35,
+           "italic": true
+          }
+         ],
+         "headings": [
+          1,
+          0,
+          1,
+          3,
+          3
+         ]
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four\n**\n* item",
+          "fontSize": 24,
+          "width": 420,
+          "spans": [
+           {
+            "start": 33,
+            "end": 35,
+            "italic": true
+           }
+          ],
+          "headings": [
+           1,
+           0,
+           1,
+           3,
+           3
+          ]
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:Title body text Big one **bold** it pla…*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "mixed",
+         "italic": "mixed",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": "mixed",
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 450.87
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Editing",
+     "objects": [
+      {
+       "id": "T",
+       "left": 100,
+       "top": 100,
+       "angle": 0,
+       "type": "text",
+       "text": "Title\nbody text\nBig one **bold** it plain\n\nxafter\n2 * 3 * 4 snake*case* #tag a ** b ***x*** #### four\n**\n* item",
+       "fontSize": 24,
+       "width": 420,
+       "spans": [
+        {
+         "start": 33,
+         "end": 35,
+         "italic": true
+        }
+       ],
+       "headings": [
+        1,
+        0,
+        1,
+        3,
+        3
+       ]
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

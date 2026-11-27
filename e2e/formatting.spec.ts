@@ -9,11 +9,16 @@ import type { Locator, Page } from '@playwright/test'
 import {
   AUTOSAVE_QUIET_MS,
   drag,
+  editHasFocus,
+  editedText,
   imageFile,
   openApp,
   openBlank,
   redoButton,
   sceneToPage,
+  screenPixels,
+  expectSameLettering,
+  letteringIn,
   seedMilestone1,
   seedRaw,
   snapshotIdb,
@@ -71,8 +76,6 @@ async function selectRight(page: Page, n: number) {
 }
 
 const button = (page: Page, name: string): Locator => page.getByRole('button', { name, exact: true })
-/** The edit still has the keyboard: Fabric's hidden textarea is focused. */
-const editHasFocus = (page: Page) => page.evaluate(() => document.activeElement?.getAttribute('data-fabric') === 'textarea')
 
 interface Ink {
   count: number
@@ -82,34 +85,26 @@ interface Ink {
   top: number
   bottom: number
 }
-/** Dark and clearly red pixels in a rectangle of the scene canvas (CSS pixels), and their extent. */
-function inkIn(page: Page, left: number, top: number, width: number, height: number): Promise<Ink> {
-  return page.evaluate(
-    ({ left, top, width, height }) => {
-      const canvas = document.querySelector<HTMLCanvasElement>('.canvas-container canvas.lower-canvas')
-      if (!canvas) throw new Error('scene canvas not found')
-      const scale = canvas.width / canvas.clientWidth
-      const w = Math.round(width * scale)
-      const d = canvas.getContext('2d')!.getImageData(Math.round(left * scale), Math.round(top * scale), w, Math.round(height * scale)).data
-      const ink: Ink = { count: 0, red: 0, left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity }
-      for (let i = 0; i < d.length; i += 4) {
-        const [r, g, b, a] = [d[i]!, d[i + 1]!, d[i + 2]!, d[i + 3]!]
-        const dark = a > 40 && r < 160 && g < 160 && b < 160
-        const red = a > 40 && r > 150 && g < 110 && b < 110
-        if (!dark && !red) continue
-        if (dark) ink.count++
-        if (red) ink.red++
-        const x = ((i / 4) % w) / scale
-        const y = Math.floor(i / 4 / w) / scale
-        ink.left = Math.min(ink.left, x)
-        ink.right = Math.max(ink.right, x)
-        ink.top = Math.min(ink.top, y)
-        ink.bottom = Math.max(ink.bottom, y)
-      }
-      return ink
-    },
-    { left, top, width, height },
-  )
+/** Dark and clearly red pixels the page shows in a rectangle of the board (canvas CSS pixels), and their extent within it. */
+async function inkIn(page: Page, left: number, top: number, width: number, height: number): Promise<Ink> {
+  const { width: w, data: d } = await screenPixels(page, left, top, width, height)
+  const ink: Ink = { count: 0, red: 0, left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity }
+  for (let i = 0; i < d.length; i += 4) {
+    const [r, g, b] = [d[i]!, d[i + 1]!, d[i + 2]!]
+    const dark = r < 160 && g < 160 && b < 160
+    // Clearly red, not the orange-brown fringe the browser's subpixel text smoothing gives dark text.
+    const red = r > 150 && g < 110 && b < 110 && r - Math.max(g, b) > 90
+    if (!dark && !red) continue
+    if (dark) ink.count++
+    if (red) ink.red++
+    const x = (i / 4) % w
+    const y = Math.floor(i / 4 / w)
+    ink.left = Math.min(ink.left, x)
+    ink.right = Math.max(ink.right, x)
+    ink.top = Math.min(ink.top, y)
+    ink.bottom = Math.max(ink.bottom, y)
+  }
+  return ink
 }
 /** Deselects (Esc twice: leave the edit, then the selection), so that no selection chrome is drawn. */
 async function deselect(page: Page) {
@@ -139,8 +134,13 @@ test.describe('marks on a range while editing', () => {
     expect(byId(typed, 't')).toEqual({ ...rec, text: 'plain words! here', spans: [{ start: 6, end: 12, bold: true }] })
     await page.keyboard.press('Backspace')
     await storedWhen(page, (d) => byId(d, 't').text === 'plain words here')
+    // Painted bold while still editing: as much lettering as the reference stored bold.
+    const live = await letteringIn(page, 95, 90, 380, 50)
+    const reference = await letteringIn(page, 95, 290, 380, 50)
+    expect(Math.abs(live.count - reference.count)).toBeLessThan(reference.count * 0.05)
     await deselect(page)
     await waitSaved(page)
+    expectSameLettering(live, await letteringIn(page, 95, 90, 380, 50))
     // Drawn like a text stored bold there.
     const a = await inkIn(page, 95, 90, 380, 50)
     const b = await inkIn(page, 95, 290, 380, 50)
@@ -431,7 +431,10 @@ test.describe('font on a text range or at the caret', () => {
     const { errors, at } = await open(page, [rec])
     await caretAt(page, at(110, 112), 4)
     await selectRight(page, 5) // one emoji, a space and three letters
-    const range = () => page.locator('textarea[data-fabric=textarea]').evaluate((el: HTMLTextAreaElement) => el.value.slice(el.selectionStart, el.selectionEnd))
+    const range = async () => {
+      const e = await editedText(page)
+      return e && e.start !== null && e.end !== null ? e.value.slice(e.start, e.end) : null
+    }
     expect(await range()).toBe(word)
     await button(page, 'Mono').click()
     expect(await range()).toBe(word)

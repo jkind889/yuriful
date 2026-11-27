@@ -1,0 +1,37 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "bitmap-compositor-preserves-text-image-text-z-order-and-crop",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/scene-layer.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "ink of C and D": {
+   "inputs": "98b6a064ced0782b",
+   "value": {
+    "size": [
+     800,
+     600
+    ],
+    "inkC": {
+     "n": 20542,
+     "top": 201,
+     "bottom": 248.5,
+     "left": 44,
+     "right": 395.5
+    },
+    "inkD": {
+     "n": 1683,
+     "top": 264.5,
+     "bottom": 284,
+     "left": 42,
+     "right": 177.5
+    }
+   }
+  }
+ }
+}

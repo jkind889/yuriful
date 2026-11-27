@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { openApp, openBlank, seedRaw, snapshotIdb, storedDoc, undoButton, waitSaved } from './helpers.ts'
+import { editHasFocus, editedText, openApp, openBlank, seedRaw, snapshotIdb, storedDoc, undoButton, waitSaved } from './helpers.ts'
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const board = (page: Page) => page.locator('.workspace')
@@ -86,10 +86,10 @@ test('opening Appearance commits the current text edit as its own undo step', as
   await expect(button(page, 'Appearance')).toBeEnabled()
   await page.keyboard.press('t')
   await page.mouse.click(250, 220)
-  await expect(page.locator('textarea[data-fabric]')).toBeFocused()
+  await expect.poll(() => editHasFocus(page)).toBe(true)
   await page.keyboard.type('Album title')
   await button(page, 'Appearance').click()
-  await expect(page.locator('textarea[data-fabric]')).toHaveCount(0)
+  await expect.poll(() => editedText(page)).toBeNull()
   await button(page, 'Blue grid').click()
   await page.keyboard.press('Escape')
   await expect(page.locator('.inspector-title')).toHaveText('Text')

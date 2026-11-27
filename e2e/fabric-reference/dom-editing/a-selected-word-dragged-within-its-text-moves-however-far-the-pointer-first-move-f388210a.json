@@ -1,0 +1,1890 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the review follow-ups, paired with the Fabric renderer > a selected word dragged within its text moves, however far the pointer first moves",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/dom-editing.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "809d6d5502628584",
+   "value": {
+    "records": [
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.03,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "first second third fourth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:first second third fourth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "first second third fourth",
+       "anchor": 0,
+       "head": 5,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"wait\":600}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "first second third fourth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:first second third fourth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "first second third fourth",
+       "anchor": 0,
+       "head": 5,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"pressMove\":\"T\",\"at\":[0.03,0.5],\"moves\":[[1,0],[21,0],[41,0],[61,0],[81,0],[101,0],[121,0],[141,0],[161,0],[181,0],[201,0],[205,0]]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": " second third foufirstrth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:second third foufirstrth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": " second third foufirstrth",
+       "anchor": 17,
+       "head": 22,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"type\":\"!\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": " second third fou!rth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:second third fou!rth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": " second third fou!rth",
+       "anchor": 18,
+       "head": 18,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": " second third fou!rth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": " second third fou!rth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:second third fou!rth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "first second third fourth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:first second third fourth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.03,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "first second third fourth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:first second third fourth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "first second third fourth",
+       "anchor": 0,
+       "head": 5,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"wait\":600}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "first second third fourth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:first second third fourth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "first second third fourth",
+       "anchor": 0,
+       "head": 5,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"pressMove\":\"T\",\"at\":[0.03,0.5],\"moves\":[[6,0],[26,0],[46,0],[66,0],[86,0],[106,0],[126,0],[146,0],[166,0],[186,0],[205,0]]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": " second third foufirstrth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:second third foufirstrth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": " second third foufirstrth",
+       "anchor": 17,
+       "head": 22,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"type\":\"!\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": " second third fou!rth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:second third fou!rth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": " second third fou!rth",
+       "anchor": 18,
+       "head": 18,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": " second third fou!rth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": " second third fou!rth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:second third fou!rth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "first second third fourth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:first second third fourth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.03,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "first second third fourth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:first second third fourth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "first second third fourth",
+       "anchor": 0,
+       "head": 5,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"wait\":600}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "first second third fourth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:first second third fourth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "first second third fourth",
+       "anchor": 0,
+       "head": 5,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"pressMove\":\"T\",\"at\":[0.03,0.5],\"moves\":[[12,0],[32,0],[52,0],[72,0],[92,0],[112,0],[132,0],[152,0],[172,0],[192,0],[205,0]]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": " second third foufirstrth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:second third foufirstrth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": " second third foufirstrth",
+       "anchor": 17,
+       "head": 22,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"type\":\"!\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": " second third fou!rth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:second third fou!rth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": " second third fou!rth",
+       "anchor": 18,
+       "head": 18,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": " second third fou!rth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": " second third fou!rth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:second third fou!rth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "first second third fourth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:first second third fourth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.03,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "first second third fourth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:first second third fourth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "first second third fourth",
+       "anchor": 0,
+       "head": 5,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"wait\":600}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "first second third fourth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:first second third fourth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "first second third fourth",
+       "anchor": 0,
+       "head": 5,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"pressMove\":\"T\",\"at\":[0.03,0.5],\"moves\":[[30,0],[50,0],[70,0],[90,0],[110,0],[130,0],[150,0],[170,0],[190,0],[205,0]]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": " second third foufirstrth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:second third foufirstrth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": " second third foufirstrth",
+       "anchor": 17,
+       "head": 22,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"type\":\"!\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": " second third fou!rth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:second third fou!rth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": " second third fou!rth",
+       "anchor": 18,
+       "head": 18,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": " second third fou!rth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": " second third fou!rth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:second third fou!rth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "first second third fourth",
+         "fontSize": 24,
+         "width": 500
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "first second third fourth",
+          "fontSize": 24,
+          "width": 500
+         }
+        ]
+       },
+       "index": 0,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": true,
+       "layers": [
+        "T:first second third fourth*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Editing",
+     "objects": [
+      {
+       "id": "T",
+       "left": 100,
+       "top": 100,
+       "angle": 0,
+       "type": "text",
+       "text": "first second third fourth",
+       "fontSize": 24,
+       "width": 500
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

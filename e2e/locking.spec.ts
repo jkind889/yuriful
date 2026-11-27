@@ -3,7 +3,7 @@
  */
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { AUTOSAVE_QUIET_MS, dbVersion, drag, openApp, openBlank, redoButton, sceneToPage, seedRaw, snapshotIdb, storedDoc, undoButton, waitSaved } from './helpers.ts'
+import { AUTOSAVE_QUIET_MS, dbVersion, drag, editedText, openApp, openBlank, redoButton, sceneToPage, seedRaw, snapshotIdb, storedDoc, undoButton, waitSaved } from './helpers.ts'
 import type { SeedAsset, StoredBoard, View } from './helpers.ts'
 
 const UNIT: View = { zoom: 1, panX: 0, panY: 0 }
@@ -279,7 +279,7 @@ test.describe('locked text', () => {
     // A double-click on the locked text does not start editing it.
     await page.keyboard.press('Escape')
     await page.mouse.dblclick(o.at(130, 412).x, o.at(130, 412).y)
-    expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('TEXTAREA')
+    expect(await editedText(page)).toBeNull()
     await page.keyboard.type('zz')
     await page.waitForTimeout(AUTOSAVE_QUIET_MS)
     expect(obj(await storedDoc(page), 't').text).toBe('hello world')

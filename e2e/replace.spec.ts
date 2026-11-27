@@ -3,12 +3,12 @@
  *
  * The board's image has coloured quadrants; every replacement picture is a gradient whose
  * green channel is 240 everywhere (`pngBuffer` with seed 3), which none of the quadrants has,
- * so a canvas sample says which picture is showing. Samples are read from Fabric's lower
- * canvas (the scene, without selection handles).
+ * so a sample says which picture is showing. Samples are what the page shows (composited
+ * screenshots of the board).
  */
 import { expect, test } from '@playwright/test'
 import type { FileChooser, Page } from '@playwright/test'
-import { AUTOSAVE_QUIET_MS, openApp, openBlank, pngBuffer, redoButton, sceneToPage, seedRaw, snapshotIdb, storedDoc, undoButton } from './helpers.ts'
+import { AUTOSAVE_QUIET_MS, openApp, openBlank, pagePixels, pngBuffer, redoButton, sceneToPage, seedRaw, snapshotIdb, storedDoc, undoButton } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredObject, View } from './helpers.ts'
 
 const UNIT: View = { zoom: 1, panX: 0, panY: 0 }
@@ -82,18 +82,10 @@ function expectSameBox(a: ReturnType<typeof box>, z: ReturnType<typeof box>) {
   expect(Math.abs(z.h - a.h)).toBeLessThanOrEqual(0.05)
 }
 
-/** RGBA pixels of a page-pixel rectangle of Fabric's lower canvas, after the next two frames. */
-function region(page: Page, at: { x: number; y: number }, w: number, h: number): Promise<number[]> {
-  return page.evaluate(
-    async ({ x, y, w, h }) => {
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
-      const c = document.querySelector('canvas.lower-canvas') as HTMLCanvasElement
-      const rect = c.getBoundingClientRect()
-      const ratio = c.width / rect.width
-      return Array.from(c.getContext('2d')!.getImageData(Math.round((x - rect.left) * ratio), Math.round((y - rect.top) * ratio), Math.round(w * ratio), Math.round(h * ratio)).data)
-    },
-    { x: at.x, y: at.y, w, h },
-  )
+/** RGBA pixels the page shows in a page-pixel rectangle of the board, after the next two frames. */
+async function region(page: Page, at: { x: number; y: number }, w: number, h: number): Promise<number[]> {
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+  return Array.from((await pagePixels(page, at.x, at.y, w, h)).data)
 }
 const greenAt = async (page: Page, p: { x: number; y: number }) => (await region(page, p, 1, 1))[1]!
 function differing(a: number[], b: number[], tolerance = 24): number {

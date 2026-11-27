@@ -9,8 +9,9 @@ import { idOf } from './objects.ts'
 import { canvasOf, dragBy, moveCanvas, press, pressCanvas, release, releaseCanvas, scaleBy, tick } from './testing/drive.ts'
 import type { PressOptions } from './testing/drive.ts'
 import { ActiveSelection } from './testing/fakeFabric.ts'
-import type { FakeObject, Textbox } from './testing/fakeFabric.ts'
-import { FakeAssets, SpyStore } from './testing/fakes.ts'
+import type { FakeObject } from './testing/fakeFabric.ts'
+import { FakeAssets, FakeCardMeasurer, SpyStore, stubTextLayout } from './testing/fakes.ts'
+import { boardCanUndo, editedObject, replaceText, startEditing, textAdapterOf } from './testing/editing.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -59,7 +60,7 @@ async function board(frames: FrameRecord[], objects: ObjectRecord[], viewport = 
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Frames', frames, objects, viewport }
   const store = new SpyStore(frames.length + objects.length > 0 ? { doc, assets: new Map([['a1', asset('a1')]]) } : null)
   store.holdLoad = false
-  const editor = new Editor(host, store, new FakeAssets())
+  const editor = new Editor(host, store, new FakeAssets(), undefined, { measurer: new FakeCardMeasurer() })
   editors.push(editor)
   await editor.init()
   const canvas = canvasOf(editor)
@@ -103,7 +104,9 @@ async function board(frames: FrameRecord[], objects: ObjectRecord[], viewport = 
   return { editor, store, canvas, obj, rec, frame, owner, owners, select, move, scale, doc: doc_ }
 }
 
+let restoreLayout = () => {}
 beforeEach(() => {
+  restoreLayout = stubTextLayout()
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   vi.stubGlobal(
     'ResizeObserver',
@@ -116,6 +119,7 @@ beforeEach(() => {
   document.body.appendChild(host)
 })
 afterEach(() => {
+  restoreLayout()
   editors.splice(0).forEach((e) => e.dispose())
   host.remove()
   vi.unstubAllGlobals()
@@ -567,13 +571,13 @@ describe('creating content inside a frame (O4)', () => {
     pressCanvas(b.canvas, 40, 40)
     b.canvas.fire('mouse:up', { e: { button: 0, clientX: 40, clientY: 40 }, isClick: true })
     await tick()
-    const tb = b.canvas.objects.at(-1) as Textbox
-    expect(tb.isEditing).toBe(true)
-    tb.type('typing')
+    const tb = b.canvas.objects.at(-1) as FakeObject
+    expect((editedObject(b.editor) === tb)).toBe(true)
+    replaceText(b.editor, 'typing')
     await flush()
     const saved = b.store.saves.at(-1)!.doc.objects.find((o) => o.type === 'text')!
     expect(saved).toMatchObject({ text: 'typing', frameId: 'A' })
-    expect(b.editor.getState().canUndo).toBe(false) // assigning the owner touched no history
+    expect(boardCanUndo(b.editor)).toBe(false) // assigning the owner touched no history
 
     // Reloading in the middle of typing: the stored text is A's and travels with A.
     const reloaded = await board(b.store.saves.at(-1)!.doc.frames, b.store.saves.at(-1)!.doc.objects)
@@ -581,7 +585,7 @@ describe('creating content inside a frame (O4)', () => {
     await reloaded.move(['A'], 100, 0)
     expect(reloaded.rec(saved.id).left).toBe(saved.left + 100)
 
-    tb.exitEditing()
+    textAdapterOf(b.editor).finishEditing()
     expect(b.editor.getState().canUndo).toBe(true)
     b.editor.undo()
     expect(b.doc().objects).toHaveLength(1)
@@ -596,9 +600,8 @@ describe('creating content inside a frame (O4)', () => {
       pressCanvas(b.canvas, x, y)
       b.canvas.fire('mouse:up', { e: { button: 0, clientX: x, clientY: y }, isClick: true })
       await tick()
-      const tb = b.canvas.objects.at(-1) as Textbox
-      tb.type('t')
-      tb.exitEditing()
+      replaceText(b.editor, 't')
+      textAdapterOf(b.editor).finishEditing()
       return b.doc().objects.at(-1)!
     }
     expect(await place(40, 100)).toMatchObject({ frameId: 'A' }) // box centre (160, 115): inside A
@@ -618,9 +621,8 @@ describe('creating content inside a frame (O4)', () => {
     pressCanvas(b.canvas, 900, 900)
     b.canvas.fire('mouse:up', { e: { button: 0, clientX: 900, clientY: 900 }, isClick: true })
     await tick()
-    const tb = b.canvas.objects.at(-1) as Textbox
-    tb.type('out here')
-    tb.exitEditing()
+    replaceText(b.editor, 'out here')
+    textAdapterOf(b.editor).finishEditing()
     expect(b.doc().objects.at(-1)).not.toHaveProperty('frameId')
   })
 
@@ -630,21 +632,18 @@ describe('creating content inside a frame (O4)', () => {
     pressCanvas(b.canvas, 40, 260)
     b.canvas.fire('mouse:up', { e: { button: 0, clientX: 40, clientY: 260 }, isClick: true }) // centre (160, 275): inside A
     await tick()
-    const tb = b.canvas.objects.at(-1) as Textbox
-    tb.type('line\n'.repeat(30))
-    tb.height = 900 // many lines: the centre is now far below A
-    tb.exitEditing()
+    replaceText(b.editor, 'line\n'.repeat(30)) // 31 lines of 30: the centre is now far below A
+    textAdapterOf(b.editor).finishEditing()
     expect(b.doc().objects.at(-1)).not.toHaveProperty('frameId')
   })
 
   it('re-editing an existing text never changes its owner, even when its box grows past the frame', async () => {
     const b = await board([F('A', 0, 0), F('B', 0, 400)], [txt('t', 40, 260, 'A')])
-    const tb = b.obj('t') as Textbox
+    const tb = b.obj('t') as FakeObject
     b.select('t')
-    tb.enterEditing()
-    tb.type('line\n'.repeat(30))
-    tb.height = 900 // centre now inside B, far outside A
-    tb.exitEditing()
+    startEditing(b.editor, tb)
+    replaceText(b.editor, 'line\n'.repeat(30)) // 31 lines of 30: the centre is now inside B, far outside A
+    textAdapterOf(b.editor).finishEditing()
     expect(b.owner('t')).toBe('A')
     expect(b.editor.getState().canUndo).toBe(true)
   })
@@ -652,8 +651,7 @@ describe('creating content inside a frame (O4)', () => {
   it('typing and font-size changes leave owners alone', async () => {
     const b = await board([F('A', 0, 0)], [txt('t', 250, 260, 'A')])
     b.select('t')
-    b.editor.setFontSize(400)
-    ;(b.obj('t') as Textbox).height = 500 // centre well outside A
+    b.editor.setFontSize(400) // one line of 500: the centre well outside A
     b.editor.setFontSize(399)
     expect(b.rec('t')).toMatchObject({ fontSize: 399, frameId: 'A' })
   })
@@ -681,12 +679,11 @@ describe('creating content inside a frame (O4)', () => {
 describe('a drifted owner: a text whose centre has left its frame', () => {
   async function drifted() {
     const b = await board([F('A', 0, 0), F('B', 1000, 0)], [txt('t', 40, 260, 'A'), img('loose', 100, 100)])
-    const tb = b.obj('t') as Textbox
+    const tb = b.obj('t') as FakeObject
     b.select('t')
-    tb.enterEditing()
-    tb.type('grown')
-    tb.height = 900 // centre (140, 710): outside A
-    tb.exitEditing()
+    startEditing(b.editor, tb)
+    replaceText(b.editor, ['grown', ...Array<string>(29).fill('more')].join('\n')) // 30 lines of 30: 900 tall, centre (140, 710), outside A
+    textAdapterOf(b.editor).finishEditing()
     expect(b.owner('t')).toBe('A')
     return b
   }
@@ -719,7 +716,7 @@ describe('a drifted owner: a text whose centre has left its frame', () => {
     expect(b.owner('t')).toBeUndefined()
     b.editor.undo()
     expect(b.owner('t')).toBe('A')
-    await b.move(['t'], 1000, -200) // (the fake rebuilt it at its plain size) centre (1140, 75): inside B
+    await b.move(['t'], 1000, -560) // centre (1140, 150): inside B
     expect(b.owner('t')).toBe('B')
   })
 })
@@ -914,7 +911,7 @@ describe('hooks for the UI', () => {
 
     const store = new SpyStore({ doc: { ...createEmptyDoc(), objects: [img('gone', 0, 0)] }, assets: new Map() }) // its image bytes are missing
     store.holdLoad = false
-    const broken = new Editor(host, store, new FakeAssets())
+    const broken = new Editor(host, store, new FakeAssets(), undefined, { measurer: new FakeCardMeasurer() })
     editors.push(broken)
     await broken.init()
     expect(broken.getState().readOnly).not.toBeNull()
@@ -931,7 +928,7 @@ describe('undoing an image deletion after another tab pruned its bytes', () => {
     await seed.save(doc, ABSENT, () => original)
 
     const store = new IndexedDbBoardStore(factory)
-    const editor = new Editor(host, store, new FakeAssets())
+    const editor = new Editor(host, store, new FakeAssets(), undefined, { measurer: new FakeCardMeasurer() })
     editors.push(editor)
     await editor.init()
     const canvas = canvasOf(editor)

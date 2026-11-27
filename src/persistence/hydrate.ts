@@ -1,3 +1,5 @@
+import { EDITABLE_RICH_FIELDS, uneditableRichFields } from '../model/textDoc.ts'
+import type { RichField } from '../model/textDoc.ts'
 import type { BoardDoc, ObjectRecord, StoredAsset } from '../model/types.ts'
 import { NewerBoardError, StorageBusyError, UnreadableBoardError } from './boardStore.ts'
 import type { BoardStore, RevisionToken } from './boardStore.ts'
@@ -33,8 +35,17 @@ function describeLoadFailure(e: unknown): string {
  * Loads the stored board and proves every image in it can be decoded. Fails
  * closed: any unreadable document, storage error, missing asset or undecodable
  * asset yields `blocked`, never a silently reduced board. Loading writes nothing.
+ *
+ * A board that uses a rich text field this build cannot edit (see `EDITABLE_RICH_FIELDS`)
+ * is treated exactly like a database from a newer build: nothing is shown, edited, saved or
+ * pruned, because its next save would drop that field. `editable` is the set this build edits (a
+ * test passes a smaller one to stand for a build that does not know a field yet).
  */
-export async function hydrateBoard(store: BoardStore, decode: (asset: StoredAsset) => Promise<unknown>): Promise<HydrationOutcome> {
+export async function hydrateBoard(
+  store: BoardStore,
+  decode: (asset: StoredAsset) => Promise<unknown>,
+  editable: ReadonlySet<RichField> = EDITABLE_RICH_FIELDS,
+): Promise<HydrationOutcome> {
   let loaded
   try {
     loaded = await store.load()
@@ -42,6 +53,7 @@ export async function hydrateBoard(store: BoardStore, decode: (asset: StoredAsse
     return { kind: 'blocked', partial: null, message: describeLoadFailure(e) }
   }
   if (!loaded) return { kind: 'empty' }
+  if (uneditableRichFields(loaded.doc, editable).size > 0) return { kind: 'blocked', partial: null, message: describeLoadFailure(new NewerBoardError()) }
 
   const usable: ObjectRecord[] = []
   let failed = 0

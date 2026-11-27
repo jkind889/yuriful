@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { createEmptyDoc } from '../model/doc.ts'
-import type { BoardDoc, StoredAsset } from '../model/types.ts'
+import type { BoardDoc, StoredAsset, TextRecord } from '../model/types.ts'
 import { UnreadableBoardError } from './boardStore.ts'
 import { NewerBoardError, StorageBusyError } from './boardStore.ts'
 import type { BoardStore, LoadedBoard, RevisionToken } from './boardStore.ts'
@@ -157,5 +157,51 @@ describe('hydrateBoard', () => {
       decodeAll,
     )
     expect(out.kind === 'blocked' && out.message).toMatch(/unavailable.*not available.*read-only/)
+  })
+})
+
+describe('hydrateBoard: rich text this build cannot edit', () => {
+  const rich = (extra: Partial<TextRecord>): LoadedBoard => {
+    const b = board()
+    return { ...b, doc: { ...b.doc, objects: b.doc.objects.map((o) => (o.type === 'text' ? { ...o, ...extra } : o)) } }
+  }
+  const newer = 'This board was saved by a newer yuriful. It is read-only here so that nothing in it is lost.'
+
+  it('rich-board-opens-read-only-until-its-slice: a field a build does not edit (here paper, for a build that edits only blocks and a fixed height) makes the board read-only like a newer database, with nothing shown and nothing decoded or written', async () => {
+    const older = new Set(['blocks', 'height'] as const)
+    for (const extra of [{ surface: 'card' as const }, { height: 200, surface: 'card' as const }, { blocks: [{ type: 'divider' as const }], surface: 'card' as const }]) {
+      const decoded: string[] = []
+      const { s, writes } = store(async () => rich(extra))
+      const out = await hydrateBoard(s, async (a) => void decoded.push(a.id), older)
+      expect(out).toEqual({ kind: 'blocked', partial: null, message: newer })
+      expect(writes).toEqual([])
+      expect(decoded).toEqual([])
+    }
+  })
+
+  it('a board with rich blocks (lists, checklists, quotes, code, dividers) restores: this build edits them', async () => {
+    const out = await hydrateBoard(store(async () => rich({ text: '', blocks: [{ type: 'divider' }] })).s, decodeAll)
+    expect(out.kind).toBe('restored')
+  })
+
+  it('a board with a fixed height, alone or beside rich blocks, restores: this build edits it', async () => {
+    for (const extra of [{ height: 200 }, { text: '', blocks: [{ type: 'divider' as const }], height: 200 }]) {
+      const { s, writes } = store(async () => rich(extra))
+      const out = await hydrateBoard(s, decodeAll)
+      expect(out.kind).toBe('restored')
+      expect(writes).not.toContain('save') // loading never rewrites the board
+    }
+  })
+
+  it('a board with paper restores: this build edits it', async () => {
+    for (const extra of [{ surface: 'card' as const }, { text: '', blocks: [{ type: 'divider' as const }], height: 200, surface: 'card' as const }]) {
+      const { s, writes } = store(async () => rich(extra))
+      expect((await hydrateBoard(s, decodeAll)).kind).toBe('restored')
+      expect(writes).not.toContain('save')
+    }
+  })
+
+  it('a board without rich fields restores as before', async () => {
+    expect((await hydrateBoard(store(async () => rich({ height: undefined, blocks: undefined, surface: undefined })).s, decodeAll)).kind).toBe('restored')
   })
 })

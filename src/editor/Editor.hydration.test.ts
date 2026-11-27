@@ -6,8 +6,8 @@ import { CONFLICT_MESSAGE } from '../persistence/autosave.ts'
 import { ABSENT, BoardConflictError, IndexedDbBoardStore } from '../persistence/boardStore.ts'
 import { Editor } from './Editor.ts'
 import { canvasOf } from './testing/drive.ts'
-import type { Textbox } from './testing/fakeFabric.ts'
-import { FakeAssets, SpyStore } from './testing/fakes.ts'
+import { editedObject, insertText } from './testing/editing.ts'
+import { FakeAssets, FakeCardMeasurer, SpyStore, stubTextLayout } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -30,15 +30,17 @@ const key = (k: string, init: KeyboardEventInit = {}) => new KeyboardEvent('keyd
 
 let host: HTMLDivElement
 const editors: Editor[] = []
-const make = (store: ConstructorParameters<typeof Editor>[1], assets: ConstructorParameters<typeof Editor>[2]) => {
-  const e = new Editor(host, store, assets)
+const make = (store: ConstructorParameters<typeof Editor>[1], assets: ConstructorParameters<typeof Editor>[2], editableRichFields?: ReadonlySet<'blocks' | 'height' | 'surface'>) => {
+  const e = new Editor(host, store, assets, undefined, { measurer: new FakeCardMeasurer(), editableRichFields })
   editors.push(e)
   return e
 }
 /** Canvas objects as the editor sees them (the fake canvas exposes them via the host's editor). */
 const flush = () => vi.advanceTimersByTimeAsync(10_000)
 
+let restoreLayout = () => {}
 beforeEach(() => {
+  restoreLayout = stubTextLayout()
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }) // autosave's debounce; leave setImmediate to fake-indexeddb
   vi.stubGlobal(
     'ResizeObserver',
@@ -51,6 +53,7 @@ beforeEach(() => {
   document.body.appendChild(host)
 })
 afterEach(() => {
+  restoreLayout()
   editors.splice(0).forEach((e) => e.dispose())
   host.remove()
   vi.unstubAllGlobals()
@@ -352,12 +355,11 @@ describe('Editor: a save conflict makes the tab read-only', () => {
     store.saveError = new BoardConflictError()
     editor.addText() // enters editing on a new textbox
     expect(editor.getState().editingText).toBe(true)
-    const typing = canvasOf(editor).objects[0] as Textbox
-    typing.type('half a thought') // typed text, so leaving the edit WOULD commit if the board were still editable
+    insertText(editor, 'half a thought') // typed text, so leaving the edit WOULD commit if the board were still editable
     await flush() // the save triggered by typing conflicts
     const state = editor.getState()
     expect(state.readOnly).toBe(CONFLICT_MESSAGE)
-    expect(typing.isEditing).toBe(false)
+    expect(editedObject(editor)).toBeNull()
     expect(state.editingText).toBe(false)
     expect(state.canUndo).toBe(false) // the half-typed text was not committed to history
     expect(canvasOf(editor).objects).toHaveLength(1) // it stays visible
@@ -410,5 +412,88 @@ describe('Editor: a stored board with frames', () => {
     expect(editor.getState()).toMatchObject({ tool: 'hand', selection: null, objectCount: 3 })
     expect(store.attempts).toHaveLength(0)
     expect(store.prunes).toHaveLength(0)
+  })
+})
+
+describe('Editor: a stored board with rich text this build cannot edit yet', () => {
+  /** Every edit path a person could try, on a board that must stay as it is. */
+  async function tryEverything(editor: Editor) {
+    editor.setTitle('edited')
+    editor.addText()
+    editor.setTool('frame')
+    editor.addFrame()
+    editor.handleKeyDown(key('a', { ctrlKey: true }))
+    editor.handleKeyDown(key('Delete'))
+    editor.handleKeyDown(key('t'))
+    editor.undo()
+    await editor.addImageFiles([new File([new Uint8Array([1])], 'x.png', { type: 'image/png' })])
+    await flush()
+  }
+
+  it('rich-board-opens-read-only-until-its-slice: opens read-only with the newer-build reason; nothing is shown, selected, saved or pruned', async () => {
+    // Every rich field is editable in this build; a build that edits only blocks and a fixed height
+    // stands for one that does not know the next field: paper, alone or beside either, makes it read-only.
+    for (const extra of [{ height: 240, surface: 'card' as const }, { surface: 'card' as const }, { blocks: [{ type: 'divider' as const }], surface: 'card' as const }]) {
+      const doc = storedDoc()
+      const store = new SpyStore({ doc: { ...doc, objects: doc.objects.map((o) => (o.type === 'text' ? { ...o, ...extra } : o)) }, assets: storedAssets() })
+      store.holdLoad = false
+      const editor = make(store, new FakeAssets(), new Set(['blocks', 'height']))
+      await editor.init()
+      expect(editor.getState()).toMatchObject({ ready: true, tool: 'hand', objectCount: 0, selection: null, save: { kind: 'unavailable' } })
+      expect(editor.getState().readOnly).toMatch(/newer yuriful.*read-only/)
+      await tryEverything(editor)
+      expect(editor.getState()).toMatchObject({ tool: 'hand', objectCount: 0, selection: null, canUndo: false })
+      expect(editor.getState().title).not.toBe('edited')
+      expect(store.attempts).toHaveLength(0)
+      expect(store.prunes).toHaveLength(0)
+    }
+  })
+
+  it('failed-restore-blocks-writes-on-unknown-block-type: a stored text with an unknown block opens read-only and the row and bytes stay exactly as stored', async () => {
+    const factory = new IDBFactory()
+    const doc = {
+      version: 3,
+      title: 'From a newer build',
+      frames: [],
+      objects: [{ type: 'text', id: 't1', left: 0, top: 0, angle: 0, text: 'kept', fontSize: 20, width: 200, blocks: [{ type: 'paragraph', content: [{ text: 'kept' }] }, { type: 'table', rows: [] }] }],
+      viewport: { zoom: 1, panX: 0, panY: 0 },
+    }
+    await new Promise<void>((resolve, reject) => {
+      const open = factory.open('yuriful', 3)
+      open.onupgradeneeded = () => {
+        open.result.createObjectStore('boards', { keyPath: 'id' })
+        open.result.createObjectStore('assets', { keyPath: 'id' })
+      }
+      open.onerror = () => reject(open.error)
+      open.onsuccess = () => {
+        const tx = open.result.transaction(['boards', 'assets'], 'readwrite')
+        tx.objectStore('boards').put({ id: 'current', doc, rev: 'r1', updatedAt: 1 })
+        tx.objectStore('assets').put(asset('orphan', 9)) // unreferenced: a complete restore would prune it
+        tx.oncomplete = () => {
+          open.result.close()
+          resolve()
+        }
+      }
+    })
+    const editor = make(new IndexedDbBoardStore(factory), new FakeAssets())
+    await editor.init()
+    expect(editor.getState().readOnly).toMatch(/could not be read.*read-only/)
+    await tryEverything(editor)
+    editor.dispose()
+
+    const raw = await new Promise<{ row: unknown; keys: IDBValidKey[] }>((resolve, reject) => {
+      const open = factory.open('yuriful')
+      open.onerror = () => reject(open.error)
+      open.onsuccess = () => {
+        const tx = open.result.transaction(['boards', 'assets'], 'readonly')
+        const row = tx.objectStore('boards').get('current')
+        const keys = tx.objectStore('assets').getAllKeys()
+        tx.oncomplete = () => {
+          open.result.close()
+          resolve({ row: row.result, keys: keys.result })
+        }
+      }
+    })
+    expect(raw).toEqual({ row: { id: 'current', doc, rev: 'r1', updatedAt: 1 }, keys: ['orphan'] })
   })
 })

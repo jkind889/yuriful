@@ -15,6 +15,18 @@
   --shadow: 0 1px 2px rgba(25, 32, 60, 0.06), 0 4px 14px rgba(25, 32, 60, 0.06);
   --header-h: 52px;
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Paper (src/model/paper.ts): every visual value of a paper text box, here and nowhere else (the
+     frame preview reads them from here too). A sheet of good paper on a desk, not a UI card: barely
+     warm white, a hairline edge that holds it on white frame paper, and a low, soft shadow that
+     lifts it off the board. White ink sits on the dark sheet. The shadow reaches at most 16 px past
+     the sheet (the frame preview leaves that much room); for no shadow write 0 0 #0000, not none (the
+     two are drawn as one list). The padding is not here: it is frozen in PAPER_PAD_X_EM /
+     PAPER_PAD_Y_EM. */
+  --paper-fill: #fffdf8;
+  --paper-fill-dark: #2b2f38;
+  --paper-edge: 0 0 0 1px rgb(29 34 48 / 0.09);
+  --paper-shadow: 0 1px 1.5px rgb(29 34 48 / 0.06), 0 6px 14px -8px rgb(29 34 48 / 0.22);
+  --paper-radius: 2px;
   font-family: var(--font);
   font-size: 13px;
   line-height: 1.4;
@@ -438,6 +450,11 @@ button:disabled {
   display: flex;
   gap: 1px;
 }
+/* The text panel's lists, quote, code block and divider: one row across the panel */
+.block-row {
+  display: flex;
+  justify-content: space-between;
+}
 .number-input {
   width: 72px;
   height: 28px;
@@ -525,6 +542,11 @@ button:disabled {
 .choice-btn:disabled {
   color: #aab0c0;
 }
+.paper-btn {
+  min-width: 52px;
+  padding: 0 12px;
+  border-color: var(--border);
+}
 .font-btn {
   font-size: 15px;
   line-height: 1;
@@ -607,7 +629,26 @@ button:disabled {
   pointer-events: auto;
 }
 
+/* The panel gives way before the layer list does: it may shrink and then scrolls inside itself
+   (`is-scrolling`, set only when its controls do not fit, since a scroller clips hover tips) */
+.side-stack > .inspector {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+.side-stack > .inspector.is-scrolling {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
 /* ---- layers ---- */
+/* The layer list keeps its header and two complete rows (one when it has one), whatever is selected */
+.side-stack > .layers:has(.layer-row) {
+  min-height: 72px;
+}
+.side-stack > .layers:has(.layer-row + .layer-row) {
+  min-height: 100px;
+}
 .side-stack > .layers {
   flex: 0 1 auto;
   margin-top: auto;
@@ -908,4 +949,473 @@ button:disabled {
   width: 30px;
   height: 24px;
   padding: 1px;
+}
+
+/* ---- DOM scene layer (src/editor/sceneLayer.ts; not mounted by the app yet) ---- */
+
+.scene-layer {
+  position: absolute;
+  inset: 0;
+  /* clip, never hidden: a hidden overflow is scrolled by the browser to follow a caret */
+  overflow: clip;
+  pointer-events: none;
+  z-index: 1;
+}
+.scene-world,
+.scene-frames,
+.scene-objects {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+}
+.scene-world {
+  transform-origin: 0 0;
+}
+.scene-frames {
+  z-index: 0;
+}
+.scene-objects {
+  z-index: 1;
+}
+.scene-frame,
+.scene-item {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+.scene-frame {
+  background: #ffffff;
+}
+.scene-item {
+  contain: layout style;
+}
+.scene-item.is-culled {
+  content-visibility: hidden;
+}
+/* Items being moved are not given `will-change`: measured on a drag of 100 items it bought nothing
+   with a GPU and halved the frame rate without one, and their lettering was drawn darker while it
+   was on (the text was rasterized on its own layer) */
+.scene-image {
+  overflow: hidden;
+}
+.scene-image.is-revealed {
+  overflow: visible;
+}
+.scene-image > img {
+  display: block;
+  max-width: none;
+  transform-origin: 0 0;
+  user-select: none;
+}
+.scene-text.is-editing > .scene-text-body {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 2px;
+}
+/* While a text is edited the canvas takes no presses: the card does, and so does every unlocked
+   item in front of it, with the default pointer rather than the card's text caret */
+.scene-text.is-editing {
+  pointer-events: auto;
+}
+.scene-item.is-covering {
+  pointer-events: auto;
+  cursor: default;
+}
+
+/* prose:start (inlined by src/editor/renderFrameBitmap.ts as PROSE_CSS; a test keeps the two equal) */
+.yuriful-prose {
+  position: relative;
+  display: flow-root;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.4125;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-align: left;
+  text-indent: 0;
+  text-transform: none;
+  color: #1d2230;
+  white-space: pre-wrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0;
+  outline: none;
+}
+.yuriful-prose.is-drawn {
+  /* a drawn box keeps its trailing spaces in the line (they must fit), and splits an overlong word */
+  white-space: break-spaces;
+  overflow-wrap: anywhere;
+}
+.yuriful-prose.is-fixed {
+  /* a fixed height: the text is clipped to the box, from the top (the page scrolls it, see .scene-text-body) */
+  overflow: hidden;
+}
+.yuriful-prose.is-center {
+  text-align: center;
+}
+.yuriful-prose.is-right {
+  text-align: right;
+}
+/* Lines at any depth (in a list item or a quote too) are laid out alike: every length below is in
+   em of the box's base size, so a corner scale scales the blocks with the text */
+.yuriful-prose p,
+.yuriful-prose h1,
+.yuriful-prose h2,
+.yuriful-prose h3 {
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+.yuriful-prose p {
+  font-size: 1em;
+  top: var(--yp-shift-0, 0px);
+}
+.yuriful-prose h1 {
+  font-size: 2em;
+  font-weight: 700;
+  top: var(--yp-shift-1, 0px);
+}
+.yuriful-prose h2 {
+  font-size: 1.5em;
+  font-weight: 700;
+  top: var(--yp-shift-2, 0px);
+}
+.yuriful-prose h3 {
+  font-size: 1.25em;
+  font-weight: 700;
+  top: var(--yp-shift-3, 0px);
+}
+/* Lists: each level moves its items in by one gutter (LIST_INDENT_EM), where the marker sits.
+   Markers are a little lighter than the words, so the words lead */
+.yuriful-prose ul,
+.yuriful-prose ol {
+  margin: 0;
+  padding: 0 0 0 1.5em;
+  list-style: none;
+}
+.yuriful-prose li {
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+.yuriful-prose ol {
+  counter-reset: yp-item;
+}
+.yuriful-prose ol > li {
+  counter-increment: yp-item;
+}
+/* A bullet is a dot on the first line, centred on its lower-case letters (the baseline is 0.879em
+   below the line's top); a list inside a list has rings, and a third level small squares */
+.yuriful-prose ul:not(.yp-tasks) > li::before {
+  content: "";
+  position: absolute;
+  left: -0.95em;
+  top: 0.47em;
+  width: 0.3em;
+  height: 0.3em;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 62%, transparent);
+}
+.yuriful-prose ul:not(.yp-tasks) ul:not(.yp-tasks) > li::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 0.075em color-mix(in srgb, currentColor 62%, transparent);
+}
+.yuriful-prose ul:not(.yp-tasks) ul:not(.yp-tasks) ul:not(.yp-tasks) > li::before {
+  left: -0.92em;
+  top: 0.5em;
+  width: 0.24em;
+  height: 0.24em;
+  border-radius: 0.03em;
+  background: color-mix(in srgb, currentColor 62%, transparent);
+  box-shadow: none;
+}
+/* A number sits in the gutter, ending a little before the words, on the first line's baseline */
+.yuriful-prose ol > li::before {
+  content: counter(yp-item) ".";
+  position: absolute;
+  right: 100%;
+  top: var(--yp-shift-0, 0px);
+  margin-right: 0.35em;
+  font-size: 1em;
+  font-style: normal;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: color-mix(in srgb, currentColor 62%, transparent);
+}
+/* A checkbox: a rounded square in the gutter; ticked, it holds a tick and its words step back */
+.yuriful-prose .yp-check {
+  position: absolute;
+  left: -1.35em;
+  top: 0.14em;
+  box-sizing: border-box;
+  width: 0.9em;
+  height: 0.9em;
+  border: 0.085em solid color-mix(in srgb, currentColor 62%, transparent);
+  border-radius: 0.2em;
+  user-select: none;
+}
+.yuriful-prose .yp-task[data-checked="true"] > .yp-check {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.yuriful-prose .yp-task[data-checked="true"] > .yp-check::after {
+  content: "";
+  position: absolute;
+  left: 0.235em;
+  top: 0.07em;
+  box-sizing: border-box;
+  width: 0.27em;
+  height: 0.47em;
+  border: solid currentColor;
+  border-width: 0 0.1em 0.1em 0;
+  transform: rotate(45deg);
+}
+.yuriful-prose .yp-task[data-checked="true"] > .yp-task-body {
+  opacity: 0.55;
+}
+/* A quote: a quiet rule, its lines moved in by QUOTE_INDENT_EM; a little room above and below.
+   Its own formatting context keeps the trim of a last line (below) inside its rule */
+.yuriful-prose blockquote {
+  display: flow-root;
+  margin: 0.4em 0;
+  padding: 0 0 0 0.875em;
+  border-left: 0.125em solid color-mix(in srgb, currentColor 28%, transparent);
+}
+/* A code block: a soft tinted panel, padded by CODE_PAD_X_EM at the sides; its lines wrap anywhere,
+   in every box. The panel keeps the box font as its line strut and the code itself is monospace,
+   as a font mark is, so its lines sit where a paragraph's do */
+.yuriful-prose pre {
+  position: relative;
+  top: var(--yp-shift-0, 0px);
+  margin: 0.4em 0;
+  padding: 0.5em 0.75em;
+  border-radius: 0.3em;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  font: inherit;
+  white-space: inherit;
+  overflow-wrap: anywhere;
+}
+.yuriful-prose :is(blockquote, pre):first-child {
+  margin-top: 0;
+}
+.yuriful-prose :is(blockquote, pre):last-child {
+  margin-bottom: 0;
+}
+/* Inline code: monospace on a tint that reaches a little past the letters without moving them */
+.yuriful-prose code {
+  font-family: Consolas, "Cascadia Mono", Menlo, Monaco, "Courier New", monospace;
+  line-height: 0;
+  border-radius: 0.2em;
+  background: color-mix(in srgb, currentColor 9%, transparent);
+  box-shadow: 0 0 0 0.12em color-mix(in srgb, currentColor 9%, transparent);
+}
+.yuriful-prose pre > code {
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+/* A divider takes one line, a quiet rule across its middle */
+.yuriful-prose hr {
+  position: relative;
+  height: 1.4125em;
+  margin: 0;
+  border: 0;
+  overflow: visible;
+  color: inherit;
+}
+.yuriful-prose hr::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 0.035em);
+  border-top: 0.07em solid color-mix(in srgb, currentColor 32%, transparent);
+}
+.yuriful-prose > :last-child {
+  margin-bottom: -0.2825em;
+}
+/* A text that ends with a quote trims the quote's last line instead, so its rule ends with the box;
+   one that ends with a code block keeps the panel's padding whole */
+.yuriful-prose > blockquote:last-child > :last-child {
+  margin-bottom: -0.2825em;
+}
+.yuriful-prose strong {
+  font-weight: 700;
+}
+.yuriful-prose em {
+  font-style: italic;
+}
+/* Both decorations as Fabric draws them: underlines placed from the baseline (the same for every
+   font), --yp-deco thick; a strikethrough is an underline 0.28167 font sizes above the baseline */
+.yuriful-prose u,
+.yuriful-prose s {
+  text-decoration-line: underline;
+  text-decoration-thickness: var(--yp-deco, 0.0667em);
+  text-decoration-skip-ink: none;
+}
+.yuriful-prose u {
+  text-underline-offset: 0.1em;
+}
+.yuriful-prose s {
+  text-underline-offset: calc(-0.28167em - var(--yp-deco, 0.0667em) / 2);
+}
+.yuriful-prose span[data-font] {
+  line-height: 0;
+}
+.yuriful-prose .yp-nowrap {
+  white-space: nowrap;
+}
+/* A tab is drawn as a space of the font it sits in, as on the canvas: the tab itself takes no
+   room, and a space before it (generated) wraps, hangs and fits as any space does */
+.yuriful-prose .yp-tab {
+  tab-size: 0;
+}
+.yuriful-prose .yp-tab::before {
+  content: " ";
+}
+/* The first piece of a word wider than its drawn box: a line of its own, as on the canvas */
+.yuriful-prose .yp-cut {
+  display: inline-block;
+  width: 100%;
+}
+.yuriful-prose[data-font="sans"],
+.yuriful-prose [data-font="sans"] {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+.yuriful-prose[data-font="serif"],
+.yuriful-prose [data-font="serif"] {
+  font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+}
+.yuriful-prose[data-font="mono"],
+.yuriful-prose [data-font="mono"] {
+  font-family: Consolas, "Cascadia Mono", Menlo, Monaco, "Courier New", monospace;
+}
+.yuriful-prose[data-font="hand"],
+.yuriful-prose [data-font="hand"] {
+  font-family: "Segoe Print", "Bradley Hand", "Comic Sans MS", "Chalkboard SE", cursive;
+}
+.yuriful-prose[data-font="display"],
+.yuriful-prose [data-font="display"] {
+  font-family: Impact, Haettenschweiler, "Arial Black", "Franklin Gothic Bold", sans-serif;
+}
+/* prose:end */
+
+/* The live editor draws a word that must not wrap as decorations inside its marks, one piece per run
+   of text with the same marks (src/editor/textAdapter.ts `decorations`); the static card wraps the
+   whole word in one span outside them. A word joiner after every piece but the word's last keeps a
+   break from falling where two pieces meet. They are `pre`, not `nowrap`: a word holds no space,
+   so they lay out the same, but in a white-space mode that collapses spaces the browser's editing
+   types a space at a piece's end as a no-break space. The first piece of a word wider than a drawn
+   box is a line of its own (the static card's line-wide inline block): a block break of no height
+   before its first part and after its last, however marks split it, and decorated by its marks */
+.scene-text.is-editing .yp-nowrap {
+  white-space: pre;
+}
+.scene-text.is-editing .yp-join::after {
+  content: "\2060";
+}
+.scene-text.is-editing .yp-cut-first::before,
+.scene-text.is-editing .yp-cut-last::after {
+  content: "";
+  display: block;
+}
+
+/* While a text is edited: a divider chosen with the keyboard shows it, and a checkbox takes a click */
+.yuriful-prose hr.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.yuriful-prose[contenteditable="true"] .yp-check {
+  cursor: pointer;
+}
+
+/* A text with a fixed height (src/editor/sceneLayer.ts): its body is that tall and its text scrolls
+   inside it. The native scrollbar is hidden, so it never takes width from the text (the words wrap
+   exactly as they did before the text overflowed); a thin thumb drawn over the text's right edge
+   shows while it scrolls. The fades say there is more above or below: a mask on the text alone, so
+   a caption background (on the card for a fixed-height text) never fades, and nothing moves */
+.scene-text-body.is-fixed {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.scene-text-body.is-fixed::-webkit-scrollbar {
+  display: none;
+}
+.scene-text.fade-top > .scene-text-body {
+  mask-image: linear-gradient(to bottom, transparent, #000 20px);
+}
+.scene-text.fade-bottom > .scene-text-body {
+  mask-image: linear-gradient(to top, transparent, #000 20px);
+}
+.scene-text.fade-top.fade-bottom > .scene-text-body {
+  mask-image: linear-gradient(to bottom, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+}
+/* A mask clips an outline too: a fixed-height text being edited is outlined on the card instead */
+.scene-text.is-fixed.is-editing > .scene-text-body {
+  outline: none;
+}
+.scene-text.is-fixed.is-editing {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 2px;
+}
+/* The thumb takes the text's own colour, so it reads wherever the text does, with a hairline halo
+   of light and dark for the rest; its size is set in screen pixels whatever the zoom (--thumb-px) */
+.scene-text-thumb {
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow:
+    0 0 0 var(--thumb-px, 1px) rgb(255 255 255 / 0.55),
+    0 0 0 calc(2 * var(--thumb-px, 1px)) rgb(0 0 0 / 0.08);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease-out;
+}
+.scene-text-thumb.is-shown {
+  opacity: 0.42;
+  transition-duration: 90ms;
+}
+.scene-text.is-editing .scene-text-thumb.is-shown {
+  pointer-events: auto;
+  cursor: default;
+}
+.scene-text.is-editing .scene-text-thumb.is-shown:hover,
+.scene-text-thumb.is-dragging {
+  opacity: 0.62;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene-text-thumb {
+    transition: none;
+  }
+}
+
+/* Paper (src/model/paper.ts): the card itself is the sheet. Its padding is set from PAPER_PAD_X_EM and
+   PAPER_PAD_Y_EM (in the text's base size, so it scales with it); the words are its body, inside the
+   padding, so the fades of a fixed-height text stay on the words and the sheet never fades. A caption
+   background, when the text has one, fills the sheet instead (an inline background colour). */
+.scene-text.has-paper {
+  background: var(--paper-fill);
+  border-radius: var(--paper-radius);
+  box-shadow: var(--paper-edge), var(--paper-shadow);
+}
+.scene-text.has-paper.is-light-ink {
+  background: var(--paper-fill-dark);
+}
+.scene-text.has-paper.is-editing > .scene-text-body {
+  outline: none;
+}
+.scene-text.has-paper.is-editing {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 2px;
 }

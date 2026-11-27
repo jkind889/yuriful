@@ -1,0 +1,2982 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "text edited on the DOM renderer saves and records what the Fabric renderer does (paired) > creating text by click and by drag, typing, leaving by Esc and by a click on the board; blank texts discarded; undo and redo afterwards",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/dom-editing.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "b56988775c6421e8",
+   "value": {
+    "records": [
+     {
+      "step": "{\"button\":\"Text\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "text",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "a": 27.12
+      }
+     },
+     {
+      "step": "{\"clickAt\":[300,200]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "a": 27.12
+      }
+     },
+     {
+      "step": "{\"type\":\"Hello there\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "~1:Hello there*",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "Hello there",
+       "anchor": 11,
+       "head": 11,
+       "focused": true
+      },
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:Hello there*",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12
+      }
+     },
+     {
+      "step": "{\"button\":\"Text\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:Hello there*",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "text",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12
+      }
+     },
+     {
+      "step": "{\"dragAt\":[260,300],\"to\":[470,380]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~2"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~1:Hello there",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~2",
+       "text": "",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12
+      }
+     },
+     {
+      "step": "{\"type\":\"Drawn box words and more words\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~2"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~2:Drawn box words and more words*",
+        "~1:Hello there",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~2",
+       "text": "Drawn box words and more words",
+       "anchor": 30,
+       "head": 30,
+       "focused": true
+      },
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12,
+       "~2": 80
+      }
+     },
+     {
+      "step": "{\"clickAt\":[950,650]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12,
+       "~2": 80
+      }
+     },
+     {
+      "step": "{\"button\":\"Text\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "text",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12,
+       "~2": 80
+      }
+     },
+     {
+      "step": "{\"clickAt\":[800,100]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "~3"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~3",
+       "text": "",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12,
+       "~2": 80
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12,
+       "~2": 80
+      }
+     },
+     {
+      "step": "{\"button\":\"Text\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "text",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12,
+       "~2": 80
+      }
+     },
+     {
+      "step": "{\"clickAt\":[800,160]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "~4"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~4",
+       "text": "",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12,
+       "~2": 80
+      }
+     },
+     {
+      "step": "{\"type\":\"x\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        },
+        {
+         "id": "~4",
+         "left": 800,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "x",
+         "fontSize": 24,
+         "width": 240
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "~4"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~4:x*",
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~4",
+       "text": "x",
+       "anchor": 1,
+       "head": 1,
+       "focused": true
+      },
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12,
+       "~2": 80,
+       "~4": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Backspace\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "~4"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~4",
+       "text": "",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12,
+       "~2": 80
+      }
+     },
+     {
+      "step": "{\"clickAt\":[950,650]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12,
+       "~2": 80
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"a\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "a"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "a:alpha*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "a",
+       "text": "alpha",
+       "anchor": 5,
+       "head": 5,
+       "focused": true
+      },
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12,
+       "~2": 80
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+a\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "a"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "a:alpha*",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "a",
+       "text": "alpha",
+       "anchor": 0,
+       "head": 5,
+       "focused": true
+      },
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12,
+       "~2": 80
+      }
+     },
+     {
+      "step": "{\"key\":\"Backspace\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "a"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "a",
+       "text": "",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 27.12,
+       "~2": 80
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 3,
+       "length": 4
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "~1": 27.12,
+       "~2": 80
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 4
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12,
+       "~2": 80
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 4
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "~1:Hello there",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+Shift+z\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 200,
+         "top": 120,
+         "width": 520,
+         "height": 420
+        }
+       ],
+       "objects": [
+        {
+         "id": "a",
+         "left": 40,
+         "top": 40,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha",
+         "fontSize": 24,
+         "width": 260
+        },
+        {
+         "id": "~1",
+         "left": 300,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "Hello there",
+         "fontSize": 24,
+         "width": 240,
+         "frameId": "F"
+        },
+        {
+         "id": "~2",
+         "left": 260,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Drawn box words and more words",
+         "fontSize": 24,
+         "width": 210,
+         "minHeight": 80,
+         "frameId": "F"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [
+         {
+          "id": "F",
+          "name": "Spread",
+          "left": 200,
+          "top": 120,
+          "width": 520,
+          "height": 420
+         }
+        ],
+        "objects": [
+         {
+          "id": "a",
+          "left": 40,
+          "top": 40,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha",
+          "fontSize": 24,
+          "width": 260
+         },
+         {
+          "id": "~1",
+          "left": 300,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "Hello there",
+          "fontSize": 24,
+          "width": 240,
+          "frameId": "F"
+         },
+         {
+          "id": "~2",
+          "left": 260,
+          "top": 300,
+          "angle": 0,
+          "type": "text",
+          "text": "Drawn box words and more words",
+          "fontSize": 24,
+          "width": 210,
+          "minHeight": 80,
+          "frameId": "F"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 4
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "~2:Drawn box words and more words",
+        "~1:Hello there",
+        "a:alpha",
+        "F:Spread"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "a": 27.12,
+       "~1": 27.12,
+       "~2": 80
+      }
+     }
+    ],
+    "saved": {
+     "version": 2,
+     "title": "Editing",
+     "frames": [
+      {
+       "id": "F",
+       "name": "Spread",
+       "left": 200,
+       "top": 120,
+       "width": 520,
+       "height": 420
+      }
+     ],
+     "objects": [
+      {
+       "id": "a",
+       "left": 40,
+       "top": 40,
+       "angle": 0,
+       "type": "text",
+       "text": "alpha",
+       "fontSize": 24,
+       "width": 260
+      },
+      {
+       "id": "~1",
+       "left": 300,
+       "top": 200,
+       "angle": 0,
+       "type": "text",
+       "text": "Hello there",
+       "fontSize": 24,
+       "width": 240,
+       "frameId": "F"
+      },
+      {
+       "id": "~2",
+       "left": 260,
+       "top": 300,
+       "angle": 0,
+       "type": "text",
+       "text": "Drawn box words and more words",
+       "fontSize": 24,
+       "width": 210,
+       "minHeight": 80,
+       "frameId": "F"
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

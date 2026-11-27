@@ -3,7 +3,7 @@ import type { FeedbackSnapshot } from '../src/editor/feedbackLayer.ts'
 import type { CanvasPrefs } from '../src/model/prefs.ts'
 import type { Scene, Viewport } from '../src/model/types.ts'
 import type { Rect } from '../src/model/viewport.ts'
-import { albumSpread, openApp, openBlank, pngBuffer, sceneToPage, seedRaw } from './helpers.ts'
+import { albumSpread, fetchRetrying, openApp, openBlank, pagePixels, pngBuffer, sceneToPage, seedRaw } from './helpers.ts'
 import type { SeedAsset, StoredBoard } from './helpers.ts'
 
 export const VIEW: Viewport = { zoom: 1, panX: 0, panY: 0 }
@@ -19,7 +19,6 @@ interface FeelProbe {
   viewport: () => Viewport
   scene: () => Scene
   history: () => Scene
-  shadows: () => boolean[]
   controls: () => Record<string, { x: number; y: number }> | undefined
   bounds: (id: string) => Rect | null
   viewSamples: () => Viewport[]
@@ -36,7 +35,7 @@ declare global {
 /** Observe the normal app instance. This hook lives in the browser test route only. */
 async function installFeelProbe(page: Page) {
   await page.route(/\/src\/main\.tsx(?:\?|$)/, async (route) => {
-    const response = await route.fetch()
+    const response = await fetchRetrying(route)
     const source = await response.text()
     await route.fulfill({ response, body: `
       import { Editor as FeelEditor } from '/src/editor/Editor.ts'
@@ -55,7 +54,6 @@ async function installFeelProbe(page: Page) {
           viewport: () => this.getViewport(),
           scene: () => this.snapshot(),
           history: () => this.history.current,
-          shadows: () => this.canvas.getObjects().map((obj) => !!obj.shadow),
           controls: () => this.canvas.getActiveObject()?.oCoords,
           bounds: (id) => {
             const obj = this.canvas.getObjects().find((obj) => feelIdOf(obj) === id)
@@ -98,6 +96,26 @@ async function openFeelBoard(page: Page, board: Record<string, unknown> & { view
   await installFeelProbe(page)
   await openApp(page)
   return sceneToPage(page, board.viewport)
+}
+
+/**
+ * Whether the page paints the drag lift's shadow under an object: a strip just below its bottom
+ * edge (a fifth to two fifths of the way along, clear of the corner and middle handles) is
+ * darkened by it. The strip is compared with the same strip with the scene layer's filters taken
+ * away, so a lifted item whose shadow is not actually painted reads as not lifted.
+ */
+export async function liftShadow(page: Page, id: string): Promise<boolean> {
+  const { rect, view } = await page.evaluate((id) => ({ rect: window.__feel.bounds(id), view: window.__feel.viewport() }), id)
+  if (!rect) return false
+  const box = await canvasBox(page)
+  const width = Math.max(4, (rect.right - rect.left) * view.zoom * 0.2)
+  const x = box.x + rect.left * view.zoom + view.panX + width
+  const y = box.y + rect.bottom * view.zoom + view.panY + 2
+  const shown = await pagePixels(page, x, y, width, 6)
+  const bare = await pagePixels(page, x, y, width, 6, { style: '.scene-layer .scene-item { filter: none !important; }' })
+  let most = 0
+  for (let i = 0; i < shown.data.length; i++) most = Math.max(most, Math.abs(shown.data[i]! - bare.data[i]!))
+  return most > 8
 }
 
 export const albumLayer = (page: Page, id: string) => page.getByRole('option').and(page.locator(`[data-layer-id="${id}"]`))

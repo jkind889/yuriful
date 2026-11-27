@@ -5,8 +5,13 @@ import { CONFLICT_MESSAGE } from '../persistence/autosave.ts'
 import { BoardConflictError } from '../persistence/boardStore.ts'
 import { Editor } from './Editor.ts'
 import { canvasOf, dragBy, mouse, press, release, scaleBy, tick } from './testing/drive.ts'
-import type { Canvas, FakeObject, Textbox } from './testing/fakeFabric.ts'
-import { FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
+import type { Canvas, FakeObject } from './testing/fakeFabric.ts'
+import { FakeAssets, FakeCardMeasurer, SpyStore, deferred, stubTextLayout } from './testing/fakes.ts'
+import { boardCanUndo, editedObject, replaceText, startEditing, textAdapterOf } from './testing/editing.ts'
+import { textDataOf } from './objects.ts'
+
+/** A text proxy's own fields with what its card shows (its text, font size, formatting). */
+const card = (o: unknown) => ({ ...textDataOf(o as never), ...(o as object) }) as { fontSize: number; text: string; width: number; height: number; left: number; top: number }
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
@@ -28,7 +33,7 @@ const flush = () => vi.advanceTimersByTimeAsync(10_000)
 async function setup(doc: BoardDoc | null = storedDoc()) {
   const store = new SpyStore(doc ? { doc, assets: new Map([['a1', asset('a1')]]) } : null)
   store.holdLoad = false
-  const editor = new Editor(host, store, new FakeAssets())
+  const editor = new Editor(host, store, new FakeAssets(), undefined, { measurer: new FakeCardMeasurer() })
   editors.push(editor)
   await editor.init()
   const canvas = canvasOf(editor)
@@ -39,7 +44,9 @@ async function setup(doc: BoardDoc | null = storedDoc()) {
   return { editor, store, canvas, byId, scene, live }
 }
 
+let restoreLayout = () => {}
 beforeEach(() => {
+  restoreLayout = stubTextLayout()
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }) // autosave's debounce; microtasks stay real
   vi.stubGlobal(
     'ResizeObserver',
@@ -52,6 +59,7 @@ beforeEach(() => {
   document.body.appendChild(host)
 })
 afterEach(() => {
+  restoreLayout()
   editors.splice(0).forEach((e) => e.dispose())
   host.remove()
   vi.unstubAllGlobals()
@@ -140,24 +148,24 @@ describe('clicks and text', () => {
   it('a caret press on an editing textbox between typing bursts starts no gesture and adds no history', async () => {
     const { editor, store, canvas } = await setup(null)
     editor.addText()
-    const tb = canvas.objects[0] as Textbox
-    tb.type('first burst')
+    const tb = canvas.objects[0] as FakeObject
+    replaceText(editor, 'first burst')
     // Clicking inside the text to move the caret: Fabric still fires before:transform and mouse:up.
     const t = press(canvas, tb)
     // While the press is held the board is not busy: typing goes on being saved live. (With a
     // gesture, the save would store the scene from before the press instead.)
-    tb.type('first burst!')
+    replaceText(editor, 'first burst!')
     await flush()
     expect(store.saves.at(-1)!.doc.objects[0]).toMatchObject({ text: 'first burst!' })
     release(canvas, t)
     await tick()
     expect(editor.getState().editingText).toBe(true)
-    expect(editor.getState().canUndo).toBe(false)
-    tb.type('first burst, second burst')
+    expect(boardCanUndo(editor)).toBe(false)
+    replaceText(editor, 'first burst, second burst')
     await flush()
     expect(store.saves.at(-1)!.doc.objects[0]).toMatchObject({ text: 'first burst, second burst' }) // typing saves the live scene
 
-    tb.exitEditing()
+    textAdapterOf(editor).finishEditing()
     expect(editor.getState().canUndo).toBe(true)
     editor.undo()
     expect(canvas.objects).toHaveLength(0)
@@ -172,7 +180,8 @@ describe('clicks and text', () => {
     expect(canvas.objects).toHaveLength(0)
     await tick()
     expect(canvas.objects).toHaveLength(1)
-    expect(canvas.objects[0]).toMatchObject({ left: 120, top: 80, isEditing: true })
+    expect(canvas.objects[0]).toMatchObject({ left: 120, top: 80 })
+    expect(editedObject(editor)).toBe(canvas.objects[0])
     expect(editor.getState().tool).toBe('select')
   })
 
@@ -359,7 +368,7 @@ describe('busy guard: commands and shortcuts wait for the gesture', () => {
     expect(canvas.objects).toHaveLength(2)
     expect(canvas.objects[0]).toMatchObject({ left: 60, top: 20 }) // the drag itself is untouched
     expect(canvas.getActiveObject()).toBe(byId('txt-1'))
-    expect(byId('txt-1')).toMatchObject({ fontSize: 24, left: 305, top: 45 }) // neither resized nor re-done
+    expect(card(byId('txt-1'))).toMatchObject({ fontSize: 24, left: 305, top: 45 }) // neither resized nor re-done
     expect(editor.getState().tool).toBe('select')
     expect(editor.getState().handActive).toBe(false)
     expect(editor.getState().canUndo).toBe(true)
@@ -377,7 +386,7 @@ describe('busy guard: commands and shortcuts wait for the gesture', () => {
     editor.handleKeyDown(key('i'))
     expect(picker).toHaveBeenCalledTimes(1)
     editor.setFontSize(99)
-    expect(canvas.getActiveObject()).toMatchObject({ fontSize: 99 })
+    expect(card(canvas.getActiveObject())).toMatchObject({ fontSize: 99 })
     editor.undo() // the font size
     editor.undo() // the drag
     expect(canvas.objects[0]).toMatchObject({ left: 10, top: 20 })
@@ -675,12 +684,12 @@ describe('imports that finish during a gesture', () => {
   it('commit text that was being typed as its own step before adding the images', async () => {
     const { editor, canvas } = await setup(null)
     editor.addText()
-    ;(canvas.objects[0] as Textbox).type('typed first')
+    replaceText(editor, 'typed first')
     await editor.addImageFiles([png()])
     expect(canvas.objects).toHaveLength(2)
     editor.undo() // the import only
     expect(canvas.objects).toHaveLength(1)
-    expect(canvas.objects[0]).toMatchObject({ text: 'typed first' })
+    expect(card(canvas.objects[0])).toMatchObject({ text: 'typed first' })
     editor.undo() // the text
     expect(canvas.objects).toHaveLength(0)
     expect(editor.getState().canUndo).toBe(false)
@@ -715,32 +724,16 @@ describe('imports that finish during a gesture', () => {
   })
 })
 
-describe('text left while a press on it is still held', () => {
-  it('ends the transform, so the text cannot be dragged without a gesture', async () => {
-    const { editor, canvas } = await setup(null)
-    editor.addText()
-    const tb = canvas.objects[0] as Textbox
-    tb.type('held')
-    press(canvas, tb) // inside the editing text: no gesture
-    expect(canvas._currentTransform).not.toBeNull()
-    tb.exitEditing() // e.g. Esc in the text, while the button is still down
-    expect(canvas._currentTransform).toBeNull()
-    expect(canvas.calls).toContain('endCurrentTransform')
-    expect(editor.getState().canUndo).toBe(true) // the typed text was committed as usual
-  })
-})
-
 describe('a text that is emptied after having been saved', () => {
   it('is removed from the stored board too, although history never held it', async () => {
     const { editor, store, canvas } = await setup(null)
     editor.addText()
-    const tb = canvas.objects[0] as Textbox
-    tb.type('a')
+    replaceText(editor, 'a')
     await flush()
     expect(store.saves.at(-1)!.doc.objects).toHaveLength(1) // typing is saved live
-    tb.type('')
+    replaceText(editor, '')
     await flush()
-    tb.exitEditing() // the empty text is discarded
+    textAdapterOf(editor).finishEditing() // the empty text is discarded
     await tick()
     expect(canvas.objects).toHaveLength(0)
     await flush()
@@ -753,14 +746,14 @@ describe('a new text that is abandoned untouched', () => {
   it('writes nothing: no save attempt on a stored board, and a new board stays "not saved yet"', async () => {
     const stored = await setup()
     stored.editor.addText()
-    ;(stored.canvas.objects[2] as Textbox).exitEditing() // clicked away without typing
+    textAdapterOf(stored.editor).finishEditing() // clicked away without typing
     await flush()
     expect(stored.canvas.objects).toHaveLength(2)
     expect(stored.store.attempts).toHaveLength(0)
 
     const fresh = await setup(null)
     fresh.editor.addText()
-    ;(fresh.canvas.objects[0] as Textbox).exitEditing()
+    textAdapterOf(fresh.editor).finishEditing()
     await flush()
     expect(fresh.store.attempts).toHaveLength(0)
     expect(fresh.editor.getState().save).toEqual({ kind: 'new' })
@@ -773,7 +766,7 @@ describe('a new text that is abandoned untouched', () => {
     await flush()
     expect(store.saves).toHaveLength(1)
     expect(store.saves[0]!.doc.objects.map((o) => o.id)).toEqual(['img-1', 'txt-1']) // the blank text is not in it
-    ;(canvas.objects[2] as Textbox).exitEditing()
+    textAdapterOf(editor).finishEditing()
     await flush()
     expect(canvas.objects).toHaveLength(2)
     expect(store.saves.at(-1)!.doc.objects.map((o) => o.id)).toEqual(['img-1', 'txt-1'])
@@ -781,16 +774,15 @@ describe('a new text that is abandoned untouched', () => {
   })
 
   it('a text emptied in the middle of an edit drops out of the stored board at once', async () => {
-    const { editor, store, canvas } = await setup(null)
+    const { editor, store } = await setup(null)
     editor.addText()
-    const tb = canvas.objects[0] as Textbox
-    tb.type('a')
+    replaceText(editor, 'a')
     await flush()
     expect(store.saves.at(-1)!.doc.objects).toHaveLength(1)
-    tb.type('   ') // whitespace only counts as blank, as it does when the edit ends
+    replaceText(editor, '   ') // whitespace only counts as blank, as it does when the edit ends
     await flush()
     expect(store.saves.at(-1)!.doc.objects).toHaveLength(0)
-    tb.type('back')
+    replaceText(editor, 'back')
     await flush()
     expect(store.saves.at(-1)!.doc.objects).toHaveLength(1)
   })
@@ -798,29 +790,28 @@ describe('a new text that is abandoned untouched', () => {
   it('is taken off the canvas only after the canvas has finished leaving the edit', async () => {
     const { editor, canvas } = await setup(null)
     editor.addText()
-    const tb = canvas.objects[0] as Textbox
-    tb.type('   ')
-    const removedDuring: boolean[] = []
-    canvas.on('object:modified', (() => removedDuring.push(!canvas.objects.includes(tb))) as never) // Fabric fires this right after the exit event
-    tb.exitEditing()
-    expect(removedDuring).toEqual([false]) // still on the canvas while Fabric finishes: no event on a detached text
+    const tb = canvas.objects[0] as FakeObject
+    replaceText(editor, '   ')
+    textAdapterOf(editor).finishEditing()
+    expect(canvas.objects).toContain(tb) // still on the canvas while the edit ends: removed in a microtask
+    expect(canvas.getActiveObject()).toBeNull() // but out of the selection at once
     expect(canvas.objects).toHaveLength(1)
     await tick()
     expect(canvas.objects).toHaveLength(0)
     expect(editor.getState()).toMatchObject({ objectCount: 0, canUndo: false })
   })
 
-  it('Shift-clicked into a selection as it is left, it is taken out of that selection again', async () => {
+  it('Shift-clicked as it is left, it is out of the selection at once, so the clicked object is selected alone', async () => {
     const { editor, canvas, byId } = await setup()
-    const { ActiveSelection } = await import('./testing/fakeFabric.ts')
-    const tb = canvas.objects[1] as Textbox
+    const tb = canvas.objects[1] as FakeObject
     canvas.setActiveObject(tb)
-    tb.enterEditing()
-    tb.type('')
-    // What Fabric does on a Shift-click: leave the edit, then group the text with the clicked object.
-    tb.exitEditing()
-    canvas.setActiveObject(new ActiveSelection([tb, byId('img-1')]))
-    expect(editor.getState().selection).toMatchObject({ kind: 'multiple', count: 2 })
+    startEditing(editor, tb)
+    replaceText(editor, '')
+    // A Shift-click: the edit ends first (the blank text leaves the selection at once), then the
+    // clicked object joins what is selected, which is nothing.
+    textAdapterOf(editor).finishEditing()
+    expect(canvas.getActiveObject()).toBeNull()
+    canvas.setActiveObject(byId('img-1'))
     await tick()
     expect(canvas.objects).toEqual([byId('img-1')])
     expect(canvas.getActiveObject()).toBe(byId('img-1')) // the image alone, not a selection with a ghost in it
@@ -829,11 +820,11 @@ describe('a new text that is abandoned untouched', () => {
 
   it('an existing text emptied and left is removed as one undoable step, with its owner restored by undo', async () => {
     const { editor, store, canvas } = await setup()
-    const tb = canvas.objects[1] as Textbox
+    const tb = canvas.objects[1] as FakeObject
     canvas.setActiveObject(tb)
-    tb.enterEditing()
-    tb.type('')
-    tb.exitEditing()
+    startEditing(editor, tb)
+    replaceText(editor, '')
+    textAdapterOf(editor).finishEditing()
     await tick()
     expect(canvas.objects).toHaveLength(1)
     expect(editor.getState().canUndo).toBe(true)
@@ -841,40 +832,40 @@ describe('a new text that is abandoned untouched', () => {
     expect(store.saves.at(-1)!.doc.objects.map((o) => o.id)).toEqual(['img-1'])
     editor.undo()
     expect(canvas.objects).toHaveLength(2)
-    expect(canvas.objects[1]).toMatchObject({ text: 'keep me' })
+    expect(card(canvas.objects[1])).toMatchObject({ text: 'keep me' })
     expect(editor.getState().canUndo).toBe(false)
   })
 
   it('a text emptied and then retyped in the same edit is not removed by the deferred cleanup', async () => {
     const { editor, canvas } = await setup(null)
     editor.addText()
-    const tb = canvas.objects[0] as Textbox
-    tb.type('')
-    tb.exitEditing() // blank: cleanup is queued ...
-    tb.enterEditing() // ... but the user is straight back in it
-    tb.type('kept after all')
+    const tb = canvas.objects[0] as FakeObject
+    replaceText(editor, '')
+    textAdapterOf(editor).finishEditing() // blank: cleanup is queued ...
+    startEditing(editor, tb) // ... but the user is straight back in it
+    replaceText(editor, 'kept after all')
     await tick()
     expect(canvas.objects).toHaveLength(1)
-    tb.exitEditing()
+    textAdapterOf(editor).finishEditing()
     await tick()
     expect(canvas.objects).toHaveLength(1)
   })
 
   it('changing the font size while an existing text is blank mid-edit records nothing and keeps it an existing text', async () => {
     const { editor, canvas } = await setup()
-    const tb = canvas.objects[1] as Textbox
+    const tb = canvas.objects[1] as FakeObject
     canvas.setActiveObject(tb)
-    tb.enterEditing()
-    tb.type('')
+    startEditing(editor, tb)
+    replaceText(editor, '')
     editor.setFontSize(40)
-    expect(tb.fontSize).toBe(40)
-    expect(editor.getState().canUndo).toBe(false) // not "text removed" while it is still being edited
-    tb.type('back')
-    tb.exitEditing()
+    expect(card(tb).fontSize).toBe(40)
+    expect(boardCanUndo(editor)).toBe(false) // not "text removed" while it is still being edited
+    replaceText(editor, 'back')
+    textAdapterOf(editor).finishEditing()
     await tick()
     expect(canvas.objects).toHaveLength(2)
     editor.undo()
-    expect(canvas.objects[1]).toMatchObject({ text: 'keep me', fontSize: 24 })
+    expect(card(canvas.objects[1])).toMatchObject({ text: 'keep me', fontSize: 24 })
     expect(editor.getState().canUndo).toBe(false) // one step for the whole edit
   })
 
@@ -890,15 +881,14 @@ describe('a new text that is abandoned untouched', () => {
   })
 
   it('the typed-something memory does not leak from one edit into the next', async () => {
-    const { editor, store, canvas } = await setup(null)
+    const { editor, store } = await setup(null)
     editor.addText()
-    const first = canvas.objects[0] as Textbox
-    first.type('kept')
-    first.exitEditing()
+    replaceText(editor, 'kept')
+    textAdapterOf(editor).finishEditing()
     await flush()
     const saves = store.attempts.length
     editor.addText()
-    ;(canvas.objects[1] as Textbox).exitEditing() // untouched
+    textAdapterOf(editor).finishEditing() // untouched
     await flush()
     expect(store.attempts).toHaveLength(saves)
   })
@@ -907,7 +897,7 @@ describe('a new text that is abandoned untouched', () => {
 describe('folding text scale in a multi-selection', () => {
   it('folds a member that is still scaled even when the selection itself ends at scale 1', async () => {
     const { canvas } = await setup({ ...createEmptyDoc(), objects: [text({ fontSize: 40, width: 400 })] })
-    const tb = canvas.objects[0] as Textbox
+    const tb = canvas.objects[0] as FakeObject
     // A text that joined a selection scaled 1.6 carries the inverse scale itself; the
     // selection is then dragged back to exactly 1.
     const { ActiveSelection } = await import('./testing/fakeFabric.ts')
@@ -920,7 +910,7 @@ describe('folding text scale in a multi-selection', () => {
     t.actionPerformed = true
     release(canvas, t)
     await tick()
-    expect(tb).toMatchObject({ fontSize: 25, width: 250, scaleX: 1, scaleY: 1 })
+    expect(card(tb)).toMatchObject({ fontSize: 25, width: 250, scaleX: 1, scaleY: 1 })
   })
 })
 
@@ -1062,47 +1052,47 @@ describe('one scale factor per gesture (single text)', () => {
 
   it('limits an enlargement by the pre-gesture font size and keeps the anchor fixed', async () => {
     const { editor, canvas } = await setup(big(300))
-    const tb = canvas.objects[0] as Textbox
+    const tb = canvas.objects[0] as FakeObject
     const t = press(canvas, tb, { action: 'scale', corner: 'br' }) // anchor: top-left
     scaleBy(canvas, t, 2)
     release(canvas, t)
     await tick()
-    expect(tb.fontSize).toBe(400) // 300 x 400/300, not 300 x 2 clamped per member
+    expect(card(tb).fontSize).toBe(400) // 300 x 400/300, not 300 x 2 clamped per member
     expect(tb.width).toBeCloseTo((1000 * 400) / 300, 1)
     expect(tb).toMatchObject({ scaleX: 1, scaleY: 1, left: 100, top: 100 })
     editor.undo()
-    expect(canvas.objects[0]).toMatchObject({ fontSize: 300, width: 1000, left: 100, top: 100 })
+    expect(card(canvas.objects[0])).toMatchObject({ fontSize: 300, width: 1000, left: 100, top: 100 })
   })
 
   it('keeps the opposite corner fixed when the limit is re-applied from another handle', async () => {
     const { canvas } = await setup(big(300))
-    const tb = canvas.objects[0] as Textbox
+    const tb = canvas.objects[0] as FakeObject
     const right = tb.left + tb.width
     const bottom = tb.top + tb.height
     const t = press(canvas, tb, { action: 'scale', corner: 'tl', originX: 'right', originY: 'bottom' })
     scaleBy(canvas, t, 2)
     release(canvas, t)
     await tick()
-    expect(tb.fontSize).toBe(400)
+    expect(card(tb).fontSize).toBe(400)
     expect(tb.left + tb.width).toBeCloseTo(right, 1)
-    expect(tb.top + tb.height * (400 / 300)).toBeCloseTo(bottom, 1) // the fake keeps its unscaled height
+    expect(tb.top + tb.height).toBeCloseTo(bottom, 1) // its height is its card's again, at the new size
   })
 
   it('an out-of-range text may shrink toward the range and is never snapped into it', async () => {
     const { canvas } = await setup(big(500))
-    const tb = canvas.objects[0] as Textbox
+    const tb = canvas.objects[0] as FakeObject
     let t = press(canvas, tb, { action: 'scale', corner: 'br' })
     scaleBy(canvas, t, 0.95)
     release(canvas, t)
     await tick()
-    expect(tb.fontSize).toBe(475)
+    expect(card(tb).fontSize).toBe(475)
     expect(tb.width).toBe(950)
 
     t = press(canvas, tb, { action: 'scale', corner: 'br' })
     scaleBy(canvas, t, 1.2) // further out of range: not allowed at all
     release(canvas, t)
     await tick()
-    expect(tb.fontSize).toBe(475) // unchanged, and not snapped to 400
+    expect(card(tb).fontSize).toBe(475) // unchanged, and not snapped to 400
     expect(tb.width).toBe(950)
   })
 
@@ -1119,26 +1109,27 @@ describe('one scale factor per gesture (single text)', () => {
 
   it('a textbox scaled by a handle while it is being edited (no gesture) gets the same limit before folding', async () => {
     const { editor, canvas } = await setup(big(300))
-    const tb = canvas.objects[0] as Textbox
+    const tb = canvas.objects[0] as FakeObject
     canvas.setActiveObject(tb)
-    tb.enterEditing()
+    startEditing(editor, tb)
     const t = press(canvas, tb, { action: 'scale', corner: 'br' }) // ignored as a gesture: the text is being edited
     scaleBy(canvas, t, 2)
     release(canvas, t)
-    expect(tb.fontSize).toBe(400)
+    expect(card(tb).fontSize).toBe(400)
     expect(tb).toMatchObject({ scaleX: 1, scaleY: 1, left: 100, top: 100 })
-    expect(editor.getState().canUndo).toBe(true) // committed on the spot, as before
+    expect(boardCanUndo(editor)).toBe(true) // committed on the spot, as before (the Undo button steps the edit while it lasts)
   })
 
   it('changing the wrap width of an out-of-range text keeps its font size and is recorded', async () => {
     const { editor, canvas } = await setup(big(500))
-    const tb = canvas.objects[0] as Textbox
+    const tb = canvas.objects[0] as FakeObject
     const t = press(canvas, tb, { action: 'resizing', corner: 'mr' })
     tb.width = 1400
+    canvas.fire('object:resizing', { e: { button: 0 }, target: tb, transform: t }) // as Fabric does while a side handle drags
     t.actionPerformed = true
     release(canvas, t)
     await tick()
-    expect(tb).toMatchObject({ width: 1400, fontSize: 500 })
+    expect(card(tb)).toMatchObject({ width: 1400, fontSize: 500 })
     expect(editor.getState().canUndo).toBe(true)
   })
 })

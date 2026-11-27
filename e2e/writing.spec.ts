@@ -1,0 +1,2227 @@
+/**
+ * Real-browser tests (real Fabric, real IndexedDB, the real text engine) for the writing blocks of
+ * Slice 3a: bullet, numbered and check lists, quotes, dividers, inline code and code blocks, typed
+ * with their Markdown-style shortcuts or made with the panel; Tab in lists; pasting HTML and Markdown
+ * through the real clipboard (Slice 3b); what is kept and what is discarded; the storage upgrade; that entering and leaving an edit moves nothing; what the page and
+ * a frame preview paint; transforms, captions and a board going read-only mid-edit. There is no
+ * earlier canvas to compare these with: every expectation is stated here.
+ */
+import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import {
+  AUTOSAVE_QUIET_MS,
+  dbVersion,
+  decodePng,
+  drag,
+  editedText,
+  fetchRetrying,
+  openApp,
+  openBlank,
+  paintedAt,
+  sceneToPage,
+  pagePixels,
+  screenPixels,
+  seedMilestone1,
+  seedRaw,
+  snapshotIdb,
+  status,
+  storedDoc,
+  undoButton,
+  redoButton,
+} from './helpers.ts'
+import type { StoredBoard, StoredObject } from './helpers.ts'
+
+const UNIT = { zoom: 1, panX: 0, panY: 0 }
+
+type Block = Record<string, unknown>
+const p = (text?: string, extra: Record<string, unknown> = {}): Block => (text ? { type: 'paragraph', content: [{ text, ...extra }] } : { type: 'paragraph' })
+const bullets = (...items: Block[][]): Block => ({ type: 'bulletList', items: items.map((blocks) => ({ blocks })) })
+const tasks = (...items: Array<[boolean, Block[]]>): Block => ({ type: 'taskList', items: items.map(([checked, blocks]) => ({ checked, blocks })) })
+
+/** Every block, for the drawing tests. */
+const EVERY_BLOCK: Block[] = [
+  { type: 'heading', level: 2, content: [{ text: 'Blue Lines' }] },
+  { type: 'paragraph', content: [{ text: 'A review with ' }, { text: 'inline code', code: true }, { text: ' and more.' }] },
+  bullets([p('Warm bassline'), bullets([p('nested'), bullets([p('third level')])])], [p('Second bullet that wraps onto a second line of text')]),
+  { type: 'orderedList', start: 9, items: [{ blocks: [p('nine')] }, { blocks: [p('ten')] }] },
+  tasks([true, [p('Check the 2012 remaster')]], [false, [p('Listen to side B')]]),
+  { type: 'blockquote', blocks: [p('A record that sounds like a city at night.')] },
+  { type: 'divider' },
+  { type: 'codeBlock', text: 'const side = "B"\nplay(side)\nhttps://example.com/averyveryverylongunbrokenwordthatwraps' },
+  p('The end.'),
+]
+
+const textRec = (id: string, left: number, top: number, extra: Record<string, unknown>) => ({ type: 'text', id, left, top, angle: 0, text: '', fontSize: 18, width: 420, ...extra })
+
+interface WritingProbe {
+  preview: (frameId: string) => Promise<string>
+  select: (id: string) => void
+  controls: () => Record<string, { x: number; y: number }> | null
+}
+declare global {
+  interface Window {
+    __writing: WritingProbe
+  }
+}
+
+/** A probe on the app's editor (this test route only): frame previews, selecting by id, the selected object's handles. */
+async function installProbe(page: Page) {
+  await page.route(/\/src\/main\.tsx(?:\?|$)/, async (route) => {
+    const response = await fetchRetrying(route)
+    const source = await response.text()
+    await route.fulfill({
+      response,
+      body: `
+      import { Editor as WritingEditor } from '/src/editor/Editor.ts'
+      const writingInit = WritingEditor.prototype.init
+      WritingEditor.prototype.init = function () {
+        const ed = this
+        window.__writing = {
+          select: (id) => ed.selectLayer(id),
+          controls: () => {
+            const a = ed.canvas.getActiveObject()
+            if (!a) return null
+            const r = ed.canvas.upperCanvasEl.getBoundingClientRect()
+            const out = {}
+            for (const [k, c] of Object.entries(a.oCoords)) out[k] = { x: r.left + c.x, y: r.top + c.y }
+            return out
+          },
+          preview: async (frameId) => {
+            ed.selectLayer(frameId)
+            const tour = ed.startFrameTour()
+            if (!tour) throw new Error('no tour')
+            return tour.renderFrame(frameId, new AbortController().signal)
+          },
+        }
+        return writingInit.call(this)
+      }
+      ${source}
+    `,
+    })
+  })
+}
+
+/** Opens a board: a version 1 database for plain texts (as milestone 1 wrote it), version 3 when a text has blocks. */
+async function open(page: Page, objects: unknown[], frames: unknown[] = []) {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await openBlank(page)
+  const rich = objects.some((o) => (o as { blocks?: unknown }).blocks !== undefined)
+  if (rich) await seedRaw(page, 3, { version: 3, title: 'Writing', frames, objects, viewport: UNIT })
+  else if (frames.length > 0) await seedRaw(page, 2, { version: 2, title: 'Writing', frames, objects, viewport: UNIT })
+  else await seedMilestone1(page, { version: 1, title: 'Writing', objects, viewport: UNIT })
+  await installProbe(page)
+  await openApp(page)
+  return { errors, at: await sceneToPage(page, UNIT) }
+}
+
+const byId = (doc: StoredBoard, id: string): StoredObject & Record<string, unknown> => {
+  const found = doc.objects.find((o) => o.id === id)
+  if (!found) throw new Error(`no object ${id}`)
+  return found as StoredObject & Record<string, unknown>
+}
+const texts = (doc: StoredBoard) => doc.objects.filter((o) => o.type === 'text') as Array<StoredObject & Record<string, unknown>>
+async function storedWhen(page: Page, check: (doc: StoredBoard) => boolean): Promise<StoredBoard> {
+  await expect.poll(async () => check(await storedDoc(page)), { timeout: 5000 }).toBe(true)
+  return storedDoc(page)
+}
+
+/** A new text with the Text tool, clicked at scene point `(x, y)`, being edited. */
+async function newText(page: Page, at: (x: number, y: number) => { x: number; y: number }, x: number, y: number) {
+  await page.keyboard.press('t')
+  await page.mouse.click(at(x, y).x, at(x, y).y)
+  await expect.poll(async () => (await editedText(page))?.focused).toBe(true)
+}
+
+/** Enters editing of the text under `pt` and puts the caret at its very end. */
+async function editAtEnd(page: Page, pt: { x: number; y: number }) {
+  await page.mouse.dblclick(pt.x, pt.y)
+  await expect.poll(async () => (await editedText(page))?.focused).toBe(true)
+  await page.keyboard.press('Control+End')
+}
+
+const layerLabels = (page: Page) => page.locator('.layer-row .layer-label').allTextContents()
+
+/** Every character of the scene layer's first text card: its left and top on the page. */
+function characterBoxes(page: Page, id: string) {
+  return page.evaluate((id) => {
+    const body = document.querySelector(`.scene-text[data-id="${id}"] .scene-text-body`) ?? document.querySelector('.scene-text-body')!
+    const out: number[][] = []
+    const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT)
+    const range = document.createRange()
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      for (let i = 0; i < (n as Text).data.length; i++) {
+        range.setStart(n, i)
+        range.setEnd(n, i + 1)
+        const r = range.getBoundingClientRect()
+        out.push([r.left, r.top, r.width])
+      }
+    }
+    return { boxes: out, height: getComputedStyle(body).height, markers: Array.from(body.querySelectorAll('li, .yp-check, hr, pre, blockquote')).map((el) => { const r = el.getBoundingClientRect(); return [r.left, r.top, r.width, r.height] }) }
+  }, id)
+}
+
+/** The page rectangle of the first element matching `selector` in the card, relative to the canvas host (scene units at zoom 1). */
+function rectIn(page: Page, selector: string, index = 0) {
+  return page.evaluate(
+    ({ selector, index }) => {
+      const host = document.querySelector('.canvas-host')!.getBoundingClientRect()
+      const el = document.querySelectorAll(`.scene-layer ${selector}`)[index]!
+      const r = el.getBoundingClientRect()
+      const fontSize = parseFloat(getComputedStyle(el.closest('.scene-text-body')!).fontSize)
+      return { left: r.left - host.left, top: r.top - host.top, width: r.width, height: r.height, em: fontSize }
+    },
+    { selector, index },
+  )
+}
+
+// ---- the plan's acceptance tests ------------------------------------------------------------------
+
+test('checklist-typed-char-by-char-upgrades-bullet-without-trapping', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  await newText(page, at, 120, 120)
+  await page.keyboard.type('- [ ] Buy vinyl')
+  const typed = await storedWhen(page, (d) => texts(d).length === 1 && texts(d)[0]!.text === 'Buy vinyl')
+  expect(texts(typed)[0]!.blocks).toEqual([tasks([false, [p('Buy vinyl')]])])
+  expect(await editedText(page)).toMatchObject({ value: 'Buy vinyl', start: 9, end: 9 })
+  // A click on the box, while editing, ticks it, saved like typing; the caret stays where it was.
+  const box = await rectIn(page, '.yp-check')
+  await page.mouse.click(at(box.left + box.width / 2, box.top + box.height / 2).x, at(box.left + box.width / 2, box.top + box.height / 2).y)
+  const ticked = await storedWhen(page, (d) => JSON.stringify(texts(d)[0]!.blocks).includes('"checked":true'))
+  expect(texts(ticked)[0]!.blocks).toEqual([tasks([true, [p('Buy vinyl')]])])
+  expect(await editedText(page)).toMatchObject({ value: 'Buy vinyl', start: 9, end: 9, focused: true })
+  // Untick and tick again quickly, then in-edit undo: each click is an undo step of its own, so the
+  // first undo gives the state in between (unticked), the second the state before both (ticked).
+  const boxAt = at(box.left + box.width / 2, box.top + box.height / 2)
+  const task = page.locator('.scene-layer .yp-task')
+  await page.mouse.click(boxAt.x, boxAt.y)
+  await page.mouse.click(boxAt.x, boxAt.y, { delay: 0 })
+  await expect(task).toHaveAttribute('data-checked', 'true')
+  await page.keyboard.press('Control+z')
+  await expect(task).toHaveAttribute('data-checked', 'false')
+  await page.keyboard.press('Control+z')
+  await expect(task).toHaveAttribute('data-checked', 'true')
+  await page.keyboard.press('Control+z')
+  await expect(task).toHaveAttribute('data-checked', 'false')
+  await page.keyboard.press('Control+Shift+z')
+  await expect(task).toHaveAttribute('data-checked', 'true')
+  await storedWhen(page, (d) => JSON.stringify(texts(d)[0]!.blocks) === JSON.stringify([tasks([true, [p('Buy vinyl')]])]))
+  await page.keyboard.press('Escape')
+  await page.reload()
+  await expect(status(page)).toContainText('Saved on this device')
+  await expect(page.locator('.scene-layer .yp-task')).toHaveAttribute('data-checked', 'true')
+  expect(texts(await storedDoc(page))[0]!.blocks).toEqual([tasks([true, [p('Buy vinyl')]])])
+
+  // Backspace straight after `[ ] ` converted gives back the literal characters, in the bullet.
+  await newText(page, at, 120, 320)
+  await page.keyboard.type('- [ ] ')
+  await page.keyboard.press('Backspace')
+  expect(await editedText(page)).toMatchObject({ value: '[ ] ', start: 4, end: 4 })
+  const reverted = await storedWhen(page, (d) => texts(d).length === 2)
+  expect(texts(reverted).find((t) => t.text === '[ ] ')!.blocks).toEqual([bullets([p('[ ] ')])])
+  expect(errors).toEqual([])
+})
+
+test('divider-only-and-ticked-box-cards-are-kept', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  // Only a divider: kept on Esc, saved, listed as `Text`, and still there after a reload.
+  await newText(page, at, 120, 100)
+  await page.keyboard.type('---')
+  await page.keyboard.press('Escape')
+  const divider = await storedWhen(page, (d) => texts(d).length === 1)
+  expect(texts(divider)[0]).toMatchObject({ text: '', blocks: [{ type: 'divider' }, p()] })
+  expect(await layerLabels(page)).toEqual(['Text'])
+  // Only a ticked, empty checkbox: kept too.
+  await newText(page, at, 120, 300)
+  await page.keyboard.type('- [x] ')
+  await page.keyboard.press('Escape')
+  const ticked = await storedWhen(page, (d) => texts(d).length === 2)
+  expect(texts(ticked)[1]).toMatchObject({ text: '', blocks: [tasks([true, [p()]])] })
+  expect(await layerLabels(page)).toEqual(['Text', 'Text'])
+  await page.reload()
+  await expect(status(page)).toContainText('Saved on this device')
+  expect(await layerLabels(page)).toEqual(['Text', 'Text'])
+  await expect(page.locator('.scene-layer hr')).toHaveCount(1)
+
+  // Only an empty bullet, or only an unticked empty checkbox (or `# `, `> `): discarded, with no
+  // undo step and nothing saved.
+  await expect(undoButton(page)).toBeDisabled()
+  const before = await snapshotIdb(page)
+  for (const [i, t] of ['- ', '- [ ] ', '> ', '# '].entries()) {
+    await newText(page, at, 500, 100 + i * 120)
+    await page.keyboard.type(t)
+    await page.keyboard.press('Escape')
+  }
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  // Nothing of them is stored (as for a blank text before: its first typed character may schedule a
+  // save, which then stores the board without it, exactly as it was).
+  expect((await snapshotIdb(page)).doc).toEqual(before.doc)
+  await expect(undoButton(page)).toBeDisabled()
+  expect(await layerLabels(page)).toEqual(['Text', 'Text'])
+  expect(errors).toEqual([])
+})
+
+test('pinned-literal-cases-empty-list-discard-and-backspace-revert', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('L', 600, 400, { text: 'x', blocks: [bullets([p('x')])] }), textRec('C', 600, 510, { text: '-x', blocks: [{ type: 'paragraph', content: [{ text: '-x', code: true }] }] })])
+  // Typed literal cases stay literal.
+  await newText(page, at, 60, 60)
+  await page.keyboard.type('2 * 3 * 4\nsnake*case*\n* item\n#tag\n#### four')
+  // `- item` pasted with Ctrl+Shift+V stays literal (a plain Ctrl+V converts it: Slice 3b).
+  await page.keyboard.press('Enter')
+  await page.evaluate(() => navigator.clipboard.writeText('- item'))
+  await page.keyboard.press('Control+Shift+v')
+  // An IME-composed `- ` stays literal.
+  await page.keyboard.press('Enter')
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.imeSetComposition', { text: '-', selectionStart: 1, selectionEnd: 1 })
+  await cdp.send('Input.insertText', { text: '-' })
+  await cdp.send('Input.imeSetComposition', { text: ' ', selectionStart: 1, selectionEnd: 1 })
+  await cdp.send('Input.insertText', { text: ' ' })
+  await page.keyboard.type('x')
+  const literal = '2 * 3 * 4\nsnake*case*\n* item\n#tag\n#### four\n- item\n- x'
+  // Inside inline code no shortcut fires: `-x` as code, a space typed between `-` and `x` stays a space.
+  await page.keyboard.press('Escape')
+  await editAtEnd(page, at(605, 520))
+  await page.keyboard.press('End')
+  await page.keyboard.press('ArrowLeft')
+  await page.keyboard.type(' ')
+  const inCode = await storedWhen(page, (d) => byId(d, 'C').text === '- x')
+  expect(byId(inCode, 'C').blocks).toEqual([{ type: 'paragraph', content: [{ text: '- x', code: true }] }])
+  await page.keyboard.press('Escape')
+  await page.mouse.dblclick(at(70, 70).x, at(70, 70).y)
+  await expect.poll(async () => (await editedText(page))?.focused).toBe(true)
+  const lit = await storedWhen(page, (d) => texts(d).some((t) => t.text === literal))
+  expect(texts(lit).find((t) => t.text === literal)).not.toHaveProperty('blocks')
+  expect(texts(lit).find((t) => t.text === literal)).not.toHaveProperty('spans')
+
+  // Backspace straight after `> `, `---` and `` `code` `` gives back the exact characters.
+  for (const [i, [t, back]] of ([['> ', '> '], ['---', '---'], ['a `code`', 'a `code`']] as const).entries()) {
+    await page.keyboard.press('Escape')
+    await newText(page, at, 60, 320 + i * 90)
+    await page.keyboard.type(t)
+    expect((await editedText(page))!.value).not.toBe(back)
+    await page.keyboard.press('Backspace')
+    expect(await editedText(page)).toMatchObject({ value: back, start: back.length, end: back.length })
+    await storedWhen(page, (d) => texts(d).some((x) => x.text === back && x.blocks === undefined))
+  }
+  await page.keyboard.press('Escape')
+
+  // An existing text emptied to an empty list is discarded when the edit ends, as one undo step.
+  const listCount = texts(await storedDoc(page)).length
+  await editAtEnd(page, at(650, 410))
+  await page.keyboard.press('Backspace')
+  expect((await editedText(page))!.value).toBe('')
+  await page.keyboard.press('Escape')
+  const gone = await storedWhen(page, (d) => texts(d).length === listCount - 1)
+  expect(gone.objects.find((o) => o.id === 'L')).toBeUndefined()
+  await undoButton(page).click()
+  const back = await storedWhen(page, (d) => d.objects.some((o) => o.id === 'L'))
+  expect(byId(back, 'L').blocks).toEqual([bullets([p('x')])])
+  expect(errors).toEqual([])
+})
+
+test('tab-indents-in-lists-and-exits-elsewhere', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('t', 100, 100, { text: 'one\ntwo\nafter', blocks: [bullets([p('one')], [p('two')]), p('after')] })])
+  const line = (await rectIn(page, 'li', 1))
+  // Tab on the second item: nested under the first, the edit stays open with the caret in place.
+  await page.mouse.dblclick(at(line.left + 5, line.top + line.height / 2).x, at(line.left + 5, line.top + line.height / 2).y)
+  await page.keyboard.press('End')
+  await page.keyboard.press('Tab')
+  expect(await editedText(page)).toMatchObject({ value: 'one\ntwo\nafter', start: 7, end: 7, focused: true })
+  const nested = await storedWhen(page, (d) => JSON.stringify(byId(d, 't').blocks) !== JSON.stringify([bullets([p('one')], [p('two')]), p('after')]))
+  expect(byId(nested, 't').blocks).toEqual([bullets([p('one'), bullets([p('two')])]), p('after')])
+  // Shift+Tab lifts it back.
+  await page.keyboard.press('Shift+Tab')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 't').blocks) === JSON.stringify([bullets([p('one')], [p('two')]), p('after')]))
+  expect(await editedText(page)).toMatchObject({ start: 7, focused: true })
+  // Tab on the first item changes nothing and keeps the edit open.
+  await page.keyboard.press('Control+Home')
+  await page.keyboard.press('Tab')
+  expect(await editedText(page)).toMatchObject({ value: 'one\ntwo\nafter', start: 0, focused: true })
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  expect(byId(await storedDoc(page), 't').blocks).toEqual([bullets([p('one')], [p('two')]), p('after')])
+  // Tab in a plain line ends the edit.
+  await page.keyboard.press('Control+End')
+  await page.keyboard.press('Tab')
+  await expect.poll(() => editedText(page)).toBeNull()
+  expect(errors).toEqual([])
+})
+
+test('a-card-cannot-grow-past-the-stored-bounds', async ({ page }) => {
+  // 3,333 items of one word: 1 + 3,333 × 3 = 10,000 stored nodes, the bound.
+  const items = Array.from({ length: 3333 }, (_, i) => [p(`w${i}`)])
+  // Lists nested five deep: the innermost lines are at depth 6, the bound.
+  let deep: Block = bullets([p('a')], [p('b')])
+  for (let i = 0; i < 4; i++) deep = bullets([p(`l${i}`), deep])
+  let quoted: Block = p('q')
+  for (let i = 0; i < 5; i++) quoted = { type: 'blockquote', blocks: [quoted] }
+  const { errors, at } = await open(page, [
+    textRec('n', 40, 40, { text: '', fontSize: 8, width: 200, blocks: [bullets(...items)] }),
+    textRec('d', 600, 40, { text: '', blocks: [deep] }),
+    textRec('q', 900, 40, { text: 'q', width: 300, blocks: [quoted] }),
+  ])
+  // A new item would add two nodes: Enter does nothing. Typing in the last item adds none, and is saved.
+  await editAtEnd(page, at(60, 45))
+  const before = (await editedText(page))!.value
+  await page.keyboard.press('Enter')
+  expect((await editedText(page))!.value).toBe(before)
+  await page.keyboard.type('x')
+  const saved = await storedWhen(page, (d) => (byId(d, 'n').text as string).endsWith('w3332x'))
+  const list = (byId(saved, 'n').blocks as Array<{ items: unknown[] }>)[0]!
+  expect(list.items).toHaveLength(3333)
+  await page.keyboard.press('Escape')
+  // At the deepest level, Tab cannot go deeper: nothing changes and the edit stays open.
+  await editAtEnd(page, at(700, 50))
+  const deepBefore = byId(await storedDoc(page), 'd').blocks
+  await page.keyboard.press('Tab')
+  expect(await editedText(page)).toMatchObject({ focused: true })
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  expect(byId(await storedDoc(page), 'd').blocks).toEqual(deepBefore)
+  await expect(status(page)).toContainText('Saved on this device')
+  await page.keyboard.press('Escape')
+  // A `- ` that would put a line six levels deep (five quotes) one level deeper does not convert;
+  // Backspace then deletes the space, not what was typed before it.
+  await editAtEnd(page, at(1000, 50))
+  await page.keyboard.type('keep\n- ')
+  expect((await editedText(page))!.value.endsWith('keep\n- ')).toBe(true)
+  await page.keyboard.press('Backspace')
+  expect((await editedText(page))!.value.endsWith('keep\n-')).toBe(true)
+  await page.keyboard.press('Escape')
+  // A paste that would add nodes past the bound does not happen.
+  await editAtEnd(page, at(60, 45))
+  const atBound = (await editedText(page))!.value
+  await page.evaluate(() => navigator.clipboard.writeText('one\ntwo'))
+  await page.keyboard.press('Control+v')
+  expect((await editedText(page))!.value).toBe(atBound)
+  await page.keyboard.press('Escape')
+  expect(errors).toEqual([])
+})
+
+// ---- typing every block, storing, reloading, undo ------------------------------------------------------
+
+test('every block typed for real is stored as typed, survives a reload, and the edit is one undo step', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  await newText(page, at, 80, 60)
+  // A bullet item, a second one, Enter on an empty item to leave the list; a quote, left the same
+  // way; a divider; a line with inline code; a numbered list starting at 3; a checklist; a code block.
+  await page.keyboard.type('- one\ntwo\n\n> quoted\n\n---see `npm test` now\n3. three\n\n[] task\n\n```let a\nlet b')
+  const want = [
+    bullets([p('one')], [p('two')]),
+    { type: 'blockquote', blocks: [p('quoted')] },
+    { type: 'divider' },
+    { type: 'paragraph', content: [{ text: 'see ' }, { text: 'npm test', code: true }, { text: ' now' }] },
+    { type: 'orderedList', start: 3, items: [{ blocks: [p('three')] }] },
+    tasks([false, [p('task')]]),
+    { type: 'codeBlock', text: 'let a\nlet b' },
+  ]
+  const typed = await storedWhen(page, (d) => texts(d).length === 1 && JSON.stringify(texts(d)[0]!.blocks) === JSON.stringify(want))
+  const rec = texts(typed)[0]!
+  expect(rec.text).toBe('one\ntwo\nquoted\nsee npm test now\nthree\ntask\nlet a\nlet b')
+  expect(typed.version).toBe(3)
+  await page.keyboard.press('Escape')
+  await page.reload()
+  await expect(status(page)).toContainText('Saved on this device')
+  expect(texts(await storedDoc(page))[0]).toEqual(rec)
+  await expect(page.locator('.scene-layer ol')).toHaveAttribute('start', '3')
+  // Undo after leaving takes back the whole edit (here, the whole new text); Redo brings it back exactly.
+  await page.mouse.click(at(600, 600).x, at(600, 600).y)
+  const id = rec.id
+  await page.evaluate((id) => window.__writing.select(id), id)
+  await page.keyboard.press('Delete')
+  await storedWhen(page, (d) => texts(d).length === 0)
+  await undoButton(page).click()
+  await storedWhen(page, (d) => texts(d).length === 1)
+  expect(texts(await storedDoc(page))[0]).toEqual(rec)
+  await redoButton(page).click()
+  await storedWhen(page, (d) => texts(d).length === 0)
+  await undoButton(page).click()
+  expect(texts(await storedWhen(page, (d) => texts(d).length === 1))[0]).toEqual(rec)
+  expect(errors).toEqual([])
+})
+
+test('an edit of an existing text that adds and removes blocks is one undo step; a text with no blocks left is stored compact', async ({ page }) => {
+  const plain = textRec('t', 100, 100, { text: 'alpha' })
+  const { errors, at } = await open(page, [plain])
+  await editAtEnd(page, at(110, 110))
+  await page.keyboard.type('\n- beta')
+  await storedWhen(page, (d) => byId(d, 't').blocks !== undefined)
+  await page.keyboard.press('Escape')
+  await undoButton(page).click()
+  expect(byId(await storedWhen(page, (d) => byId(d, 't').blocks === undefined), 't')).toEqual(plain)
+  await redoButton(page).click()
+  expect(byId(await storedWhen(page, (d) => byId(d, 't').blocks !== undefined), 't').blocks).toEqual([p('alpha'), bullets([p('beta')])])
+  // Back out of the list with Backspace at its start: compact again.
+  await editAtEnd(page, at(110, 110))
+  await page.keyboard.press('Home')
+  await page.keyboard.press('Backspace')
+  const compact = await storedWhen(page, (d) => byId(d, 't').blocks === undefined)
+  expect(byId(compact, 't')).toEqual({ ...plain, text: 'alpha\nbeta' })
+  expect(errors).toEqual([])
+})
+
+// ---- storage ------------------------------------------------------------------------------------------
+
+test('the first save of a rich text upgrades the database to version 3; a board without one keeps its version', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('t', 100, 100, { text: 'plain' })])
+  expect(await dbVersion(page)).toBe(1)
+  await editAtEnd(page, at(110, 110))
+  await page.keyboard.type(' words')
+  const plainSave = await storedWhen(page, (d) => byId(d, 't').text === 'plain words')
+  expect(plainSave.version).toBe(1)
+  expect(await dbVersion(page)).toBe(1)
+  // Inline code typed and then taken back with Backspace never reached a save as rich... but a
+  // list does: the save that stores it upgrades the database in the same step.
+  await page.keyboard.type('\n- item')
+  const richSave = await storedWhen(page, (d) => byId(d, 't').blocks !== undefined)
+  expect(richSave.version).toBe(3)
+  expect(richSave.frames).toEqual([])
+  expect(await dbVersion(page)).toBe(3)
+  // Removing it again stores the text compact and wire version 1; the database stays at 3.
+  await page.keyboard.press('Home')
+  await page.keyboard.press('Backspace')
+  const back = await storedWhen(page, (d) => byId(d, 't').blocks === undefined)
+  expect(back.version).toBe(1)
+  expect(await dbVersion(page)).toBe(3)
+  expect(errors).toEqual([])
+})
+
+test('a board saved with blocks opens editable, and loading it writes nothing', async ({ page }) => {
+  const rec = textRec('t', 100, 100, { text: 'one', blocks: [bullets([p('one')])] })
+  await openBlank(page)
+  await seedRaw(page, 3, { version: 3, title: 'Writing', frames: [], objects: [rec], viewport: UNIT })
+  const before = await snapshotIdb(page)
+  await openApp(page)
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  expect(await snapshotIdb(page)).toEqual(before)
+  await expect(page.getByTestId('readonly-banner')).toHaveCount(0)
+  await expect(page.locator('.scene-layer ul li')).toHaveCount(1)
+})
+
+// ---- what is drawn ----------------------------------------------------------------------------------
+
+test('entering and leaving an edit of a text with every block moves no character, marker or block', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('t', 60, 40, { blocks: EVERY_BLOCK }), textRec('d', 560, 40, { blocks: EVERY_BLOCK, minHeight: 0, width: 300, align: 'center' })])
+  for (const [id, x] of [['t', 70], ['d', 570]] as const) {
+    const idle = await characterBoxes(page, id)
+    await page.mouse.dblclick(at(x, 50).x, at(x, 50).y)
+    await expect.poll(async () => (await editedText(page))?.focused).toBe(true)
+    const live = await characterBoxes(page, id)
+    await page.keyboard.press('Escape')
+    await expect.poll(() => editedText(page)).toBeNull()
+    const after = await characterBoxes(page, id)
+    expect(live.boxes.length, id).toBeGreaterThan(300)
+    expect(live, id).toEqual(idle)
+    expect(after, id).toEqual(idle)
+  }
+  expect(errors).toEqual([])
+})
+
+test('what is painted for each block: bullets, numbers, ticked and unticked boxes, the quote rule, the divider, code', async ({ page }) => {
+  const { errors } = await open(page, [textRec('t', 60, 40, { fontSize: 24, width: 560, blocks: EVERY_BLOCK })])
+  const ink = (x: number, y: number) => paintedAt(page, x, y)
+  /** Ink within a pixel above or below (a hairline is snapped to whole pixels). */
+  const inkNear = async (x: number, y: number) => (await ink(x, y - 1)) || (await ink(x, y)) || (await ink(x, y + 1))
+  // A bullet: a dot in the gutter, on the first line, and nothing just outside it.
+  const li = await rectIn(page, 'ul:not(.yp-tasks) > li')
+  const dot = { x: li.left - 0.8 * li.em, y: li.top + 0.62 * li.em }
+  expect(await ink(dot.x, dot.y)).toBe(true)
+  expect(await ink(li.left - 0.3 * li.em, dot.y)).toBe(false)
+  expect(await ink(li.left - 1.4 * li.em, dot.y)).toBe(false)
+  // A number: its digits in the gutter of a numbered item.
+  const ol = await rectIn(page, 'ol > li')
+  let digits = false
+  for (let x = ol.left - 1.3 * ol.em; x < ol.left - 0.3 * ol.em; x += 1) if (await ink(x, ol.top + 0.6 * ol.em)) digits = true
+  expect(digits).toBe(true)
+  // A ticked box has a tick inside; an unticked one is empty inside, with its edge drawn.
+  const ticked = await rectIn(page, '.yp-check', 0)
+  const empty = await rectIn(page, '.yp-check', 1)
+  let tick = false
+  for (let d = -3; d <= 3; d++) if (await ink(ticked.left + ticked.width / 2 + d, ticked.top + ticked.height / 2)) tick = true
+  expect(tick).toBe(true)
+  expect(await ink(empty.left + empty.width / 2, empty.top + empty.height / 2)).toBe(false)
+  expect(await ink(empty.left + 1, empty.top + empty.height / 2)).toBe(true)
+  // The quote: a rule down its left edge, the full height of its lines.
+  const quote = await rectIn(page, 'blockquote')
+  for (const f of [0.1, 0.5, 0.9]) expect(await ink(quote.left + 0.06 * quote.em, quote.top + f * quote.height)).toBe(true)
+  expect(await ink(quote.left + 0.5 * quote.em, quote.top + 0.5 * quote.height)).toBe(false)
+  // The divider: a rule across the middle of its line, and nothing a quarter line above or below.
+  const hr = await rectIn(page, 'hr')
+  for (const f of [0.05, 0.5, 0.95]) expect(await inkNear(hr.left + f * hr.width, hr.top + hr.height / 2)).toBe(true)
+  expect(await ink(hr.left + hr.width / 2, hr.top + hr.height / 4)).toBe(false)
+  expect(await ink(hr.left + hr.width / 2, hr.top + (3 * hr.height) / 4)).toBe(false)
+  // Code: a tinted panel (painted in its padding, where no letter is), and inline code's tint just before its first letter.
+  const pre = await rectIn(page, 'pre')
+  expect(await ink(pre.left + 0.3 * pre.em, pre.top + 0.25 * pre.em)).toBe(true)
+  expect(await ink(pre.left + pre.width - 3, pre.top + pre.height - 3)).toBe(true)
+  expect(await ink(pre.left - 3, pre.top + pre.height / 2)).toBe(false)
+  const code = await rectIn(page, 'p > code')
+  expect(await ink(code.left - 1, code.top + code.height / 2)).toBe(true)
+  expect(errors).toEqual([])
+})
+
+test('a frame preview shows the blocks where the page shows them', async ({ page }) => {
+  const frame = { id: 'F', name: 'Review', left: 20, top: 20, width: 640, height: 720 }
+  const { errors } = await open(page, [textRec('t', 60, 40, { fontSize: 20, width: 520, frameId: 'F', blocks: EVERY_BLOCK })], [frame])
+  const url = await page.evaluate(() => window.__writing.preview('F'))
+  const png = decodePng(Buffer.from(url.split(',')[1]!, 'base64'))
+  const scale = png.width / frame.width
+  const px = (sx: number, sy: number) => {
+    const x = Math.round((sx - frame.left) * scale)
+    const y = Math.round((sy - frame.top) * scale)
+    const i = (y * png.width + x) * 4
+    return [png.data[i]!, png.data[i + 1]!, png.data[i + 2]!]
+  }
+  const paper = (c: number[]) => c[0]! > 250 && c[1]! > 250 && c[2]! > 250
+  // Each marker, on the board and in the preview: the preview must show at least most of the ink the board shows there.
+  const regions = await markerRegions(page)
+  for (const r of regions) {
+    const board = inkShare(await screenPixels(page, r.left, r.top, r.width, r.height), r.faint)
+    const shown = inkShare(previewCrop(png, scale, frame, r), r.faint)
+    expect(board, `${r.name} on the board`).toBeGreaterThan(0.02)
+    expect(shown, `${r.name} in the preview (board ${board.toFixed(3)})`).toBeGreaterThan(board * 0.5)
+  }
+  // The numbers themselves, not only their ink: across each number's width (a region twice as wide,
+  // reaching further left, so that a longer number is never cut), where its ink starts and ends, how
+  // much there is and where its middle lies are the board's, closely enough to tell one digit, or one
+  // digit fewer, from another.
+  for (const r of regions.filter((x) => x.name === 'number' || x.name === 'second number')) {
+    const wide = { ...r, left: r.left - r.width, width: 2 * r.width }
+    const board = inkShape(inkProfile(await screenPixels(page, wide.left, wide.top, wide.width, wide.height)), 1)
+    const shown = inkShape(inkProfile(previewCrop(png, scale, frame, wide)), scale)
+    const say = `${r.name}: board ${JSON.stringify(board)}, preview ${JSON.stringify(shown)}`
+    expect(Math.abs(shown.from - board.from), say).toBeLessThanOrEqual(1.5)
+    expect(Math.abs(shown.to - board.to), say).toBeLessThanOrEqual(1.5)
+    expect(Math.abs(shown.middle - board.middle), say).toBeLessThanOrEqual(1)
+    expect(Math.abs(shown.ink - board.ink) / board.ink, say).toBeLessThan(0.25)
+  }
+  const li = await rectIn(page, 'ul:not(.yp-tasks) > li')
+  expect(paper(px(li.left - 0.8 * li.em, li.top + 0.62 * li.em))).toBe(false) // the bullet
+  expect(paper(px(li.left - 0.3 * li.em, li.top + 0.62 * li.em))).toBe(true)
+  const ticked = await rectIn(page, '.yp-check', 0)
+  let tick = false
+  for (let d = -2; d <= 2; d++) if (!paper(px(ticked.left + ticked.width / 2 + d, ticked.top + ticked.height / 2))) tick = true
+  expect(tick).toBe(true)
+  const empty = await rectIn(page, '.yp-check', 1)
+  expect(paper(px(empty.left + empty.width / 2, empty.top + empty.height / 2))).toBe(true)
+  const hr = await rectIn(page, 'hr')
+  expect([-2, -1, 0, 1, 2].some((d) => !paper(px(hr.left + hr.width / 2, hr.top + hr.height / 2 + d / scale)))).toBe(true)
+  const pre = await rectIn(page, 'pre')
+  expect(paper(px(pre.left + 0.3 * pre.em, pre.top + 0.25 * pre.em))).toBe(false) // the code panel's tint
+  const quote = await rectIn(page, 'blockquote')
+  expect(paper(px(quote.left + 0.06 * quote.em, quote.top + quote.height / 2))).toBe(false)
+  expect(errors).toEqual([])
+})
+
+// ---- transforms, captions, read-only -----------------------------------------------------------------
+
+test('a rich text: the side handle stops at its widest word plus its indent; a corner scale scales the blocks with the text', async ({ page }) => {
+  const blocks = [p('A short line'), bullets([p('nested'), bullets([p('extraordinarily')])])]
+  const { errors, at } = await open(page, [textRec('t', 100, 100, { fontSize: 20, width: 400, blocks })])
+  await page.evaluate(() => window.__writing.select('t'))
+  const c = (await page.evaluate(() => window.__writing.controls()))!
+  await drag(page, c.mr!, { x: c.ml!.x + 5, y: c.mr!.y }, { steps: 12 })
+  const narrowed = await storedWhen(page, (d) => (byId(d, 't').width as number) < 400)
+  const width = byId(narrowed, 't').width as number
+  // The widest word, `extraordinarily`, sits two list levels in (3em at 20px): the box is exactly as wide as that.
+  const word = await page.evaluate(() => {
+    const p = Array.from(document.querySelectorAll('.scene-layer li li p')).pop()!
+    const range = document.createRange()
+    range.selectNodeContents(p)
+    const r = range.getBoundingClientRect()
+    const body = document.querySelector('.scene-text-body')!.getBoundingClientRect()
+    return { right: r.right - body.left, lines: range.getClientRects().length }
+  })
+  expect(word.lines).toBe(1)
+  expect(width).toBeGreaterThanOrEqual(word.right - 0.05)
+  expect(width).toBeLessThan(word.right + 1)
+  expect(byId(narrowed, 't').blocks).toEqual(blocks)
+  // A corner scale doubles the size: font size and width double, the blocks stay, and the indent doubles with them.
+  const indentBefore = (await rectIn(page, 'li li p')).left - (await rectIn(page, '.scene-text-body')).left
+  const c2 = (await page.evaluate(() => window.__writing.controls()))!
+  const tl = c2.tl!
+  const br = c2.br!
+  await drag(page, br, { x: tl.x + (br.x - tl.x) * 2, y: tl.y + (br.y - tl.y) * 2 }, { steps: 16 })
+  const scaled = await storedWhen(page, (d) => (byId(d, 't').fontSize as number) > 30)
+  const k = (byId(scaled, 't').fontSize as number) / 20
+  expect(k).toBeGreaterThan(1.8)
+  expect(byId(scaled, 't').width).toBeCloseTo(width * k, 0)
+  expect(byId(scaled, 't').blocks).toEqual(blocks)
+  expect(byId(scaled, 't')).not.toHaveProperty('height')
+  const indentAfter = (await rectIn(page, 'li li p')).left - (await rectIn(page, '.scene-text-body')).left
+  expect(indentAfter / indentBefore).toBeCloseTo(k, 1)
+  void at
+  expect(errors).toEqual([])
+})
+
+test('a caption can hold blocks: typed in it, saved, and still attached to its image', async ({ page }) => {
+  const image = { type: 'image', id: 'img', left: 100, top: 100, angle: 0, assetId: 'a1', scaleX: 1, scaleY: 1 }
+  const caption = { ...textRec('cap', 100, 330, { text: 'Side A', fontSize: 16, width: 300 }), captionOf: 'img' }
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await openBlank(page)
+  await seedRaw(page, 2, { version: 2, title: 'Writing', frames: [], objects: [image, caption], viewport: UNIT }, [{ id: 'a1', name: 'a.png', width: 300, height: 200 }])
+  await installProbe(page)
+  await openApp(page)
+  const at = await sceneToPage(page, UNIT)
+  await editAtEnd(page, at(110, 338))
+  await page.keyboard.type('\n- one\ntwo')
+  const saved = await storedWhen(page, (d) => byId(d, 'cap').blocks !== undefined && (byId(d, 'cap').text as string).endsWith('two'))
+  expect(byId(saved, 'cap')).toMatchObject({ captionOf: 'img', blocks: [p('Side A'), bullets([p('one')], [p('two')])] })
+  await page.keyboard.press('Escape')
+  // Moving the image carries the rich caption with it.
+  await drag(page, at(200, 200), at(260, 230))
+  const moved = await storedWhen(page, (d) => byId(d, 'img').left === 160)
+  expect(byId(moved, 'cap')).toMatchObject({ captionOf: 'img', left: 160 })
+  expect(errors).toEqual([])
+})
+
+test('a board that goes read-only mid-edit keeps the text and its blocks on screen and writes nothing', async ({ context }) => {
+  const rec = textRec('t', 100, 100, { text: 'one', blocks: [bullets([p('one')])] })
+  const seed = await context.newPage()
+  await openBlank(seed)
+  await seedRaw(seed, 3, { version: 3, title: 'Writing', frames: [], objects: [rec], viewport: UNIT })
+  await seed.close()
+  const page = await context.newPage()
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await openApp(page)
+  const at = await sceneToPage(page, UNIT)
+  await editAtEnd(page, at(130, 110))
+  await page.keyboard.type('\ntwo')
+  await storedWhen(page, (d) => byId(d, 't').text === 'one\ntwo')
+  // Another tab writes the board.
+  const other = await context.newPage()
+  await openBlank(other)
+  await other.evaluate(async () => {
+    const path = '/src/persistence/boardStore.ts'
+    const { IndexedDbBoardStore } = await import(/* @vite-ignore */ path)
+    const store = new IndexedDbBoardStore()
+    const loaded = await store.load()
+    await store.save({ ...loaded.doc, title: 'Other tab' }, loaded.token, () => undefined)
+    store.close?.()
+  })
+  const written = await snapshotIdb(other)
+  await page.bringToFront()
+  await page.keyboard.type(' three')
+  await expect(page.getByTestId('readonly-banner')).toContainText('changed in another tab')
+  // The edit ended; the static card shows the text with its list as it was typed.
+  await expect.poll(() => editedText(page)).toBeNull()
+  await expect(page.locator('.scene-layer li')).toHaveCount(2)
+  await expect(page.locator('.scene-layer li').nth(1)).toContainText('two three')
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  expect(await snapshotIdb(page)).toEqual(written)
+  expect(errors).toEqual([])
+})
+
+test('the panel: block buttons on the selected lines while editing and on every line of a selected box, pressed when on', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('t', 100, 100, { text: 'a\nb' })])
+  const btn = (name: string) => page.getByRole('button', { name, exact: true })
+  await page.evaluate(() => window.__writing.select('t'))
+  // A selected box: every line.
+  await btn('Bulleted list').click()
+  const listed = await storedWhen(page, (d) => byId(d, 't').blocks !== undefined)
+  expect(byId(listed, 't').blocks).toEqual([bullets([p('a')], [p('b')])])
+  await expect(btn('Bulleted list')).toHaveAttribute('aria-pressed', 'true')
+  await expect(btn('Divider')).toBeDisabled()
+  // While editing: the caret's line, and the edit keeps the keyboard.
+  await editAtEnd(page, at(130, 110))
+  await btn('Checklist').click()
+  expect(await editedText(page)).toMatchObject({ focused: true })
+  await expect(btn('Checklist')).toHaveAttribute('aria-pressed', 'true')
+  await expect(btn('Bulleted list')).toHaveAttribute('aria-pressed', 'false')
+  await btn('Divider').click()
+  await btn('Quote').click()
+  await page.keyboard.type('q')
+  await btn('Inline code').click()
+  await page.keyboard.type('c')
+  const done = await storedWhen(page, (d) => (byId(d, 't').text as string).endsWith('qc'))
+  // Checklist made the caret's line alone a checklist item (the other line keeps its bullet); the divider, the quote and the code went in at the caret, in its item.
+  expect(byId(done, 't').blocks).toEqual([
+    bullets([p('a')]),
+    tasks([false, [p('b'), { type: 'divider' }, { type: 'blockquote', blocks: [{ type: 'paragraph', content: [{ text: 'q' }, { text: 'c', code: true }] }] }]]),
+  ])
+  await page.keyboard.press('Escape')
+  // One undo step for the whole edit.
+  await undoButton(page).click()
+  expect(byId(await storedWhen(page, (d) => byId(d, 't').text === 'a\nb'), 't').blocks).toEqual([bullets([p('a')], [p('b')])])
+  expect(errors).toEqual([])
+})
+
+// ---- the review round: browser evidence for each fix -------------------------------------------------
+
+interface Region {
+  name: string
+  left: number
+  top: number
+  width: number
+  height: number
+  /** A light tint (the code panel), not ink. */
+  faint?: boolean
+}
+
+/** Where each kind of marker is drawn on the board (scene units, the canvas at zoom 1). */
+async function markerRegions(page: Page): Promise<Region[]> {
+  const li = await rectIn(page, 'ul:not(.yp-tasks) > li')
+  const ol = await rectIn(page, 'ol > li')
+  const ol2 = await rectIn(page, 'ol > li', 1)
+  const ticked = await rectIn(page, '.yp-check', 0)
+  const empty = await rectIn(page, '.yp-check', 1)
+  const quote = await rectIn(page, 'blockquote')
+  const hr = await rectIn(page, 'hr')
+  const pre = await rectIn(page, 'pre')
+  const em = li.em
+  return [
+    { name: 'bullet', left: li.left - 1.2 * em, top: li.top + 0.3 * em, width: 0.8 * em, height: 0.7 * em },
+    { name: 'number', left: ol.left - 1.4 * em, top: ol.top + 0.15 * em, width: 1.2 * em, height: 1.1 * em },
+    { name: 'second number', left: ol2.left - 1.4 * em, top: ol2.top + 0.15 * em, width: 1.2 * em, height: 1.1 * em },
+    { name: 'ticked box', left: ticked.left, top: ticked.top, width: ticked.width, height: ticked.height },
+    { name: 'unticked box', left: empty.left, top: empty.top, width: empty.width, height: empty.height },
+    { name: 'quote rule', left: quote.left, top: quote.top, width: 0.2 * em, height: quote.height },
+    { name: 'divider', left: hr.left, top: hr.top + hr.height * 0.3, width: hr.width, height: hr.height * 0.4 },
+    { name: 'code panel', left: pre.left + 1, top: pre.top + 1, width: 0.5 * em, height: 0.35 * em, faint: true },
+  ]
+}
+
+/** The share of pixels that are not white paper: ink (far from white), or for a faint region any tint. */
+function inkShare(img: { width: number; height: number; data: Uint8Array }, faint = false): number {
+  let ink = 0
+  const n = img.width * img.height
+  for (let i = 0; i < n; i++) {
+    const d = Math.max(255 - img.data[i * 4]!, 255 - img.data[i * 4 + 1]!, 255 - img.data[i * 4 + 2]!)
+    if (d > (faint ? 6 : 40)) ink++
+  }
+  return n === 0 ? 0 : ink / n
+}
+
+/** For each column of an image, the share of its rows that are ink. */
+function inkProfile(img: { width: number; height: number; data: Uint8Array }): number[] {
+  return Array.from({ length: img.width }, (_, x) => {
+    let n = 0
+    for (let y = 0; y < img.height; y++) {
+      const i = (y * img.width + x) * 4
+      if (Math.max(255 - img.data[i]!, 255 - img.data[i + 1]!, 255 - img.data[i + 2]!) > 60) n++
+    }
+    return img.height === 0 ? 0 : n / img.height
+  })
+}
+
+/**
+ * The shape of the ink in a profile, in scene units for `scale` pixels per unit: the first and last
+ * inked columns (a column inked when a twentieth of its rows are), the amount of ink (inked rows
+ * summed over the columns) and its middle (the ink-weighted mean column).
+ */
+function inkShape(profile: number[], scale: number): { from: number; to: number; ink: number; middle: number } {
+  const first = profile.findIndex((v) => v >= 0.05)
+  let last = -1
+  profile.forEach((v, x) => {
+    if (v >= 0.05) last = x
+  })
+  const ink = profile.reduce((a, v) => a + v, 0)
+  const middle = profile.reduce((a, v, x) => a + v * (x + 0.5), 0) / (ink || 1)
+  const r = (n: number) => +(n / scale).toFixed(2)
+  return { from: r(first), to: r(last + 1), ink: r(ink), middle: r(middle) }
+}
+
+/** The pixels of a scene region in a frame's preview bitmap. */
+function previewCrop(png: { width: number; height: number; data: Uint8Array }, scale: number, frame: { left: number; top: number }, r: Region) {
+  const x0 = Math.round((r.left - frame.left) * scale)
+  const y0 = Math.round((r.top - frame.top) * scale)
+  const w = Math.max(1, Math.round(r.width * scale))
+  const h = Math.max(1, Math.round(r.height * scale))
+  const data = new Uint8Array(w * h * 4)
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const sx = x0 + x
+      const sy = y0 + y
+      const o = (y * w + x) * 4
+      if (sx < 0 || sy < 0 || sx >= png.width || sy >= png.height) {
+        data.set([255, 255, 255, 255], o)
+        continue
+      }
+      const i = (sy * png.width + sx) * 4
+      data.set(png.data.subarray(i, i + 4), o)
+    }
+  }
+  return { width: w, height: h, data }
+}
+
+test('17: a frame preview shows a long list number that reaches left of its text, as the board does', async ({ page }) => {
+  const frame = { id: 'F', name: 'Numbers', left: 20, top: 20, width: 700, height: 300 }
+  const { errors } = await open(
+    page,
+    [
+      textRec('a', 300, 60, { fontSize: 24, width: 380, frameId: 'F', blocks: [{ type: 'orderedList', start: 123, items: [{ blocks: [p('Listen')] }] }] }),
+      textRec('b', 300, 160, { fontSize: 24, width: 380, frameId: 'F', blocks: [{ type: 'orderedList', start: 123456789, items: [{ blocks: [p('Listen')] }] }] }),
+    ],
+    [frame],
+  )
+  // What the board shows first, with nothing selected (a selected frame's handles would be in the way).
+  const seen: Array<{ r: Region; board: { width: number; height: number; data: Uint8Array }; boxLeft: number }> = []
+  for (const i of [0, 1]) {
+    const li = await rectIn(page, 'ol > li', i)
+    const card = await rectIn(page, '.scene-text-body', i)
+    // The whole gutter and beyond, to the frame's left edge: what the board shows of the number there.
+    const r: Region = { name: `number ${i}`, left: frame.left + 2, top: li.top + 0.15 * li.em, width: li.left - frame.left - 4, height: 1.1 * li.em }
+    seen.push({ r, board: await screenPixels(page, r.left, r.top, r.width, r.height), boxLeft: card.left })
+  }
+  const url = await page.evaluate(() => window.__writing.preview('F'))
+  const png = decodePng(Buffer.from(url.split(',')[1]!, 'base64'))
+  const scale = png.width / frame.width
+  for (const { r, board, boxLeft } of seen) {
+    expect(inkShare(board), 'the board shows the number').toBeGreaterThan(0.02)
+    // Columns of ink, left to right: the preview has ink in (nearly) every column the board does, the part left of the box included.
+    const cols = (img: { width: number; height: number; data: Uint8Array }) =>
+      Array.from({ length: img.width }, (_, x) => Array.from({ length: img.height }, (_, y) => 255 - img.data[(y * img.width + x) * 4]! > 60).some(Boolean))
+    const boardCols = cols(board)
+    const shownCols = cols(previewCrop(png, scale, frame, r))
+    expect(boardCols.indexOf(true) + r.left, `${r.name} reaches left of its box`).toBeLessThan(boxLeft)
+    let missing = 0
+    boardCols.forEach((on, x) => {
+      if (on && !shownCols.slice(Math.max(0, Math.floor(x * scale) - 2), Math.floor(x * scale) + 3).some(Boolean)) missing++
+    })
+    expect(missing, `${r.name}: columns missing from the preview (of ${boardCols.filter(Boolean).length})`).toBeLessThanOrEqual(1)
+  }
+  expect(errors).toEqual([])
+})
+
+test('2: a whole-box Quote that would nest past the bound is refused: the bullets stay, the board saves, later writing survives a reload', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  await newText(page, at, 100, 80)
+  await page.keyboard.type('- Side A')
+  for (let i = 1; i <= 5; i++) {
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Tab')
+    await page.keyboard.type(`Track ${i}`)
+  }
+  await page.keyboard.press('Escape')
+  const before = await storedWhen(page, (d) => texts(d).length === 1 && (texts(d)[0]!.text as string).endsWith('Track 5'))
+  const rec = texts(before)[0]!
+  await page.locator('.layer-row', { hasText: 'Side A' }).click()
+  await page.getByRole('button', { name: 'Quote', exact: true }).click()
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  await expect(status(page)).toContainText('Saved on this device')
+  expect(texts(await storedDoc(page))[0]).toEqual(rec)
+  await expect(undoButton(page)).toBeEnabled() // the text's own creation, not a refused Quote
+  await expect(page.locator('.scene-layer blockquote')).toHaveCount(0)
+  // Later writing is kept.
+  await editAtEnd(page, at(110, 92))
+  await page.keyboard.type(' later')
+  await page.keyboard.press('Escape')
+  await storedWhen(page, (d) => (texts(d)[0]!.text as string).endsWith('Track 5 later'))
+  await page.reload()
+  await expect(status(page)).toContainText('Saved on this device')
+  expect((texts(await storedDoc(page))[0]!.text as string).endsWith('Track 5 later')).toBe(true)
+  expect(errors).toEqual([])
+})
+
+test('9a: Checklist and Numbered list convert a nested item with its parent, on a selected box and in an edit', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  await newText(page, at, 100, 80)
+  await page.keyboard.type('- Album\nTrack')
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Escape')
+  await storedWhen(page, (d) => texts(d).length === 1)
+  const btn = (name: string) => page.getByRole('button', { name, exact: true })
+  await page.locator('.layer-row', { hasText: 'Album' }).click()
+  await btn('Checklist').click()
+  const checked = await storedWhen(page, (d) => JSON.stringify(texts(d)[0]!.blocks).includes('taskList'))
+  expect(texts(checked)[0]!.blocks).toEqual([tasks([false, [p('Album'), tasks([false, [p('Track')]])]])])
+  await expect(btn('Checklist')).toHaveAttribute('aria-pressed', 'true')
+  await btn('Numbered list').click()
+  const numberedBox = await storedWhen(page, (d) => JSON.stringify(texts(d)[0]!.blocks).includes('orderedList') && !JSON.stringify(texts(d)[0]!.blocks).includes('taskList'))
+  expect(texts(numberedBox)[0]!.blocks).toEqual([{ type: 'orderedList', items: [{ blocks: [p('Album'), { type: 'orderedList', items: [{ blocks: [p('Track')] }] }] }] }])
+  // In an edit, with both lines selected: back to bullets, both.
+  await editAtEnd(page, at(140, 92))
+  await page.keyboard.press('Control+a')
+  await btn('Bulleted list').click()
+  const bulleted = await storedWhen(page, (d) => !JSON.stringify(texts(d)[0]!.blocks).includes('orderedList'))
+  expect(texts(bulleted)[0]!.blocks).toEqual([bullets([p('Album'), bullets([p('Track')])])])
+  await expect(btn('Bulleted list')).toHaveAttribute('aria-pressed', 'true')
+  expect(errors).toEqual([])
+})
+
+test('R4: a numbered list starts at up to 999,999,999, and its numbers are painted as stored; a longer number stays as typed', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  await newText(page, at, 400, 80)
+  await page.keyboard.type('999999999. Item\nNext')
+  const saved = await storedWhen(page, (d) => texts(d).length === 1 && texts(d)[0]!.text === 'Item\nNext')
+  expect(texts(saved)[0]!.blocks).toEqual([{ type: 'orderedList', start: 999999999, items: [{ blocks: [p('Item')] }, { blocks: [p('Next')] }] }])
+  await page.keyboard.press('Escape') // the static card (the live editor would take a probe added to it away)
+  // The second marker as painted, and the same place with the marker hidden and the expected number
+  // written there in the marker's own style: they match for 1000000000., not for 2147483647.
+  const li = await rectIn(page, 'ol > li', 1)
+  const box = (await page.locator('.canvas-host').boundingBox())!
+  const region = { left: box.x + li.left - 7 * li.em, top: box.y + li.top, width: 7 * li.em, height: 1.4 * li.em }
+  const shot = (style = '') => pagePixels(page, region.left, region.top, region.width, region.height, { style })
+  const painted = await shot()
+  const differs = async (text: string) => {
+    await page.evaluate((text) => {
+      const li = document.querySelectorAll('.scene-layer ol > li')[1]!
+      const probe = document.createElement('span')
+      probe.id = 'marker-probe'
+      probe.style.cssText = 'position:absolute;right:100%;top:var(--yp-shift-0,0px);margin-right:0.35em;font-size:1em;font-style:normal;font-weight:400;font-variant-numeric:tabular-nums;white-space:nowrap;color:color-mix(in srgb, currentColor 62%, transparent)'
+      probe.textContent = text
+      li.append(probe)
+    }, text)
+    const written = await shot('.yuriful-prose ol > li::before { visibility: hidden !important }')
+    await page.evaluate(() => document.getElementById('marker-probe')?.remove())
+    let n = 0
+    for (let i = 0; i < painted.data.length; i += 4) if (Math.abs(painted.data[i]! - written.data[i]!) > 40) n++
+    return n / (painted.width * painted.height)
+  }
+  expect(await differs('1000000000.')).toBeLessThan(0.005)
+  expect(await differs('2147483647.')).toBeGreaterThan(0.01)
+  // One more digit stays as typed.
+  await newText(page, at, 400, 300)
+  await page.keyboard.type('1000000000. ten')
+  await storedWhen(page, (d) => texts(d).some((t) => t.text === '1000000000. ten' && t.blocks === undefined))
+  expect(errors).toEqual([])
+})
+
+test('1: the Divider button replaces selected text without an error', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('t', 100, 100, { text: 'abc' })])
+  await editAtEnd(page, at(110, 110))
+  await page.keyboard.press('Shift+ArrowLeft')
+  await page.getByRole('button', { name: 'Divider', exact: true }).click()
+  const one = await storedWhen(page, (d) => byId(d, 't').blocks !== undefined)
+  expect(byId(one, 't').blocks).toEqual([p('ab'), { type: 'divider' }, p()])
+  await page.keyboard.press('Control+a')
+  await page.getByRole('button', { name: 'Divider', exact: true }).click()
+  await expect(page.locator('.ProseMirror hr')).toHaveCount(1)
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 't').blocks) === JSON.stringify([{ type: 'divider' }, p()]))
+  expect(errors).toEqual([])
+})
+
+test('3: an IME composition that would take a code block past the character bound is undone, through Chromium\'s IME', async ({ page }) => {
+  await openBlank(page)
+  await page.evaluate(async () => {
+    const path = '/src/editor/textSession.ts'
+    const { createEditSession } = await import(/* @vite-ignore */ path)
+    const el = document.createElement('div')
+    document.body.replaceChildren(el)
+    el.style.cssText = 'max-height:100px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere'
+    const s = createEditSession({ text: '', blocks: [{ type: 'codeBlock', text: 'x'.repeat(500000) }] }, {}, { caret: 0 })
+    ;(window as unknown as { s: unknown }).s = s
+    s.mount(el).focus()
+  })
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.imeSetComposition', { text: 'か', selectionStart: 1, selectionEnd: 1 })
+  await cdp.send('Input.insertText', { text: 'か' })
+  const result = await page.evaluate(async () => {
+    const path = '/src/model/textDoc.ts'
+    const { canonicalTextContent } = await import(/* @vite-ignore */ path)
+    const s = (window as unknown as { s: { content(): { text: string }; finish(): void } }).s
+    await new Promise((r) => setTimeout(r, 50))
+    const live = s.content().text.length
+    s.finish()
+    const c = s.content()
+    return { live, length: c.text.length, loadable: canonicalTextContent(c) !== null }
+  })
+  expect(result).toEqual({ live: 500000, length: 500000, loadable: true })
+})
+
+test('4: an HTML-only paste into a selected code line inserts the words of the HTML', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('t', 100, 100, { text: 'abc', blocks: [{ type: 'codeBlock', text: 'abc' }] })])
+  await editAtEnd(page, at(125, 118))
+  await page.keyboard.press('Control+a')
+  await page.evaluate(() => navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob(['<p>new</p>'], { type: 'text/html' }) })]))
+  await page.keyboard.press('Control+v')
+  expect((await editedText(page))?.value).toBe('new')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 't').blocks) === JSON.stringify([{ type: 'codeBlock', text: 'new' }]))
+  expect(errors).toEqual([])
+})
+
+test('19: a resize or a move released over a disabled panel button ends there and is kept', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('t', 100, 120, { text: 'plain words', width: 420 }), textRec('h', 100, 400, { text: 'Heading', headings: [1], width: 420 })])
+  const cases: Array<{ id: string; button: string; what: 'resize' | 'move' }> = [
+    { id: 't', button: 'Divider', what: 'resize' }, // disabled outside an edit, with its tip
+    { id: 'h', button: 'Bold', what: 'resize' }, // disabled on a heading, with its tip
+    { id: 'h', button: 'Bring to front', what: 'move' }, // an ordinary disabled button (the heading is already in front)
+  ]
+  for (const c of cases) {
+    await page.evaluate((id) => window.__writing.select(id), c.id)
+    const target = page.getByRole('button', { name: c.button, exact: true })
+    await expect(target, c.button).toBeDisabled()
+    const to = (await target.boundingBox())!
+    const before = byId(await storedDoc(page), c.id)
+    const controls = (await page.evaluate(() => window.__writing.controls()))!
+    const from = c.what === 'resize' ? controls.mr! : { x: (controls.tl!.x + controls.br!.x) / 2, y: (controls.tl!.y + controls.br!.y) / 2 }
+    await page.mouse.move(from.x, from.y)
+    await page.mouse.down()
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 })
+    await page.mouse.up()
+    // Back over the board: the change stays.
+    await page.mouse.move(at(700, 650).x, at(700, 650).y, { steps: 4 })
+    const after = await storedWhen(page, (d) => JSON.stringify(byId(d, c.id)) !== JSON.stringify(before))
+    if (c.what === 'resize') expect(byId(after, c.id).width, c.button).not.toBe(before.width)
+    else expect(byId(after, c.id).left, c.button).not.toBe(before.left)
+    // The button did nothing, and the text is still selected.
+    expect(byId(after, c.id).blocks, c.button).toBeUndefined()
+    expect(await page.locator('.inspector-title').textContent()).toContain('Text')
+  }
+  expect(errors).toEqual([])
+})
+
+test('20: at 1366x768 the Layers header and two rows stay usable whatever is selected', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 })
+  const image = { type: 'image', id: 'img', left: 120, top: 120, angle: 0, assetId: 'a1', scaleX: 1, scaleY: 1 }
+  const caption = { ...textRec('cap', 120, 330, { text: 'A caption', fontSize: 16, width: 300 }), captionOf: 'img' }
+  const plain = textRec('t', 600, 120, { text: 'A text' })
+  const frame = { id: 'F', name: 'Spread', left: 560, top: 300, width: 300, height: 200 }
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await openBlank(page)
+  await seedRaw(page, 2, { version: 2, title: 'Layers', frames: [frame], objects: [image, caption, plain], viewport: UNIT }, [{ id: 'a1', name: 'a.png', width: 300, height: 200 }])
+  await installProbe(page)
+  await openApp(page)
+  for (const id of ['cap', 't', 'img', 'F']) {
+    await page.evaluate((id) => window.__writing.select(id), id)
+    const panel = (await page.locator('.layers').boundingBox())!
+    // The column holds both, one above the other: the panel ends above the list, and the list within the column (clear of the zoom controls).
+    const column = (await page.locator('.side-stack').boundingBox())!
+    const inspector = (await page.locator('.inspector').boundingBox())!
+    expect(inspector.y + inspector.height, id).toBeLessThanOrEqual(panel.y + 0.5)
+    expect(panel.y + panel.height, id).toBeLessThanOrEqual(column.y + column.height + 0.5)
+    // Everything in the panel can be reached: its last button scrolls into view inside it.
+    const last = page.locator('.inspector button').last()
+    await last.scrollIntoViewIfNeeded()
+    const lastBox = (await last.boundingBox())!
+    expect(lastBox.y + lastBox.height, id).toBeLessThanOrEqual(inspector.y + inspector.height + 0.5)
+    const header = (await page.locator('.layers-header').boundingBox())!
+    expect(header.y, id).toBeGreaterThanOrEqual(panel.y - 0.5)
+    expect(header.y + header.height, id).toBeLessThanOrEqual(panel.y + panel.height + 0.5)
+    const list = (await page.locator('.layers-list').boundingBox())!
+    const rows = page.locator('.layer-row')
+    for (const i of [0, 1]) {
+      const r = (await rows.nth(i).boundingBox())!
+      expect(r.y, `${id} row ${i}`).toBeGreaterThanOrEqual(list.y - 0.5)
+      expect(r.y + r.height, `${id} row ${i}`).toBeLessThanOrEqual(list.y + list.height + 0.5)
+    }
+    // Usable: the second row takes a click (it selects that object).
+    await rows.nth(1).click()
+    await expect(rows.nth(1)).toHaveAttribute('aria-selected', 'true')
+  }
+  expect(errors).toEqual([])
+})
+
+test('21: in a code block the mark buttons are disabled and say why; their keys do nothing', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('t', 100, 100, { text: 'const x', blocks: [{ type: 'codeBlock', text: 'const x' }] })])
+  await editAtEnd(page, at(125, 118))
+  await page.keyboard.press('Control+a')
+  for (const name of ['Bold', 'Italic', 'Underline', 'Strikethrough', 'Inline code']) {
+    const b = page.getByRole('button', { name, exact: true })
+    await expect(b, name).toBeDisabled()
+    await expect(b, name).toHaveAttribute('data-tip', `${name}: code blocks are plain text`)
+  }
+  await page.keyboard.press('Control+b')
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  expect(byId(await storedDoc(page), 't').blocks).toEqual([{ type: 'codeBlock', text: 'const x' }])
+  expect(errors).toEqual([])
+})
+
+test('R1: an IME composition refused at the bound takes back only itself, through Chromium\'s IME', async ({ page }) => {
+  await openBlank(page)
+  const mount = (blocks: unknown, caret: number, select?: [number, number]) =>
+    page.evaluate(
+      async ({ blocks, caret, select }) => {
+        const path = '/src/editor/textSession.ts'
+        const { createEditSession } = await import(/* @vite-ignore */ path)
+        const old = (window as unknown as { s?: { finish(): void } }).s
+        old?.finish()
+        const el = document.createElement('div')
+        document.body.replaceChildren(el)
+        el.style.cssText = 'max-height:100px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere'
+        const s = createEditSession({ text: '', blocks }, {}, { caret })
+        ;(window as unknown as { s: unknown }).s = s
+        s.mount(el).focus()
+        if (select) s.select(select[0], select[1])
+      },
+      { blocks, caret, select },
+    )
+  const cdp = await page.context().newCDPSession(page)
+  const compose = async (text: string) => {
+    await cdp.send('Input.imeSetComposition', { text, selectionStart: text.length, selectionEnd: text.length })
+    await cdp.send('Input.insertText', { text })
+    await page.waitForTimeout(30)
+  }
+  const read = () =>
+    page.evaluate(() => {
+      const s = (window as unknown as { s: { content(): { text: string }; canRedo: boolean } }).s
+      const t = s.content().text
+      return { length: t.length, head: t.slice(0, 3), canRedo: s.canRedo }
+    })
+  const act = (what: 'undo' | 'redo') => page.evaluate((what) => (window as unknown as { s: Record<string, () => boolean> }).s[what]!(), what)
+  const base = 'x'.repeat(499999)
+  // `A` typed, then `B` composed straight after: `B` goes, `A` stays, and redo does not bring `B` back.
+  await mount([{ type: 'codeBlock', text: base }], 0)
+  await page.keyboard.type('A')
+  await compose('B')
+  expect(await read()).toEqual({ length: 500000, head: 'Axx', canRedo: false })
+  await act('redo')
+  expect((await read()).length).toBe(500000)
+  await act('undo')
+  expect(await read()).toMatchObject({ length: 499999, head: 'xxx' })
+  await act('redo')
+  expect(await read()).toMatchObject({ length: 500000, head: 'Axx' })
+  // Two compositions in a row: the second goes, the first stays.
+  await mount([{ type: 'codeBlock', text: base }], 0)
+  await compose('A')
+  await compose('B')
+  expect(await read()).toMatchObject({ length: 500000, head: 'Axx' })
+  // Over a selection: one that fits is kept, one that does not gives the selection back.
+  await mount([{ type: 'codeBlock', text: 'A' + base }], 0, [0, 1])
+  await compose('B')
+  expect(await read()).toMatchObject({ length: 500000, head: 'Bxx' })
+  await mount([{ type: 'codeBlock', text: 'A' + base }], 0, [0, 1])
+  await compose('BC')
+  expect(await read()).toMatchObject({ length: 500000, head: 'Axx', canRedo: false })
+})
+
+test('R2c, R2b, R2a: the block buttons change every selected line and only those, by typing and by the panel', async ({ page }) => {
+  const quotes = Array.from({ length: 65 }, (_, i) => ({ type: 'blockquote', blocks: [p(`q${i}`)] }))
+  const { errors, at } = await open(page, [textRec('q', 700, 60, { text: '', fontSize: 8, width: 200, blocks: quotes })])
+  const btn = (name: string) => page.getByRole('button', { name, exact: true })
+  // R2c: Review, then Album and a nested Track; select all; Checklist: every line a checklist item, Track still nested.
+  await newText(page, at, 80, 60)
+  await page.keyboard.type('Review\n- Album\nTrack')
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Control+a')
+  await btn('Checklist').click()
+  await expect(btn('Checklist')).toHaveAttribute('aria-pressed', 'true')
+  const want = [tasks([false, [p('Review')]], [false, [p('Album'), tasks([false, [p('Track')]])]])]
+  const checked = await storedWhen(page, (d) => texts(d).some((t) => JSON.stringify(t.blocks) === JSON.stringify(want)))
+  const id = texts(checked).find((t) => JSON.stringify(t.blocks) === JSON.stringify(want))!.id
+  // The same from Layers, on the box: back to bullets for every line, then Checklist again.
+  await page.keyboard.press('Escape')
+  await page.evaluate((id) => window.__writing.select(id), id)
+  await btn('Bulleted list').click()
+  await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify([bullets([p('Review')], [p('Album'), bullets([p('Track')])])]))
+  await btn('Checklist').click()
+  await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify(want))
+  await expect(btn('Checklist')).toHaveAttribute('aria-pressed', 'true')
+  // R2b: a quote holding bullets Album and Track, the caret only in Track: Quote takes Track out, Album keeps its quote.
+  await newText(page, at, 80, 300)
+  await page.keyboard.type('> - Album\nTrack')
+  await btn('Quote').click()
+  const quoted = await storedWhen(page, (d) => texts(d).some((t) => t.text === 'Album\nTrack' && JSON.stringify(t.blocks) !== JSON.stringify([{ type: 'blockquote', blocks: [bullets([p('Album')], [p('Track')])] }])))
+  expect(texts(quoted).find((t) => t.text === 'Album\nTrack')!.blocks).toEqual([{ type: 'blockquote', blocks: [bullets([p('Album')])] }, bullets([p('Track')])])
+  await expect(btn('Quote')).toHaveAttribute('aria-pressed', 'false')
+  await page.keyboard.press('ArrowUp')
+  await expect(btn('Quote')).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.press('Escape')
+  // R2a: 65 sibling quotes, the box selected from Layers, the pressed Quote pressed once: every quote goes.
+  await page.evaluate(() => window.__writing.select('q'))
+  await expect(btn('Quote')).toHaveAttribute('aria-pressed', 'true')
+  await btn('Quote').click()
+  const unquoted = await storedWhen(page, (d) => byId(d, 'q').blocks === undefined)
+  expect((byId(unquoted, 'q').text as string).split('\n')).toHaveLength(65)
+  await expect(btn('Quote')).toHaveAttribute('aria-pressed', 'false')
+  expect(errors).toEqual([])
+})
+
+test('R5: in a code block the font buttons are disabled and say why, and nothing is chosen for what is typed', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('t', 100, 100, { text: 'const x', blocks: [{ type: 'codeBlock', text: 'const x' }] })])
+  await editAtEnd(page, at(125, 118))
+  for (const name of ['Sans', 'Serif', 'Mono', 'Handwritten', 'Display']) {
+    const b = page.getByRole('button', { name, exact: true })
+    await expect(b, name).toBeDisabled()
+    await expect(b, name).toHaveAttribute('data-tip', `${name}: code blocks are always Mono`)
+  }
+  // Clicking one does nothing, and the text keeps the keyboard.
+  await page.getByRole('button', { name: 'Serif', exact: true }).click({ force: true })
+  expect(await editedText(page)).toMatchObject({ focused: true })
+  await page.keyboard.type('X')
+  const saved = await storedWhen(page, (d) => byId(d, 't').text === 'const xX')
+  expect(byId(saved, 't').blocks).toEqual([{ type: 'codeBlock', text: 'const xX' }])
+  expect(errors).toEqual([])
+})
+
+test('R6: a frame preview shows a list number that reaches into the frame from a text outside it', async ({ page }) => {
+  const frame = { id: 'F', name: 'Edge', left: 20, top: 20, width: 400, height: 240 }
+  const { errors } = await open(page, [textRec('t', frame.left + frame.width + 55, 80, { fontSize: 24, width: 300, blocks: [{ type: 'orderedList', start: 123456789, items: [{ blocks: [p('Listen')] }] }] })], [frame])
+  const li = await rectIn(page, 'ol > li')
+  const r: Region = { name: 'number inside the frame', left: frame.left + frame.width - 60, top: li.top + 0.15 * li.em, width: 58, height: 1.1 * li.em }
+  const board = await screenPixels(page, r.left, r.top, r.width, r.height)
+  expect(inkShare(board), 'the board shows part of the number inside the frame').toBeGreaterThan(0.02)
+  const url = await page.evaluate(() => window.__writing.preview('F'))
+  const png = decodePng(Buffer.from(url.split(',')[1]!, 'base64'))
+  const shown = inkShare(previewCrop(png, png.width / frame.width, frame, r))
+  expect(shown, 'the preview shows it too').toBeGreaterThan(inkShare(board) * 0.5)
+  expect(errors).toEqual([])
+})
+
+test('S3: `Review`, `1. Album`, `Track`, all selected, Numbered list: one list 1 to 3, in an edit and on a box from Layers; Tab then nests `Album`', async ({ page }) => {
+  const seeded = [p('Review'), { type: 'orderedList', items: [{ blocks: [p('Album')] }, { blocks: [p('Track')] }] }]
+  const { errors, at } = await open(page, [textRec('L', 700, 300, { text: 'Review\nAlbum\nTrack', blocks: seeded })])
+  const btn = (name: string) => page.getByRole('button', { name, exact: true })
+  const one = [{ type: 'orderedList', items: [{ blocks: [p('Review')] }, { blocks: [p('Album')] }, { blocks: [p('Track')] }] }]
+  await newText(page, at, 80, 60)
+  await page.keyboard.type('Review\n1. Album\nTrack')
+  const typed = await storedWhen(page, (d) => texts(d).some((t) => t.id !== 'L' && JSON.stringify(t.blocks) === JSON.stringify(seeded)))
+  const id = texts(typed).find((t) => t.id !== 'L')!.id
+  await page.keyboard.press('Control+a')
+  await btn('Numbered list').click()
+  await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify(one))
+  await expect(btn('Numbered list')).toHaveAttribute('aria-pressed', 'true')
+  // The page paints one list, 1 to 3.
+  const reviewList = page.locator('.scene-layer ol', { hasText: 'Review' })
+  await expect(reviewList).toHaveCount(1)
+  await expect(reviewList.locator(':scope > li')).toHaveCount(3)
+  expect(await reviewList.getAttribute('start')).toBeNull()
+  // Tab on Album nests it under Review.
+  await page.keyboard.press('Control+Home')
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Tab')
+  const nested = [{ type: 'orderedList', items: [{ blocks: [p('Review'), { type: 'orderedList', items: [{ blocks: [p('Album')] }] }] }, { blocks: [p('Track')] }] }]
+  await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify(nested))
+  await page.keyboard.press('Escape')
+  // The same on a box selected from Layers.
+  await page.evaluate(() => window.__writing.select('L'))
+  await expect(btn('Numbered list')).toHaveAttribute('aria-pressed', 'mixed')
+  await btn('Numbered list').click()
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'L').blocks) === JSON.stringify(one))
+  await expect(btn('Numbered list')).toHaveAttribute('aria-pressed', 'true')
+  expect(errors).toEqual([])
+})
+
+test('S3: a numbered list from 999,999,999, Bulleted list on its middle item: refused, the list stays as it is, no undo step', async ({ page }) => {
+  const list = [{ type: 'orderedList', start: 999999999, items: [{ blocks: [p('alpha')] }, { blocks: [p('bravo')] }, { blocks: [p('charlie')] }] }]
+  const { errors, at } = await open(page, [textRec('m', 300, 100, { fontSize: 20, width: 300, text: 'alpha\nbravo\ncharlie', blocks: list })])
+  const btn = (name: string) => page.getByRole('button', { name, exact: true })
+  const before = byId(await storedDoc(page), 'm')
+  const li = await rectIn(page, 'ol > li', 1)
+  await page.mouse.dblclick(at(li.left + 0.5 * li.em, li.top + li.height / 2).x, at(li.left + 0.5 * li.em, li.top + li.height / 2).y)
+  await expect.poll(async () => (await editedText(page))?.focused).toBe(true)
+  await page.keyboard.press('End')
+  await btn('Bulleted list').click()
+  await expect(btn('Bulleted list')).toHaveAttribute('aria-pressed', 'false')
+  await expect(undoButton(page)).toBeDisabled()
+  await expect(page.locator('.scene-layer ol')).toHaveCount(1)
+  await expect(page.locator('.scene-layer ol > li')).toHaveCount(3)
+  expect(await page.locator('.scene-layer ol').getAttribute('start')).toBe('999999999')
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  expect(byId(await storedDoc(page), 'm').blocks).toEqual(before.blocks)
+  expect(errors).toEqual([])
+})
+
+test('S4: autosave while an over-limit candidate is open saves the last valid text: the status stays saved, and a reload has the typed A', async ({ page }) => {
+  const base = 'x'.repeat(499999)
+  const { errors, at } = await open(page, [textRec('c', 100, 100, { fontSize: 8, width: 1200, text: base, blocks: [{ type: 'codeBlock', text: base }] })])
+  await page.mouse.dblclick(at(110, 106).x, at(110, 106).y)
+  await expect.poll(async () => (await editedText(page))?.focused, { timeout: 15000 }).toBe(true)
+  await page.keyboard.press('Control+End')
+  await page.keyboard.type('A')
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.imeSetComposition', { text: 'か', selectionStart: 1, selectionEnd: 1 })
+  // The candidate stays open past the autosave delay.
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS + 1000)
+  await expect(status(page)).toContainText('Saved on this device')
+  const saved = byId(await storedDoc(page), 'c')
+  expect((saved.text as string).length).toBe(500000)
+  expect((saved.text as string).endsWith('xA')).toBe(true)
+  // The composition ends over the bound: it is taken back, the A stays.
+  await cdp.send('Input.insertText', { text: 'か' })
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  await expect(status(page)).toContainText('Saved on this device')
+  await page.reload()
+  await expect(status(page)).toContainText('Saved on this device')
+  const reloaded = byId(await storedDoc(page), 'c')
+  expect((reloaded.text as string).length).toBe(500000)
+  expect((reloaded.text as string).endsWith('xA')).toBe(true)
+  expect(errors).toEqual([])
+})
+
+test('T1: typing over a selection from a code block into an italic line keeps every key, forward and backward', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  const btn = (name: string) => page.getByRole('button', { name, exact: true })
+  for (const [i, backward] of [false, true].entries()) {
+    await newText(page, at, 80, 60 + i * 200)
+    await page.keyboard.type('alpha\n')
+    await page.keyboard.press('Control+i')
+    await page.keyboard.type('beta')
+    await page.keyboard.press('Control+i')
+    await page.keyboard.type('\ngamma')
+    const typed = await storedWhen(page, (d) => texts(d).filter((t) => t.text === 'alpha\nbeta\ngamma').length === 1)
+    const id = texts(typed).find((t) => t.text === 'alpha\nbeta\ngamma')!.id
+    // From the start of alpha to the start of beta (or back).
+    await page.keyboard.press('Control+Home')
+    if (backward) {
+      await page.keyboard.press('ArrowDown')
+      await page.keyboard.press('Home')
+      await page.keyboard.press('Shift+ArrowUp')
+    } else await page.keyboard.press('Shift+ArrowDown')
+    await btn('Code block').click()
+    await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify([{ type: 'codeBlock', text: 'alpha' }, p('beta', { italic: true }), p('gamma')]))
+    await page.keyboard.type('XYZ')
+    await storedWhen(page, (d) => byId(d, id).text === 'XYZbeta\ngamma')
+    expect(byId(await storedDoc(page), id).blocks).toEqual([{ type: 'codeBlock', text: 'XYZbeta' }, p('gamma')])
+    // The caret is after XYZ: one more key lands there.
+    await page.keyboard.type('!')
+    await storedWhen(page, (d) => byId(d, id).text === 'XYZ!beta\ngamma')
+    await page.keyboard.press('Escape')
+  }
+  expect(errors).toEqual([])
+})
+
+test('T2: `Album`, a nested `Track`, then `Cover`, all selected, Numbered list: one list, Album 1 and Cover 2; on the box from Layers too', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  const btn = (name: string) => page.getByRole('button', { name, exact: true })
+  await newText(page, at, 80, 60)
+  await page.keyboard.type('- Album\nTrack')
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Shift+Tab')
+  await page.keyboard.type('Cover')
+  const bulleted = [bullets([p('Album'), bullets([p('Track')])], [p('Cover')])]
+  const typed = await storedWhen(page, (d) => texts(d).some((t) => JSON.stringify(t.blocks) === JSON.stringify(bulleted)))
+  const id = texts(typed).find((t) => JSON.stringify(t.blocks) === JSON.stringify(bulleted))!.id
+  await page.keyboard.press('Control+a')
+  await btn('Numbered list').click()
+  const numbered = [{ type: 'orderedList', items: [{ blocks: [p('Album'), { type: 'orderedList', items: [{ blocks: [p('Track')] }] }] }, { blocks: [p('Cover')] }] }]
+  await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify(numbered))
+  // The page paints one outer list of two items, and the nested one inside the first.
+  await expect(page.locator('.scene-layer ol', { hasText: 'Cover' })).toHaveCount(1)
+  await expect(page.locator('.scene-layer ol', { hasText: 'Cover' }).locator(':scope > li')).toHaveCount(2)
+  await page.keyboard.press('Escape')
+  // On the box from Layers: Checklist on every line keeps the shape too.
+  await page.evaluate((id) => window.__writing.select(id), id)
+  await btn('Checklist').click()
+  await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify([tasks([false, [p('Album'), tasks([false, [p('Track')]])]], [false, [p('Cover')]])]))
+  await btn('Bulleted list').click()
+  await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify(bulleted))
+  expect(errors).toEqual([])
+})
+
+test('U1: a text without blocks, a blank HTML paragraph pasted over CD, then Z: as before, ABZ and EF', async ({ page }) => {
+  await openBlank(page)
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  const results: string[] = []
+  for (const html of ['<p></p>', '<p><br></p>']) {
+    await page.evaluate(async (html) => {
+      const w = window as unknown as { s?: { finish(): void } }
+      w.s?.finish()
+      const el = document.createElement('div')
+      el.style.whiteSpace = 'pre-wrap'
+      document.body.replaceChildren(el)
+      const path = '/src/editor/textSession.ts'
+      const { createEditSession } = await import(/* @vite-ignore */ path)
+      const s = createEditSession({ text: 'AB\nCD\nEF', headings: [2, 0, 1] })
+      ;(window as unknown as { s: unknown }).s = s
+      s.mount(el).focus()
+      s.select(3, 6)
+      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob(['x'], { type: 'text/plain' }) })])
+    }, html)
+    await page.keyboard.press('Control+v')
+    await expect.poll(() => page.evaluate(() => (window as unknown as { s: { selection(): { head: number } } }).s.selection().head)).toBe(2)
+    await page.keyboard.type('Z')
+    results.push(await page.evaluate(() => (window as unknown as { s: { content(): { text: string } } }).s.content().text))
+  }
+  expect(results).toEqual(['ABZ\nEF', 'ABZ\nEF'])
+})
+
+/** The lines a card shows (its paragraphs, headings and code blocks, in order), as the page has them. */
+const pageLines = (page: Page, selector: string) =>
+  page.evaluate((selector) => {
+    const el = document.querySelector(selector)
+    return el ? Array.from(el.querySelectorAll('p, h1, h2, h3, pre')).map((n) => n.textContent ?? '').join('\n') : null
+  }, selector)
+
+test('V1: every input over a selected divider, at the start, middle and end, in a list item and in a quote: the page, the session and the record agree, through a reload', async ({ page }) => {
+  test.setTimeout(120_000)
+  const div = { type: 'divider' }
+  const shapes: Array<[string, (a: string, c: string) => Block[]]> = [
+    ['start', (a, c) => [div, p(a), p(c)]],
+    ['middle', (a, c) => [p(a), div, p(c)]],
+    ['end', (a, c) => [p(a), p(c), div]],
+    ['list item', (a, c) => [bullets([p(a), div], [p(c)])]],
+    ['quote', (a, c) => [{ type: 'blockquote', blocks: [p(a), div, p(c)] }]],
+  ]
+  const inputs = ['Backspace', 'Delete', 'type', 'paste', 'Enter', 'composition'] as const
+  const cases = shapes.flatMap(([shape, make], si) => inputs.map((input, ii) => ({ shape, input, i: si * inputs.length + ii, make })))
+  const records = cases.map(({ i, make }) => textRec(`d${i}`, 90 + (i % 6) * 150, 40 + Math.floor(i / 6) * 125, { fontSize: 12, width: 120, text: `A${i}x\nC${i}x`, blocks: make(`A${i}x`, `C${i}x`) }))
+  const { errors } = await open(page, records)
+  const cdp = await page.context().newCDPSession(page)
+  const want = (shape: string, input: string, i: number) => {
+    const a = `A${i}x`
+    const c = `C${i}x`
+    const line = input === 'Backspace' || input === 'Delete' ? null : input === 'type' ? 'Z' : input === 'paste' ? 'P' : input === 'Enter' ? '' : '仮名Z'
+    if (line === null) return `${a}\n${c}`
+    if (shape === 'start') return `${line}\n${a}\n${c}`
+    if (shape === 'end') return `${a}\n${c}\n${line}`
+    return `${a}\n${line}\n${c}`
+  }
+  const live: string[] = []
+  for (const { shape, input, i } of cases) {
+    const line = (await page.locator('.scene-layer .scene-text-body p', { hasText: `A${i}x` }).first().boundingBox())!
+    await page.mouse.dblclick(line.x + 4, line.y + line.height / 2)
+    await expect.poll(async () => (await editedText(page))?.focused, { message: `${shape}, ${input}: editing` }).toBe(true)
+    const hr = (await page.locator('.scene-layer [contenteditable="true"].ProseMirror hr').boundingBox())!
+    await page.mouse.click(hr.x + hr.width / 2, hr.y + hr.height / 2)
+    await expect(page.locator('.scene-layer .ProseMirror-selectednode'), `${shape}, ${input}: the divider is selected`).toHaveCount(1)
+    if (input === 'type') await page.keyboard.type('Z')
+    else if (input === 'paste') {
+      await page.evaluate(() => navigator.clipboard.writeText('P'))
+      await page.keyboard.press('Control+v')
+    } else if (input === 'composition') {
+      await cdp.send('Input.imeSetComposition', { text: 'kana', selectionStart: 4, selectionEnd: 4 })
+      await cdp.send('Input.insertText', { text: '仮名' })
+      await page.keyboard.type('Z')
+    } else await page.keyboard.press(input)
+    const expected = want(shape, input, i)
+    // What the page shows is what the session holds, and both are what the input means.
+    await expect.poll(() => pageLines(page, '.scene-layer [contenteditable="true"].ProseMirror'), { message: `${shape}, ${input}: the page` }).toBe(expected)
+    expect((await editedText(page))?.value, `${shape}, ${input}: the session`).toBe(expected)
+    await expect(page.locator('.scene-layer [contenteditable="true"].ProseMirror hr'), `${shape}, ${input}: the divider went`).toHaveCount(0)
+    live.push(expected)
+    await page.keyboard.press('Escape')
+  }
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  await expect(status(page)).toContainText('Saved on this device')
+  const stored = await storedDoc(page)
+  for (const { shape, input, i } of cases) {
+    expect(byId(stored, `d${i}`).text, `${shape}, ${input}: stored`).toBe(live[i])
+    expect(JSON.stringify(byId(stored, `d${i}`).blocks ?? []), `${shape}, ${input}: no divider stored`).not.toContain('divider')
+  }
+  await page.reload()
+  await expect(status(page)).toContainText('Saved on this device')
+  const reloaded = await storedDoc(page)
+  for (const { shape, input, i } of cases) {
+    expect(byId(reloaded, `d${i}`).text, `${shape}, ${input}: stored after a reload`).toBe(live[i])
+    const shown = await page.evaluate((marker) => {
+      const body = Array.from(document.querySelectorAll('.scene-layer .scene-text-body')).find((b) => b.textContent?.includes(marker))
+      return body ? Array.from(body.querySelectorAll('p, h1, h2, h3, pre')).map((n) => n.textContent ?? '').join('\n') : null
+    }, `A${i}x`)
+    expect(shown, `${shape}, ${input}: shown after a reload`).toBe(live[i])
+  }
+  expect(errors).toEqual([])
+})
+
+test('V1: a refused input leaves the page, the session and the selection as they were, a refused composition included', async ({ page }) => {
+  await openBlank(page)
+  await page.evaluate(async () => {
+    const path = '/src/editor/textSession.ts'
+    const { createEditSession } = await import(/* @vite-ignore */ path)
+    const el = document.createElement('div')
+    el.id = 'edit'
+    el.style.whiteSpace = 'pre-wrap'
+    document.body.replaceChildren(el)
+    const s = createEditSession({
+      text: '',
+      blocks: [
+        { type: 'codeBlock', text: 'alpha' },
+        { type: 'orderedList', start: 999999999, items: [{ blocks: [{ type: 'paragraph', content: [{ text: 'beta', italic: true }] }] }, { blocks: [{ type: 'paragraph', content: [{ text: 'next' }] }] }] },
+      ],
+    })
+    ;(window as unknown as { s: unknown }).s = s
+    s.mount(el).focus()
+    s.select(0, 6)
+  })
+  const session = () => page.evaluate(() => {
+    const s = (window as unknown as { s: { content(): { text: string }; selection(): { anchor: number; head: number } } }).s
+    return { text: s.content().text, selection: s.selection() }
+  })
+  const before = await session()
+  expect(before).toMatchObject({ text: 'alpha\nbeta\nnext', selection: { anchor: 0, head: 6 } })
+  await page.keyboard.type('XYZ')
+  expect(await session()).toEqual(before)
+  expect(await pageLines(page, '#edit')).toBe(before.text)
+  // A composition over it: refused whole, its candidate gone from the page when it ends.
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.imeSetComposition', { text: 'か', selectionStart: 1, selectionEnd: 1 })
+  await cdp.send('Input.insertText', { text: '仮' })
+  await expect.poll(() => pageLines(page, '#edit')).toBe(before.text)
+  expect((await session()).text).toBe(before.text)
+})
+
+test('W2: a composition cancelled over a selected divider, or over a selection in a text with blocks, leaves the text, the page and the selection as they were, through leaving and a reload', async ({ page }) => {
+  const div = { type: 'divider' }
+  const shapes: Array<[string, (i: number) => Block[], boolean]> = [
+    ['a text that is only a divider', () => [div], true],
+    ['a divider at the end', (i) => [p(`A${i}x`), div], true],
+    ['a divider between lines', (i) => [p(`A${i}x`), div, p(`C${i}x`)], true],
+    ['a divider in a list item', (i) => [bullets([p(`A${i}x`), div], [p(`C${i}x`)])], true],
+    ['a divider in a quote', (i) => [{ type: 'blockquote', blocks: [p(`A${i}x`), div, p(`C${i}x`)] }], true],
+    ['a selection across two list items', (i) => [bullets([p(`A${i}x`)], [p(`C${i}x`)])], false],
+  ]
+  const records = shapes.map(([, make], i) => textRec(`w${i}`, 90 + i * 170, 80, { fontSize: 13, width: 140, text: '', blocks: make(i) }))
+  const { errors } = await open(page, records)
+  const seeded = await storedDoc(page)
+  const cdp = await page.context().newCDPSession(page)
+  for (const [i, [name, , onDivider]] of shapes.entries()) {
+    // (A text that is only a divider has no line to press on: its box is pressed.)
+    const lines = page.locator('.scene-layer .scene-text-body p', { hasText: `A${i}x` })
+    const line = (await lines.count()) > 0 ? (await lines.first().boundingBox())! : (await page.locator(`.scene-layer .scene-text[data-id="w${i}"]`).boundingBox())!
+    await page.mouse.dblclick(line.x + 4, line.y + line.height / 2)
+    await expect.poll(async () => (await editedText(page))?.focused, { message: name }).toBe(true)
+    const before = (await editedText(page))!.value
+    if (onDivider) {
+      const hr = (await page.locator('.scene-layer [contenteditable="true"].ProseMirror hr').boundingBox())!
+      await page.mouse.click(hr.x + hr.width / 2, hr.y + hr.height / 2)
+      await expect(page.locator('.scene-layer .ProseMirror-selectednode'), name).toHaveCount(1)
+    } else {
+      await page.keyboard.press('Control+Home')
+      await page.keyboard.press('ArrowRight')
+      await page.keyboard.press('Shift+ArrowDown')
+    }
+    await cdp.send('Input.imeSetComposition', { text: 'kana', selectionStart: 4, selectionEnd: 4 })
+    await cdp.send('Input.imeSetComposition', { text: '', selectionStart: 0, selectionEnd: 0 })
+    await expect.poll(async () => (await editedText(page))?.value, { message: `${name}: the text` }).toBe(before)
+    if (onDivider) {
+      await expect(page.locator('.scene-layer [contenteditable="true"].ProseMirror hr'), `${name}: the divider`).toHaveCount(1)
+      await expect(page.locator('.scene-layer .ProseMirror-selectednode'), `${name}: still selected`).toHaveCount(1)
+    } else expect((await editedText(page))!.end! - (await editedText(page))!.start!, `${name}: still a selection`).toBeGreaterThan(0)
+    await expect(undoButton(page), `${name}: no undo step`).toBeDisabled()
+    await page.keyboard.press('Escape')
+  }
+  await page.waitForTimeout(AUTOSAVE_QUIET_MS)
+  for (const i of shapes.keys()) expect(byId(await storedDoc(page), `w${i}`).blocks, shapes[i]![0]).toEqual(byId(seeded, `w${i}`).blocks)
+  await page.reload()
+  await expect(status(page)).toContainText('Saved on this device')
+  for (const i of shapes.keys()) expect(byId(await storedDoc(page), `w${i}`).blocks, `${shapes[i]![0]}, after a reload`).toEqual(byId(seeded, `w${i}`).blocks)
+  await expect(page.locator('.scene-layer hr')).toHaveCount(5)
+  expect(errors).toEqual([])
+})
+
+test('W5:Shift+Right and Shift+Left extend a selection across a divider', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('s', 200, 100, { fontSize: 18, width: 300, text: 'Album\nCover', blocks: [p('Album'), { type: 'divider' }, p('Cover')] })])
+  await editAtEnd(page, at(220, 112))
+  await page.keyboard.press('Control+Home')
+  await page.keyboard.press('End')
+  await page.keyboard.press('Shift+ArrowRight')
+  await expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }).toEqual([5, 6])
+  await page.keyboard.press('Shift+ArrowRight')
+  await expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }).toEqual([5, 7])
+  await page.keyboard.press('ArrowRight') // collapse after
+  await page.keyboard.press('Home')
+  await page.keyboard.press('Shift+ArrowLeft')
+  await expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }).toEqual([5, 6])
+  expect(errors).toEqual([])
+})
+
+/** Puts HTML (and its plain text) on the real clipboard. */
+async function clipHtml(page: Page, html: string, text: string) {
+  await page.evaluate(
+    async ({ html, text }) => {
+      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) })])
+    },
+    { html, text },
+  )
+}
+
+test('pasted-html-never-fetches-remote-resources', async ({ page }) => {
+  const outside: string[] = []
+  await page.route('**/*', (route) => {
+    const url = new URL(route.request().url())
+    if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') {
+      outside.push(url.href)
+      return route.abort()
+    }
+    return route.continue()
+  })
+  const { errors, at } = await open(page, [])
+  await newText(page, at, 120, 80)
+  await page.keyboard.type('x')
+  await page.keyboard.press('Control+b') // pending bold at the caret
+  const html = '<link rel="stylesheet" href="https://example.invalid/s.css"><style>@import url(https://example.invalid/i.css); p { background: url(https://example.invalid/b.png) }</style><h2>Head</h2><p>Body <img src="https://example.invalid/x.png"> text</p><ul><li>one</li><li>two</li></ul><img src="https://example.invalid/y.png" srcset="https://example.invalid/z.png 2x">'
+  await clipHtml(page, html, 'Head\nBody text\none\ntwo')
+  await page.keyboard.press('Control+v')
+  const saved = await storedWhen(page, (d) => texts(d).some((t) => (t.text as string).includes('two')))
+  const rec = texts(saved).find((t) => (t.text as string).includes('two'))!
+  expect(rec.blocks).toEqual([p('x'), { type: 'heading', level: 2, content: [{ text: 'Head' }] }, p('Body  text', { bold: true }), bullets([p('one', { bold: true })], [p('two', { bold: true })])])
+  await page.waitForTimeout(300)
+  expect(outside).toEqual([])
+  expect(errors).toEqual([])
+})
+
+test('pasted-markdown-converts-and-undo-returns-literal', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  const markdown = '# Title\n\n- one\n- [x] two\n> quote\n**bold** and 2 * 3 * 4'
+  const converted = [{ type: 'heading', level: 1, content: [{ text: 'Title' }] }, p(), bullets([p('one')]), tasks([true, [p('two')]]), { type: 'blockquote', blocks: [p('quote')] }, { type: 'paragraph', content: [{ text: 'bold', bold: true }, { text: ' and 2 * 3 * 4' }] }]
+  for (const how of ['keys', 'toolbar'] as const) {
+    await newText(page, at, 120, how === 'keys' ? 80 : 380)
+    await page.evaluate((t) => navigator.clipboard.writeText(t), markdown)
+    await page.keyboard.press('Control+v')
+    const saved = await storedWhen(page, (d) => texts(d).some((t) => JSON.stringify(t.blocks) === JSON.stringify(converted)))
+    const id = texts(saved).find((t) => JSON.stringify(t.blocks) === JSON.stringify(converted))!.id
+    // The first undo gives back the six literal lines, the second removes the paste.
+    if (how === 'keys') await page.keyboard.press('Control+z')
+    else await undoButton(page).click()
+    await storedWhen(page, (d) => byId(d, id).text === markdown && byId(d, id).blocks === undefined)
+    if (how === 'keys') await page.keyboard.press('Control+z')
+    else await undoButton(page).click()
+    await expect.poll(async () => (await editedText(page))?.value).toBe('')
+    await page.keyboard.type('kept')
+    await page.keyboard.press('Escape')
+  }
+  expect(errors).toEqual([])
+})
+
+test('literal-paste-shortcut-and-contexts-that-never-convert', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('c', 600, 80, { fontSize: 18, width: 300, text: 'code', blocks: [{ type: 'codeBlock', text: 'code' }] }), textRec('d', 600, 300, { fontSize: 18, width: 300, text: 'plain # x words' })])
+  const markdown = '# a\n- b'
+  // Ctrl+Shift+V: the clipboard's plain text, literally (no HTML, no conversion).
+  await newText(page, at, 120, 80)
+  await clipHtml(page, '<h1>a</h1><ul><li>b</li></ul>', markdown)
+  await page.keyboard.press('Control+Shift+v')
+  const literal = await storedWhen(page, (d) => texts(d).some((t) => t.text === markdown))
+  expect(texts(literal).find((t) => t.text === markdown)!.blocks).toBeUndefined()
+  await page.keyboard.press('Escape')
+  // Inside a code block: plain text as code.
+  await page.evaluate((t) => navigator.clipboard.writeText(t), markdown)
+  await editAtEnd(page, at(620, 92))
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'c').blocks) === JSON.stringify([{ type: 'codeBlock', text: `code${markdown}` }]))
+  await page.keyboard.press('Escape')
+  // Text dragged within the card stays literal.
+  await editAtEnd(page, at(620, 312))
+  await page.keyboard.press('Home')
+  for (let i = 0; i < 6; i++) await page.keyboard.press('ArrowRight')
+  for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowRight') // "# x "
+  const sel = await page.evaluate(() => {
+    const r = getSelection()!.getRangeAt(0).getBoundingClientRect()
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+  })
+  const end = await page.evaluate(() => {
+    const p = document.querySelector('.scene-layer [contenteditable="true"].ProseMirror p')!
+    const r = p.getBoundingClientRect()
+    return { x: r.right - 2, y: r.top + r.height / 2 }
+  })
+  await page.mouse.move(sel.x, sel.y)
+  await page.mouse.down()
+  await page.mouse.move(end.x, end.y, { steps: 8 })
+  await page.mouse.up()
+  const dragged = await storedWhen(page, (d) => byId(d, 'd').text !== 'plain # x words')
+  expect(byId(dragged, 'd').blocks).toBeUndefined()
+  expect((byId(dragged, 'd').text as string).includes('# x')).toBe(true)
+  await page.keyboard.press('Escape')
+  // HTML that carries nothing (a code editor's colour spans): converted from its plain text.
+  await newText(page, at, 120, 380)
+  await clipHtml(page, '<div style="color:#d4d4d4;background:#1e1e1e"><div><span style="color:#569cd6"># </span><span>Title</span></div></div>', '# Title')
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => texts(d).some((t) => JSON.stringify(t.blocks ?? null) === 'null' && t.text === 'Title' && JSON.stringify(t.headings) === '[1]'))
+  expect(errors).toEqual([])
+})
+
+test('copy-then-paste: a selection holding every block comes back as the same blocks through the real clipboard', async ({ page }) => {
+  const every: Block[] = [
+    { type: 'heading', level: 2, content: [{ text: 'Head' }] },
+    { type: 'paragraph', content: [{ text: 'b', bold: true }, { text: 'i', italic: true }, { text: 'u', underline: true }, { text: 's', strike: true }, { text: 'c', code: true }, { text: 'f', font: 'serif' }] },
+    bullets([p('a'), bullets([p('n')])]),
+    { type: 'orderedList', start: 7, items: [{ blocks: [p('x')] }] },
+    tasks([true, [p('done')]], [false, [p('todo')]]),
+    { type: 'blockquote', blocks: [p('q')] },
+    { type: 'codeBlock', text: 'let a' },
+    { type: 'divider' },
+    p('end'),
+  ]
+  // The plain text the clipboard carries is the stored text, a line per line (a divider has none).
+  const lines = ['Head', 'biuscf', 'a', 'n', 'x', 'done', 'todo', 'q', 'let a', 'end'].join('\n')
+  const { errors, at } = await open(page, [textRec('src', 120, 60, { fontSize: 14, width: 320, text: lines, blocks: every })])
+  await editAtEnd(page, at(140, 72))
+  await page.keyboard.press('Control+a')
+  await page.keyboard.press('Control+c')
+  const plain = await page.evaluate(() => navigator.clipboard.readText())
+  expect(plain).toBe(lines)
+  await page.keyboard.press('Escape')
+  await newText(page, at, 700, 60)
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => texts(d).some((t) => t.id !== 'src' && JSON.stringify(t.blocks) === JSON.stringify(every)))
+  expect(errors).toEqual([])
+})
+
+test('X1: a paste into the middle of a bold word: unformatted web HTML arrives plain, plain text arrives bold, code-editor Markdown converts with only its own italic', async ({ page }) => {
+  const word = (id: string, top: number) => textRec(id, 120, top, { text: 'abcd', spans: [{ start: 0, end: 4, bold: true }] })
+  const { errors, at } = await open(page, [word('web', 80), word('plain', 200), word('editor', 320)])
+  const into = async (top: number) => {
+    await editAtEnd(page, at(140, top + 12))
+    await page.keyboard.press('Home')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+  }
+  await into(80)
+  await clipHtml(page, '<p>xy</p>', 'xy')
+  await page.keyboard.press('Control+v')
+  const web = await storedWhen(page, (d) => byId(d, 'web').text === 'abxycd')
+  expect(byId(web, 'web').spans).toEqual([{ start: 0, end: 2, bold: true }, { start: 4, end: 6, bold: true }])
+  await page.keyboard.press('Escape')
+  await into(200)
+  await page.evaluate(() => navigator.clipboard.writeText('xy'))
+  await page.keyboard.press('Control+v')
+  const plain = await storedWhen(page, (d) => byId(d, 'plain').text === 'abxycd')
+  expect(byId(plain, 'plain').spans).toEqual([{ start: 0, end: 6, bold: true }])
+  await page.keyboard.press('Escape')
+  await into(320)
+  await clipHtml(page, '<div style="color:#d4d4d4;background-color:#1e1e1e"><div><span>plain </span><span style="color:#ce9178">*it*</span></div></div>', 'plain *it*')
+  await page.keyboard.press('Control+v')
+  const editor = await storedWhen(page, (d) => byId(d, 'editor').text === 'abplain itcd')
+  expect(byId(editor, 'editor').spans).toEqual([{ start: 0, end: 2, bold: true }, { start: 8, end: 10, italic: true }, { start: 10, end: 12, bold: true }])
+  expect(errors).toEqual([])
+})
+
+test('Y1: with real keys, a paste is its own undo step: what was typed just before it, and just after it, is never taken with it', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  await newText(page, at, 120, 80)
+  await page.keyboard.type('A')
+  await page.evaluate(() => navigator.clipboard.writeText('**B**'))
+  await page.keyboard.press('Control+v')
+  await expect.poll(async () => (await editedText(page))?.value).toBe('AB')
+  await page.keyboard.press('Control+z')
+  await expect.poll(async () => (await editedText(page))?.value).toBe('A**B**')
+  await page.keyboard.press('Control+z')
+  await expect.poll(async () => (await editedText(page))?.value).toBe('A')
+  await page.evaluate(() => navigator.clipboard.writeText('x'))
+  await page.keyboard.press('Control+v')
+  await page.keyboard.type('y')
+  await expect.poll(async () => (await editedText(page))?.value).toBe('Axy')
+  await page.keyboard.press('Control+z')
+  await expect.poll(async () => (await editedText(page))?.value).toBe('Ax')
+  await page.keyboard.press('Control+z')
+  await expect.poll(async () => (await editedText(page))?.value).toBe('A')
+  expect(errors).toEqual([])
+})
+
+test('Y3: whole lines copied through the real clipboard come back as they were: a list inside a quote, items 8 and 9, code ending in a line break', async ({ page }) => {
+  const lists = [p('start'), { type: 'blockquote', blocks: [{ type: 'orderedList', start: 7, items: [{ blocks: [p('q1')] }, { blocks: [p('q2')] }, { blocks: [p('q3')] }] }] }, { type: 'orderedList', start: 7, items: [{ blocks: [p('one')] }, { blocks: [p('two')] }, { blocks: [p('three')] }] }]
+  const withCode = [p('top'), { type: 'codeBlock', text: 'track\n' }, p('bottom')]
+  const { errors, at } = await open(page, [
+    textRec('lists', 120, 60, { fontSize: 14, width: 300, text: 'start\nq1\nq2\nq3\none\ntwo\nthree', blocks: lists }),
+    textRec('code', 120, 360, { fontSize: 14, width: 300, text: 'top\ntrack\n\nbottom', blocks: withCode }),
+  ])
+  /** Selects from the start of the line reading `first` to the end of the line reading `last`, in the edited text. */
+  const selectLines = async (first: string, last: string) => {
+    await page.evaluate(
+      ({ first, last }) => {
+        const root = document.querySelector('.scene-layer [contenteditable="true"].ProseMirror')!
+        const lines = Array.from(root.querySelectorAll('p, h1, h2, h3, pre'))
+        const a = lines.find((l) => l.textContent === first)!
+        const b = lines.find((l) => (l.textContent ?? '').replace(/\n$/, '') === last)!
+        const end = b.querySelector('code') ?? b
+        const range = document.createRange()
+        range.setStart(a, 0)
+        range.setEnd(end, end.childNodes.length)
+        getSelection()!.removeAllRanges()
+        getSelection()!.addRange(range)
+      },
+      { first, last },
+    )
+    await page.waitForTimeout(100)
+  }
+  const cases: Array<[string, string, string, number, number, Block[]]> = [
+    ['lists', 'q1', 'q3', 700, 60, [lists[1]!]],
+    ['lists', 'two', 'three', 700, 260, [{ type: 'orderedList', start: 8, items: [{ blocks: [p('two')] }, { blocks: [p('three')] }] }]],
+    ['code', 'top', 'bottom', 700, 460, withCode],
+  ]
+  for (const [id, first, last, x, y, want] of cases) {
+    await editAtEnd(page, at(id === 'lists' ? 140 : 140, id === 'lists' ? 72 : 372))
+    await selectLines(first, last)
+    await page.keyboard.press('Control+c')
+    await page.keyboard.press('Escape')
+    await newText(page, at, x, y)
+    await page.keyboard.press('Control+v')
+    await storedWhen(page, (d) => texts(d).some((t) => t.id !== 'lists' && t.id !== 'code' && JSON.stringify(t.blocks) === JSON.stringify(want)))
+    await page.keyboard.press('Escape')
+  }
+  expect(errors).toEqual([])
+})
+
+// ---- the second review of b10745e: a person's steps, the real clipboard, real keys ----------------------
+
+/** Drags the mouse from the start of the line reading `first` to the end of the line reading `last`, in the edited text. */
+async function mouseSelectLines(page: Page, first: string, last: string) {
+  const ends = await page.evaluate(
+    ({ first, last }) => {
+      const lines = Array.from(document.querySelectorAll('.scene-layer [contenteditable="true"].ProseMirror p'))
+      const rect = (text: string) => {
+        const r = document.createRange()
+        r.selectNodeContents(lines.find((n) => n.textContent === text)!)
+        return r.getBoundingClientRect()
+      }
+      const a = rect(first)
+      const b = rect(last)
+      return { from: { x: a.left + 1, y: a.top + a.height / 2 }, to: { x: b.right + 2, y: b.top + b.height / 2 } }
+    },
+    { first, last },
+  )
+  await page.mouse.move(ends.from.x, ends.from.y)
+  await page.mouse.down()
+  await page.mouse.move(ends.to.x, ends.to.y, { steps: 8 })
+  await page.mouse.up()
+}
+
+test('Y1 (review): " NEW " typed after "Before" and **bright** pasted at once, with no pause: Ctrl+Z twice leaves "Before NEW "', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('b', 120, 80, { text: 'Before' })])
+  await page.evaluate(() => navigator.clipboard.writeText('**bright**'))
+  await editAtEnd(page, at(130, 92))
+  await page.keyboard.type(' NEW ')
+  await page.keyboard.press('Control+v')
+  await expect.poll(async () => (await editedText(page))?.value).toBe('Before NEW bright')
+  await page.keyboard.press('Control+z')
+  await page.keyboard.press('Control+z')
+  await expect.poll(async () => (await editedText(page))?.value).toBe('Before NEW ')
+  expect(errors).toEqual([])
+})
+
+test('Y2 (review): a heading split by a paste stays a heading on both sides; a ticked item split by tasks keeps its later paragraph and nested list with the new unticked item', async ({ page }) => {
+  const { errors, at } = await open(page, [
+    textRec('h', 120, 60, { text: 'BeforeAfter', headings: [2] }),
+    textRec('t', 120, 260, { text: '', blocks: [tasks([true, [p('Album'), p('Notes'), bullets([p('Voices')])]])] }),
+  ])
+  await editAtEnd(page, at(130, 75))
+  await page.keyboard.press('Home')
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight')
+  await clipHtml(page, '<h2>Title</h2><p>End</p>', 'Title\nEnd')
+  await page.keyboard.press('Control+v')
+  const h = await storedWhen(page, (d) => byId(d, 'h').text === 'Bef\nTitle\nEndoreAfter')
+  expect(byId(h, 'h').headings).toEqual([2, 2, 2])
+  await page.keyboard.press('Escape')
+  const album = (await page.locator('.scene-layer .scene-text-body p', { hasText: 'Album' }).first().boundingBox())!
+  await page.mouse.dblclick(album.x + album.width - 2, album.y + album.height / 2)
+  await expect.poll(async () => (await editedText(page))?.focused).toBe(true)
+  await page.waitForTimeout(300) // (caret keys in the first instant of an edit can be lost: a known limit)
+  await page.keyboard.press('Control+Home')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowRight')
+  await page.evaluate(() => navigator.clipboard.writeText('- [ ] One\n- [x] Two'))
+  await page.keyboard.press('Control+v')
+  const want = [tasks([true, [p('Al')]], [false, [p('One')]], [true, [p('Two')]], [false, [p('bum'), p('Notes'), bullets([p('Voices')])]])]
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 't').blocks) === JSON.stringify(want))
+  expect(errors).toEqual([])
+})
+
+test('Y3 (review): mouse-selected lines copied into another box: items 6 and 7 stay 6 and 7; a list three levels deep keeps its three levels', async ({ page }) => {
+  const numberedList = { type: 'orderedList', start: 5, items: [{ blocks: [p('North')] }, { blocks: [p('South')] }, { blocks: [p('West')] }] }
+  const deep = bullets([p('Roots'), bullets([p('Nested'), bullets([p('Leaf')])])])
+  const { errors, at } = await open(page, [
+    textRec('n', 120, 60, { fontSize: 16, width: 300, text: 'North\nSouth\nWest', blocks: [numberedList] }),
+    textRec('d', 120, 300, { fontSize: 16, width: 300, text: 'Roots\nNested\nLeaf', blocks: [deep] }),
+  ])
+  const cases: Array<[number, string, string, number, Block[]]> = [
+    [72, 'South', 'West', 60, [{ type: 'orderedList', start: 6, items: [{ blocks: [p('South')] }, { blocks: [p('West')] }] }]],
+    [312, 'Roots', 'Leaf', 300, [deep]],
+  ]
+  for (const [y, first, last, y2, want] of cases) {
+    await editAtEnd(page, at(150, y))
+    await mouseSelectLines(page, first, last)
+    await page.keyboard.press('Control+c')
+    await page.keyboard.press('Escape')
+    await newText(page, at, 700, y2)
+    await page.keyboard.press('Control+v')
+    await storedWhen(page, (d) => texts(d).some((t) => t.id !== 'n' && t.id !== 'd' && JSON.stringify(t.blocks) === JSON.stringify(want)))
+    await page.keyboard.press('Escape')
+  }
+  expect(errors).toEqual([])
+})
+
+test('Y4 (review): with Inline code chosen, a copied blog fragment arrives as its plain words and line breaks, in code, and nothing else', async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  await newText(page, at, 120, 80)
+  await page.getByRole('button', { name: 'Inline code', exact: true }).click()
+  await clipHtml(page, '<article><h2>Post</h2><p>Some <b>bold</b> words</p><ul><li>one</li></ul><img src="x.png"></article>', 'Post\nSome bold words\none')
+  await page.keyboard.press('Control+v')
+  const c = (text: string) => ({ type: 'paragraph', content: [{ text, code: true }] })
+  await storedWhen(page, (d) => texts(d).some((t) => JSON.stringify(t.blocks) === JSON.stringify([c('Post'), c('Some bold words'), c('one')])))
+  expect(errors).toEqual([])
+})
+
+test('Y7 (review): at the end of the 3,333rd one-word bullet, Ctrl+V of an HTML heading falls back to the literal paste that fits, as Ctrl+Shift+V pastes it', async ({ page }) => {
+  const items = Array.from({ length: 3333 }, () => ({ blocks: [p('word')] }))
+  const { errors, at } = await open(page, [textRec('l', 120, 60, { fontSize: 6, width: 200, text: Array(3333).fill('word').join('\n'), blocks: [{ type: 'bulletList', items }] })])
+  await editAtEnd(page, at(135, 63))
+  await clipHtml(page, '<h2>One</h2>', 'One')
+  await page.keyboard.press('Control+v')
+  const pasted = await storedWhen(page, (d) => (byId(d, 'l').text as string).endsWith('wordOne'))
+  const viaPaste = byId(pasted, 'l').blocks
+  await page.keyboard.press('Control+z')
+  await storedWhen(page, (d) => !(byId(d, 'l').text as string).endsWith('wordOne'))
+  await page.keyboard.press('Control+Shift+v')
+  await storedWhen(page, (d) => (byId(d, 'l').text as string).endsWith('wordOne'))
+  expect(byId(await storedDoc(page), 'l').blocks).toEqual(viaPaste)
+  expect(errors).toEqual([])
+})
+
+test('Z1: a copy made in Yuriful keeps the font each character was shown in, between boxes of different fonts, both ways', async ({ page }) => {
+  const lines = (first: Record<string, unknown>[], second: Record<string, unknown>[]) => [{ type: 'paragraph', content: first }, { type: 'paragraph', content: second }]
+  const { errors, at } = await open(page, [
+    textRec('serif', 120, 60, { font: 'serif', text: 'plain hand\nmore', blocks: lines([{ text: 'plain ' }, { text: 'hand', font: 'hand' }], [{ text: 'more' }]) }),
+    textRec('sans', 120, 260, { text: 'plain serif\nmore', blocks: lines([{ text: 'plain ' }, { text: 'serif', font: 'serif' }], [{ text: 'more' }]) }),
+    textRec('serifBox', 700, 260, { font: 'serif', text: 'x' }),
+  ])
+  // The Serif box into a new (Sans) box.
+  await editAtEnd(page, at(130, 72))
+  await page.keyboard.press('Control+a')
+  await page.keyboard.press('Control+c')
+  await page.keyboard.press('Escape')
+  await newText(page, at, 700, 60)
+  await page.keyboard.press('Control+v')
+  const sansSpans = [{ start: 0, end: 6, font: 'serif' }, { start: 6, end: 10, font: 'hand' }, { start: 11, end: 15, font: 'serif' }]
+  await storedWhen(page, (d) => texts(d).some((t) => t.id !== 'serif' && t.text === 'plain hand\nmore' && JSON.stringify(t.spans) === JSON.stringify(sansSpans)))
+  await page.keyboard.press('Escape')
+  // The Sans box over the Serif box's text.
+  await editAtEnd(page, at(130, 272))
+  await page.keyboard.press('Control+a')
+  await page.keyboard.press('Control+c')
+  await page.keyboard.press('Escape')
+  await editAtEnd(page, at(705, 272))
+  await page.keyboard.press('Control+a')
+  await page.keyboard.press('Control+v')
+  const done = await storedWhen(page, (d) => byId(d, 'serifBox').text === 'plain serif\nmore')
+  expect(byId(done, 'serifBox').spans).toEqual([{ start: 0, end: 6, font: 'sans' }, { start: 12, end: 16, font: 'sans' }])
+  expect(errors).toEqual([])
+})
+
+test("Z2: only Yuriful's own marker counts: a page's data-font brings no font, and Markdown copied from another ProseMirror editor converts", async ({ page }) => {
+  const { errors, at } = await open(page, [])
+  await newText(page, at, 120, 80)
+  await clipHtml(page, '<p>a <span data-font="mono">b</span></p>', 'a b')
+  await page.keyboard.press('Control+v')
+  const first = await storedWhen(page, (d) => texts(d).some((t) => t.text === 'a b'))
+  expect(texts(first).find((t) => t.text === 'a b')!.spans).toBeUndefined()
+  await page.keyboard.press('Escape')
+  await newText(page, at, 120, 300)
+  await clipHtml(page, '<p data-pm-slice="1 1 []">**bright**</p>', '**bright**')
+  await page.keyboard.press('Control+v')
+  const second = await storedWhen(page, (d) => texts(d).some((t) => t.text === 'bright'))
+  expect(texts(second).find((t) => t.text === 'bright')!.spans).toEqual([{ start: 0, end: 6, bold: true }])
+  expect(errors).toEqual([])
+})
+
+test('Z3: Shift+Left and Shift+Right with a clicked divider selected extend the selection from it', async ({ page }) => {
+  const { errors, at } = await open(page, [textRec('s', 200, 100, { fontSize: 18, width: 300, text: 'Album\nCover', blocks: [p('Album'), { type: 'divider' }, p('Cover')] })])
+  await editAtEnd(page, at(220, 112))
+  const span = async () => {
+    const e = await editedText(page)
+    return [e?.start, e?.end]
+  }
+  for (const key of ['Shift+ArrowLeft', 'Shift+ArrowRight']) {
+    await page.keyboard.press('Control+End') // a caret first, so the click selects the divider afresh
+    await page.waitForTimeout(600) // (two clicks on the same spot in quick succession are a double-click)
+    const hr = (await page.locator('.scene-layer [contenteditable="true"].ProseMirror hr').boundingBox())!
+    await page.mouse.click(hr.x + hr.width / 2, hr.y + hr.height / 2)
+    await expect(page.locator('.scene-layer .ProseMirror-selectednode')).toHaveCount(1)
+    await page.keyboard.press(key)
+    await expect.poll(span, { message: key }).toEqual([5, 6])
+    await expect(page.locator('.scene-layer .ProseMirror-selectednode')).toHaveCount(0)
+  }
+  // A further Shift+Right takes the next character.
+  await page.keyboard.press('Shift+ArrowRight')
+  await expect.poll(span).toEqual([5, 7])
+  expect(errors).toEqual([])
+})
+
+// ---- the re-review of ac0b28b ---------------------------------------------------------------------------------
+
+test('P1, P2: Ctrl+X across two lines and Ctrl+V straight back give the text back as it was, in a quote and across numbered items; a word of code pastes as words', async ({ page }) => {
+  const quoted = [{ type: 'blockquote', blocks: [p('First'), p('Second')] }]
+  const numberedLines = [{ type: 'orderedList', start: 5, items: [{ blocks: [p('North')] }, { blocks: [p('South')] }] }]
+  const { errors, at } = await open(page, [
+    textRec('q', 120, 60, { fontSize: 16, width: 300, text: 'First\nSecond', blocks: quoted }),
+    textRec('n', 120, 220, { fontSize: 16, width: 300, text: 'North\nSouth', blocks: numberedLines }),
+    textRec('c', 120, 380, { fontSize: 16, width: 300, text: 'const note = 1;', blocks: [{ type: 'codeBlock', text: 'const note = 1;' }] }),
+    textRec('r', 520, 380, { fontSize: 16, width: 300, text: 'Review' }),
+  ])
+  /** Selects from character `a` of the line reading `first` to character `b` of the line reading `last`, in the edited text. */
+  const select = (first: string, a: number, last: string, b: number) =>
+    page.evaluate(
+      ({ first, a, last, b }) => {
+        const lines = Array.from(document.querySelectorAll('.scene-layer [contenteditable="true"].ProseMirror p, .scene-layer [contenteditable="true"].ProseMirror pre code'))
+        const textOf = (text: string) => {
+          const el = lines.find((l) => l.textContent === text)!
+          const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+          return walker.nextNode() as Text
+        }
+        const range = document.createRange()
+        range.setStart(textOf(first), a)
+        range.setEnd(textOf(last), b)
+        getSelection()!.removeAllRanges()
+        getSelection()!.addRange(range)
+      },
+      { first, a, last, b },
+    )
+  for (const [id, y, first, last, blocks] of [['q', 72, 'First', 'Second', quoted], ['n', 232, 'North', 'South', numberedLines]] as const) {
+    await editAtEnd(page, at(150, y))
+    await select(first, 2, last, 3)
+    await expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }, { message: `${id}: the selection` }).toEqual([2, first.length + 1 + 3])
+    await page.keyboard.press('Control+x')
+    await expect.poll(async () => (await editedText(page))?.value, { message: `${id}: the cut` }).toBe(`${first.slice(0, 2)}${last.slice(3)}`)
+    // (The cut stored first, so that the record checked next cannot be the one from before it.)
+    await storedWhen(page, (d) => byId(d, id).text === `${first.slice(0, 2)}${last.slice(3)}`)
+    await page.keyboard.press('Control+v')
+    await storedWhen(page, (d) => JSON.stringify(byId(d, id).blocks) === JSON.stringify(blocks) && byId(d, id).text === `${first}\n${last}`)
+    await page.keyboard.press('Escape')
+  }
+  await editAtEnd(page, at(150, 392))
+  await select('const note = 1;', 6, 'const note = 1;', 10)
+  await page.waitForTimeout(100)
+  await page.keyboard.press('Control+c')
+  await page.keyboard.press('Escape')
+  await editAtEnd(page, at(530, 392))
+  await page.keyboard.press('Home')
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('Control+v')
+  const done = await storedWhen(page, (d) => byId(d, 'r').text === 'Revnoteiew')
+  expect(byId(done, 'r').blocks).toBeUndefined()
+  expect(errors).toEqual([])
+})
+
+test('Q1 and the copy-and-paste rule through the real clipboard: evi pasted over itself then ! gives Revi!ew; North through So into LR keeps 5. North; the Fourth cut comes back exactly', async ({ page }) => {
+  const numberedLines = [{ type: 'orderedList', start: 5, items: [{ blocks: [p('North')] }, { blocks: [p('South')] }] }]
+  const fourth = [tasks([true, [p('First')]], [false, [p('Third'), p('Fourth'), bullets([p('nested')])]])]
+  const { errors, at } = await open(page, [
+    textRec('r', 120, 60, { fontSize: 16, width: 300, text: 'Review' }),
+    textRec('n', 120, 160, { fontSize: 16, width: 300, text: 'North\nSouth', blocks: numberedLines }),
+    textRec('lr', 520, 160, { fontSize: 16, width: 300, text: 'LR' }),
+    textRec('t', 120, 320, { fontSize: 16, width: 300, text: 'First\nThird\nFourth\nnested', blocks: fourth }),
+  ])
+  /** Selects from character `a` of the line reading `first` to character `b` of the line reading `last`, in the edited text. */
+  const select = (first: string, a: number, last: string, b: number) =>
+    page.evaluate(
+      ({ first, a, last, b }) => {
+        const lines = Array.from(document.querySelectorAll('.scene-layer [contenteditable="true"].ProseMirror p'))
+        const textOf = (text: string) => document.createTreeWalker(lines.find((l) => l.textContent === text)!, NodeFilter.SHOW_TEXT).nextNode() as Text
+        const range = document.createRange()
+        range.setStart(textOf(first), a)
+        range.setEnd(textOf(last), b)
+        getSelection()!.removeAllRanges()
+        getSelection()!.addRange(range)
+      },
+      { first, a, last, b },
+    )
+  // Q1: an accepted paste that changes nothing leaves the caret after what it pasted.
+  await editAtEnd(page, at(150, 72))
+  await select('Review', 1, 'Review', 4)
+  await expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }).toEqual([1, 4])
+  await page.keyboard.press('Control+c')
+  await page.keyboard.press('Control+v')
+  await page.keyboard.type('!')
+  await storedWhen(page, (d) => byId(d, 'r').text === 'Revi!ew')
+  await page.keyboard.press('Escape')
+  // Rule 4: a whole line arrives as its block, with its number.
+  await editAtEnd(page, at(150, 172))
+  await select('North', 0, 'South', 2)
+  await expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }).toEqual([0, 8])
+  await page.keyboard.press('Control+c')
+  await page.keyboard.press('Escape')
+  await editAtEnd(page, at(530, 172))
+  await page.keyboard.press('Home')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'lr').blocks) === JSON.stringify([p('L'), { type: 'orderedList', start: 5, items: [{ blocks: [p('North')] }] }, p('SoR')]))
+  await page.keyboard.press('Escape')
+  // Rule 6: a cut from inside First through part of Third, whose item holds Fourth and a nested list, pasted straight back.
+  await editAtEnd(page, at(150, 332))
+  await select('First', 2, 'Third', 2)
+  await expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }).toEqual([2, 8])
+  await page.keyboard.press('Control+x')
+  await storedWhen(page, (d) => byId(d, 't').text === 'Fiird\nFourth\nnested')
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 't').blocks) === JSON.stringify(fourth) && byId(d, 't').text === 'First\nThird\nFourth\nnested')
+  expect(errors).toEqual([])
+})
+
+test('N1 to N6 and rule 6 through the real clipboard, in an album review: sides cut and pasted back keep their numbers, nested tracks their sides; tracks join a numbered list as one, and pasted over tracks leave the rest its numbers; a bullet\'s two paragraphs into a ticked task leave a new unticked item', async ({ page }) => {
+  const numbered = (start: number, ...items: string[]): Block => ({ type: 'orderedList', ...(start !== 1 ? { start } : {}), items: items.map((t) => ({ blocks: [p(t)] })) })
+  const heading = (text: string): Block => ({ type: 'heading', level: 2, content: [{ text }] })
+  const sides = [heading('Blue Hour'), numbered(1, 'Dawn', 'Noon'), heading('Side B'), numbered(5, 'Dusk', 'Night', 'Coda')]
+  const nested = [bullets([p('Side A'), bullets([p('Rise')], [p('Glow')])], [p('Side C'), bullets([p('Fade')], [p('Rest')])])]
+  const notes = [bullets([p('First'), p('Second')]), tasks([true, [p('LR'), p('Later')]], [false, [p('Mix')]])]
+  const join = [numbered(1, 'Tapeloop', 'Coda'), numbered(5, 'North', 'South')]
+  const bonus = [numbered(1, 'Bonus', 'Extra')]
+  const replace = [p('Edit this'), numbered(5, 'Dusk', 'Night', 'Coda')]
+  const mirror = [numbered(5, 'Dawn', 'Noon', 'Dusk'), p('Outro text')]
+  const text =(blocks: Block[]) => {
+    const out: string[] = []
+    const walk = (bs: Block[]) => {
+      for (const b of bs as Array<Record<string, unknown>>) {
+        if (b.type === 'paragraph' || b.type === 'heading') out.push(((b.content as Array<{ text: string }> | undefined) ?? []).map((r) => r.text).join(''))
+        else if (b.type === 'blockquote') walk(b.blocks as Block[])
+        else if (Array.isArray(b.items)) for (const it of b.items as Array<{ blocks: Block[] }>) walk(it.blocks)
+      }
+    }
+    walk(blocks)
+    return out.join('\n')
+  }
+  const { errors, at } = await open(page, [
+    textRec('sides', 120, 40, { fontSize: 14, width: 300, text: text(sides), blocks: sides }),
+    textRec('nested', 120, 260, { fontSize: 14, width: 300, text: text(nested), blocks: nested }),
+    textRec('notes', 520, 40, { fontSize: 14, width: 300, text: text(notes), blocks: notes }),
+    textRec('join', 520, 260, { fontSize: 14, width: 300, text: text(join), blocks: join }),
+    textRec('bonus', 120, 440, { fontSize: 14, width: 300, text: text(bonus), blocks: bonus }),
+    textRec('replace', 520, 440, { fontSize: 14, width: 300, text: text(replace), blocks: replace }),
+    textRec('mirror', 920, 260, { fontSize: 14, width: 300, text: text(mirror), blocks: mirror }),
+  ])
+  /** Selects from character `a` of the line reading `first` to character `b` of the line reading `last`, in the edited text. */
+  const select = (first: string, a: number, last: string, b: number) =>
+    page.evaluate(
+      ({ first, a, last, b }) => {
+        const lines = Array.from(document.querySelectorAll('.scene-layer [contenteditable="true"].ProseMirror p, .scene-layer [contenteditable="true"].ProseMirror h2'))
+        const textOf = (text: string) => document.createTreeWalker(lines.find((l) => l.textContent === text)!, NodeFilter.SHOW_TEXT).nextNode() as Text
+        const range = document.createRange()
+        range.setStart(textOf(first), a)
+        range.setEnd(textOf(last), b)
+        getSelection()!.removeAllRanges()
+        getSelection()!.addRange(range)
+      },
+      { first, a, last, b },
+    )
+  const selected = async (start: number, end: number) => expect.poll(async () => { const e = await editedText(page); return [e?.start, e?.end] }).toEqual([start, end])
+  // N4: from No|on through Nig|ht, cut and pasted straight back: side B still starts at 5.
+  await editAtEnd(page, at(140, 52))
+  await select('Noon', 2, 'Night', 3)
+  await selected(17, 35)
+  await page.keyboard.press('Control+x')
+  await storedWhen(page, (d) => byId(d, 'sides').text === 'Blue Hour\nDawn\nNoht\nCoda')
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'sides').blocks) === JSON.stringify(sides))
+  await page.keyboard.press('Escape')
+  // N5: from G|low under Side A into Fa|de under Side C, cut and pasted back: Rest stays under Side C.
+  await editAtEnd(page, at(140, 272))
+  await select('Glow', 1, 'Fade', 2)
+  await selected(13, 26)
+  await page.keyboard.press('Control+x')
+  await storedWhen(page, (d) => byId(d, 'nested').text === 'Side A\nRise\nGde\nRest')
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'nested').blocks) === JSON.stringify(nested))
+  await page.keyboard.press('Escape')
+  // Rule 6: Fi|rst to Sec|ond of one bullet, pasted into the ticked task L|R: Lrst stays ticked, SecR and Later a new unticked item.
+  await editAtEnd(page, at(540, 52))
+  await select('First', 2, 'Second', 3)
+  await selected(2, 9)
+  await page.keyboard.press('Control+c')
+  await select('LR', 1, 'LR', 1)
+  await selected(14, 14)
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'notes').blocks) === JSON.stringify([bullets([p('First'), p('Second')]), tasks([true, [p('Lrst')]], [false, [p('SecR'), p('Later')]], [false, [p('Mix')]])]))
+  await page.keyboard.press('Escape')
+  // N1: tracks 5 and 6 pasted between Tape and loop: one list, numbered 1 to 5.
+  await editAtEnd(page, at(540, 272))
+  await select('North', 0, 'South', 5)
+  await selected(14, 25)
+  await page.keyboard.press('Control+c')
+  await select('Tapeloop', 4, 'Tapeloop', 4)
+  await selected(4, 4)
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'join').blocks) === JSON.stringify([numbered(1, 'Tape', 'North', 'South', 'loop', 'Coda'), numbered(5, 'North', 'South')]))
+  await page.keyboard.press('Escape')
+  // N6 (the owner's case): 1. Bonus, 2. Extra pasted from Ed|it this through the end of Night, over 5. Dusk, 6. Night, 7. Coda: Ed, then 1. Bonus, 2. Extra, and 7. Coda still 7 in a list of its own.
+  await editAtEnd(page, at(140, 452))
+  await select('Bonus', 0, 'Extra', 5)
+  await selected(0, 11)
+  await page.keyboard.press('Control+c')
+  await page.keyboard.press('Escape')
+  await editAtEnd(page, at(540, 452))
+  await select('Edit this', 2, 'Night', 5)
+  await selected(2, 20)
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'replace').blocks) === JSON.stringify([p('Ed'), numbered(1, 'Bonus', 'Extra'), numbered(7, 'Coda')]))
+  await page.keyboard.press('Escape')
+  // N1, with the caret in the list: pasted from the end of Noon through Ou|tro, after 5. Dawn, 6. Noon: one list from 5.
+  await editAtEnd(page, at(940, 272))
+  await select('Noon', 4, 'Outro text', 2)
+  await selected(9, 17)
+  await page.keyboard.press('Control+v')
+  await storedWhen(page, (d) => JSON.stringify(byId(d, 'mirror').blocks) === JSON.stringify([{ type: 'orderedList', start: 5, items: ['Dawn', 'Noon', 'Bonus', 'Extra', 'tro text'].map((t) => ({ blocks: [p(t)] })) }]))
+  expect(errors).toEqual([])
+})

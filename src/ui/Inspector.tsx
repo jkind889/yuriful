@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react'
-import type { Editor, SelectionInfo, TextFormatInfo } from '../editor/Editor.ts'
+import type { BlockKind, Editor, SelectionInfo, TextBlockInfo, TextFormatInfo } from '../editor/Editor.ts'
 import { FONT_STACKS } from '../editor/fonts.ts'
 import { MAX_FONT_SIZE, MIN_FONT_SIZE } from '../model/doc.ts'
 import type { Align } from '../model/layout.ts'
@@ -13,6 +13,13 @@ import {
   AlignRightIcon,
   BackwardIcon,
   BoldIcon,
+  BulletListIcon,
+  ChecklistIcon,
+  CodeBlockIcon,
+  DividerIcon,
+  InlineCodeIcon,
+  NumberedListIcon,
+  QuoteIcon,
   ForwardIcon,
   ItalicIcon,
   LockIcon,
@@ -208,7 +215,17 @@ const HEADINGS: ReadonlyArray<{ level: 0 | 1 | 2 | 3; text: string; label: strin
   { level: 2, text: 'H2', label: 'Heading 2', name: 'H2 (Heading 2)' },
   { level: 3, text: 'H3', label: 'Heading 3', name: 'H3 (Heading 3)' },
 ]
+const LISTS: ReadonlyArray<{ kind: BlockKind; label: string; icon: () => ReactElement }> = [
+  { kind: 'bulletList', label: 'Bulleted list', icon: BulletListIcon },
+  { kind: 'orderedList', label: 'Numbered list', icon: NumberedListIcon },
+  { kind: 'taskList', label: 'Checklist', icon: ChecklistIcon },
+]
+const BLOCKS: ReadonlyArray<{ kind: BlockKind; label: string; icon: () => ReactElement }> = [
+  { kind: 'blockquote', label: 'Quote', icon: QuoteIcon },
+  { kind: 'codeBlock', label: 'Code block', icon: CodeBlockIcon },
+]
 const pressedOf = (s: MarkState): boolean | 'mixed' => (s === 'mixed' ? 'mixed' : s === 'on')
+const CODE_PLAIN = 'Code blocks are plain text'
 
 /**
  * Formatting for the one selected text. Every control is a button, and the panel's buttons
@@ -216,27 +233,30 @@ const pressedOf = (s: MarkState): boolean | 'mixed' => (s === 'mixed' ? 'mixed' 
  * edit, its caret and its selected range, and typing carries on in the text. Only the size
  * field takes focus, as before.
  */
-function TextPanel({ editor, selection, text, locked }: { editor: Editor; selection: SelectionInfo; text: TextFormatInfo; locked: boolean }) {
+function TextPanel({ editor, selection, text, blocks, locked }: { editor: Editor; selection: SelectionInfo; text: TextFormatInfo; blocks: TextBlockInfo; locked: boolean }) {
   const id = useId()
+  // Every line concerned is a code block: it holds plain text in Mono, so the marks and fonts do not apply there.
+  const inCode = blocks.blocks.codeBlock === 'on'
   const colourName = TEXT_PALETTE.find((p) => p.color === text.color)?.name ?? text.color
   return (
     <>
       <div className="inspector-row">
         <span id={`${id}-font`}>Font</span>
-        <span className="inspector-value">{text.font === 'mixed' ? 'Mixed' : FONT_LABELS[text.font]}</span>
+        <span className="inspector-value">{inCode ? 'Mono' : text.font === 'mixed' ? 'Mixed' : FONT_LABELS[text.font]}</span>
       </div>
       <div className="choice-row" role="group" aria-labelledby={`${id}-font`}>
         {FONT_IDS.map((f) => (
           <button
             key={f}
             type="button"
-            className="choice-btn font-btn"
             style={{ fontFamily: FONT_STACKS[f] }}
             aria-label={FONT_LABELS[f]}
-            aria-pressed={text.font === f}
-            data-tip={FONT_LABELS[f]}
+            aria-pressed={!inCode && text.font === f}
+            data-tip={inCode ? `${FONT_LABELS[f]}: code blocks are always Mono` : FONT_LABELS[f]}
             data-tip-side="bottom"
-            disabled={locked}
+            className={inCode ? 'choice-btn font-btn tip-always' : 'choice-btn font-btn'}
+            aria-description={inCode ? 'Code blocks are always Mono' : undefined}
+            disabled={locked || inCode}
             onClick={() => editor.setTextFont(f)}
           >
             Aa
@@ -291,26 +311,65 @@ function TextPanel({ editor, selection, text, locked }: { editor: Editor; select
         <div className="btn-group" role="group" aria-labelledby={`${id}-style`}>
           {MARKS.map(({ mark, label, shortcut, keys, icon: Icon }) => {
             // In heading lines bold is the heading's own: shown as on, and not changeable there.
-            const fixed = mark === 'bold' && text.boldFromHeading
+            const fixed = mark === 'bold' && text.boldFromHeading && !inCode
             return (
               <IconButton
                 key={mark}
                 label={label}
                 shortcut={shortcut}
                 keys={keys}
-                pressed={fixed ? true : pressedOf(text.marks[mark])}
-                disabled={locked || fixed}
+                pressed={fixed ? true : !inCode && pressedOf(text.marks[mark])}
+                disabled={locked || fixed || inCode}
                 // One tip that explains why it is greyed out (shown although the button is disabled).
-                tip={fixed ? 'Bold: headings are always bold' : undefined}
-                className={fixed ? 'tip-always' : undefined}
-                aria-description={fixed ? 'Headings are always bold' : undefined}
+                tip={inCode ? `${label}: code blocks are plain text` : fixed ? 'Bold: headings are always bold' : undefined}
+                className={fixed || inCode ? 'tip-always' : undefined}
+                aria-description={inCode ? CODE_PLAIN : fixed ? 'Headings are always bold' : undefined}
                 onClick={() => editor.toggleMark(mark)}
               >
                 <Icon />
               </IconButton>
             )
           })}
+          <IconButton
+            label="Inline code"
+            pressed={!inCode && pressedOf(blocks.code)}
+            disabled={locked || inCode}
+            tip={inCode ? 'Inline code: code blocks are plain text' : undefined}
+            className={inCode ? 'tip-always' : undefined}
+            aria-description={inCode ? CODE_PLAIN : undefined}
+            onClick={() => editor.toggleCode()}
+          >
+            <InlineCodeIcon />
+          </IconButton>
         </div>
+      </div>
+
+      {/* One row, the width of the panel: the panel shares its column with the layer list, which gets the height it does not use. */}
+      <div className="block-row" role="group" aria-label="Blocks">
+        {[...LISTS, ...BLOCKS].map(({ kind, label, icon: Icon }) => (
+          <IconButton
+            key={kind}
+            label={label}
+            pressed={pressedOf(blocks.blocks[kind])}
+            tip={text.editing ? `${label}: the selected lines` : `${label}: every line`}
+            tipSide="bottom"
+            disabled={locked}
+            onClick={() => editor.toggleTextBlock(kind)}
+          >
+            <Icon />
+          </IconButton>
+        ))}
+        <IconButton
+          label="Divider"
+          // A divider goes in at the caret: a box that is not being edited has none.
+          tip={text.editing ? undefined : 'Divider: double-click the text to place one'}
+          tipSide="bottom"
+          className={text.editing ? undefined : 'tip-always'}
+          disabled={locked || !text.editing || blocks.blocks.codeBlock !== 'off'}
+          onClick={() => editor.insertTextDivider()}
+        >
+          <DividerIcon />
+        </IconButton>
       </div>
 
       <div className="inspector-row">
@@ -344,6 +403,28 @@ function TextPanel({ editor, selection, text, locked }: { editor: Editor; select
           />
         ))}
       </div>
+
+      {/* Paper: the box sits on a padded sheet. Turning it on or off leaves the words where they are. */}
+      <div className="inspector-row">
+        <span id={`${id}-paper`}>Paper</span>
+        <button
+          type="button"
+          className="choice-btn paper-btn"
+          aria-labelledby={`${id}-paper`}
+          aria-pressed={selection.textPaper === true}
+          disabled={locked}
+          onClick={() => editor.setTextPaper(selection.textPaper !== true)}
+        >
+          {selection.textPaper ? 'On' : 'Off'}
+        </button>
+      </div>
+
+      {/* A fixed height comes from dragging the bottom handle; this takes the box back to growing with its words. */}
+      {selection.textHeight === 'fixed' && (
+        <button type="button" className="secondary-btn inspector-btn" disabled={locked} onClick={() => editor.setTextAutoHeight()}>
+          Auto height
+        </button>
+      )}
     </>
   )
 }
@@ -395,9 +476,24 @@ export function Inspector({ editor, selection, cropping, onReplace }: {
 }) {
   const sizeId = useId()
   const isFrame = selection.kind === 'frame'
+  const panel = useRef<HTMLElement>(null)
+  // The panel shares its column with the layer list, which keeps its header and two rows: when the
+  // panel's controls are taller than the room left, it scrolls inside itself. Only then, because a
+  // scrolling panel clips the hover tips that reach past its edges.
+  useLayoutEffect(() => {
+    const el = panel.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const fit = () => el.classList.toggle('is-scrolling', el.scrollHeight > el.clientHeight + 1)
+    fit()
+    const watch = new ResizeObserver(fit)
+    watch.observe(el)
+    for (const child of Array.from(el.children)) watch.observe(child)
+    return () => watch.disconnect()
+  })
   if (cropping) return <CropPanel editor={editor} />
   return (
     <aside
+      ref={panel}
       className="floating inspector"
       aria-label="Selection"
       // A press on the panel itself (not on a field) must not take focus from a text being
@@ -451,7 +547,9 @@ export function Inspector({ editor, selection, cropping, onReplace }: {
         </button>
       )}
 
-      {selection.kind === 'text' && selection.text && <TextPanel editor={editor} selection={selection} text={selection.text} locked={selection.locked} />}
+      {selection.kind === 'text' && selection.text && selection.textBlocks && (
+        <TextPanel editor={editor} selection={selection} text={selection.text} blocks={selection.textBlocks} locked={selection.locked} />
+      )}
 
       {selection.layout && <LayoutPanel editor={editor} layout={selection.layout} />}
 

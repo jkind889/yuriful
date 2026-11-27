@@ -1,4 +1,4 @@
-import { parseDoc, referencedAssetIds, serializeDoc } from '../model/doc.ts'
+import { isLoadableDoc, parseDoc, referencedAssetIds, serializeDoc } from '../model/doc.ts'
 import { newId } from '../model/id.ts'
 import type { BoardDoc, StoredAsset, StoredDoc } from '../model/types.ts'
 
@@ -72,13 +72,25 @@ export class StorageBusyError extends Error {
   }
 }
 
+/**
+ * The document would not read back (for example a text over the size limits), so it was not
+ * written and the database was not upgraded. Retrying the same board fails the same way.
+ */
+export class UnstorableBoardError extends Error {
+  constructor(message = 'Something on this board cannot be stored, such as a text that is too long, so the board was not saved.') {
+    super(message)
+    this.name = 'UnstorableBoardError'
+  }
+}
+
 export interface BoardStore {
   /** Resolves null when nothing has been saved yet (the token is then `ABSENT`). */
   load(): Promise<LoadedBoard | null>
   /**
    * Atomically writes the document, provided the stored board still matches `expected`,
    * together with the bytes of any referenced asset that is not stored. Resolves with
-   * the token of the new revision only once the write is durable.
+   * the token of the new revision only once the write is durable. Never writes a document
+   * that would not load again: such a save rejects with `UnstorableBoardError`.
    */
   save(doc: BoardDoc, expected: RevisionToken, bytes: AssetBytes): Promise<RevisionToken>
   /** Best-effort cleanup of asset bytes the document no longer references. Does nothing when `expected` is stale. */
@@ -86,8 +98,15 @@ export interface BoardStore {
 }
 
 const DB_NAME = 'yuriful'
-/** Version of a database that holds (or has held) a board with frames. Milestone 1 cannot open it. */
-const FENCED_DB_VERSION = 2
+/**
+ * The newest database version this build reads and writes. A database is promoted to the
+ * version its board's wire version needs (`DB_VERSION_FOR_WIRE`) by the first save that needs
+ * it, and is never demoted: version 2 holds (or has held) a board with frames, which
+ * milestone 1 cannot open; version 3 holds (or has held) a board with a rich text, which
+ * builds that stop at version 2 cannot open. Anything newer opens read-only.
+ */
+const FENCED_DB_VERSION = 3
+const DB_VERSION_FOR_WIRE: Readonly<Record<StoredDoc['version'], number>> = { 1: 1, 2: 2, 3: 3 }
 const BOARDS = 'boards'
 const ASSETS = 'assets'
 /** There is a single board; the key leaves room for a board list later. */
@@ -192,10 +211,10 @@ async function writeBoard(tx: IDBTransaction, doc: BoardDoc, wire: StoredDoc, ex
   return next.rev
 }
 
-const isDomainError = (e: unknown) => e instanceof BoardConflictError || e instanceof MissingAssetError || e instanceof StorageBusyError
+const isDomainError = (e: unknown) => e instanceof BoardConflictError || e instanceof MissingAssetError || e instanceof StorageBusyError || e instanceof UnstorableBoardError
 
 export interface IndexedDbBoardStoreOptions {
-  /** How long the first save of a framed board may wait for other tabs to let go before failing with a retryable error. */
+  /** How long a save that upgrades the database (a first frame, a first rich text) may wait for other tabs to let go before failing with a retryable error. */
   deadlineMs?: number
   /**
    * How long any open may wait. An open only waits when it is queued behind a promotion
@@ -247,7 +266,7 @@ export class IndexedDbBoardStore implements BoardStore {
   }
 
   /**
-   * Opens without naming a version: connects to whatever exists (version 1 or 2), or
+   * Opens without naming a version: connects to whatever exists (version 1, 2 or 3), or
    * creates version 1 with the two stores. Never changes an existing database.
    */
   private connect(factory: IDBFactory): Promise<IDBDatabase> {
@@ -305,14 +324,29 @@ export class IndexedDbBoardStore implements BoardStore {
   }
 
   async save(doc: BoardDoc, expected: RevisionToken, bytes: AssetBytes): Promise<RevisionToken> {
-    const wire = serializeDoc(doc)
+    // What is written must load again: checked before anything is opened, upgraded or written.
+    // A document that cannot even be prepared for writing (one that is not a tree, say) is
+    // refused the same way.
+    let wire: StoredDoc | null
+    try {
+      wire = serializeDoc(doc)
+      if (!isLoadableDoc(wire)) wire = null
+    } catch {
+      wire = null
+    }
+    if (!wire) throw new UnstorableBoardError()
     let db = await this.open()
-    if (wire.version === 2 && db.version < FENCED_DB_VERSION) {
-      // The first save of a board with a frame: promote the database and write the
-      // board in one atomic step, so milestone 1 can never open (and flatten) it.
-      const fenced = await this.fence(doc, wire, expected, bytes)
+    const needed = DB_VERSION_FOR_WIRE[wire.version]
+    if (db.version < needed) {
+      // The first save of a board with a frame (version 2) or a rich text (version 3):
+      // promote the database and write the board in one atomic step, so a build that
+      // would drop what it does not know can never open (and flatten) it.
+      const fenced = await this.fence(doc, wire, expected, bytes, needed)
       if ('token' in fenced) return fenced.token
       db = fenced.db // another tab promoted first: an ordinary write on that connection
+      // The reopened database may still be too old (it was deleted and recreated meanwhile):
+      // never write a wire version into a database below the one it needs.
+      if (db.version < needed) throw new StorageBusyError()
     }
     const rev = await this.transact(db, (tx) => writeBoard(tx, doc, wire, expected, bytes))
     return { kind: 'rev', rev }
@@ -358,12 +392,12 @@ export class IndexedDbBoardStore implements BoardStore {
   }
 
   /**
-   * Promotes the database to the fenced version and writes the board inside the very
-   * same `versionchange` transaction. Either both happen or neither does: a conflict,
-   * missing bytes, a failed write or an expired attempt aborts the upgrade, which leaves
-   * the row and the database version exactly as they were.
+   * Promotes the database to `version` and writes the board inside the very same
+   * `versionchange` transaction. Either both happen or neither does: a conflict, missing
+   * bytes, a failed write or an expired attempt aborts the upgrade, which leaves the row
+   * and the database version exactly as they were.
    */
-  private fence(doc: BoardDoc, wire: StoredDoc, expected: RevisionToken, bytes: AssetBytes): Promise<{ token: RevisionToken } | { db: IDBDatabase }> {
+  private fence(doc: BoardDoc, wire: StoredDoc, expected: RevisionToken, bytes: AssetBytes, version: number): Promise<{ token: RevisionToken } | { db: IDBDatabase }> {
     const factory = this.factory
     if (!factory) return Promise.reject(new Error('IndexedDB is not available in this browser.'))
     const attempt = ++this.fenceSeq
@@ -372,7 +406,7 @@ export class IndexedDbBoardStore implements BoardStore {
         new Promise((resolve, reject) => {
           let req: IDBOpenDBRequest
           try {
-            req = factory.open(DB_NAME, FENCED_DB_VERSION)
+            req = factory.open(DB_NAME, version)
           } catch (e) {
             reject(new Error(describe(e, 'Could not open local storage.')))
             return
@@ -435,6 +469,13 @@ export class IndexedDbBoardStore implements BoardStore {
             event.preventDefault()
             clearTimeout(timer)
             if (expired) return
+            if (failure === null && req.error?.name === 'VersionError') {
+              // Another tab promoted the database past `version` first (to 3 while this
+              // save asked for 2): nothing to upgrade, so write on the regular path.
+              if (attempt !== this.fenceSeq) reject(new StorageBusyError(SUPERSEDED))
+              else this.open().then((db) => resolve({ db }), reject)
+              return
+            }
             if (isDomainError(failure)) reject(failure)
             else reject(new Error(describe(failure ?? req.error, 'Could not write to local storage (it may be full).'), { cause: failure ?? req.error }))
           }

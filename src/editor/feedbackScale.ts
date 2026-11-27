@@ -1,10 +1,9 @@
-import { ActiveSelection, Point, Textbox, util } from 'fabric'
+import { ActiveSelection, Point, util } from 'fabric'
 import type { FabricObject, Transform } from 'fabric'
 import { round, roundPositive } from '../model/doc.ts'
 import { allowedScaleFactor, minFrameSide } from '../model/frames.ts'
 import type { FrameRecord, ObjectRecord, Scene, TextRecord } from '../model/types.ts'
-import { DrawnTextbox } from './DrawnTextbox.ts'
-import { captionOf, captionSideOf, centerOf, createObject, idOf, isFrame, normalizeTextScale, ownerOf, readTextFormatting, toFrameRecord, toRecord } from './objects.ts'
+import { centerOf, idOf, isFrame, toFrameRecord, toRecord } from './objects.ts'
 
 const originFraction = (origin: string | number) =>
   typeof origin === 'number' ? origin : origin === 'center' ? 0.5 : origin === 'right' || origin === 'bottom' ? 1 : 0
@@ -66,36 +65,12 @@ export function feedbackScale(base: Scene, transform: Transform, members: readon
     const offset = new Point(obj.width * sx / 2, obj.height * sy / 2).rotate(util.degreesToRadians(angle))
     const left = centre.x - offset.x
     const top = centre.y - offset.y
-    if (!(obj instanceof Textbox)) {
-      if (!limited) return currentContent(obj)
-      return { centre, record: () => {
-        const record = toRecord(obj)
-        return record?.type === 'image' ? { ...record, left: round(left), top: round(top), scaleX: roundPositive(sx, 5), scaleY: roundPositive(sy, 5) } : record
-      } }
-    }
-    if (!limited && Math.abs(sx - 1) < 0.001 && Math.abs(sy - 1) < 0.001) return currentContent(obj)
-    // Folding can change wrap and hence the centre. Run the same text layout on a detached
-    // copy at the projected world top-left. The live text and its selection stay untouched.
-    const frameId = ownerOf(obj)
-    const copy = createObject({
-      ...readTextFormatting(obj),
-      id: idOf(obj) ?? '',
-      type: 'text',
-      text: obj.text,
-      left,
-      top,
-      angle,
-      width: obj.width,
-      fontSize: obj.fontSize,
-      captionOf: captionOf(obj),
-      captionSide: captionSideOf(obj),
-      ...(frameId !== undefined && { frameId }),
-      ...(obj instanceof DrawnTextbox && { minHeight: obj.minHeight }),
-    }, () => undefined)
-    if (!(copy instanceof Textbox)) return currentContent(obj)
-    copy.set({ width: obj.width, scaleX: sx, scaleY: sy })
-    normalizeTextScale(copy)
-    return currentContent(copy)
+    if (!limited) return currentContent(obj)
+    // A scale kept smaller than asked moves and scales an image with it; a text proxy is read as it is.
+    return { centre, record: () => {
+      const record = toRecord(obj)
+      return record?.type === 'image' ? { ...record, left: round(left), top: round(top), scaleX: roundPositive(sx, 5), scaleY: roundPositive(sy, 5) } : record
+    } }
   }
   return { content, frame: target instanceof ActiveSelection ? frame : toFrameRecord }
 }

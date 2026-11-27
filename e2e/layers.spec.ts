@@ -3,7 +3,7 @@
  */
 import { expect, test } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
-import { AUTOSAVE_QUIET_MS, drag, openApp, openBlank, redoButton, sceneToPage, seedRaw, snapshotIdb, storedDoc, undoButton, waitSaved } from './helpers.ts'
+import { AUTOSAVE_QUIET_MS, drag, editHasFocus, openApp, openBlank, redoButton, sceneToPage, seedRaw, snapshotIdb, storedDoc, undoButton, waitSaved } from './helpers.ts'
 import type { SeedAsset, StoredBoard, View } from './helpers.ts'
 
 const UNIT: View = { zoom: 1, panX: 0, panY: 0 }
@@ -397,7 +397,7 @@ test.describe('the layer list', () => {
     await page.keyboard.press('End')
     await page.keyboard.type(' two')
     await expect(row(page, 'note')).toHaveText('draft two') // still editing
-    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('TEXTAREA')
+    expect(await editHasFocus(page)).toBe(true)
     await page.keyboard.press('Control+a')
     await page.keyboard.press('Backspace')
     await expect(row(page, 'note')).toHaveCount(0)

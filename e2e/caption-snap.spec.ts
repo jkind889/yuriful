@@ -2,12 +2,16 @@ import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import type { SnapSide } from '../src/model/captionSnap.ts'
 import { albumLayer, openAlbumFeel, readFeedback } from './feel-helpers.ts'
-import { drag, openApp, redoButton, snapshotIdb, storedDoc, undoButton } from './helpers.ts'
+import { drag, editedText, openApp, redoButton, screenPixel, snapshotIdb, storedDoc, undoButton } from './helpers.ts'
 import type { StoredBoard, StoredObject } from './helpers.ts'
 
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true })
 const title = (page: Page) => page.getByRole('textbox', { name: 'Board title' })
-const text = (page: Page) => page.locator('textarea:focus')
+/** The text being edited while it has the keyboard, or null. */
+const focusedEdit = async (page: Page) => {
+  const edit = await editedText(page)
+  return edit?.focused ? edit.value : null
+}
 const find = (doc: StoredBoard, id = 'caption') => doc.objects.find((obj) => obj.id === id)!
 const heldSnap = async (page: Page) => (await readFeedback(page)).snap
 const SOURCE = { left: 800, top: 520, width: 120, minHeight: 48, text: 'Proofs' }
@@ -121,12 +125,12 @@ for (const side of ['under', 'top', 'left', 'right'] as const) {
     await storedCaption(page, 'front')
     await albumLayer(page, 'front').click()
     await page.keyboard.press('Enter')
-    await expect(text(page)).toHaveValue('Proofs')
+    await expect.poll(() => focusedEdit(page)).toBe('Proofs')
     await page.keyboard.type(' with more words to wrap and measure the placement again')
     await expect.poll(async () => find(await storedDoc(page)).text).toContain('again')
     await expectCanonical(page, side)
     await button(page, 'H1 (Heading 1)').click()
-    await expect(text(page)).toBeFocused()
+    await expect.poll(() => focusedEdit(page)).not.toBeNull()
     await expect.poll(async () => find(await storedDoc(page)).headings?.[0]).toBe(1)
     await expectCanonical(page, side)
     await page.keyboard.press('Escape')
@@ -257,7 +261,7 @@ test('a top snap is one undo step and its side survives redo, reload, duplicate 
   expect(find(await storedDoc(page))).toEqual(snapped)
   await albumLayer(page, 'front').click()
   await page.keyboard.press('Enter')
-  await expect(text(page)).toHaveValue('Proofs')
+  await expect.poll(() => focusedEdit(page)).toBe('Proofs')
   await page.keyboard.press('Escape')
   await albumLayer(page, 'front').click()
   await page.keyboard.press('Control+d')
@@ -373,16 +377,14 @@ async function dragCaption(page: Page, at: At, left: number, top: number, hold =
   await drag(page, at(bounds.left + 19, bounds.top + 14), at(left + 19, top + 14), { hold })
 }
 
-function captionBackgroundPixel(page: Page) {
-  return page.locator('canvas.lower-canvas').evaluate((element) => {
-    const canvas = element as HTMLCanvasElement
+/** The pixel the page shows just inside the caption's bottom-left corner. */
+async function captionBackgroundPixel(page: Page) {
+  const { x, y } = await page.evaluate(() => {
     const rect = window.__feel.bounds('caption')!
     const { zoom, panX, panY } = window.__feel.viewport()
-    const { width, height } = canvas.getBoundingClientRect()
-    const x = Math.floor(((rect.left + 5) * zoom + panX) * canvas.width / width)
-    const y = Math.floor(((rect.bottom - 5) * zoom + panY) * canvas.height / height)
-    return Array.from(canvas.getContext('2d')!.getImageData(x, y, 1, 1).data)
+    return { x: Math.floor((rect.left + 5) * zoom + panX), y: Math.floor((rect.bottom - 5) * zoom + panY) }
   })
+  return screenPixel(page, x, y)
 }
 
 for (const zoom of [1.15, 2]) {

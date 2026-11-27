@@ -1,0 +1,4337 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "typing straight after entering an edit, and IME compositions, in the real card (paired) > keys pressed at once after a double-click (select all then Left, Home) and compositions at a caret and over a selection, committed by a key",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/dom-editing.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "f001498aa1d03614",
+   "value": {
+    "records": [
+     {
+      "step": "{\"dblclick\":\"T\",\"at\":[0.3,0.4],\"pause\":100,\"then\":[\"Control+a\",\"ArrowLeft\"]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "second text",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:second text",
+        "T:alpha beta gamma*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "alpha beta gamma",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"type\":\"X\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "second text",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:second text",
+        "T:Xalpha beta gamma*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "Xalpha beta gamma",
+       "anchor": 1,
+       "head": 1,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "second text",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:second text",
+        "T:Xalpha beta gamma*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"U\",\"at\":[0.6,0.4],\"pause\":100,\"then\":[\"Home\"]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "second text",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:second text*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "U",
+       "text": "second text",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"type\":\"Y\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond text",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:Ysecond text*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "U",
+       "text": "Ysecond text",
+       "anchor": 1,
+       "head": 1,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+a\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond text",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:Ysecond text*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "U",
+       "text": "Ysecond text",
+       "anchor": 12,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowRight\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond text",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:Ysecond text*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "U",
+       "text": "Ysecond text",
+       "anchor": 12,
+       "head": 12,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"ime\":\"k\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond textk",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:Ysecond textk*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "U",
+       "text": "Ysecond textk",
+       "anchor": 13,
+       "head": 13,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"ime\":\"ka\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond textka",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:Ysecond textka*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "U",
+       "text": "Ysecond textka",
+       "anchor": 14,
+       "head": 14,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"commit\":\"カ\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond textカ",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:Ysecond textカ*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "U",
+       "text": "Ysecond textカ",
+       "anchor": 13,
+       "head": 13,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Shift+ArrowLeft\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond textカ",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:Ysecond textカ*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "U",
+       "text": "Ysecond textカ",
+       "anchor": 13,
+       "head": 12,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Shift+ArrowLeft\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond textカ",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:Ysecond textカ*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "U",
+       "text": "Ysecond textカ",
+       "anchor": 13,
+       "head": 11,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"ime\":\"n\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texn",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:Ysecond texn*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "U",
+       "text": "Ysecond texn",
+       "anchor": 12,
+       "head": 12,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"ime\":\"に\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:Ysecond texに*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "U",
+       "text": "Ysecond texに",
+       "anchor": 12,
+       "head": 12,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"commitKey\":[\"に\",\"Space\"]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:Ysecond texに*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "U",
+       "text": "Ysecond texに ",
+       "anchor": 13,
+       "head": 13,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"ime\":\"h\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに h",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:Ysecond texに h*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "U",
+       "text": "Ysecond texに h",
+       "anchor": 14,
+       "head": 14,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 27.12,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"commitKey\":[\"ほ\",\"Enter\"]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "second text",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:Ysecond texに ほ*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "U",
+       "text": "Ysecond texに ほ\n",
+       "anchor": 15,
+       "head": 15,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "U"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art",
+        "U:Ysecond texに ほ*",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"W\",\"at\":[0.04,0.4]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "W",
+       "text": "K-pop and state-of-the-art",
+       "anchor": 2,
+       "head": 2,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowRight\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-pop and state-of-the-art*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "W",
+       "text": "K-pop and state-of-the-art",
+       "anchor": 3,
+       "head": 3,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"type\":\" x\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-p xop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-p xop and state-of-the-art*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "W",
+       "text": "K-p xop and state-of-the-art",
+       "anchor": 5,
+       "head": 5,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+a\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-p xop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-p xop and state-of-the-art*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "W",
+       "text": "K-p xop and state-of-the-art",
+       "anchor": 0,
+       "head": 28,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowRight\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-p xop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-p xop and state-of-the-art*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "W",
+       "text": "K-p xop and state-of-the-art",
+       "anchor": 28,
+       "head": 28,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowLeft\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-p xop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-p xop and state-of-the-art*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "W",
+       "text": "K-p xop and state-of-the-art",
+       "anchor": 27,
+       "head": 27,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowLeft\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-p xop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-p xop and state-of-the-art*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "W",
+       "text": "K-p xop and state-of-the-art",
+       "anchor": 26,
+       "head": 26,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowLeft\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-p xop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-p xop and state-of-the-art*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "W",
+       "text": "K-p xop and state-of-the-art",
+       "anchor": 25,
+       "head": 25,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"type\":\" y \"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-p xop and state-of-the- y art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-p xop and state-of-the- y art*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "W",
+       "text": "K-p xop and state-of-the- y art",
+       "anchor": 28,
+       "head": 28,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+a\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-p xop and state-of-the- y art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-p xop and state-of-the- y art*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "W",
+       "text": "K-p xop and state-of-the- y art",
+       "anchor": 31,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowRight\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-p xop and state-of-the- y art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-p xop and state-of-the- y art*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "W",
+       "text": "K-p xop and state-of-the- y art",
+       "anchor": 31,
+       "head": 31,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"type\":\" 日本\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-p xop and state-of-the- y art 日本",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-p xop and state-of-the- y art 日本*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "W",
+       "text": "K-p xop and state-of-the- y art 日本",
+       "anchor": 34,
+       "head": 34,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"ime\":\"g\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-p xop and state-of-the- y art 日本g",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-p xop and state-of-the- y art 日本g*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "W",
+       "text": "K-p xop and state-of-the- y art 日本g",
+       "anchor": 35,
+       "head": 35,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"commitKey\":[\"語\",\"Space\"]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-p xop and state-of-the- y art 日本語 ",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-p xop and state-of-the- y art 日本語*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "W",
+       "text": "K-p xop and state-of-the- y art 日本語 ",
+       "anchor": 36,
+       "head": 36,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-p xop and state-of-the- y art 日本語 ",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-p xop and state-of-the- y art 日本語 ",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 3,
+       "length": 4
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-p xop and state-of-the- y art 日本語*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-pop and state-of-the-art",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-pop and state-of-the-art",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 4
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "W:K-pop and state-of-the-art*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+Shift+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "Xalpha beta gamma",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "U",
+         "left": 100,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "Ysecond texに ほ\n",
+         "fontSize": 24,
+         "width": 400
+        },
+        {
+         "id": "W",
+         "left": 100,
+         "top": 420,
+         "angle": 0,
+         "type": "text",
+         "text": "K-p xop and state-of-the- y art 日本語 ",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "Xalpha beta gamma",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "U",
+          "left": 100,
+          "top": 260,
+          "angle": 0,
+          "type": "text",
+          "text": "Ysecond texに ほ\n",
+          "fontSize": 24,
+          "width": 400
+         },
+         {
+          "id": "W",
+          "left": 100,
+          "top": 420,
+          "angle": 0,
+          "type": "text",
+          "text": "K-p xop and state-of-the- y art 日本語 ",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 3,
+       "length": 4
+      },
+      "state": {
+       "selected": [
+        "W"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "W:K-p xop and state-of-the- y art 日本語*",
+        "U:Ysecond texに ほ",
+        "T:Xalpha beta gamma"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12,
+       "U": 61.02,
+       "W": 61.02
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Editing",
+     "objects": [
+      {
+       "id": "T",
+       "left": 100,
+       "top": 100,
+       "angle": 0,
+       "type": "text",
+       "text": "Xalpha beta gamma",
+       "fontSize": 24,
+       "width": 400
+      },
+      {
+       "id": "U",
+       "left": 100,
+       "top": 260,
+       "angle": 0,
+       "type": "text",
+       "text": "Ysecond texに ほ\n",
+       "fontSize": 24,
+       "width": 400
+      },
+      {
+       "id": "W",
+       "left": 100,
+       "top": 420,
+       "angle": 0,
+       "type": "text",
+       "text": "K-p xop and state-of-the- y art 日本語 ",
+       "fontSize": 24,
+       "width": 400
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

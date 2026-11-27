@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { IDBFactory } from 'fake-indexeddb'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createEmptyDoc, serializeDoc } from '../model/doc.ts'
 import type { BoardDoc, StoredAsset } from '../model/types.ts'
 import {
@@ -11,6 +11,7 @@ import {
   NewerBoardError,
   StorageBusyError,
   UnreadableBoardError,
+  UnstorableBoardError,
   tokensMatch,
 } from './boardStore.ts'
 import type { AssetBytes, RevisionToken } from './boardStore.ts'
@@ -497,7 +498,7 @@ describe('the fence: first save of a board with a frame', () => {
 
   it('refuses to read or write a database from a newer build', async () => {
     const factory = new IDBFactory()
-    await putRaw(factory, { doc: serializeDoc(textOnly()), rev: 'future', updatedAt: 1 }, 3)
+    await putRaw(factory, { doc: serializeDoc(textOnly()), rev: 'future', updatedAt: 1 }, 4)
     const before = await readRaw(factory)
     const { store } = newStore(factory)
     await expect(store.load()).rejects.toBeInstanceOf(NewerBoardError)
@@ -505,7 +506,282 @@ describe('the fence: first save of a board with a frame', () => {
     await expect(store.save(withFrame(textOnly('nope')), { kind: 'rev', rev: 'future' }, none)).rejects.toBeInstanceOf(NewerBoardError)
     await expect(store.pruneAssets(new Set(), { kind: 'rev', rev: 'future' })).rejects.toBeInstanceOf(NewerBoardError)
     expect(await readRaw(factory)).toEqual(before)
-    expect(before.version).toBe(3)
+    expect(before.version).toBe(4)
+  })
+})
+
+/** A text that uses `blocks`: a board holding it must be stored as wire version 3. */
+const richCard = (title = 'Rich'): BoardDoc => ({
+  ...createEmptyDoc(),
+  title,
+  objects: [
+    {
+      type: 'text',
+      id: 'card',
+      left: 3,
+      top: 4,
+      angle: 0,
+      text: 'Check 2012 remaster',
+      fontSize: 18,
+      width: 480,
+      blocks: [{ type: 'taskList', items: [{ checked: false, blocks: [{ type: 'paragraph', content: [{ text: 'Check 2012 remaster' }] }] }] }],
+    },
+  ],
+})
+
+/**
+ * What every build that stops at database version 2 does with its connection: it lets go
+ * when another tab needs to change the version, and refuses a database newer than 2 when it
+ * opens. Resolves with the connection, or rejects when the database is newer.
+ */
+function openAsVersion2Build(factory: IDBFactory): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const open = factory.open('yuriful')
+    open.onerror = () => reject(open.error)
+    open.onsuccess = () => {
+      const db = open.result
+      if (db.version > 2) {
+        db.close()
+        reject(new Error('saved by a newer build'))
+        return
+      }
+      db.onversionchange = () => db.close()
+      resolve(db)
+    }
+  })
+}
+
+/** Overwrites the board through a connection that a version 2 build holds. */
+function writeThrough(db: IDBDatabase, doc: unknown): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let tx: IDBTransaction
+    try {
+      tx = db.transaction('boards', 'readwrite')
+    } catch (e) {
+      reject(e)
+      return
+    }
+    tx.objectStore('boards').put({ id: 'current', doc, rev: 'stale', updatedAt: 2 })
+    tx.oncomplete = () => resolve()
+    tx.onabort = () => reject(tx.error)
+  })
+}
+
+describe('the version 3 fence: first save of a board with a rich text', () => {
+  it('v3-fence-blocks-stale-v2-tab: promotes the database to 3 with the write; a version 2 build lets go and can then neither open nor overwrite it', async () => {
+    const { factory, store } = newStore()
+    const t1 = await store.save(withFrame(textOnly('Framed')), ABSENT, none)
+    expect((await readRaw(factory)).version).toBe(2)
+    const old = await openAsVersion2Build(factory) // a tab of an older build, left open
+
+    const rich = { ...withFrame(richCard()), objects: [...withFrame(textOnly()).objects, { ...richCard().objects[0]!, frameId: 'f1' }] }
+    const token = await store.save(rich, t1, none) // not blocked: the old tab let go when asked
+    const raw = await readRaw(factory)
+    expect(raw.version).toBe(3)
+    expect(raw.row!.doc).toEqual(JSON.parse(JSON.stringify(serializeDoc(rich))))
+    expect(raw.row!.doc.version).toBe(3)
+    expect(token).toEqual({ kind: 'rev', rev: raw.row!.rev })
+
+    await expect(writeThrough(old, serializeDoc(withFrame(textOnly('Stale overwrite'))))).rejects.toThrow()
+    await expect(openAsVersion2Build(factory)).rejects.toThrow('newer')
+    expect(await readRaw(factory)).toEqual(raw) // the rich row survived the old build's attempts
+
+    // This build reloads it with its blocks, and ordinary saves continue at version 3.
+    const again = await newStore(factory).store.load()
+    expect(again?.doc).toStrictEqual(rich)
+    const t3 = await store.save({ ...rich, objects: rich.objects.slice(0, 1) }, token, none) // the rich card deleted
+    expect(await readRaw(factory)).toMatchObject({ version: 3, row: { doc: { version: 2 } } }) // never demoted
+    await store.save(textOnly('Nothing rich, no frame'), t3, none)
+    expect(await readRaw(factory)).toMatchObject({ version: 3, row: { doc: { version: 1 } } })
+  })
+
+  it('goes straight from version 1 to 3, and works for a brand-new board', async () => {
+    const factory = new IDBFactory()
+    const legacy = new LegacyStoreV1(factory)
+    await legacy.save(legacyDoc(), [])
+    const { store } = newStore(factory)
+    const loaded = await store.load()
+    await store.save(richCard(), loaded!.token, none)
+    expect(await readRaw(factory)).toMatchObject({ version: 3, row: { doc: { version: 3, frames: [] } } })
+    await expect(legacy.save(legacyDoc('Stale overwrite'), [])).rejects.toThrow()
+
+    const fresh = newStore()
+    await fresh.store.save(richCard(), ABSENT, none)
+    expect(await readRaw(fresh.factory)).toMatchObject({ version: 3, row: { doc: { version: 3 } } })
+  })
+
+  it('a fixed height or paper alone needs the fence too', async () => {
+    for (const extra of [{ height: 120 }, { surface: 'card' as const }]) {
+      const { factory, store } = newStore()
+      await store.save({ ...textOnly(), objects: [{ ...textOnly().objects[0]!, ...extra } as BoardDoc['objects'][number]] }, ABSENT, none)
+      expect(await readRaw(factory)).toMatchObject({ version: 3, row: { doc: { version: 3 } } })
+    }
+  })
+
+  it('an open tab of this build that loaded before the upgrade gets a conflict, never an overwrite', async () => {
+    const factory = new IDBFactory()
+    const a = newStore(factory).store
+    const b = newStore(factory).store
+    const t1 = await a.save(withFrame(textOnly()), ABSENT, none)
+    await b.load()
+    await a.save(richCard(), t1, none)
+    const before = await readRaw(factory)
+    await expect(b.save(withFrame(textOnly('B')), t1, none)).rejects.toBeInstanceOf(BoardConflictError)
+    expect(await readRaw(factory)).toEqual(before)
+  })
+
+  it('conflict or missing bytes: the upgrade is aborted, the row and version are unchanged', async () => {
+    const factory = new IDBFactory()
+    const { store } = newStore(factory)
+    const t1 = await store.save(withFrame(textOnly()), ABSENT, none)
+    const before = await readRaw(factory)
+    await expect(store.save(richCard(), { kind: 'rev', rev: 'elsewhere' }, none)).rejects.toBeInstanceOf(BoardConflictError)
+    expect(await readRaw(factory)).toEqual(before)
+    const withGhost: BoardDoc = { ...richCard(), objects: [...richCard().objects, docWith('ghost').objects[0]!] }
+    await expect(store.save(withGhost, t1, none)).rejects.toBeInstanceOf(MissingAssetError)
+    expect(await readRaw(factory)).toEqual(before)
+    expect(before.version).toBe(2)
+  })
+
+  it('blocked by another tab: rejected as retryable at the deadline, nothing written; once unblocked, a retry upgrades', async () => {
+    const factory = new IDBFactory()
+    const { store } = newStore(factory, 40)
+    const t1 = await store.save(withFrame(textOnly()), ABSENT, none)
+    const before = await readRaw(factory)
+    const blocker = await stubbornConnection(factory)
+    await expect(store.save(richCard(), t1, none)).rejects.toBeInstanceOf(StorageBusyError)
+    blocker.close()
+    await tick(20) // the abandoned upgrade runs now, and must abort itself
+    expect(await readRaw(factory)).toEqual(before)
+    expect(before.version).toBe(2)
+    await store.save(richCard('At last'), t1, none)
+    expect(await readRaw(factory)).toMatchObject({ version: 3, row: { doc: { version: 3, title: 'At last' } } })
+  })
+
+  it('a first framed save that finds the database already promoted to 3 by another tab writes on the regular path and conflicts', async () => {
+    const factory = new IDBFactory()
+    const a = newStore(factory).store
+    const b = newStore(factory).store
+    const t1 = await a.save(textOnly(), ABSENT, none)
+    await b.load()
+    // Issued in the same tick: B asks for version 3 first, so A's request for version 2 is
+    // answered only after the database is already at 3.
+    const [rich, framed] = await Promise.allSettled([b.save(richCard(), t1, none), a.save(withFrame(textOnly('A framed')), t1, none)])
+    expect(rich.status).toBe('fulfilled')
+    expect(framed.status).toBe('rejected')
+    expect((framed as PromiseRejectedResult).reason).toBeInstanceOf(BoardConflictError)
+    expect(await readRaw(factory)).toMatchObject({ version: 3, row: { doc: { version: 3, title: 'Rich' } } })
+  })
+
+  it('a database newer than version 3 stays out of reach', async () => {
+    const factory = new IDBFactory()
+    await putRaw(factory, { doc: serializeDoc(richCard()), rev: 'future', updatedAt: 1 }, 4)
+    const before = await readRaw(factory)
+    const { store } = newStore(factory)
+    await expect(store.load()).rejects.toBeInstanceOf(NewerBoardError)
+    await expect(store.save(richCard('nope'), { kind: 'rev', rev: 'future' }, none)).rejects.toBeInstanceOf(NewerBoardError)
+    expect(await readRaw(factory)).toEqual(before)
+  })
+
+  it('failed-restore-blocks-writes-on-unknown-block-type: a version 3 row with an unknown block is unreadable and left as it is', async () => {
+    const factory = new IDBFactory()
+    const doc = JSON.parse(JSON.stringify(serializeDoc(richCard()))) as { objects: Array<Record<string, unknown>> }
+    doc.objects[0]!.blocks = [{ type: 'paragraph', content: [{ text: 'kept' }] }, { type: 'table', rows: [] }]
+    await putRaw(factory, { doc, rev: 'from-a-newer-build', updatedAt: 1 }, 3)
+    const before = await readRaw(factory)
+    await expect(newStore(factory).store.load()).rejects.toBeInstanceOf(UnreadableBoardError)
+    expect(await readRaw(factory)).toEqual(before)
+  })
+})
+
+describe('the store never writes a board it could not load again', () => {
+  const withText = (doc: BoardDoc, fields: Record<string, unknown>): BoardDoc => ({ ...doc, objects: [...doc.objects, { ...textOnly().objects[0]!, id: 'rich', ...fields } as BoardDoc['objects'][number]] })
+  const huge = 'x'.repeat(500_001)
+
+  it('a text over the limits fails with its own error before anything is upgraded or written, and the board still loads', async () => {
+    for (const start of [textOnly('Plain'), withFrame(textOnly('Framed'))]) {
+      const { factory, store } = newStore()
+      const t1 = await store.save(start, ABSENT, none)
+      const before = await readRaw(factory)
+      const invalid = [
+        { text: huge, blocks: [{ type: 'codeBlock', text: huge }] },
+        { text: 'x', blocks: [{ type: 'table', rows: [] }] },
+        { text: 'x', blocks: [] },
+      ]
+      for (const fields of invalid) {
+        await expect(store.save(withText(start, fields), t1, none)).rejects.toBeInstanceOf(UnstorableBoardError)
+        expect(await readRaw(factory)).toEqual(before) // same row, same database version
+      }
+      expect((await newStore(factory).store.load())?.doc.title).toBe(start.title)
+      await store.save({ ...start, title: 'Still saving' }, t1, none) // the token is still good
+    }
+  })
+
+  it('blocks are checked before they are copied: a tree that loops on itself, or a huge run, is refused with storage untouched', async () => {
+    const { factory, store } = newStore()
+    const t1 = await store.save(textOnly(), ABSENT, none)
+    const before = await readRaw(factory)
+    const loop: Record<string, unknown> = { type: 'blockquote' }
+    loop.blocks = [loop]
+    const stringify = vi.spyOn(JSON, 'stringify')
+    try {
+      for (const blocks of [[loop], [{ type: 'paragraph', content: [{ text: 'x'.repeat(10_000_000) }] }]]) {
+        await expect(store.save(withText(textOnly(), { text: 'x', blocks }), t1, none)).rejects.toBeInstanceOf(UnstorableBoardError)
+      }
+      expect(stringify).not.toHaveBeenCalled() // nothing was serialized to find out
+    } finally {
+      stringify.mockRestore()
+    }
+    // Any failure to prepare the document for writing is the same refusal.
+    const broken = { ...textOnly().objects[0]! }
+    Object.defineProperty(broken, 'width', { enumerable: true, get: () => { throw new Error('unreadable field') } })
+    await expect(store.save({ ...textOnly(), objects: [broken] }, t1, none)).rejects.toBeInstanceOf(UnstorableBoardError)
+    expect(await readRaw(factory)).toEqual(before)
+  })
+
+  it('a card that only needs the compact form is written compact, with its projection, and upgrades nothing', async () => {
+    const { factory, store } = newStore()
+    const t1 = await store.save(textOnly(), ABSENT, none)
+    await store.save(withText(textOnly(), { text: 'stale', blocks: [{ type: 'paragraph', content: [{ text: 'Title' }] }], height: -5, surface: 'paper' }), t1, none)
+    const raw = await readRaw(factory)
+    expect(raw.version).toBe(1)
+    expect(raw.row!.doc.version).toBe(1)
+    expect((raw.row!.doc.objects as Array<Record<string, unknown>>)[1]).toStrictEqual({ ...textOnly().objects[0]!, id: 'rich', text: 'Title' })
+  })
+
+  it('a first framed save whose reopened database is too old (deleted meanwhile) writes nothing and is retryable', async () => {
+    const factory = new IDBFactory()
+    // Tab A's factory queues a deletion of the database just ahead of the open with no
+    // version that recovers from the version 2 request being refused.
+    let armed = false
+    const tapped = {
+      open: (name: string, version?: number) => {
+        if (armed && version === undefined) {
+          armed = false
+          factory.deleteDatabase(name)
+        }
+        return version === undefined ? factory.open(name) : factory.open(name, version)
+      },
+      deleteDatabase: (name: string) => factory.deleteDatabase(name),
+      cmp: (a: unknown, b: unknown) => factory.cmp(a, b),
+      databases: () => factory.databases(),
+    } as unknown as IDBFactory
+    const a = new IndexedDbBoardStore(tapped)
+    const b = new IndexedDbBoardStore(factory)
+    await a.load()
+    await b.load()
+    armed = true
+    // Issued in the same tick: B asks for version 3 first, so A's request for version 2 is refused.
+    const [rich, framed] = await Promise.allSettled([b.save(richCard(), ABSENT, none), a.save(withFrame(textOnly('A framed')), ABSENT, none)])
+    expect(armed).toBe(false) // the deletion really was queued ahead of A's recovery open
+    expect(rich.status).toBe('fulfilled')
+    expect(framed.status).toBe('rejected')
+    expect((framed as PromiseRejectedResult).reason).toBeInstanceOf(StorageBusyError)
+    const raw = await readRaw(factory)
+    expect(raw.row).toBeUndefined() // the deletion took the rich board, and A wrote nothing
+    expect(raw.version).toBe(1)
+    await a.save(withFrame(textOnly('A framed')), ABSENT, none) // a retry goes through the promotion
+    expect(await readRaw(factory)).toMatchObject({ version: 2, row: { doc: { version: 2, title: 'A framed' } } })
   })
 })
 

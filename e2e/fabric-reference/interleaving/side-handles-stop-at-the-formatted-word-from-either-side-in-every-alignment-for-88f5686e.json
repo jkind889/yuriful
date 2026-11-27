@@ -1,0 +1,2148 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the live width floor is the text as formatted, not the plain-sans width a box is built with (paired) > side handles stop at the formatted word, from either side, in every alignment, for fonts narrower and wider than sans, bold and a heading",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/interleaving.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "201166652c123d57",
+   "value": {
+    "scenes": [
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":-250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 320,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 700,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 480,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 300,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 320,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 700,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 480,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 300,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":-250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "center",
+         "frameId": "F"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 320,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 700,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 480,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 300,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "center",
+         "frameId": "F"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 320,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 700,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 480,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 300,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":-250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "center",
+         "frameId": "F"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 320,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 700,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 480,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 300,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "center",
+         "frameId": "F"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 320,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 700,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 480,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 300,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":-250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "center",
+         "frameId": "F"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 127.25,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 320,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 700,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 480,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 300,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "center",
+         "frameId": "F"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 127.25,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 320,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 700,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 480,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 300,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":-250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "center",
+         "frameId": "F"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 127.25,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 178.36,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 700,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 480,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 300,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "center",
+         "frameId": "F"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 127.25,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 178.36,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 300,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 700,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 480,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 300,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":-250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "center",
+         "frameId": "F"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 127.25,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 178.36,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 161.61,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 700,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 480,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 300,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "center",
+         "frameId": "F"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 127.25,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 178.36,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 161.61,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 700,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 480,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 300,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":-250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "center",
+         "frameId": "F"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 127.25,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 178.36,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 161.61,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 700,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 340,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 480,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 300,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "center",
+         "frameId": "F"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 127.25,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 178.36,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 161.61,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 716.77,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 323.23,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 480,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 300,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"mr\",\"dx\":-250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "center",
+         "frameId": "F"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 127.25,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 178.36,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 161.61,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 716.77,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 323.23,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 446.1,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 131.95,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"handle\":\"ml\",\"dx\":250,\"dy\":0}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Edge",
+         "left": 100,
+         "top": 240,
+         "width": 272,
+         "height": 200
+        }
+       ],
+       "objects": [
+        {
+         "id": "mono",
+         "left": 300,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "frameId": "F"
+        },
+        {
+         "id": "monoC",
+         "left": 300,
+         "top": 380,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "center",
+         "frameId": "F"
+        },
+        {
+         "id": "monoR",
+         "left": 300,
+         "top": 460,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 131.95,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "impact",
+         "left": 700,
+         "top": 60,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 127.25,
+         "font": "display",
+         "align": "right"
+        },
+        {
+         "id": "hand",
+         "left": 700,
+         "top": 160,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 178.36,
+         "font": "hand"
+        },
+        {
+         "id": "bold",
+         "left": 700,
+         "top": 260,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 161.61,
+         "align": "center",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        },
+        {
+         "id": "head",
+         "left": 716.77,
+         "top": 360,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK",
+         "fontSize": 24,
+         "width": 323.23,
+         "headings": [
+          1
+         ]
+        },
+        {
+         "id": "span",
+         "left": 700,
+         "top": 446.1,
+         "angle": 0,
+         "type": "text",
+         "text": "see SOUNDTRACK now",
+         "fontSize": 24,
+         "width": 131.95,
+         "spans": [
+          {
+           "start": 4,
+           "end": 14,
+           "font": "mono"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "saved": {
+     "version": 2,
+     "title": "Interleaving",
+     "frames": [
+      {
+       "id": "F",
+       "name": "Edge",
+       "left": 100,
+       "top": 240,
+       "width": 272,
+       "height": 200
+      }
+     ],
+     "objects": [
+      {
+       "id": "mono",
+       "left": 300,
+       "top": 300,
+       "angle": 0,
+       "type": "text",
+       "text": "SOUNDTRACK",
+       "fontSize": 24,
+       "width": 131.95,
+       "font": "mono",
+       "frameId": "F"
+      },
+      {
+       "id": "monoC",
+       "left": 300,
+       "top": 380,
+       "angle": 0,
+       "type": "text",
+       "text": "SOUNDTRACK",
+       "fontSize": 24,
+       "width": 131.95,
+       "font": "mono",
+       "align": "center",
+       "frameId": "F"
+      },
+      {
+       "id": "monoR",
+       "left": 300,
+       "top": 460,
+       "angle": 0,
+       "type": "text",
+       "text": "SOUNDTRACK",
+       "fontSize": 24,
+       "width": 131.95,
+       "font": "mono",
+       "align": "right"
+      },
+      {
+       "id": "impact",
+       "left": 700,
+       "top": 60,
+       "angle": 0,
+       "type": "text",
+       "text": "SOUNDTRACK",
+       "fontSize": 24,
+       "width": 127.25,
+       "font": "display",
+       "align": "right"
+      },
+      {
+       "id": "hand",
+       "left": 700,
+       "top": 160,
+       "angle": 0,
+       "type": "text",
+       "text": "SOUNDTRACK",
+       "fontSize": 24,
+       "width": 178.36,
+       "font": "hand"
+      },
+      {
+       "id": "bold",
+       "left": 700,
+       "top": 260,
+       "angle": 0,
+       "type": "text",
+       "text": "SOUNDTRACK",
+       "fontSize": 24,
+       "width": 161.61,
+       "align": "center",
+       "spans": [
+        {
+         "start": 0,
+         "end": 10,
+         "bold": true
+        }
+       ]
+      },
+      {
+       "id": "head",
+       "left": 716.77,
+       "top": 360,
+       "angle": 0,
+       "type": "text",
+       "text": "SOUNDTRACK",
+       "fontSize": 24,
+       "width": 323.23,
+       "headings": [
+        1
+       ]
+      },
+      {
+       "id": "span",
+       "left": 700,
+       "top": 446.1,
+       "angle": 0,
+       "type": "text",
+       "text": "see SOUNDTRACK now",
+       "fontSize": 24,
+       "width": 131.95,
+       "spans": [
+        {
+         "start": 4,
+         "end": 14,
+         "font": "mono"
+        }
+       ]
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

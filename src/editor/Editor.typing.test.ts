@@ -4,20 +4,24 @@ import type { BoardDoc, FrameRecord, TextRecord } from '../model/types.ts'
 import { BoardConflictError } from '../persistence/boardStore.ts'
 import { Editor } from './Editor.ts'
 import { canvasOf, dragBy, press, release, tick } from './testing/drive.ts'
-import type { Canvas, Textbox } from './testing/fakeFabric.ts'
-import { FakeAssets, SpyStore, deferred } from './testing/fakes.ts'
+import type { Canvas, FakeObject } from './testing/fakeFabric.ts'
+import { boardCanUndo, editSession, editedObject, selectText, startEditing, textAdapterOf } from './testing/editing.ts'
+import { insert } from './testing/textHarness.ts'
+import { isText, textDataOf } from './objects.ts'
+import { FakeAssets, FakeCardMeasurer, SpyStore, deferred, stubTextLayout } from './testing/fakes.ts'
 
 vi.mock('fabric', () => import('./testing/fakeFabric.ts'))
 
 /**
- * The typing shortcuts on the fake canvas: what fires, the conversion and its revert, when
- * the revert is no longer offered, history and saving, and the guards. The texts here are
- * ASCII, so a grapheme index is a UTF-16 offset. Whether Fabric's object and its textarea
- * really agree afterwards is only accepted on real-browser evidence (e2e/typing.spec.ts).
+ * The typing shortcuts in the editor, on the fake canvas with the text engine's real session and
+ * view: what fires, the conversion and its revert, when the revert is no longer offered, history
+ * and saving, and the guards. Keys are dispatched on the edited text's editable root (the view
+ * hands them to the session, then they reach the editor's window listener); the character a key
+ * types arrives as the view's input hands it to the session (jsdom has no input of its own). What
+ * the browser really does is only accepted on real-browser evidence (e2e/typing.spec.ts).
  */
 
-type Styles = Record<number, Record<number, Record<string, unknown>>>
-type Tb = Textbox & { styles: Styles }
+type Tb = FakeObject
 
 const text = (patch: Partial<TextRecord> = {}): TextRecord => ({ type: 'text', id: 't', left: 100, top: 100, angle: 0, text: 'go', fontSize: 20, width: 300, ...patch })
 const frame: FrameRecord = { id: 'F', name: 'Spread', left: 0, top: 0, width: 500, height: 400 }
@@ -30,62 +34,61 @@ async function setup(objects: BoardDoc['objects'] = [text()], frames: FrameRecor
   const doc: BoardDoc = { ...createEmptyDoc(), title: 'Typing', frames, objects }
   const store = new SpyStore({ doc, assets: new Map() })
   store.holdLoad = false
-  const editor = new Editor(host, store, new FakeAssets())
+  const editor = new Editor(host, store, new FakeAssets(), undefined, { measurer: new FakeCardMeasurer() })
   editors.push(editor)
   await editor.init()
   const canvas = canvasOf(editor)
-  const tb = canvas.objects.find((o) => (o as { text?: unknown }).text !== undefined) as Tb
+  const tb = canvas.objects.find((o) => isText(o as never)) as Tb
   const scene = () => (editor as unknown as { getDoc: () => BoardDoc }).getDoc().objects
   const rec = (id = 't') => scene().find((o) => o.id === id) as TextRecord | undefined
   return { editor, store, canvas, tb, scene, rec }
 }
 
-/** Gives the text a hidden textarea, as Fabric does when an edit starts. */
-function withTextarea(tb: Tb): HTMLTextAreaElement {
-  const ta = document.createElement('textarea')
-  document.body.appendChild(ta)
-  ta.value = tb.text
-  tb.hiddenTextarea = ta
-  return ta
-}
+/** The editor these tests built last (each test builds one), and the session of the text it edits. */
+const current = () => editors.at(-1)!
+const session = () => editSession(current())
+/** The edited text's plain text. */
+const textOf = () => session().content().text
 /** Enters editing with the caret at `caret` (default: the end). */
-function edit(canvas: Canvas, tb: Tb, caret = tb.text.length) {
+function edit(canvas: Canvas, tb: Tb, caret?: number) {
   canvas.setActiveObject(tb)
-  tb.enterEditing()
-  withTextarea(tb)
-  tb.selectionStart = tb.selectionEnd = caret
-  canvas.fire('text:selection:changed', { target: tb })
+  startEditing(current(), tb)
+  selectText(current(), caret ?? textOf().length)
+}
+function selectEnd() {
+  selectText(current(), textOf().length)
 }
 const keyEvent = (type: string, k: string, init: KeyboardEventInit = {}) => new KeyboardEvent(type, { key: k, bubbles: true, cancelable: true, ...init })
 
 /**
- * One key typed into the edited text, as the browser and Fabric do it: the keydown (which
- * reaches the editor's window listener), then, unless it was prevented, the textarea's input
- * (the character replaces the selection; Fabric takes the textarea's value and fires
- * `text:changed`), then the keyup.
+ * One key typed into the edited text, as the browser does it: the keydown on the editable root
+ * (the view hands it to the session, then it reaches the editor's window listener), then, unless
+ * it was prevented, the character arriving through the view's input (`handleTextInput`), then
+ * the keyup. "\n" is Enter; Backspace is the editing key itself.
  */
-function typeKey(tb: Tb, ch: string, init: KeyboardEventInit = {}): KeyboardEvent {
-  const ta = tb.hiddenTextarea as HTMLTextAreaElement
-  const down = keyEvent('keydown', ch, init)
-  ta.dispatchEvent(down)
-  if (!down.defaultPrevented && !init.ctrlKey && !init.metaKey) {
-    const a = Math.min(tb.selectionStart ?? 0, tb.selectionEnd ?? 0)
-    const b = Math.max(tb.selectionStart ?? 0, tb.selectionEnd ?? 0)
-    const next = ch === 'Backspace' ? (a === b ? tb.text.slice(0, Math.max(0, a - 1)) + tb.text.slice(b) : tb.text.slice(0, a) + tb.text.slice(b)) : tb.text.slice(0, a) + ch + tb.text.slice(b)
-    const caret = ch === 'Backspace' ? (a === b ? Math.max(0, a - 1) : a) : a + 1
-    ta.value = next
-    tb.type(next, caret)
-  }
-  ta.dispatchEvent(keyEvent('keyup', ch, init))
+function typeKey(_tb: Tb, ch: string, init: KeyboardEventInit = {}): KeyboardEvent {
+  const s = session()
+  const root = textAdapterOf(current()).editedRoot()!
+  const k = ch === '\n' ? 'Enter' : ch
+  const down = keyEvent('keydown', k, init)
+  root.dispatchEvent(down)
+  if (!down.defaultPrevented && !init.ctrlKey && !init.metaKey && k.length === 1 && textAdapterOf(current()).editSession() === s) insert(s, ch, init.isComposing === true)
+  root.dispatchEvent(keyEvent('keyup', k, init))
   return down
 }
 const typeKeys = (tb: Tb, s: string) => {
   for (const ch of s) typeKey(tb, ch)
 }
 const backspace = (tb: Tb) => typeKey(tb, 'Backspace')
-const caretOf = (tb: Tb) => ({ start: tb.selectionStart, end: tb.selectionEnd, ta: [tb.hiddenTextarea?.selectionStart, tb.hiddenTextarea?.selectionEnd] })
+const caretOf = () => {
+  const { from, to } = session().selection()
+  return { start: from, end: to }
+}
+const pendingOf = () => session().pending ?? {}
 
+let restoreLayout = () => {}
 beforeEach(() => {
+  restoreLayout = stubTextLayout()
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   vi.stubGlobal(
     'ResizeObserver',
@@ -98,6 +101,7 @@ beforeEach(() => {
   document.body.appendChild(host)
 })
 afterEach(() => {
+  restoreLayout()
   editors.splice(0).forEach((e) => e.dispose())
   host.remove()
   document.querySelectorAll('textarea').forEach((t) => t.remove())
@@ -106,38 +110,35 @@ afterEach(() => {
 })
 
 describe('a conversion', () => {
-  it('bold: the markers go, the word is bold, the caret is after it, the textarea agrees, and what is typed next is plain', async () => {
+  it('bold: the markers go, the word is bold, the caret is after it, and what is typed next is plain', async () => {
     const { editor, canvas, tb, rec } = await setup()
     edit(canvas, tb)
     typeKeys(tb, ' **bold*')
-    expect(tb.text).toBe('go **bold*') // nothing fires at the first closing star
+    expect(textOf()).toBe('go **bold*') // nothing fires at the first closing star
     typeKey(tb, '*')
-    expect(tb.text).toBe('go bold')
+    expect(textOf()).toBe('go bold')
     expect(rec()).toStrictEqual(text({ text: 'go bold', spans: [{ start: 3, end: 7, bold: true }] }))
-    expect(tb.hiddenTextarea?.value).toBe('go bold')
-    expect(caretOf(tb)).toEqual({ start: 7, end: 7, ta: [7, 7] })
+    expect(caretOf()).toEqual({ start: 7, end: 7 })
     await tick()
     expect(editor.getState().selection?.text?.marks.bold).toBe('off') // the next character is typed plain
-    const b = { fontWeight: 'bold' }
-    tb.styles = { 0: { 3: b, 4: b, 5: b, 6: b, 7: b } } // Fabric copies the bold of "d" onto the typed "!"
     typeKey(tb, '!')
     expect(rec()?.spans).toEqual([{ start: 3, end: 7, bold: true }])
-    tb.exitEditing()
+    textAdapterOf(current()).finishEditing()
   })
 
   it('italic, and a heading on an empty line, at the start of a line with text, and changing a level', async () => {
     const { canvas, tb, rec } = await setup([text({ text: 'one\nTitle\n', headings: [0, 3] })])
     edit(canvas, tb, 4) // start of "Title"
     typeKeys(tb, '## ')
-    expect(tb.text).toBe('one\nTitle\n')
+    expect(textOf()).toBe('one\nTitle\n')
     expect(rec()?.headings).toEqual([0, 2])
-    expect(caretOf(tb)).toEqual({ start: 4, end: 4, ta: [4, 4] })
-    tb.selectionStart = tb.selectionEnd = 10 // the empty last line (as if typed there)
+    expect(caretOf()).toEqual({ start: 4, end: 4 })
+    selectText(current(), 10) // the empty last line (as if typed there)
     typeKeys(tb, '# ')
     expect(rec()).toStrictEqual(text({ text: 'one\nTitle\n', headings: [0, 2, 1] }))
     typeKeys(tb, 'it is *so*')
     expect(rec()).toStrictEqual(text({ text: 'one\nTitle\nit is so', spans: [{ start: 16, end: 18, italic: true }], headings: [0, 2, 1] }))
-    tb.exitEditing()
+    textAdapterOf(current()).finishEditing()
   })
 
   it('in a heading line `**x**` still fires: the markers go and no bold is stored', async () => {
@@ -147,8 +148,8 @@ describe('a conversion', () => {
     expect(rec()).toStrictEqual(text({ text: 'Big x', headings: [1] }))
     await tick()
     expect(editor.getState().selection?.text?.marks.bold).toBe('on') // the heading's own, not a pending choice
-    expect((editor as unknown as { pending: unknown }).pending).toBeNull()
-    tb.exitEditing()
+    expect(session().pending).toBeNull()
+    textAdapterOf(current()).finishEditing()
   })
 
   for (const s of ['2 * 3 * 4', 'a ** b', '* item', '**', 'snake*case*', '***x***', '#tag ', '#### ', 'a # ', '** x**', '*x *', '#x']) {
@@ -157,8 +158,8 @@ describe('a conversion', () => {
       edit(canvas, tb)
       typeKey(tb, '\n')
       typeKeys(tb, s)
-      expect(tb.text).toBe(`x\n${s}`)
-      tb.exitEditing()
+      expect(textOf()).toBe(`x\n${s}`)
+      textAdapterOf(current()).finishEditing()
       expect(rec()).toStrictEqual(text({ text: `x\n${s}` }))
     })
   }
@@ -168,7 +169,7 @@ describe('a conversion', () => {
     const { canvas, tb, rec } = await setup([owned], [frame])
     edit(canvas, tb)
     typeKeys(tb, '\n# Big heading')
-    tb.exitEditing()
+    textAdapterOf(current()).finishEditing()
     expect(rec()?.frameId).toBe('F')
     expect(rec()?.headings).toEqual([0, 1])
   })
@@ -182,16 +183,17 @@ describe('Backspace straight after a conversion', () => {
     expect(rec()?.text).toBe('go it')
     const down = backspace(tb)
     expect(down.defaultPrevented).toBe(true)
-    expect(tb.text).toBe('go *it*')
-    expect(tb.hiddenTextarea?.value).toBe('go *it*')
-    expect(caretOf(tb)).toEqual({ start: 7, end: 7, ta: [7, 7] })
-    expect(rec()).toStrictEqual(text({ text: 'go *it*', spans: [{ start: 0, end: 2, underline: true }] }))
+    expect(textOf()).toBe('go *it*')
+    expect(caretOf()).toEqual({ start: 7, end: 7 })
+    // What was typed next to the underlined word is underlined, as typed.
+    expect(rec()).toStrictEqual(text({ text: 'go *it*', spans: [{ start: 0, end: 7, underline: true }] }))
     typeKey(tb, '*') // typing on does not fire it again
-    expect(tb.text).toBe('go *it**')
-    expect(backspace(tb).defaultPrevented).toBe(false)
-    expect(backspace(tb).defaultPrevented).toBe(false)
-    expect(tb.text).toBe('go *it')
-    tb.exitEditing()
+    expect(textOf()).toBe('go *it**')
+    expect(session().canRevertShortcut).toBe(false)
+    backspace(tb)
+    backspace(tb)
+    expect(textOf()).toBe('go *it')
+    textAdapterOf(current()).finishEditing()
   })
 
   it('a heading: the marker and the space come back, and the line its old level', async () => {
@@ -201,8 +203,8 @@ describe('Backspace straight after a conversion', () => {
     expect(rec()?.headings).toEqual([0, 1])
     backspace(tb)
     expect(rec()).toStrictEqual(text({ text: 'x\n# Title', headings: [0, 3] }))
-    expect(caretOf(tb)).toEqual({ start: 4, end: 4, ta: [4, 4] })
-    tb.exitEditing()
+    expect(caretOf()).toEqual({ start: 4, end: 4 })
+    textAdapterOf(current()).finishEditing()
   })
 
   it('pending marks come back as they were before it fired', async () => {
@@ -217,21 +219,20 @@ describe('Backspace straight after a conversion', () => {
     expect(rec()?.spans).toEqual([{ start: 2, end: 6, underline: true }])
     await tick()
     expect(editor.getState().selection?.text?.marks).toMatchObject({ italic: 'off', underline: 'on' })
-    tb.exitEditing()
+    textAdapterOf(current()).finishEditing()
   })
 
   const ways: Array<[string, (ctx: Awaited<ReturnType<typeof setup>> & { tb: Tb }) => void]> = [
     ['more typing', ({ tb }) => typeKey(tb, 'z')],
-    ['a caret move (arrow key or click)', ({ canvas, tb }) => {
-      tb.selectionStart = tb.selectionEnd = 1
-      canvas.fire('text:selection:changed', { target: tb })
-      tb.selectionStart = tb.selectionEnd = tb.text.length
+    ['a caret move (arrow key or click)', () => {
+      selectText(current(), 1)
+      selectEnd()
     }],
     ['a formatting command from the panel', ({ editor }) => editor.toggleMark('strike')],
     ['a heading command that changes nothing', ({ editor }) => editor.setHeading(0)],
     ['the font size field', ({ editor }) => editor.setFontSize(30)],
     ['leaving the edit and entering it again', ({ canvas, tb }) => {
-      tb.exitEditing()
+      textAdapterOf(current()).finishEditing()
       edit(canvas, tb)
     }],
   ]
@@ -242,24 +243,26 @@ describe('Backspace straight after a conversion', () => {
       edit(canvas, tb)
       typeKeys(tb, ' **b**')
       act({ ...ctx, tb })
-      const before = tb.text
-      const down = backspace(tb)
-      expect(down.defaultPrevented).toBe(false)
-      expect(tb.text).toBe(before.slice(0, -1))
-      tb.exitEditing()
+      const before = textOf()
+      expect(session().canRevertShortcut).toBe(false)
+      backspace(tb)
+      expect(textOf()).toBe(before.slice(0, -1))
+      textAdapterOf(current()).finishEditing()
     })
   }
 
-  it('is no longer offered after undo, which rebuilds the board (and ends the edit)', async () => {
+  it('is no longer offered after leaving and undo, which rebuilds the board', async () => {
     const { editor, canvas, tb, rec } = await setup()
     edit(canvas, tb)
     typeKeys(tb, 'x')
-    tb.exitEditing()
+    textAdapterOf(current()).finishEditing()
     edit(canvas, tb)
     typeKeys(tb, ' *i*')
-    editor.undo() // the edit is committed first, then undone
+    textAdapterOf(editor).finishEditing() // (inside the edit, Undo steps the edit's own history)
+    editor.undo()
     expect(rec()).toStrictEqual(text({ text: 'gox' }))
-    expect((editor as unknown as { shortcutRevert: unknown }).shortcutRevert).toBeNull()
+    expect(editedObject(editor)).toBeNull()
+    expect(textAdapterOf(editor).editSession()?.canRevertShortcut ?? false).toBe(false)
     editor.redo()
     expect(rec()).toStrictEqual(text({ text: 'gox i', spans: [{ start: 4, end: 5, italic: true }] }))
   })
@@ -273,8 +276,8 @@ describe('history and saving', () => {
     await flush()
     const converted = text({ text: 'go b and', spans: [{ start: 3, end: 4, bold: true }] })
     expect(store.saves.at(-1)?.doc.objects[0]).toStrictEqual(converted)
-    expect(editor.getState().canUndo).toBe(false) // history is recorded when the edit ends
-    tb.exitEditing()
+    expect(boardCanUndo(editor)).toBe(false) // history is recorded when the edit ends
+    textAdapterOf(current()).finishEditing()
     expect(rec()).toStrictEqual(converted)
     editor.undo()
     expect(rec()).toStrictEqual(text())
@@ -288,7 +291,7 @@ describe('history and saving', () => {
     edit(canvas, tb)
     typeKeys(tb, ' **b**')
     backspace(tb)
-    tb.exitEditing()
+    textAdapterOf(current()).finishEditing()
     expect(rec()).toStrictEqual(text({ text: 'go **b**' }))
     editor.undo()
     expect(rec()).toStrictEqual(text())
@@ -308,21 +311,19 @@ describe('history and saving', () => {
     const texts = store.attempts.map((a) => (a.doc.objects[0] as TextRecord).text)
     expect(texts).not.toContain('go **b**')
     expect(store.saves.at(-1)?.doc.objects[0]).toStrictEqual(text({ text: 'go b', spans: [{ start: 3, end: 4, bold: true }] }))
-    tb.exitEditing()
+    textAdapterOf(current()).finishEditing()
   })
 
   it('a new text started with `# ` from the Text tool: blank, so nothing is saved or recorded; left there, it is discarded', async () => {
     const { editor, store, canvas, scene } = await setup([])
     editor.addText()
     const blank = canvas.objects.at(-1) as Tb
-    withTextarea(blank)
-    blank.selectionStart = blank.selectionEnd = 0
     typeKeys(blank, '# ')
-    expect(blank.text).toBe('')
+    expect(textOf()).toBe('')
     expect(scene()).toEqual([])
     await flush()
     expect(store.saves.filter((s) => s.doc.objects.length > 0)).toHaveLength(0)
-    blank.exitEditing()
+    textAdapterOf(current()).finishEditing()
     await tick()
     expect(canvas.objects).toHaveLength(0)
     expect(editor.getState().canUndo).toBe(false)
@@ -332,10 +333,8 @@ describe('history and saving', () => {
     const { editor, canvas, scene } = await setup([])
     editor.addText()
     const tb = canvas.objects.at(-1) as Tb
-    withTextarea(tb)
-    tb.selectionStart = tb.selectionEnd = 0
     typeKeys(tb, '# Title')
-    tb.exitEditing()
+    textAdapterOf(current()).finishEditing()
     expect(scene()).toHaveLength(1)
     expect(scene()[0]).toMatchObject({ text: 'Title', headings: [1] })
     editor.undo()
@@ -343,17 +342,18 @@ describe('history and saving', () => {
   })
 
   it('the board going read-only mid-edit after a conversion: nothing is committed, and Backspace is not claimed', async () => {
-    const { editor, store, canvas, tb } = await setup()
+    const { editor, store, canvas, tb, rec } = await setup()
     edit(canvas, tb)
+    const root = textAdapterOf(editor).editedRoot()!
     store.saveError = new BoardConflictError()
     typeKeys(tb, ' *i*')
     await flush()
     expect(editor.getState().readOnly).not.toBeNull()
-    expect(tb.isEditing).toBe(false)
+    expect(editedObject(editor)).toBeNull()
     expect(editor.getState().canUndo).toBe(false)
-    const down = keyEvent('keydown', 'Backspace')
-    tb.hiddenTextarea!.dispatchEvent(down)
-    expect(down.defaultPrevented).toBe(false)
+    const before = rec()
+    root.dispatchEvent(keyEvent('keydown', 'Backspace')) // no revert: the edit is over, and nothing writes
+    expect(rec()).toStrictEqual(before)
   })
 })
 
@@ -362,76 +362,78 @@ describe('guards: only a typed character, inserted at the caret, fires', () => {
     const { canvas, tb } = await setup()
     edit(canvas, tb)
     typeKeys(tb, ' *i')
-    tb.hiddenTextarea!.value = 'go *i*'
-    tb.type('go *i*', 6) // a paste of "*": an input with no key typing it
-    expect(tb.text).toBe('go *i*')
+    insert(session(), '*') // a dropped "*": an input with no key typing it
+    expect(textOf()).toBe('go *i*')
     typeKeys(tb, ' **x*')
-    const ta = tb.hiddenTextarea as HTMLTextAreaElement
-    ta.dispatchEvent(keyEvent('keydown', 'v', { ctrlKey: true }))
-    ta.value = 'go *i* **x**'
-    tb.type('go *i* **x**', 12) // Ctrl+V of "*"
-    ta.dispatchEvent(keyEvent('keyup', 'v', { ctrlKey: true }))
-    expect(tb.text).toBe('go *i* **x**')
-    tb.exitEditing()
+    const root = textAdapterOf(current()).editedRoot()!
+    root.dispatchEvent(keyEvent('keydown', 'v', { ctrlKey: true }))
+    session().paste({ text: '*' }) // Ctrl+V of "*"
+    root.dispatchEvent(keyEvent('keyup', 'v', { ctrlKey: true }))
+    expect(textOf()).toBe('go *i* **x**')
+    textAdapterOf(current()).finishEditing()
   })
 
   it('a key whose input never came (its keyup arrived) does not make a later paste fire', async () => {
     const { canvas, tb } = await setup()
     edit(canvas, tb)
     typeKeys(tb, ' *i')
-    const ta = tb.hiddenTextarea as HTMLTextAreaElement
-    ta.dispatchEvent(keyEvent('keydown', '*'))
-    ta.dispatchEvent(keyEvent('keyup', '*'))
-    tb.type('go *i*', 6)
-    expect(tb.text).toBe('go *i*')
-    tb.exitEditing()
+    const root = textAdapterOf(current()).editedRoot()!
+    root.dispatchEvent(keyEvent('keydown', '*'))
+    root.dispatchEvent(keyEvent('keyup', '*'))
+    insert(session(), '*')
+    expect(textOf()).toBe('go *i*')
+    textAdapterOf(current()).finishEditing()
   })
 
   it('nothing fires during an IME composition, nor for a key the IME takes', async () => {
     const { canvas, tb } = await setup()
     edit(canvas, tb)
     typeKeys(tb, ' *i')
-    tb.inCompositionMode = true
-    typeKey(tb, '*')
-    expect(tb.text).toBe('go *i*')
-    tb.inCompositionMode = false
+    const root = textAdapterOf(current()).editedRoot()!
+    root.dispatchEvent(keyEvent('keydown', '*'))
+    insert(session(), '*', true) // arrives composed
+    root.dispatchEvent(keyEvent('keyup', '*'))
+    expect(textOf()).toBe('go *i*')
     typeKey(tb, '*', { isComposing: true })
-    expect(tb.text).toBe('go *i**')
-    tb.exitEditing()
+    expect(textOf()).toBe('go *i**')
+    textAdapterOf(current()).finishEditing()
   })
 
   it('a typed `*` that replaces a selection does not fire', async () => {
     const { canvas, tb } = await setup([text({ text: '*i!' })])
     edit(canvas, tb)
-    tb.selectionStart = 2 // "!" selected
+    selectText(current(), 2, 3) // "!" selected
     typeKey(tb, '*')
-    expect(tb.text).toBe('*i*')
-    tb.exitEditing()
+    expect(textOf()).toBe('*i*')
+    textAdapterOf(current()).finishEditing()
   })
 
   it('a typed `*` that did not leave the caret right after it does not fire', async () => {
     const { canvas, tb } = await setup([text({ text: '*i' })])
-    edit(canvas, tb)
-    const ta = tb.hiddenTextarea as HTMLTextAreaElement
-    ta.dispatchEvent(keyEvent('keydown', '*'))
-    ta.value = '*i*'
-    tb.type('*i*', 0) // the caret is somewhere else
-    expect(tb.text).toBe('*i*')
-    tb.exitEditing()
+    edit(canvas, tb, 0)
+    const root = textAdapterOf(current()).editedRoot()!
+    root.dispatchEvent(keyEvent('keydown', '*'))
+    // The "*" arrives at the end of the text, the caret somewhere else (at its start).
+    const s = session()
+    if (!s.handleTextInput(3, 3, '*')) s.dispatch(s.state.tr.insertText('*', 3, 3))
+    root.dispatchEvent(keyEvent('keyup', '*'))
+    expect(textOf()).toBe('*i*')
+    textAdapterOf(current()).finishEditing()
   })
 
-  it('while a gesture is unsettled, nothing fires', async () => {
+  it('while a gesture is unsettled, nothing fires (the edited text takes no input then)', async () => {
     const { canvas, tb, editor } = await setup([text(), text({ id: 'u', left: 400, text: 'other' })])
     edit(canvas, tb)
     typeKeys(tb, ' *i')
-    const other = canvas.objects.find((o) => (o as Tb).text === 'other') as Tb
+    const other = canvas.objects.find((o) => textDataOf(o as never)?.text === 'other') as Tb
     const t = press(canvas, other)
     dragBy(canvas, t, 5, 0)
     typeKey(tb, '*')
-    expect(tb.text).toBe('go *i*')
+    expect(textOf()).toBe('go *i')
     release(canvas, t)
     await tick()
-    expect(editor.getState().canUndo).toBe(true) // the drag was recorded; the text stayed literal
+    expect(boardCanUndo(editor)).toBe(true) // the drag was recorded; the text stayed literal
+    expect(textOf()).toBe('go *i')
   })
 })
 
@@ -439,16 +441,16 @@ describe('held formatting keys (auto-repeat)', () => {
   it('while editing: the first press toggles, repeats are claimed and toggle nothing', async () => {
     const { editor, canvas, tb, rec } = await setup([text({ text: 'abc' })])
     edit(canvas, tb, 0)
-    tb.selectionEnd = 3
-    const ta = tb.hiddenTextarea as HTMLTextAreaElement
+    selectText(current(), 0, 3)
+    const root = textAdapterOf(current()).editedRoot()!
     const first = keyEvent('keydown', 'b', { ctrlKey: true })
-    ta.dispatchEvent(first)
+    root.dispatchEvent(first)
     const repeats = [1, 2, 3].map(() => keyEvent('keydown', 'b', { ctrlKey: true, repeat: true }))
-    for (const r of repeats) ta.dispatchEvent(r)
+    for (const r of repeats) root.dispatchEvent(r)
     expect(first.defaultPrevented).toBe(true)
     expect(repeats.every((r) => r.defaultPrevented)).toBe(true)
     expect(rec()?.spans).toEqual([{ start: 0, end: 3, bold: true }])
-    tb.exitEditing()
+    textAdapterOf(current()).finishEditing()
     void editor
   })
 
@@ -470,9 +472,7 @@ describe('a pending bold and a heading line (a heading is always bold, so bold i
     const ctx = await setup([])
     ctx.editor.addText()
     const tb = ctx.canvas.objects.at(-1) as Tb
-    withTextarea(tb)
-    tb.selectionStart = tb.selectionEnd = 0
-    const pending = () => (ctx.editor as unknown as { pending: { style: Record<string, boolean> } | null }).pending?.style ?? {}
+    const pending = pendingOf
     return { ...ctx, tb, pending, made: () => ctx.scene()[0] as TextRecord }
   }
 
@@ -486,7 +486,7 @@ describe('a pending bold and a heading line (a heading is always bold, so bold i
     typeKeys(tb, 'Title\nBody')
     await tick()
     expect(editor.getState().selection?.text?.marks.bold).toBe('off')
-    tb.exitEditing()
+    textAdapterOf(current()).finishEditing()
     expect(made()).toMatchObject({ text: 'Title\nBody', headings: [1] })
     expect(made().spans).toBeUndefined()
   })
@@ -498,7 +498,7 @@ describe('a pending bold and a heading line (a heading is always bold, so bold i
       typeKeys(tb, marker)
       expect(pending()).toStrictEqual({})
       typeKeys(tb, 'Title\nBody')
-      tb.exitEditing()
+      textAdapterOf(current()).finishEditing()
       expect(made()).toMatchObject({ text: 'Title\nBody', headings: [level] })
       expect(made().spans).toBeUndefined()
     })
@@ -513,7 +513,7 @@ describe('a pending bold and a heading line (a heading is always bold, so bold i
     backspace(tb) // joins it into "Title"
     expect(pending()).toStrictEqual({})
     typeKeys(tb, 'A\nBody')
-    tb.exitEditing()
+    textAdapterOf(current()).finishEditing()
     expect(made()).toMatchObject({ text: 'TitleA\nBody', headings: [1] })
     expect(made().spans).toBeUndefined()
   })
@@ -527,7 +527,7 @@ describe('a pending bold and a heading line (a heading is always bold, so bold i
       else typeKeys(tb, '# ')
       expect(pending()).toStrictEqual({ italic: true })
       typeKeys(tb, 'Title\nBody')
-      tb.exitEditing()
+      textAdapterOf(current()).finishEditing()
       expect(made()).toStrictEqual({ ...made(), text: 'Title\nBody', headings: [1], spans: [{ start: 0, end: 10, italic: true }] })
     })
   }
@@ -537,11 +537,11 @@ describe('a pending bold and a heading line (a heading is always bold, so bold i
     edit(canvas, tb)
     editor.toggleMark('bold') // off, for what is typed next
     editor.toggleMark('underline')
-    const pending = () => (editor as unknown as { pending: { style: Record<string, boolean> } | null }).pending?.style
+    const pending = pendingOf
     expect(pending()).toStrictEqual({ bold: false, underline: true })
     editor.setHeading(2)
     expect(pending()).toStrictEqual({ underline: true })
-    tb.exitEditing()
+    textAdapterOf(current()).finishEditing()
   })
 
   it('Backspace straight after `# ` restores the literal text and the pending bold; what is typed next is bold on that normal line', async () => {
@@ -550,12 +550,12 @@ describe('a pending bold and a heading line (a heading is always bold, so bold i
     typeKeys(tb, '# ')
     expect(pending()).toStrictEqual({})
     backspace(tb)
-    expect(tb.text).toBe('# ')
+    expect(textOf()).toBe('# ')
     expect(pending()).toStrictEqual({ bold: true })
     await tick()
     expect(editor.getState().selection?.text?.marks.bold).toBe('on')
     typeKeys(tb, 'x')
-    tb.exitEditing()
+    textAdapterOf(current()).finishEditing()
     expect(made()).toStrictEqual({ ...made(), text: '# x', spans: [{ start: 0, end: 3, bold: true }] })
     expect(made().headings).toBeUndefined()
   })

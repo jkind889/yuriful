@@ -1,6 +1,6 @@
 /**
- * Real-browser tests (real Fabric, real IndexedDB) for formatted text: a stored text's marks,
- * headings, font, alignment and colour are drawn by Fabric, survive saving, moving, scaling,
+ * Real-browser tests (real IndexedDB, the app's own renderer) for formatted text: a stored
+ * text's marks, headings, font, alignment and colour are drawn, survive saving, moving, scaling,
  * undo, redo and reload, and stay what the canvas shows while the text is typed into.
  *
  * There are no formatting controls yet, so formatted text is seeded into storage.
@@ -12,8 +12,12 @@ import {
   drag,
   openApp,
   openBlank,
+  pagePixels,
   redoButton,
   sceneToPage,
+  screenPixels,
+  expectSameLettering,
+  letteringIn,
   seedMilestone1,
   seedRaw,
   snapshotIdb,
@@ -26,6 +30,49 @@ import type { StoredBoard, StoredObject, View } from './helpers.ts'
 
 const UNIT: View = { zoom: 1, panX: 0, panY: 0 }
 const RED = '#c0392b'
+/** The default text colour (`DEFAULT_TEXT_COLOR` in `src/model/richText.ts`). */
+const INK = [0x1d, 0x22, 0x30] as const
+
+/**
+ * The colour of the solid middle of the strokes the page shows in a rectangle of the board: the
+ * average of the darkest sixth of the pixels darker than the background (at least 20 of them),
+ * which leaves out the anti-aliased edges and the browser's coloured subpixel fringes.
+ */
+async function strokeColour(page: Page, left: number, top: number, width: number, height: number): Promise<number[]> {
+  const { data: d } = await screenPixels(page, left, top, width, height)
+  const dark: Array<[number, number, number, number]> = []
+  for (let i = 0; i < d.length; i += 4) {
+    const lum = 0.299 * d[i]! + 0.587 * d[i + 1]! + 0.114 * d[i + 2]!
+    if (lum < 200) dark.push([lum, d[i]!, d[i + 1]!, d[i + 2]!])
+  }
+  dark.sort((a, b) => a[0] - b[0])
+  const core = dark.slice(0, Math.max(20, Math.floor(dark.length / 6)))
+  expect(core.length).toBeGreaterThanOrEqual(20)
+  return [1, 2, 3].map((k) => Math.round(core.reduce((s, p) => s + p[k]!, 0) / core.length))
+}
+
+/**
+ * How many pixels of a rectangle of the board (canvas CSS pixels) change when every card's
+ * lettering is forced to the ink colour: none where all the text there is painted in ink, and
+ * one for each off-colour pixel wherever any part of it, a single word or letter, is painted in
+ * another colour. Both screenshots are drawn alike, subpixel fringes included, so only the
+ * colour can make them differ.
+ */
+async function offInkPixels(page: Page, left: number, top: number, width: number, height: number): Promise<number> {
+  const box = await page.locator('.canvas-host').boundingBox()
+  if (!box) throw new Error('canvas host not found')
+  const ink = `rgb(${INK.join(',')})`
+  const shown = await pagePixels(page, box.x + left, box.y + top, width, height)
+  const forced = await pagePixels(page, box.x + left, box.y + top, width, height, {
+    style: `.scene-layer .scene-text-body, .scene-layer .scene-text-body * { color: ${ink} !important; -webkit-text-fill-color: ${ink} !important; text-decoration-color: ${ink} !important; }`,
+  })
+  let off = 0
+  for (let i = 0; i < shown.data.length; i += 4) {
+    const diff = Math.max(...[0, 1, 2].map((k) => Math.abs(shown.data[i + k]! - forced.data[i + k]!)))
+    if (diff > 24) off++
+  }
+  return off
+}
 
 type Seed = StoredObject & { type: 'text'; text: string; fontSize: number; width: number }
 const textRec = (id: string, left: number, top: number, text: string, extra: Partial<Seed> = {}): Seed => ({
@@ -89,36 +136,28 @@ interface Ink {
   right: number
 }
 /**
- * What is drawn in a rectangle of the scene canvas (canvas CSS pixels): how many pixels are
- * dark ink, how many are clearly red, and the extent of all of them.
+ * What the page shows in a rectangle of the board (canvas CSS pixels): how many pixels are dark
+ * ink, how many are clearly red, and the extent of all of them within the rectangle.
  */
-function inkIn(page: Page, left: number, top: number, width: number, height: number): Promise<Ink> {
-  return page.evaluate(
-    ({ left, top, width, height }) => {
-      const canvas = document.querySelector<HTMLCanvasElement>('.canvas-container canvas.lower-canvas')
-      if (!canvas) throw new Error('scene canvas not found')
-      const scale = canvas.width / canvas.clientWidth
-      const w = Math.round(width * scale)
-      const d = canvas.getContext('2d')!.getImageData(Math.round(left * scale), Math.round(top * scale), w, Math.round(height * scale)).data
-      const ink: Ink = { count: 0, red: 0, top: Infinity, bottom: -Infinity, left: Infinity, right: -Infinity }
-      for (let i = 0; i < d.length; i += 4) {
-        const [r, g, b, a] = [d[i]!, d[i + 1]!, d[i + 2]!, d[i + 3]!]
-        const dark = a > 40 && r < 160 && g < 160 && b < 160
-        const red = a > 40 && r > 140 && g < 110 && b < 110
-        if (!dark && !red) continue
-        if (dark) ink.count++
-        if (red) ink.red++
-        const y = Math.floor(i / 4 / w) / scale
-        const x = ((i / 4) % w) / scale
-        ink.top = Math.min(ink.top, y)
-        ink.bottom = Math.max(ink.bottom, y)
-        ink.left = Math.min(ink.left, x)
-        ink.right = Math.max(ink.right, x)
-      }
-      return ink
-    },
-    { left, top, width, height },
-  )
+async function inkIn(page: Page, left: number, top: number, width: number, height: number): Promise<Ink> {
+  const { width: w, data: d } = await screenPixels(page, left, top, width, height)
+  const ink: Ink = { count: 0, red: 0, top: Infinity, bottom: -Infinity, left: Infinity, right: -Infinity }
+  for (let i = 0; i < d.length; i += 4) {
+    const [r, g, b] = [d[i]!, d[i + 1]!, d[i + 2]!]
+    const dark = r < 160 && g < 160 && b < 160
+    // Clearly red, not the orange-brown fringe the browser's subpixel text smoothing gives dark text.
+    const red = r > 140 && g < 110 && b < 110 && r - Math.max(g, b) > 90
+    if (!dark && !red) continue
+    if (dark) ink.count++
+    if (red) ink.red++
+    const y = Math.floor(i / 4 / w)
+    const x = (i / 4) % w
+    ink.top = Math.min(ink.top, y)
+    ink.bottom = Math.max(ink.bottom, y)
+    ink.left = Math.min(ink.left, x)
+    ink.right = Math.max(ink.right, x)
+  }
+  return ink
 }
 
 /** Enters editing of the text under `p` and puts the caret after `n` characters (graphemes). */
@@ -180,6 +219,11 @@ test.describe('a stored formatted text', () => {
     const s = await inkIn(page, 435, 390, 380, 60)
     expect(w.red).toBe(0)
     expect(w.count).toBeGreaterThan(0)
+    // Plain words are painted in the ink colour itself.
+    const stroke = await strokeColour(page, 35, 390, 380, 60)
+    stroke.forEach((c, i) => expect(Math.abs(c - INK[i]!), `plain text colour ${stroke.join(',')}`).toBeLessThanOrEqual(24))
+    // And every part of them: not one word or letter is painted in another colour.
+    expect(await offInkPixels(page, 35, 390, 380, 60), 'pixels of the plain words not in the ink colour').toBe(0)
     expect(s.red).toBeGreaterThan(w.count) // red, and bold: more ink than the plain words
     expect(errors).toEqual([])
   })
@@ -285,9 +329,12 @@ test.describe('typing into a formatted text', () => {
     // Saved while still editing (the autosave debounce fires mid-edit).
     const typed = await storedWhen(page, (d) => byId(d, 't').text === 'plain boXYld rest')
     expect(byId(typed, 't')).toEqual({ ...rec, text: 'plain boXYld rest', spans: [{ start: 6, end: 12, bold: true }] })
+    const live = await letteringIn(page, 95, 90, 400, 50) // the typed letters are painted while they are typed
     await page.keyboard.press('Escape')
     await waitSaved(page)
     expect(await storedDoc(page)).toEqual(typed)
+    await page.keyboard.press('Escape') // deselect: no handles over the first letter
+    expectSameLettering(live, await letteringIn(page, 95, 90, 400, 50))
 
     await undoButton(page).click() // the whole edit is one step
     await storedWhen(page, (d) => byId(d, 't').text === 'plain bold rest')
@@ -450,13 +497,13 @@ test.describe('editing around headings', () => {
   })
 })
 
-/** Fabric's own clipboard path (its copy and paste handlers on the hidden textarea), inside the page. */
+/** The editor's own copy and paste, inside the page. */
 test.describe('pasting into a formatted text', () => {
   async function openWithClipboard(page: Page, objects: unknown[]) {
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
     return open(page, objects)
   }
-  /** Copies the whole of the text under `p` with Fabric's copy, and leaves it. */
+  /** Copies the whole of the text under `p` with the editor's copy, and leaves it. */
   async function copyAllOf(page: Page, p: { x: number; y: number }) {
     await page.mouse.dblclick(p.x, p.y)
     await page.keyboard.press('Control+a')
@@ -634,40 +681,6 @@ test.describe('pasting into a formatted text', () => {
     const done = await storedWhen(page, (d) => byId(d, 'b').text === 'TitleA\nB\nbody')
     expect(byId(done, 'b')).toEqual({ ...rec, text: 'TitleA\nB\nbody' })
     await page.keyboard.press('Escape')
-    expect(errors).toEqual([])
-  })
-})
-
-test.describe('dropping text into a formatted text', () => {
-  test('a word dragged from a 48 px text onto the normal line of a heading text brings no heading and no size, in every undo step', async ({ page }) => {
-    const source = textRec('src', 100, 400, 'one BIG', { fontSize: 48 })
-    const rec = textRec('b', 100, 100, 'Title\nbody', { headings: [1] })
-    const { errors, at } = await open(page, [source, rec])
-    await caretAt(page, at(130, 425), 4)
-    for (let i = 0; i < 3; i++) await page.keyboard.press('Shift+ArrowRight') // "BIG"
-    // Fabric's own drag and drop of the selection (DraggableTextDelegate.mjs): a native drag session.
-    const from = at(240, 430)
-    const to = at(102, 178) // the start of the body line (the heading line is 60 tall)
-    await page.mouse.move(from.x, from.y)
-    await page.mouse.down()
-    await page.mouse.move(from.x + 10, from.y - 10, { steps: 3 })
-    await page.mouse.move(to.x, to.y, { steps: 10 })
-    await page.mouse.up()
-    const dropped = await storedWhen(page, (d) => byId(d, 'b').text === 'Title\nBIGbody' && byId(d, 'src').text === 'one ')
-    expect(byId(dropped, 'b')).toEqual({ ...rec, text: 'Title\nBIGbody' })
-    expect(byId(dropped, 'src')).toEqual({ ...source, text: 'one ' })
-    await page.keyboard.press('Escape')
-    await waitSaved(page)
-    // However many steps the drop left in history, none of them gives the body line a heading.
-    for (let step = 0; step < 4 && (await undoButton(page).isEnabled()); step++) {
-      const before = JSON.stringify(await storedDoc(page))
-      await undoButton(page).click()
-      await storedWhen(page, (d) => JSON.stringify(d) !== before)
-      expect(byId(await storedDoc(page), 'b').headings).toEqual([1])
-    }
-    const back = await storedDoc(page)
-    expect(byId(back, 'b')).toEqual(rec)
-    expect(byId(back, 'src')).toEqual(source)
     expect(errors).toEqual([])
   })
 })

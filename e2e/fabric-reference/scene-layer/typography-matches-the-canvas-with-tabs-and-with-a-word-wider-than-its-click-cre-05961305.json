@@ -1,0 +1,2063 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "typography matches the canvas with tabs, and with a word wider than its click-created box",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/scene-layer.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "tabs": {
+   "inputs": "3e91fae251e232de",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 160,
+     "height": 68
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0
+    ],
+    "pitches": [
+     33.9
+    ],
+    "height": 27.119999999999997,
+    "width": 120,
+    "lines": [
+     "A B C"
+    ],
+    "wrapped": [
+     "A B C"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 24,
+       "bottom": 41,
+       "left": 20.5,
+       "right": 76
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "tabs drawn": {
+   "inputs": "334cadf5f781e329",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 160,
+     "height": 68
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0
+    ],
+    "pitches": [
+     33.9
+    ],
+    "height": 27.119999999999997,
+    "width": 120,
+    "lines": [
+     "A\tB\tC"
+    ],
+    "wrapped": [
+     "A B C"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 24,
+       "bottom": 41,
+       "left": 20.5,
+       "right": 76
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "tabs wrapping": {
+   "inputs": "75cefbb1e7e91bd5",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 240,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 200,
+    "lines": [
+     "Tab separated words that",
+     "wrap across lines again",
+     "and again"
+    ],
+    "wrapped": [
+     "Tab separated words that",
+     "wrap across lines again",
+     "and again"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 40,
+       "left": 20.5,
+       "right": 219.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 20.5,
+       "right": 201.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 97
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "tabs wrapping drawn": {
+   "inputs": "92a141a4f7b96305",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 240,
+     "height": 112
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997,
+     50.849999999999994
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 71.19,
+    "width": 200,
+    "lines": [
+     "Tab\tseparated\twords ",
+     "that wrap\tacross lines\t",
+     "again and again"
+    ],
+    "wrapped": [
+     "Tab separated words",
+     "that wrap across lines",
+     "again and again"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 40,
+       "left": 20.5,
+       "right": 182.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 65,
+       "left": 20.5,
+       "right": 190
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 73,
+       "bottom": 90.5,
+       "left": 21,
+       "right": 145.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "tabs centred": {
+   "inputs": "7e21537bd0762487",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 260,
+    "lines": [
+     "Centred tab line",
+     "and a second"
+    ],
+    "wrapped": [
+     "Centred tab line",
+     "and a second"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 87.5,
+       "right": 213
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 98,
+       "right": 201.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "tabs in a heading": {
+   "inputs": "7f929ee84add4290",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 340,
+     "height": 104
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     45.199999999999996
+    ],
+    "pitches": [
+     45.199999999999996,
+     22.599999999999998
+    ],
+    "height": 63.279999999999994,
+    "width": 300,
+    "lines": [
+     "Head ing",
+     "body text"
+    ],
+    "wrapped": [
+     "Head ing",
+     "body text"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 24.5,
+       "bottom": 56,
+       "left": 22.5,
+       "right": 154
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 67.5,
+       "bottom": 83,
+       "left": 21.5,
+       "right": 86.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "wide caption": {
+   "inputs": "2bab9761a207e834",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 525,
+     "height": 61
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0
+    ],
+    "pitches": [
+     25.424999999999997
+    ],
+    "height": 20.339999999999996,
+    "width": 484.892578125,
+    "lines": [
+     "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
+    ],
+    "wrapped": [
+     "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23,
+       "bottom": 36,
+       "left": 21.5,
+       "right": 503
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "wide right": {
+   "inputs": "ffc519af49ea0b45",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 525,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 484.892578125,
+    "lines": [
+     "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+     "short"
+    ],
+    "wrapped": [
+     "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+     "short"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23,
+       "bottom": 36,
+       "left": 21.5,
+       "right": 503
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 465,
+       "right": 504.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "wide centred": {
+   "inputs": "38c7e3dd752c2038",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 364,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 323.26171875,
+    "lines": [
+     "MMMMMMMMMMMMMMMMMMMM",
+     "tail words here"
+    ],
+    "wrapped": [
+     "MMMMMMMMMMMMMMMMMMMM",
+     "tail words here"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23,
+       "bottom": 36,
+       "left": 21.5,
+       "right": 341.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 123.5,
+       "right": 239.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "wide heading": {
+   "inputs": "44af1fd133546204",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 249,
+     "height": 122
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     33.9,
+     67.8
+    ],
+    "pitches": [
+     33.9,
+     33.9,
+     16.95
+    ],
+    "height": 81.36,
+    "width": 208.59375,
+    "lines": [
+     "Heading",
+     "Supercalifragilistic",
+     "body"
+    ],
+    "wrapped": [
+     "Heading",
+     "Supercalifragilistic",
+     "body"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23,
+       "bottom": 46.5,
+       "left": 22,
+       "right": 114
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 57,
+       "bottom": 80.5,
+       "left": 21,
+       "right": 228
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 89.5,
+       "bottom": 101.5,
+       "left": 21,
+       "right": 47
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "tab in a mono mark": {
+   "inputs": "56e6542d66f6cae8",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 115,
+     "height": 91
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     28.249999999999996
+    ],
+    "pitches": [
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 50.849999999999994,
+    "width": 75,
+    "lines": [
+     "Hi Q M",
+     "X"
+    ],
+    "wrapped": [
+     "Hi Q M",
+     "X"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23.5,
+       "bottom": 41,
+       "left": 21,
+       "right": 85.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 52,
+       "bottom": 66,
+       "left": 20.5,
+       "right": 31.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "tab in a mono mark drawn": {
+   "inputs": "689ff2acebbd8f2b",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 115,
+     "height": 91
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     28.249999999999996
+    ],
+    "pitches": [
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 50.849999999999994,
+    "width": 75,
+    "lines": [
+     "Hi\tQ\t",
+     "M\tX"
+    ],
+    "wrapped": [
+     "Hi Q",
+     "M X"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23.5,
+       "bottom": 41,
+       "left": 21,
+       "right": 63.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 52,
+       "bottom": 66,
+       "left": 20.5,
+       "right": 53.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "full-width in brackets": {
+   "inputs": "8c4e60a636ccc083",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 124,
+     "height": 120
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     28.249999999999996,
+     56.49999999999999
+    ],
+    "pitches": [
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 79.1,
+    "width": 84,
+    "lines": [
+     "Hi",
+     "(ＡＢＣ)",
+     "ok"
+    ],
+    "wrapped": [
+     "Hi",
+     "(ＡＢＣ)",
+     "ok"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23,
+       "bottom": 37.5,
+       "left": 22,
+       "right": 37.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 50.5,
+       "bottom": 69,
+       "left": 21.5,
+       "right": 90.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 79,
+       "bottom": 94,
+       "left": 21,
+       "right": 41.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "hangul": {
+   "inputs": "2c17890e25dc0fef",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 130,
+     "height": 176
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     28.249999999999996,
+     56.49999999999999,
+     84.74999999999999,
+     112.99999999999999
+    ],
+    "pitches": [
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 135.6,
+    "width": 90,
+    "lines": [
+     "음악은",
+     "한국어로",
+     "듣기",
+     "좋아요",
+     "정말"
+    ],
+    "wrapped": [
+     "음악은",
+     "한국어로",
+     "듣기",
+     "좋아요",
+     "정말"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 20.5,
+       "bottom": 39.5,
+       "left": 21.5,
+       "right": 78.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 49,
+       "bottom": 68,
+       "left": 21.5,
+       "right": 98.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 77,
+       "bottom": 96,
+       "left": 21.5,
+       "right": 56.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 105.5,
+       "bottom": 124.5,
+       "left": 21.5,
+       "right": 78.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 133.5,
+       "bottom": 151.5,
+       "left": 21.5,
+       "right": 59
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "over-wide emoji word": {
+   "inputs": "5b70fcca775dc7a7",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 103,
+     "height": 430
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     28.249999999999996,
+     56.49999999999999,
+     84.74999999999999,
+     112.99999999999999,
+     141.24999999999997,
+     169.49999999999997,
+     197.74999999999997,
+     225.99999999999997,
+     254.24999999999997,
+     282.49999999999994,
+     310.74999999999994,
+     338.99999999999994,
+     367.24999999999994
+    ],
+    "pitches": [
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 389.84999999999997,
+    "width": 63,
+    "lines": [
+     "Hi ",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥 ",
+     "tail"
+    ],
+    "wrapped": [
+     "Hi",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "tail"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23,
+       "bottom": 37.5,
+       "left": 22,
+       "right": 37.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 51,
+       "bottom": 66,
+       "left": 25,
+       "right": 57
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 77.5,
+       "bottom": 95.5,
+       "left": 26.5,
+       "right": 54.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 106,
+       "bottom": 124,
+       "left": 21,
+       "right": 47.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 135.5,
+       "bottom": 150.5,
+       "left": 25,
+       "right": 57
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 162.5,
+       "bottom": 180.5,
+       "left": 26.5,
+       "right": 54.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 190.5,
+       "bottom": 208.5,
+       "left": 21,
+       "right": 47.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 220.5,
+       "bottom": 235.5,
+       "left": 25,
+       "right": 57
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 247,
+       "bottom": 265,
+       "left": 26.5,
+       "right": 54.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 275.5,
+       "bottom": 293.5,
+       "left": 21,
+       "right": 47.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 305,
+       "bottom": 320,
+       "left": 25,
+       "right": 57
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 332,
+       "bottom": 350,
+       "left": 26.5,
+       "right": 54.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 360,
+       "bottom": 378,
+       "left": 21,
+       "right": 47.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 390,
+       "bottom": 405,
+       "left": 20.5,
+       "right": 45
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "over-wide emoji word centred": {
+   "inputs": "c8d778e73c290fb8",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 103,
+     "height": 430
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     28.249999999999996,
+     56.49999999999999,
+     84.74999999999999,
+     112.99999999999999,
+     141.24999999999997,
+     169.49999999999997,
+     197.74999999999997,
+     225.99999999999997,
+     254.24999999999997,
+     282.49999999999994,
+     310.74999999999994,
+     338.99999999999994,
+     367.24999999999994
+    ],
+    "pitches": [
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 389.84999999999997,
+    "width": 63,
+    "lines": [
+     "Hi ",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥 ",
+     "tail"
+    ],
+    "wrapped": [
+     "Hi",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "tail"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23,
+       "bottom": 37.5,
+       "left": 41,
+       "right": 57
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 51,
+       "bottom": 66,
+       "left": 37.5,
+       "right": 69.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 77.5,
+       "bottom": 95.5,
+       "left": 30.5,
+       "right": 58.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 106,
+       "bottom": 124,
+       "left": 33.5,
+       "right": 60
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 135.5,
+       "bottom": 150.5,
+       "left": 37.5,
+       "right": 69.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 162.5,
+       "bottom": 180.5,
+       "left": 30.5,
+       "right": 58.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 190.5,
+       "bottom": 208.5,
+       "left": 33.5,
+       "right": 60
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 220.5,
+       "bottom": 235.5,
+       "left": 37.5,
+       "right": 69.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 247,
+       "bottom": 265,
+       "left": 30.5,
+       "right": 58.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 275.5,
+       "bottom": 293.5,
+       "left": 33.5,
+       "right": 60
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 305,
+       "bottom": 320,
+       "left": 37.5,
+       "right": 69.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 332,
+       "bottom": 350,
+       "left": 30.5,
+       "right": 58.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 359.5,
+       "bottom": 378,
+       "left": 30.5,
+       "right": 57.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 390,
+       "bottom": 405,
+       "left": 38.5,
+       "right": 63
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "over-wide emoji word right": {
+   "inputs": "517767549536f0b6",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 103,
+     "height": 430
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     28.249999999999996,
+     56.49999999999999,
+     84.74999999999999,
+     112.99999999999999,
+     141.24999999999997,
+     169.49999999999997,
+     197.74999999999997,
+     225.99999999999997,
+     254.24999999999997,
+     282.49999999999994,
+     310.74999999999994,
+     338.99999999999994,
+     367.24999999999994
+    ],
+    "pitches": [
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 389.84999999999997,
+    "width": 63,
+    "lines": [
+     "Hi ",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥 ",
+     "tail"
+    ],
+    "wrapped": [
+     "Hi",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "🎧é",
+     "🔥🎧",
+     "é🔥",
+     "tail"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23,
+       "bottom": 37.5,
+       "left": 60.5,
+       "right": 76
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 51,
+       "bottom": 66,
+       "left": 52,
+       "right": 82
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 77.5,
+       "bottom": 95.5,
+       "left": 34.5,
+       "right": 62.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 106,
+       "bottom": 124,
+       "left": 46,
+       "right": 72.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 135.5,
+       "bottom": 150.5,
+       "left": 52,
+       "right": 82
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 162.5,
+       "bottom": 180.5,
+       "left": 34.5,
+       "right": 62.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 190.5,
+       "bottom": 208.5,
+       "left": 46,
+       "right": 72.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 220.5,
+       "bottom": 235.5,
+       "left": 52,
+       "right": 82
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 247,
+       "bottom": 265,
+       "left": 34.5,
+       "right": 62.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 275.5,
+       "bottom": 293.5,
+       "left": 46,
+       "right": 72.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 305,
+       "bottom": 320,
+       "left": 52,
+       "right": 82
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 332,
+       "bottom": 350,
+       "left": 34.5,
+       "right": 62.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 360,
+       "bottom": 378,
+       "left": 40.5,
+       "right": 67
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 390,
+       "bottom": 405,
+       "left": 57,
+       "right": 81.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "over-wide plain word": {
+   "inputs": "9244c6eccad3a80a",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 103,
+     "height": 204
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     28.249999999999996,
+     56.49999999999999,
+     84.74999999999999,
+     112.99999999999999,
+     141.24999999999997
+    ],
+    "pitches": [
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 163.84999999999997,
+    "width": 63,
+    "lines": [
+     "a ",
+     "Superc",
+     "alifragi",
+     "listicex",
+     "pialido",
+     "cious b"
+    ],
+    "wrapped": [
+     "a",
+     "Superc",
+     "alifragi",
+     "listicex",
+     "pialido",
+     "cious b"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 27.5,
+       "bottom": 37.5,
+       "left": 21,
+       "right": 28.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 52,
+       "bottom": 70.5,
+       "left": 21,
+       "right": 79.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 79,
+       "bottom": 98.5,
+       "left": 21,
+       "right": 78.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 107.5,
+       "bottom": 122.5,
+       "left": 21.5,
+       "right": 78
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 135.5,
+       "bottom": 155,
+       "left": 21.5,
+       "right": 79
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 164,
+       "bottom": 179,
+       "left": 21,
+       "right": 82
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "long url": {
+   "inputs": "d317a065c6b7dfe8",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 120,
+     "height": 713
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     28.249999999999996,
+     56.49999999999999,
+     84.74999999999999,
+     112.99999999999999,
+     141.24999999999997,
+     169.49999999999997,
+     197.74999999999997,
+     225.99999999999997,
+     254.24999999999997,
+     282.49999999999994,
+     310.74999999999994,
+     338.99999999999994,
+     367.24999999999994,
+     395.49999999999994,
+     423.74999999999994,
+     451.99999999999994,
+     480.24999999999994,
+     508.49999999999994,
+     536.7499999999999,
+     564.9999999999999,
+     593.2499999999999,
+     621.4999999999999,
+     649.7499999999999
+    ],
+    "pitches": [
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 672.3499999999999,
+    "width": 80,
+    "lines": [
+     "Listen ",
+     "https://e",
+     "xample.c",
+     "om/playl",
+     "ists/lo-fi",
+     "-beats-t",
+     "o-relax-a",
+     "nd-study",
+     "-to?list=",
+     "morning",
+     "-mix&sh",
+     "uffle=tru",
+     "e then ",
+     "https://",
+     "music.ex",
+     "ample.or",
+     "g/artists/",
+     "lo-fi-coll",
+     "ective/al",
+     "bums/rai",
+     "ny-day-s",
+     "essions-",
+     "volume-t",
+     "wo again"
+    ],
+    "wrapped": [
+     "Listen",
+     "https://e",
+     "xample.c",
+     "om/playl",
+     "ists/lo-fi",
+     "-beats-t",
+     "o-relax-a",
+     "nd-study",
+     "-to?list=",
+     "morning",
+     "-mix&sh",
+     "uffle=tru",
+     "e then",
+     "https://",
+     "music.ex",
+     "ample.or",
+     "g/artists/",
+     "lo-fi-coll",
+     "ective/al",
+     "bums/rai",
+     "ny-day-s",
+     "essions-",
+     "volume-t",
+     "wo again"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23,
+       "bottom": 37.5,
+       "left": 22,
+       "right": 70
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 51,
+       "bottom": 70.5,
+       "left": 21.5,
+       "right": 94.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 79,
+       "bottom": 98.5,
+       "left": 20.5,
+       "right": 96.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 107.5,
+       "bottom": 127,
+       "left": 21,
+       "right": 96.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 135.5,
+       "bottom": 153,
+       "left": 21.5,
+       "right": 90.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 164,
+       "bottom": 179,
+       "left": 21.5,
+       "right": 90
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 192,
+       "bottom": 207,
+       "left": 21,
+       "right": 98
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 220.5,
+       "bottom": 240,
+       "left": 21.5,
+       "right": 99
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 248.5,
+       "bottom": 263.5,
+       "left": 21.5,
+       "right": 92
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 277.5,
+       "bottom": 296.5,
+       "left": 21.5,
+       "right": 93.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 305,
+       "bottom": 320,
+       "left": 21.5,
+       "right": 93.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 333.5,
+       "bottom": 348.5,
+       "left": 21.5,
+       "right": 96
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 361.5,
+       "bottom": 376.5,
+       "left": 21,
+       "right": 74.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 390,
+       "bottom": 409.5,
+       "left": 21.5,
+       "right": 85
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 418.5,
+       "bottom": 433,
+       "left": 21.5,
+       "right": 94.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 446.5,
+       "bottom": 466,
+       "left": 21,
+       "right": 97.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 475,
+       "bottom": 494,
+       "left": 21,
+       "right": 100
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 503,
+       "bottom": 518,
+       "left": 21.5,
+       "right": 92.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 531,
+       "bottom": 548.5,
+       "left": 21,
+       "right": 92.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 559.5,
+       "bottom": 577,
+       "left": 21.5,
+       "right": 97
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 587.5,
+       "bottom": 607,
+       "left": 21.5,
+       "right": 96.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 616.5,
+       "bottom": 631,
+       "left": 21,
+       "right": 90.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 644,
+       "bottom": 659,
+       "left": 20.5,
+       "right": 99.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 673,
+       "bottom": 692,
+       "left": 20.5,
+       "right": 98.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "long url underlined": {
+   "inputs": "4689594b734f465d",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 120,
+     "height": 261
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     28.249999999999996,
+     56.49999999999999,
+     84.74999999999999,
+     112.99999999999999,
+     141.24999999999997,
+     169.49999999999997,
+     197.74999999999997
+    ],
+    "pitches": [
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996,
+     28.249999999999996
+    ],
+    "height": 220.34999999999997,
+    "width": 80,
+    "lines": [
+     "See ",
+     "https://e",
+     "xample.c",
+     "om/playl",
+     "ists/lo-fi",
+     "-beats-t",
+     "o-relax ",
+     "done"
+    ],
+    "wrapped": [
+     "See",
+     "https://e",
+     "xample.c",
+     "om/playl",
+     "ists/lo-fi",
+     "-beats-t",
+     "o-relax",
+     "done"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 23.5,
+       "bottom": 41,
+       "left": 20,
+       "right": 57
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 51,
+       "bottom": 70.5,
+       "left": 20,
+       "right": 95.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 79,
+       "bottom": 98.5,
+       "left": 20,
+       "right": 97
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 107.5,
+       "bottom": 127,
+       "left": 20,
+       "right": 98
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 135.5,
+       "bottom": 154,
+       "left": 20,
+       "right": 92
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 164,
+       "bottom": 182,
+       "left": 20,
+       "right": 90.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 192,
+       "bottom": 210.5,
+       "left": 20,
+       "right": 87
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 220.5,
+       "bottom": 238.5,
+       "left": 20,
+       "right": 65.5
+      },
+      "present": true
+     }
+    ]
+   }
+  },
+  "caption paper": {
+   "inputs": "6d426c8b28b1ce3b",
+   "value": {
+    "frame": {
+     "id": "f",
+     "name": "",
+     "left": -20,
+     "top": -20,
+     "width": 300,
+     "height": 86
+    },
+    "scale": 2,
+    "margin": 20,
+    "lineTops": [
+     0,
+     25.424999999999997
+    ],
+    "pitches": [
+     25.424999999999997,
+     25.424999999999997
+    ],
+    "height": 45.76499999999999,
+    "width": 260,
+    "lines": [
+     "First line",
+     "Second line"
+    ],
+    "wrapped": [
+     "First line",
+     "Second line"
+    ],
+    "ink": [
+     {
+      "ink": {
+       "top": 22.5,
+       "bottom": 36,
+       "left": 21.5,
+       "right": 85.5
+      },
+      "present": true
+     },
+     {
+      "ink": {
+       "top": 47.5,
+       "bottom": 61,
+       "left": 21,
+       "right": 111
+      },
+      "present": true
+     }
+    ]
+   }
+  }
+ }
+}

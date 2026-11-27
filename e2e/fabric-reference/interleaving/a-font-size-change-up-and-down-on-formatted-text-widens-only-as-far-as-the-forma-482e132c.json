@@ -1,0 +1,1336 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the live width floor is the text as formatted, not the plain-sans width a box is built with (paired) > a font size change up and down on formatted text widens only as far as the formatted text needs",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/interleaving.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "6d90f5273f0c2c33",
+   "value": {
+    "scenes": [
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[42]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 42,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 24,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 24,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 24,
+         "width": 240,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 24,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[16]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 16,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 24,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 24,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 24,
+         "width": 240,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 24,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[30]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 24,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 24,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 24,
+         "width": 240,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 24,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[42]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 42,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 24,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 24,
+         "width": 240,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 24,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[16]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 16,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 24,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 24,
+         "width": 240,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 24,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[30]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 24,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 24,
+         "width": 240,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 24,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[42]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 42,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 24,
+         "width": 240,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 24,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[16]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 16,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 24,
+         "width": 240,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 24,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[30]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 24,
+         "width": 240,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 24,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[42]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 42,
+         "width": 334.04,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 24,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[16]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 16,
+         "width": 334.04,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 24,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[30]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 30,
+         "width": 334.04,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 24,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[42]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 30,
+         "width": 334.04,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 42,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[16]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 30,
+         "width": 334.04,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 16,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "step": "{\"run\":\"setFontSize\",\"args\":[30]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "l",
+         "left": 60,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono"
+        },
+        {
+         "id": "c",
+         "left": 60,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "center"
+        },
+        {
+         "id": "r",
+         "left": 60,
+         "top": 320,
+         "angle": 0,
+         "type": "text",
+         "text": "WWWWWWWWWW",
+         "fontSize": 30,
+         "width": 250,
+         "font": "mono",
+         "align": "right"
+        },
+        {
+         "id": "mix",
+         "left": 500,
+         "top": 80,
+         "angle": 0,
+         "type": "text",
+         "text": "a SOUNDTRACK b\nsecond line",
+         "fontSize": 30,
+         "width": 334.04,
+         "spans": [
+          {
+           "start": 2,
+           "end": 12,
+           "font": "display"
+          }
+         ],
+         "headings": [
+          2
+         ]
+        },
+        {
+         "id": "drawn",
+         "left": 500,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "SOUNDTRACK words",
+         "fontSize": 30,
+         "width": 200,
+         "minHeight": 20,
+         "font": "mono",
+         "spans": [
+          {
+           "start": 0,
+           "end": 10,
+           "bold": true
+          }
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Interleaving",
+     "objects": [
+      {
+       "id": "l",
+       "left": 60,
+       "top": 80,
+       "angle": 0,
+       "type": "text",
+       "text": "WWWWWWWWWW",
+       "fontSize": 30,
+       "width": 250,
+       "font": "mono"
+      },
+      {
+       "id": "c",
+       "left": 60,
+       "top": 200,
+       "angle": 0,
+       "type": "text",
+       "text": "WWWWWWWWWW",
+       "fontSize": 30,
+       "width": 250,
+       "font": "mono",
+       "align": "center"
+      },
+      {
+       "id": "r",
+       "left": 60,
+       "top": 320,
+       "angle": 0,
+       "type": "text",
+       "text": "WWWWWWWWWW",
+       "fontSize": 30,
+       "width": 250,
+       "font": "mono",
+       "align": "right"
+      },
+      {
+       "id": "mix",
+       "left": 500,
+       "top": 80,
+       "angle": 0,
+       "type": "text",
+       "text": "a SOUNDTRACK b\nsecond line",
+       "fontSize": 30,
+       "width": 334.04,
+       "spans": [
+        {
+         "start": 2,
+         "end": 12,
+         "font": "display"
+        }
+       ],
+       "headings": [
+        2
+       ]
+      },
+      {
+       "id": "drawn",
+       "left": 500,
+       "top": 300,
+       "angle": 0,
+       "type": "text",
+       "text": "SOUNDTRACK words",
+       "fontSize": 30,
+       "width": 200,
+       "minHeight": 20,
+       "font": "mono",
+       "spans": [
+        {
+         "start": 0,
+         "end": 10,
+         "bold": true
+        }
+       ]
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

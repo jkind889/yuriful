@@ -1,0 +1,4788 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "text edited on the DOM renderer saves and records what the Fabric renderer does (paired) > captions added and edited: Add caption, Enter on a captioned image, typing that grows a caption above or below its image",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/dom-editing.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "583a3674384e8bbf",
+   "value": {
+    "records": [
+     {
+      "step": "{\"click\":\"I\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "above",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "above",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "I"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "top:above",
+        "K:quad.png",
+        "cap:old caption",
+        "J:quad.png",
+        "I:quad.png*"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "cap": 27.12,
+       "top": 27.12
+      }
+     },
+     {
+      "step": "{\"button\":\"Add caption\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "above",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "above",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "top:above",
+        "K:quad.png",
+        "cap:old caption",
+        "J:quad.png",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "cap": 27.12,
+       "top": 27.12
+      }
+     },
+     {
+      "step": "{\"type\":\"A caption for the first picture\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "above",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "above",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "top:above",
+        "K:quad.png",
+        "cap:old caption",
+        "J:quad.png",
+        "~1:A caption for the first picture*",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "A caption for the first picture",
+       "anchor": 31,
+       "head": 31,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 94.92,
+       "cap": 27.12,
+       "top": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "above",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "above",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above",
+        "K:quad.png",
+        "cap:old caption",
+        "J:quad.png",
+        "~1:A caption for the first picture*",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "~1": 94.92,
+       "cap": 27.12,
+       "top": 27.12
+      }
+     },
+     {
+      "step": "{\"click\":\"J\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "above",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "above",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "J"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above",
+        "K:quad.png",
+        "cap:old caption",
+        "J:quad.png*",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "~1": 94.92,
+       "cap": 27.12,
+       "top": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Enter\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "above",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "above",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "cap"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above",
+        "K:quad.png",
+        "cap:old caption*",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "cap",
+       "text": "old caption",
+       "anchor": 11,
+       "head": 11,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 94.92,
+       "cap": 27.12,
+       "top": 27.12
+      }
+     },
+     {
+      "step": "{\"type\":\" with more words that wrap\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "above",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "above",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "cap"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above",
+        "K:quad.png",
+        "cap:old caption with more words that wrap*",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "cap",
+       "text": "old caption with more words that wrap",
+       "anchor": 37,
+       "head": 37,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 94.92,
+       "cap": 128.82,
+       "top": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "above",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "above",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "cap"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above",
+        "K:quad.png",
+        "cap:old caption with more words that wrap*",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "~1": 94.92,
+       "cap": 128.82,
+       "top": 27.12
+      }
+     },
+     {
+      "step": "{\"click\":\"K\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "above",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "above",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "K"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above",
+        "K:quad.png*",
+        "cap:old caption with more words that wrap",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "~1": 94.92,
+       "cap": 128.82,
+       "top": 27.12
+      }
+     },
+     {
+      "step": "{\"button\":\"Edit caption\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 200,
+         "angle": 0,
+         "type": "text",
+         "text": "above",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "above",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "top"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above*",
+        "K:quad.png",
+        "cap:old caption with more words that wrap",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "top",
+       "text": "above",
+       "anchor": 5,
+       "head": 5,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 94.92,
+       "cap": 128.82,
+       "top": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Enter\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 188.98,
+         "angle": 0,
+         "type": "text",
+         "text": "above\n",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "above",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "top"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above*",
+        "K:quad.png",
+        "cap:old caption with more words that wrap",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "top",
+       "text": "above\n",
+       "anchor": 6,
+       "head": 6,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 94.92,
+       "cap": 128.82,
+       "top": 61.02
+      }
+     },
+     {
+      "step": "{\"type\":\"second line\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 188.98,
+         "angle": 0,
+         "type": "text",
+         "text": "above\nsecond line",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "above",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "top"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above second line*",
+        "K:quad.png",
+        "cap:old caption with more words that wrap",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "top",
+       "text": "above\nsecond line",
+       "anchor": 17,
+       "head": 17,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 94.92,
+       "cap": 128.82,
+       "top": 61.02
+      }
+     },
+     {
+      "step": "{\"key\":\"Enter\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 155.08,
+         "angle": 0,
+         "type": "text",
+         "text": "above\nsecond line\n",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "above",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "top"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above second line*",
+        "K:quad.png",
+        "cap:old caption with more words that wrap",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "top",
+       "text": "above\nsecond line\n",
+       "anchor": 18,
+       "head": 18,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 94.92,
+       "cap": 128.82,
+       "top": 94.92
+      }
+     },
+     {
+      "step": "{\"type\":\"third\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 155.08,
+         "angle": 0,
+         "type": "text",
+         "text": "above\nsecond line\nthird",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 200,
+          "angle": 0,
+          "type": "text",
+          "text": "above",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "top"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above second line third*",
+        "K:quad.png",
+        "cap:old caption with more words that wrap",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "top",
+       "text": "above\nsecond line\nthird",
+       "anchor": 23,
+       "head": 23,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 94.92,
+       "cap": 128.82,
+       "top": 94.92
+      }
+     },
+     {
+      "step": "{\"clickAt\":[1000,650]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 155.08,
+         "angle": 0,
+         "type": "text",
+         "text": "above\nsecond line\nthird",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 155.08,
+          "angle": 0,
+          "type": "text",
+          "text": "above\nsecond line\nthird",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 3,
+       "length": 4
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above second line third",
+        "K:quad.png",
+        "cap:old caption with more words that wrap",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "~1": 94.92,
+       "cap": 128.82,
+       "top": 94.92
+      }
+     },
+     {
+      "step": "{\"dblclick\":\"cap\",\"at\":[0.1,0.2]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 155.08,
+         "angle": 0,
+         "type": "text",
+         "text": "above\nsecond line\nthird",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 155.08,
+          "angle": 0,
+          "type": "text",
+          "text": "above\nsecond line\nthird",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 3,
+       "length": 4
+      },
+      "state": {
+       "selected": [
+        "cap"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above second line third",
+        "K:quad.png",
+        "cap:old caption with more words that wrap*",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "cap",
+       "text": "old caption with more words that wrap",
+       "anchor": 0,
+       "head": 3,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 94.92,
+       "cap": 128.82,
+       "top": 94.92
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+a\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 155.08,
+         "angle": 0,
+         "type": "text",
+         "text": "above\nsecond line\nthird",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 155.08,
+          "angle": 0,
+          "type": "text",
+          "text": "above\nsecond line\nthird",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 3,
+       "length": 4
+      },
+      "state": {
+       "selected": [
+        "cap"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above second line third",
+        "K:quad.png",
+        "cap:old caption with more words that wrap*",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "cap",
+       "text": "old caption with more words that wrap",
+       "anchor": 0,
+       "head": 37,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 94.92,
+       "cap": 128.82,
+       "top": 94.92
+      }
+     },
+     {
+      "step": "{\"key\":\"Backspace\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 155.08,
+         "angle": 0,
+         "type": "text",
+         "text": "above\nsecond line\nthird",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 155.08,
+          "angle": 0,
+          "type": "text",
+          "text": "above\nsecond line\nthird",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 3,
+       "length": 4
+      },
+      "state": {
+       "selected": [
+        "cap"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above second line third",
+        "K:quad.png",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "cap",
+       "text": "",
+       "anchor": 0,
+       "head": 0,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 94.92,
+       "top": 94.92
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 155.08,
+         "angle": 0,
+         "type": "text",
+         "text": "above\nsecond line\nthird",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 155.08,
+          "angle": 0,
+          "type": "text",
+          "text": "above\nsecond line\nthird",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 4,
+       "length": 5
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "top:above second line third",
+        "K:quad.png",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "~1": 94.92,
+       "top": 94.92
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+z\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 155.08,
+         "angle": 0,
+         "type": "text",
+         "text": "above\nsecond line\nthird",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 155.08,
+          "angle": 0,
+          "type": "text",
+          "text": "above\nsecond line\nthird",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 3,
+       "length": 5
+      },
+      "state": {
+       "selected": [],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "top:above second line third",
+        "K:quad.png",
+        "cap:old caption with more words that wrap",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "~1": 94.92,
+       "cap": 128.82,
+       "top": 94.92
+      }
+     },
+     {
+      "step": "{\"click\":\"I\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 155.08,
+         "angle": 0,
+         "type": "text",
+         "text": "above\nsecond line\nthird",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 155.08,
+          "angle": 0,
+          "type": "text",
+          "text": "above\nsecond line\nthird",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 3,
+       "length": 5
+      },
+      "state": {
+       "selected": [
+        "I"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "top:above second line third",
+        "K:quad.png",
+        "cap:old caption with more words that wrap",
+        "J:quad.png",
+        "~1:A caption for the first picture",
+        "I:quad.png*"
+       ],
+       "tool": "select",
+       "text": null,
+       "fontSize": null,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "~1": 94.92,
+       "cap": 128.82,
+       "top": 94.92
+      }
+     },
+     {
+      "step": "{\"button\":\"Edit caption\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 155.08,
+         "angle": 0,
+         "type": "text",
+         "text": "above\nsecond line\nthird",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 155.08,
+          "angle": 0,
+          "type": "text",
+          "text": "above\nsecond line\nthird",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 3,
+       "length": 5
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "top:above second line third",
+        "K:quad.png",
+        "cap:old caption with more words that wrap",
+        "J:quad.png",
+        "~1:A caption for the first picture*",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "A caption for the first picture",
+       "anchor": 31,
+       "head": 31,
+       "focused": true
+      },
+      "boxes": {
+       "~1": 94.92,
+       "cap": 128.82,
+       "top": 94.92
+      }
+     },
+     {
+      "step": "{\"fontSize\":30}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 352,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 30,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 155.08,
+         "angle": 0,
+         "type": "text",
+         "text": "above\nsecond line\nthird",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 155.08,
+          "angle": 0,
+          "type": "text",
+          "text": "above\nsecond line\nthird",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 3,
+       "length": 5
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "top:above second line third",
+        "K:quad.png",
+        "cap:old caption with more words that wrap",
+        "J:quad.png",
+        "~1:A caption for the first picture*",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 30,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "A caption for the first picture",
+       "anchor": 31,
+       "head": 31,
+       "focused": false
+      },
+      "boxes": {
+       "~1": 118.65,
+       "cap": 128.82,
+       "top": 94.92
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "I",
+         "left": 120,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "~1",
+         "left": 120,
+         "top": 352,
+         "angle": 0,
+         "type": "text",
+         "text": "A caption for the first picture",
+         "fontSize": 30,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "I"
+        },
+        {
+         "id": "J",
+         "left": 420,
+         "top": 220,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "cap",
+         "left": 420,
+         "top": 350,
+         "angle": 0,
+         "type": "text",
+         "text": "old caption with more words that wrap",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "J",
+         "captionPosition": 0.5
+        },
+        {
+         "id": "K",
+         "left": 720,
+         "top": 260,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1
+        },
+        {
+         "id": "top",
+         "left": 720,
+         "top": 155.08,
+         "angle": 0,
+         "type": "text",
+         "text": "above\nsecond line\nthird",
+         "fontSize": 24,
+         "width": 160,
+         "minHeight": 0,
+         "captionOf": "K",
+         "captionSide": "top",
+         "captionPosition": 0.5,
+         "captionBackground": "#fdf3c4"
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "I",
+          "left": 120,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "~1",
+          "left": 120,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "A caption for the first picture",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "I"
+         },
+         {
+          "id": "J",
+          "left": 420,
+          "top": 220,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "cap",
+          "left": 420,
+          "top": 350,
+          "angle": 0,
+          "type": "text",
+          "text": "old caption with more words that wrap",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "J",
+          "captionPosition": 0.5
+         },
+         {
+          "id": "K",
+          "left": 720,
+          "top": 260,
+          "angle": 0,
+          "type": "image",
+          "assetId": "quad",
+          "scaleX": 1,
+          "scaleY": 1
+         },
+         {
+          "id": "top",
+          "left": 720,
+          "top": 155.08,
+          "angle": 0,
+          "type": "text",
+          "text": "above\nsecond line\nthird",
+          "fontSize": 24,
+          "width": 160,
+          "minHeight": 0,
+          "captionOf": "K",
+          "captionSide": "top",
+          "captionPosition": 0.5,
+          "captionBackground": "#fdf3c4"
+         }
+        ]
+       },
+       "index": 3,
+       "length": 5
+      },
+      "state": {
+       "selected": [
+        "~1"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": true,
+       "layers": [
+        "top:above second line third",
+        "K:quad.png",
+        "cap:old caption with more words that wrap",
+        "J:quad.png",
+        "~1:A caption for the first picture*",
+        "I:quad.png"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 30,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "~1",
+       "text": "A caption for the first picture",
+       "anchor": 31,
+       "head": 31,
+       "focused": false
+      },
+      "boxes": {
+       "~1": 118.65,
+       "cap": 128.82,
+       "top": 94.92
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Editing",
+     "objects": [
+      {
+       "id": "I",
+       "left": 120,
+       "top": 220,
+       "angle": 0,
+       "type": "image",
+       "assetId": "quad",
+       "scaleX": 1,
+       "scaleY": 1
+      },
+      {
+       "id": "~1",
+       "left": 120,
+       "top": 352,
+       "angle": 0,
+       "type": "text",
+       "text": "A caption for the first picture",
+       "fontSize": 30,
+       "width": 160,
+       "minHeight": 0,
+       "captionOf": "I"
+      },
+      {
+       "id": "J",
+       "left": 420,
+       "top": 220,
+       "angle": 0,
+       "type": "image",
+       "assetId": "quad",
+       "scaleX": 1,
+       "scaleY": 1
+      },
+      {
+       "id": "cap",
+       "left": 420,
+       "top": 350,
+       "angle": 0,
+       "type": "text",
+       "text": "old caption with more words that wrap",
+       "fontSize": 24,
+       "width": 160,
+       "minHeight": 0,
+       "captionOf": "J",
+       "captionPosition": 0.5
+      },
+      {
+       "id": "K",
+       "left": 720,
+       "top": 260,
+       "angle": 0,
+       "type": "image",
+       "assetId": "quad",
+       "scaleX": 1,
+       "scaleY": 1
+      },
+      {
+       "id": "top",
+       "left": 720,
+       "top": 155.08,
+       "angle": 0,
+       "type": "text",
+       "text": "above\nsecond line\nthird",
+       "fontSize": 24,
+       "width": 160,
+       "minHeight": 0,
+       "captionOf": "K",
+       "captionSide": "top",
+       "captionPosition": 0.5,
+       "captionBackground": "#fdf3c4"
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

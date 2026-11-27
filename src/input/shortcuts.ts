@@ -28,7 +28,7 @@ export type ShortcutAction =
   | 'ignore'
 
 export interface ShortcutContext {
-  /** A Fabric text object is in edit mode. */
+  /** A text is being edited. */
   editingText: boolean
   /** Exactly one text is selected (and not being edited): Ctrl/Cmd+B, I and U format it as a whole. */
   textSelected?: boolean
@@ -42,7 +42,7 @@ export type KeyEventLike = Pick<
   'key' | 'code' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey' | 'target' | 'isComposing'
 > & { repeat?: boolean }
 
-/** Inputs, textareas (incl. Fabric's hidden one), selects and contenteditable. */
+/** Inputs, textareas, selects and contenteditable (the edited text included). */
 export function isEditableTarget(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null
   if (!el || typeof el.tagName !== 'string') return false
@@ -142,7 +142,7 @@ export function resolveShortcut(e: KeyEventLike, ctx: ShortcutContext): Shortcut
 export type EditingShortcut = 'bold' | 'italic' | 'underline' | 'revert-shortcut' | 'ignore'
 
 export interface EditingContext {
-  /** The hidden textarea of the text being edited (where its keys arrive), or null when no text is being edited. */
+  /** The editable root of the text being edited (where its keys arrive), or null when no text is being edited. */
   editedTextarea: EventTarget | null
   /** A typing shortcut has just fired in the text being edited, and nothing has happened since: Backspace puts its characters back. */
   canRevertShortcut?: boolean
@@ -173,7 +173,7 @@ export function resolveEditingShortcut(e: KeyEventLike, ctx: EditingContext): Ed
 
 /**
  * The character a key is about to type into the text being edited, when it is one that can
- * complete a typing shortcut (a space or a `*`); otherwise null. Only observed, never claimed:
+ * complete a typing shortcut (a space, a `*`, the third `-` of a divider, or a backtick); otherwise null. Only observed, never claimed:
  * the editor fires a shortcut only for a character that a key typed, so that pasted, dropped
  * and composed text stays as it is. Not during IME composition, and not with Ctrl/Cmd held
  * unless Alt is held too (AltGr, which some layouts need for these characters, is reported as
@@ -182,7 +182,7 @@ export function resolveEditingShortcut(e: KeyEventLike, ctx: EditingContext): Ed
 export function typedCharacter(e: KeyEventLike, ctx: EditingContext): string | null {
   if (ctx.editedTextarea === null || e.target !== ctx.editedTextarea || e.isComposing) return null
   if ((e.ctrlKey || e.metaKey) && !e.altKey) return null
-  return e.key === ' ' || e.key === '*' ? e.key : null
+  return e.key === ' ' || e.key === '*' || e.key === '-' || e.key === '`' ? e.key : null
 }
 
 /** Space held (outside fields/buttons) temporarily switches to the hand tool. */

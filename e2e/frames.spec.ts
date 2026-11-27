@@ -10,8 +10,11 @@ import {
   imageFile,
   openApp,
   openBlank,
+  paintedAt,
   redoButton,
   sceneToPage,
+  screenPixel,
+  screenPixels,
   seedMilestone1,
   seedRaw,
   snapshotIdb,
@@ -24,12 +27,19 @@ import type { StoredBoard, View } from './helpers.ts'
 
 const FRAME = { id: 'f1', name: 'Cover', left: 100, top: 100, width: 400, height: 300 }
 
-/** RGBA of one pixel of the scene canvas, at a position given in canvas (CSS) pixels. */
-function pixel(page: Page, x: number, y: number): Promise<[number, number, number, number]> {
+/** RGBA of one pixel the page shows, at a position given in canvas (CSS) pixels. */
+const pixel = screenPixel
+
+/**
+ * RGBA of one pixel of Fabric's lower canvas, at a position given in canvas (CSS) pixels. Frame
+ * outlines and labels are drawn there (the scene layer draws only the paper),
+ * so its alpha says how opaque the outline itself is, whatever lies beneath it.
+ */
+function chromePixel(page: Page, x: number, y: number): Promise<[number, number, number, number]> {
   return page.evaluate(
     ({ x, y }) => {
       const canvas = document.querySelector<HTMLCanvasElement>('.canvas-container canvas.lower-canvas')
-      if (!canvas) throw new Error('scene canvas not found')
+      if (!canvas) throw new Error('canvas not found')
       const scale = canvas.width / canvas.clientWidth // device pixel ratio
       const d = canvas.getContext('2d')!.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data
       return [d[0]!, d[1]!, d[2]!, d[3]!] as [number, number, number, number]
@@ -38,20 +48,12 @@ function pixel(page: Page, x: number, y: number): Promise<[number, number, numbe
   )
 }
 
-/** Counts pixels in a canvas-pixel rectangle that are neither transparent nor white (i.e. drawn chrome). */
-function inkIn(page: Page, left: number, top: number, width: number, height: number): Promise<number> {
-  return page.evaluate(
-    ({ left, top, width, height }) => {
-      const canvas = document.querySelector<HTMLCanvasElement>('.canvas-container canvas.lower-canvas')
-      if (!canvas) throw new Error('scene canvas not found')
-      const scale = canvas.width / canvas.clientWidth
-      const d = canvas.getContext('2d')!.getImageData(left * scale, top * scale, width * scale, height * scale).data
-      let n = 0
-      for (let i = 0; i < d.length; i += 4) if (d[i + 3]! > 40 && (d[i]! < 235 || d[i + 1]! < 235 || d[i + 2]! < 235)) n++
-      return n
-    },
-    { left, top, width, height },
-  )
+/** Counts pixels the page shows in a canvas-pixel rectangle that are neither the backdrop nor white (i.e. drawn chrome). */
+async function inkIn(page: Page, left: number, top: number, width: number, height: number): Promise<number> {
+  const { data: d } = await screenPixels(page, left, top, width, height)
+  let n = 0
+  for (let i = 0; i < d.length; i += 4) if (d[i]! < 235 || d[i + 1]! < 235 || d[i + 2]! < 235) n++
+  return n
 }
 
 test.describe('drawing a stored frame', () => {
@@ -78,8 +80,8 @@ test.describe('drawing a stored frame', () => {
       const midY = (top + bottom) / 2
 
       await expect.poll(() => pixel(page, midX, midY)).toEqual([255, 255, 255, 255]) // paper
-      expect((await pixel(page, left - 12, midY))[3]).toBe(0) // nothing outside the frame
-      expect((await pixel(page, midX, bottom + 12))[3]).toBe(0)
+      expect(await paintedAt(page, left - 12, midY)).toBe(false) // nothing outside the frame
+      expect(await paintedAt(page, midX, bottom + 12)).toBe(false)
 
       // A one-pixel outline exactly on each edge of the frame, whatever the zoom.
       for (const [px, py] of [
@@ -88,14 +90,14 @@ test.describe('drawing a stored frame', () => {
         [left, midY],
         [right, midY],
       ] as const) {
-        const [r, g, b, a] = await pixel(page, px, py)
-        expect(a, `edge at ${px},${py}`).toBeGreaterThan(200)
-        expect(r + g + b, `edge at ${px},${py}`).toBeLessThan(720) // not paper white
+        const [r, g, b] = await pixel(page, px, py)
+        expect(r + g + b, `edge at ${px},${py}`).toBeLessThan(720) // not paper white, nor the backdrop
+        expect((await chromePixel(page, px, py))[3], `edge at ${px},${py}`).toBeGreaterThan(200) // and the outline itself is opaque
       }
       expect(await pixel(page, midX, top + 2)).toEqual([255, 255, 255, 255]) // and only one pixel thick
       expect(await pixel(page, left + 2, midY)).toEqual([255, 255, 255, 255])
-      expect((await pixel(page, midX, top - 2))[3]).toBe(0)
-      expect((await pixel(page, left - 2, midY))[3]).toBe(0)
+      expect(await paintedAt(page, midX, top - 2)).toBe(false)
+      expect(await paintedAt(page, left - 2, midY)).toBe(false)
 
       // The label sits just above the top-left corner, at a fixed screen size.
       expect(await inkIn(page, Math.round(left), Math.round(top) - 24, 60, 20)).toBeGreaterThan(20)

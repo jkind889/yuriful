@@ -1,0 +1,3947 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the base branch features on the DOM renderer save what the Fabric renderer saves (paired, Slice 2c-iii) > locks: inspector, padlock and shortcut; click-through; Select all; locked members follow their frame; a selection that holds a locked item holds nothing else",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/interleaving.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "730bb93f4d03be97",
+   "value": {
+    "records": [
+     {
+      "step": "{\"select\":\"A\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F"
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F"
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": "Spread",
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": false,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"setSelectionLocked\",\"args\":[true]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F"
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F"
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"select\":\"K\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F"
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F"
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "K"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": true,
+         "frameName": "Spread",
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+Shift+L\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "K"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": true,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"select\":\"T\",\"also\":[\"I\"]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "I",
+        "T"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"setSelectionLocked\",\"args\":[true]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6,
+         "locked": true
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6,
+         "locked": true
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"toggleLayerLock\",\"args\":[\"I\"]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"selectAll\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "F",
+        "I"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"select\":\"I\",\"also\":[\"A\"]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"click\":[220,180]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 100,
+         "top": 80,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 140,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 320,
+         "top": 140,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"label\":\"F\",\"dx\":60,\"dy\":40}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "F"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"select\":\"A\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"deleteSelection\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"arrange\",\"args\":[\"front\"]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"key\":\"Delete\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"select\":\"F\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "F"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"selectFrameContents\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "F"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": true,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"select\":\"A\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"key\":\"Control+Shift+L\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": "Spread",
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"toggleLayerLock\",\"args\":[\"K\"]}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F"
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F"
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": "Spread",
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"undo\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F",
+         "locked": true
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": true
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": "Spread",
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": true,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     },
+     {
+      "step": "{\"run\":\"redo\"}",
+      "scene": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F"
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "history": {
+       "frames": [
+        {
+         "id": "F",
+         "name": "Spread",
+         "left": 160,
+         "top": 120,
+         "width": 420,
+         "height": 320
+        }
+       ],
+       "objects": [
+        {
+         "id": "A",
+         "left": 200,
+         "top": 160,
+         "angle": 0,
+         "type": "image",
+         "assetId": "quad",
+         "scaleX": 1,
+         "scaleY": 1,
+         "frameId": "F"
+        },
+        {
+         "id": "K",
+         "left": 380,
+         "top": 180,
+         "angle": 0,
+         "type": "text",
+         "text": "Member note",
+         "fontSize": 24,
+         "width": 150,
+         "frameId": "F"
+        },
+        {
+         "id": "I",
+         "left": 640,
+         "top": 120,
+         "angle": 0,
+         "type": "image",
+         "assetId": "grad",
+         "scaleX": 0.6,
+         "scaleY": 0.6
+        },
+        {
+         "id": "T",
+         "left": 640,
+         "top": 300,
+         "angle": 0,
+         "type": "text",
+         "text": "Loose words",
+         "fontSize": 24,
+         "width": 160,
+         "locked": true
+        }
+       ]
+      },
+      "state": {
+       "selected": [
+        "A"
+       ],
+       "layers": [
+        {
+         "id": "T",
+         "kind": "text",
+         "label": "Loose words",
+         "selected": false,
+         "frameName": null,
+         "locked": true
+        },
+        {
+         "id": "I",
+         "kind": "image",
+         "label": "grad.png",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        },
+        {
+         "id": "K",
+         "kind": "text",
+         "label": "Member note",
+         "selected": false,
+         "frameName": "Spread",
+         "locked": false
+        },
+        {
+         "id": "A",
+         "kind": "image",
+         "label": "quad.png",
+         "selected": true,
+         "frameName": "Spread",
+         "locked": false
+        },
+        {
+         "id": "F",
+         "kind": "frame",
+         "label": "Spread",
+         "selected": false,
+         "frameName": null,
+         "locked": false
+        }
+       ],
+       "cropping": false,
+       "canUndo": true,
+       "canRedo": false,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       },
+       "jumpReturns": false
+      }
+     }
+    ],
+    "saved": {
+     "version": 2,
+     "title": "Interleaving",
+     "frames": [
+      {
+       "id": "F",
+       "name": "Spread",
+       "left": 160,
+       "top": 120,
+       "width": 420,
+       "height": 320
+      }
+     ],
+     "objects": [
+      {
+       "id": "A",
+       "left": 200,
+       "top": 160,
+       "angle": 0,
+       "type": "image",
+       "assetId": "quad",
+       "scaleX": 1,
+       "scaleY": 1,
+       "frameId": "F"
+      },
+      {
+       "id": "K",
+       "left": 380,
+       "top": 180,
+       "angle": 0,
+       "type": "text",
+       "text": "Member note",
+       "fontSize": 24,
+       "width": 150,
+       "frameId": "F"
+      },
+      {
+       "id": "I",
+       "left": 640,
+       "top": 120,
+       "angle": 0,
+       "type": "image",
+       "assetId": "grad",
+       "scaleX": 0.6,
+       "scaleY": 0.6
+      },
+      {
+       "id": "T",
+       "left": 640,
+       "top": 300,
+       "angle": 0,
+       "type": "text",
+       "text": "Loose words",
+       "fontSize": 24,
+       "width": 160,
+       "locked": true
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

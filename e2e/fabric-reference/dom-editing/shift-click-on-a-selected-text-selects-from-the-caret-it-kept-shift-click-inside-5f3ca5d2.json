@@ -1,0 +1,1270 @@
+{
+ "about": "A frozen reference: what the Fabric renderer gave for this test, recorded by running it (FABRIC_REFERENCE=record). Never edit it by hand, and never record it from the DOM renderer: the Fabric renderer is its only source. See docs/engineering-reference.md.",
+ "test": "the review follow-ups, paired with the Fabric renderer > Shift+click on a selected text selects from the caret it kept; Shift+click inside an edit extends its range",
+ "recordedFrom": {
+  "commit": "9e73b09bb90abaca912ed4155f9fc30407d75d15",
+  "appSource": "the app source (src/ outside tests, index.html, package files, vite.config.ts) as committed",
+  "command": "FABRIC_REFERENCE=record npx playwright test e2e/dom-editing.spec.ts",
+  "browser": "chromium 159.0.8154.6",
+  "platform": "win32 x64",
+  "recordedAt": "2026-11-24"
+ },
+ "entries": {
+  "script": {
+   "inputs": "b6e1ddd3b95bca8c",
+   "value": {
+    "records": [
+     {
+      "step": "{\"click\":\"T\",\"at\":[0.5,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma delta",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta gamma delta*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"click\":\"T\",\"at\":[0.55,0.5],\"shift\":true}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma delta",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta gamma delta*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "alpha beta gamma delta",
+       "anchor": 0,
+       "head": 18,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowRight\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma delta",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta gamma delta*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "alpha beta gamma delta",
+       "anchor": 18,
+       "head": 18,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma delta",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta gamma delta*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"click\":\"T\",\"at\":[0.2,0.5],\"shift\":true}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma delta",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta gamma delta*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "alpha beta gamma delta",
+       "anchor": 18,
+       "head": 7,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowLeft\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma delta",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta gamma delta*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "alpha beta gamma delta",
+       "anchor": 7,
+       "head": 7,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma delta",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta gamma delta*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"click\":\"T\",\"at\":[0.9,0.5],\"shift\":true}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma delta",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta gamma delta*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "alpha beta gamma delta",
+       "anchor": 7,
+       "head": 22,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"click\":\"T\",\"at\":[0.1,0.5]}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma delta",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta gamma delta*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "alpha beta gamma delta",
+       "anchor": 4,
+       "head": 4,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"click\":\"T\",\"at\":[0.5,0.5],\"shift\":true}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma delta",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta gamma delta*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "alpha beta gamma delta",
+       "anchor": 4,
+       "head": 16,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"ArrowRight\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma delta",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta gamma delta*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "alpha beta gamma delta",
+       "anchor": 16,
+       "head": 16,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 100,
+         "top": 100,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma delta",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 100,
+          "top": 100,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 0,
+       "length": 1
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": false,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta gamma delta*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"drag\":\"T\",\"at\":[0.9,0.5],\"dx\":40,\"dy\":30}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 140,
+         "top": 130,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma delta",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 140,
+          "top": 130,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta gamma delta*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"click\":\"T\",\"at\":[0.3,0.5],\"shift\":true}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 140,
+         "top": 130,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta gamma delta",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 140,
+          "top": 130,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta gamma delta*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "alpha beta gamma delta",
+       "anchor": 22,
+       "head": 11,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"type\":\"X\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 140,
+         "top": 130,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta X",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 140,
+          "top": 130,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta gamma delta",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 1,
+       "length": 2
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": true,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta X*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": true,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": {
+       "id": "T",
+       "text": "alpha beta X",
+       "anchor": 12,
+       "head": 12,
+       "focused": true
+      },
+      "boxes": {
+       "T": 27.12
+      }
+     },
+     {
+      "step": "{\"key\":\"Escape\"}",
+      "scene": {
+       "frames": [],
+       "objects": [
+        {
+         "id": "T",
+         "left": 140,
+         "top": 130,
+         "angle": 0,
+         "type": "text",
+         "text": "alpha beta X",
+         "fontSize": 24,
+         "width": 400
+        }
+       ]
+      },
+      "history": {
+       "current": {
+        "frames": [],
+        "objects": [
+         {
+          "id": "T",
+          "left": 140,
+          "top": 130,
+          "angle": 0,
+          "type": "text",
+          "text": "alpha beta X",
+          "fontSize": 24,
+          "width": 400
+         }
+        ]
+       },
+       "index": 2,
+       "length": 3
+      },
+      "state": {
+       "selected": [
+        "T"
+       ],
+       "editing": false,
+       "canUndo": true,
+       "canRedo": false,
+       "layers": [
+        "T:alpha beta X*"
+       ],
+       "tool": "select",
+       "text": {
+        "editing": false,
+        "font": "sans",
+        "align": "left",
+        "color": "#1d2230",
+        "marks": {
+         "bold": "off",
+         "italic": "off",
+         "underline": "off",
+         "strike": "off"
+        },
+        "heading": 0,
+        "boldFromHeading": false
+       },
+       "fontSize": 24,
+       "viewport": {
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
+       }
+      },
+      "edit": null,
+      "boxes": {
+       "T": 27.12
+      }
+     }
+    ],
+    "saved": {
+     "version": 1,
+     "title": "Editing",
+     "objects": [
+      {
+       "id": "T",
+       "left": 140,
+       "top": 130,
+       "angle": 0,
+       "type": "text",
+       "text": "alpha beta X",
+       "fontSize": 24,
+       "width": 400
+      }
+     ],
+     "viewport": {
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0
+     }
+    }
+   }
+  }
+ }
+}

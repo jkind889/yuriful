@@ -3,12 +3,12 @@
  *
  * The fixture image has four coloured quadrants overlaid with an 8-pixel checker, so a sample
  * of the canvas says which part of the original it shows, and a region of the canvas changes
- * visibly if the image moves by even one pixel. Samples are read from Fabric's lower canvas,
- * which holds the scene and the crop overlay but not the selection handles.
+ * visibly if the image moves by even one pixel. Samples are what the page shows (composited
+ * screenshots): the scene, the crop overlay and the selection chrome.
  */
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { AUTOSAVE_QUIET_MS, QUADRANT_COLOURS, drag, openApp, openBlank, redoButton, sceneToPage, seedRaw, snapshotIdb, storedDoc, undoButton } from './helpers.ts'
+import { AUTOSAVE_QUIET_MS, QUADRANT_COLOURS, drag, openApp, openBlank, pagePixels, redoButton, sceneToPage, seedRaw, snapshotIdb, storedDoc, undoButton } from './helpers.ts'
 import type { SeedAsset, StoredBoard, StoredObject, View } from './helpers.ts'
 
 const UNIT: View = { zoom: 1, panX: 0, panY: 0 }
@@ -98,19 +98,10 @@ function sourcePoint(rec: { left: number; top: number; angle?: number; scaleX: n
 
 // ---- pixels ----------------------------------------------------------------------------------------
 
-/** RGBA pixels of a page-pixel rectangle of Fabric's lower canvas, after the next two frames. */
-function region(page: Page, at: { x: number; y: number }, w: number, h: number): Promise<number[]> {
-  return page.evaluate(
-    async ({ x, y, w, h }) => {
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
-      const c = document.querySelector('canvas.lower-canvas') as HTMLCanvasElement
-      const rect = c.getBoundingClientRect()
-      const ratio = c.width / rect.width
-      const data = c.getContext('2d')!.getImageData(Math.round((x - rect.left) * ratio), Math.round((y - rect.top) * ratio), Math.round(w * ratio), Math.round(h * ratio)).data
-      return Array.from(data)
-    },
-    { x: at.x, y: at.y, w, h },
-  )
+/** RGBA pixels the page shows in a page-pixel rectangle of the board, after the next two frames. */
+async function region(page: Page, at: { x: number; y: number }, w: number, h: number): Promise<number[]> {
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+  return Array.from((await pagePixels(page, at.x, at.y, w, h)).data)
 }
 /** How many channel values differ by more than `tolerance`. */
 function differing(a: number[], b: number[], tolerance = 24): number {
